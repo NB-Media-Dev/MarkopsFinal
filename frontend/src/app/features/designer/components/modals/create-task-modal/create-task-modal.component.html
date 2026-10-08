@@ -1,189 +1,400 @@
 @if (isOpen) {
   <div class="modal-backdrop" (click)="onClose()">
-    <div class="modal-box create-task-modal-box" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <div class="modal-title-group">
-          <div class="modal-icon-badge">
-            <span class="material-symbols-outlined">{{
-              getPackageIcon(createTaskForm.get('packageName')?.value)
-            }}</span>
-          </div>
-          <div>
-            <h2>Create {{ createTaskForm.get('packageName')?.value || 'Package' }}</h2>
-          </div>
+    <div class="modal-box modern-create-task-modal" (click)="$event.stopPropagation()">
+      <!-- Main Header Bar -->
+      <div class="modern-modal-header">
+        <div class="header-left">
+          <button type="button" class="back-nav-btn" (click)="onClose()" title="Close">
+            <span class="material-symbols-outlined">arrow_back</span>
+          </button>
+          <span class="header-title">Create Task</span>
         </div>
-        <button class="close-btn" (click)="onClose()" title="Close">
-          <span class="material-symbols-outlined">close</span>
-        </button>
+        <div class="header-right">
+          <div class="quick-simple-badge">
+            <span class="material-symbols-outlined">auto_awesome</span>
+            <span>Quick & Simple</span>
+          </div>
+          <button type="button" class="header-close-btn" (click)="onClose()" title="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
       </div>
-      <form [formGroup]="createTaskForm" (ngSubmit)="onSubmit()">
-        <div class="modal-body">
-          <!-- Row 1: Task Title & Package Workspace Selection -->
-          <div class="form-row">
-            <div class="form-group col-8">
-              <label for="dashTaskTitle">Task Title <span class="required-star">*</span></label>
-              <div class="input-with-icon">
-                <span class="material-symbols-outlined input-icon">edit_note</span>
-                <input
-                  id="dashTaskTitle"
-                  type="text"
-                  formControlName="title"
-                  placeholder="e.g. {{
-                    createTaskForm.get('packageName')?.value || 'Package'
-                  }} Banner Design"
-                  class="form-input"
-                />
-              </div>
-            </div>
-            <div class="form-group col-4">
-              <label for="dashPackageName"
-                >Package Workspace <span class="required-star">*</span></label
-              >
-              <div class="select-wrapper">
-                <span class="material-symbols-outlined select-icon">folder_special</span>
-                <select
-                  id="dashPackageName"
-                  formControlName="packageName"
-                  class="form-input custom-select"
-                >
-                  @for (pkg of availablePackages; track pkg.name) {
-                    <option [value]="pkg.name">
-                      {{ pkg.name }}
-                    </option>
-                  }
-                </select>
-              </div>
-            </div>
-          </div>
-          <!-- Description & Creative Brief -->
-          <div class="form-group">
-            <label for="dashTaskDesc">Creative Brief & Design Instructions</label>
-            <textarea
-              id="dashTaskDesc"
-              formControlName="description"
-              rows="2"
-              placeholder="Provide design requirements ..."
-              class="form-input textarea-input"
-            ></textarea>
-          </div>
-          <!-- Custom File Upload Dropzone -->
-          <div class="form-group">
-            <label>Attach Content Document for Designer</label>
-            <div
-              class="file-upload-zone compact-dropzone"
-              [class.has-file]="createdBriefFileName()"
-            >
-              <input
-                type="file"
-                (change)="onTaskBriefFileSelected($event)"
-                accept="image/*,video/*,.pdf,.doc,.docx,.txt,.md,.json,.csv"
-                class="file-input-hidden"
-                id="dashBriefFileInput"
-              />
-              <label for="dashBriefFileInput" class="file-upload-label">
-                <div class="upload-icon-circle" [class.icon-attached]="createdBriefFileName()">
-                  <span class="material-symbols-outlined">{{
-                    createdBriefFileName() ? 'check_circle' : 'cloud_upload'
-                  }}</span>
+
+      <div class="modern-modal-layout">
+        <!-- LEFT COLUMN: BUILD YOUR TASK (STEPS 1, 2, 3) -->
+        <div class="build-task-column">
+
+          <form [formGroup]="createTaskForm" (ngSubmit)="onSubmit()" class="task-steps-form">
+            <!-- ========================================== -->
+            <!-- STEP 1: CHOOSE TASK TYPE (ONELINE BOX)     -->
+            <!-- ========================================== -->
+            <div class="step-card step-1-card">
+              <div class="step-header">
+                <div class="step-num-circle step-num-orange">1</div>
+                <div class="step-header-text">
+                  <h3>Choose Task Type</h3>
                 </div>
-                <div class="upload-text-content">
-                  @if (!createdBriefFileName()) {
-                    <span class="upload-main-text">Click or drag document to attach brief</span>
-                    <span class="upload-sub-text"
-                      >Supports PDF, DOCX, TXT, Images, Markdown & CSV</span
-                    >
-                  }
-                  @if (createdBriefFileName()) {
-                    <div class="file-attached-info">
-                      <span class="upload-main-text text-success font-bold"
-                        >Attached: {{ createdBriefFileName() }}</span
-                      >
-                      <span class="upload-sub-text">File ready &bull; Click to change file</span>
-                    </div>
-                  }
-                </div>
-                @if (createdBriefFileName()) {
-                  <button
-                    type="button"
-                    class="btn-clear-attached"
-                    (click)="clearTaskBriefFile($event)"
-                    title="Remove attached file"
+              </div>
+
+              <div class="task-types-oneline-row">
+                @for (type of taskTypes; track type.id) {
+                  <div
+                    class="task-type-box"
+                    [class.is-selected]="selectedTaskType() === type.id"
+                    [ngClass]="'type-box-' + type.color"
+                    (click)="selectTaskType(type)"
                   >
-                    <span class="material-symbols-outlined">close</span>
-                  </button>
+                    @if (selectedTaskType() === type.id) {
+                      <div class="selected-checkmark-badge">
+                        <span class="material-symbols-outlined">check</span>
+                      </div>
+                    }
+                    <div class="type-icon-box" [ngClass]="'icon-' + type.color">
+                      <span class="material-symbols-outlined">{{ type.icon }}</span>
+                    </div>
+                    <div class="type-title-box">
+                      <span class="type-main-title">{{ type.subtitle }}</span>
+                     
+                    </div>
+                  </div>
                 }
-              </label>
+              </div>
             </div>
+
+            <!-- ========================================== -->
+            <!-- STEP 2: ADD DETAILS / REQUIREMENTS        -->
+            <!-- ========================================== -->
+            <div class="step-card step-2-card">
+              <div class="step-header">
+                <div class="step-num-circle step-num-blue">2</div>
+                <div class="step-header-text">
+                  <h3>Add Details</h3>
+                
+                </div>
+              </div>
+
+              <div class="step-details-stack">
+                <!-- 1. Task Title & Creative Brief Item -->
+                <div class="detail-field-card">
+                  <div class="detail-field-header">
+                   
+                  
+                  
+                  </div>
+                  <div class="detail-inputs-wrapper">
+                    <textarea
+                      rows="2"
+                      placeholder="Provide design requirements, target audience, dimensions..."
+                      class="step-textarea-input"
+                    ></textarea>
+                  </div>
+                </div>
+
+                <!-- 2. Attachments Item -->
+                <div class="detail-field-card">
+                  <div class="detail-field-header">
+                    <div class="detail-icon-circle icon-purple">
+                      <span class="material-symbols-outlined">attach_file</span>
+                    </div>
+                    <div class="detail-header-copy">
+                      <span class="detail-title">Attachments</span>
+                   
+                    </div>
+                    @if (createdBriefFileName()) {
+                      <span class="detail-status-pill attached">
+                        <span class="material-symbols-outlined">attach_file</span> 1 file attached
+                      </span>
+                    }
+                  </div>
+
+                  <div class="step-dropzone" [class.has-file]="createdBriefFileName()">
+                    <input
+                      type="file"
+                      (change)="onTaskBriefFileSelected($event)"
+                      accept="image/*,video/*,.pdf,.doc,.docx,.txt,.md,.json,.csv"
+                      class="file-input-hidden"
+                      id="modernBriefFileInput"
+                    />
+                    <label for="modernBriefFileInput" class="step-dropzone-label">
+                      @if (!createdBriefFileName()) {
+                        <span class="material-symbols-outlined upload-cloud-icon">cloud_upload</span>
+                        <span class="dropzone-text">Click or drag document to attach brief (PDF, DOCX, TXT, Images)</span>
+                      }
+                      @if (createdBriefFileName()) {
+                        <span class="material-symbols-outlined check-file-icon">check_circle</span>
+                        <span class="dropzone-text-file">{{ createdBriefFileName() }}</span>
+                        <button
+                          type="button"
+                          class="btn-remove-file"
+                          (click)="clearTaskBriefFile($event)"
+                          title="Remove file"
+                        >
+                          <span class="material-symbols-outlined">close</span>
+                        </button>
+                      }
+                    </label>
+                  </div>
+                </div>
+
+                <!-- 3. Package Workspace Item -->
+                <div class="detail-field-card">
+                  <div class="detail-field-header">
+                    <div class="detail-icon-circle icon-teal">
+                      <span class="material-symbols-outlined">folder_special</span>
+                    </div>
+                    <div class="detail-header-copy">
+                      <span class="detail-title">Package</span>
+                      <span class="detail-desc">Select the package for this task</span>
+                    </div>
+                    <div class="package-pill-select-wrapper">
+                      <select formControlName="packageName" class="package-pill-select">
+                        @for (pkg of availablePackages; track pkg.name) {
+                          <option [value]="pkg.name">{{ pkg.name }}</option>
+                        }
+                      </select>
+                      <span class="material-symbols-outlined select-chevron">expand_more</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- STEP 3: ASSIGN & SET PRIORITY              -->
+            <!-- ========================================== -->
+            <div class="step-card step-3-card">
+              <div class="step-header">
+                <div class="step-num-circle step-num-green">3</div>
+                <div class="step-header-text">
+                  <h3>Assign & Set Priority</h3>
+             
+                </div>
+              </div>
+
+              <div class="assign-priority-widgets-row">
+                <!-- 1. Designer Widget -->
+                <div class="widget-box widget-designer">
+                  <div class="widget-header">
+                    <span class="material-symbols-outlined icon-green">person</span>
+                    <span class="widget-title">Designer</span>
+                  </div>
+                  <div class="widget-content">
+                    <div class="designer-select-card">
+                      <div class="designer-avatar-circle">
+                        {{ getDesignerInitials() }}
+                      </div>
+                      <div class="designer-select-wrap">
+                        <select formControlName="assignedTo" class="native-designer-select">
+                          <option value="" disabled>Select Designer</option>
+                          @for (d of designers; track d.id) {
+                            <option [value]="d.id">{{ d.name }}</option>
+                          }
+                        </select>
+                        <span class="designer-role-sub">UI/UX Designer</span>
+                      </div>
+                      <span class="material-symbols-outlined chevron">chevron_right</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 2. Priority Widget -->
+                <div class="widget-box widget-priority">
+                  <div class="widget-header">
+                    <span class="material-symbols-outlined icon-orange">local_fire_department</span>
+                    <span class="widget-title">Priority</span>
+                  </div>
+                  <div class="widget-content">
+                    <div class="priority-pill-group">
+                      <button
+                        type="button"
+                        class="priority-pill-btn"
+                        [class.active]="createTaskForm.get('priority')?.value === 'LOW'"
+                        (click)="setPriority('LOW')"
+                      >
+                        Low
+                      </button>
+                      <button
+                        type="button"
+                        class="priority-pill-btn"
+                        [class.active]="createTaskForm.get('priority')?.value === 'MEDIUM'"
+                        (click)="setPriority('MEDIUM')"
+                      >
+                        Medium
+                      </button>
+                      <button
+                        type="button"
+                        class="priority-pill-btn priority-high"
+                        [class.active]="createTaskForm.get('priority')?.value === 'HIGH'"
+                        (click)="setPriority('HIGH')"
+                      >
+                        High
+                      </button>
+                      <button
+                        type="button"
+                        class="priority-pill-btn priority-urgent"
+                        [class.active]="createTaskForm.get('priority')?.value === 'URGENT'"
+                        (click)="setPriority('URGENT')"
+                      >
+                        Urgent
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 3. Deadline Widget -->
+                <div class="widget-box widget-deadline">
+                  <div class="widget-header">
+                    <span class="material-symbols-outlined icon-red">event</span>
+                    <span class="widget-title">Deadline</span>
+                  </div>
+                  <div class="widget-content">
+                    <div class="deadline-input-wrap">
+                      <input
+                        type="date"
+                        formControlName="dueDate"
+                        [min]="todayDate"
+                        class="deadline-native-input"
+                      />
+                      <span class="deadline-relative-tag">{{ getRelativeDeadline() }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Modal Action Buttons Bar -->
+            <div class="build-task-footer-bar">
+              <button type="button" class="btn-save-draft" (click)="onClose()">
+                <span class="material-symbols-outlined">draft</span>
+                <span>Save as Draft</span>
+              </button>
+
+              <button
+                type="submit"
+                class="btn-review-create-task"
+                [disabled]="createTaskForm.invalid"
+              >
+                <span class="material-symbols-outlined">send</span>
+                <span>Review & Create Task</span>
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- RIGHT COLUMN: TASK PREVIEW -->
+        <div class="task-preview-column">
+          <div class="preview-header">
+            <span class="material-symbols-outlined preview-eye-icon">visibility</span>
+            <span class="preview-heading">Task Preview</span>
           </div>
-          <!-- Row: Designer, Priority, and Due Date in 3 Medium-Width Columns -->
-          <div class="form-row form-row-3col">
-            <div class="form-group col-4">
-              <label for="dashAssignedDesigner"
-                >Assign to Designer <span class="required-star">*</span></label
-              >
-              <div class="select-wrapper">
-                <span class="material-symbols-outlined select-icon">person</span>
-                <select
-                  id="dashAssignedDesigner"
-                  formControlName="assignedTo"
-                  class="form-input custom-select"
-                >
-                  <option value="" disabled>Select Designer</option>
-                  @for (d of designers; track d.id) {
-                    <option [value]="d.id">{{ d.name }}</option>
-                  }
-                </select>
+
+          <div class="preview-showcase-card">
+            <!-- Card Top: Icon & Category Tag -->
+            <div class="preview-card-top">
+              <div class="preview-icon-square">
+                <span class="material-symbols-outlined">campaign</span>
+              </div>
+              <span class="preview-category-pill">
+                {{selectedTaskTypeLabel()}}
+              </span>
+            </div>
+
+            <!-- Card Title & Description -->
+            <div class="preview-card-title-box">
+              <h3 class="preview-card-title">
+                {{ createTaskForm.get('title')?.value || 'Banner Design' }}
+              </h3>
+              <p class="preview-card-desc">
+                {{ createTaskForm.get('description')?.value || 'Create a creative banner for current-affair with modern and clean design.' }}
+              </p>
+            </div>
+
+            <!-- Graphic Banner Illustration -->
+            <div class="preview-banner-illustration">
+              <div class="illustration-graphic">
+                <div class="graphic-globe">🌍</div>
+                <div class="graphic-news-card">
+                  <span class="news-badge">CURRENT</span>
+                  <span class="news-title">AFFAIRS</span>
+                </div>
+                <div class="graphic-plant">🪴</div>
               </div>
             </div>
-            <div class="form-group col-4">
-              <label for="dashTaskPriority"
-                >Task Priority <span class="required-star">*</span></label
-              >
-              <div class="select-wrapper">
-                <span class="material-symbols-outlined select-icon">flag</span>
-                <select
-                  id="dashTaskPriority"
-                  formControlName="priority"
-                  class="form-input custom-select"
-                >
-                  <option value="LOW">Low Priority</option>
-                  <option value="MEDIUM">Medium Priority</option>
-                  <option value="HIGH">High Priority</option>
-                  <option value="URGENT">Urgent Priority</option>
-                </select>
+
+            <!-- Metadata Key-Value List -->
+            <div class="preview-meta-list">
+              <!-- Designer -->
+              <div class="meta-row">
+                <div class="meta-label">
+                  <span class="material-symbols-outlined">person</span>
+                  <span>Designer</span>
+                </div>
+                <div class="meta-value designer-val">
+                  <div class="preview-avatar">{{ getDesignerInitials() }}</div>
+                  <div class="designer-meta-text">
+                    <span class="designer-name">{{ getSelectedDesignerName() }}</span>
+                    <span class="designer-sub">UI/UX Designer</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Priority -->
+              <div class="meta-row">
+                <div class="meta-label">
+                  <span class="material-symbols-outlined">local_fire_department</span>
+                  <span>Priority</span>
+                </div>
+                <div class="meta-value priority-val">
+                  <span class="fire-icon">🔥</span>
+                  <span class="priority-name">{{ createTaskForm.get('priority')?.value | titlecase }}</span>
+                </div>
+              </div>
+
+              <!-- Deadline -->
+              <div class="meta-row">
+                <div class="meta-label">
+                  <span class="material-symbols-outlined">calendar_today</span>
+                  <span>Deadline</span>
+                </div>
+                <div class="meta-value deadline-val">
+                  <span class="cal-icon material-symbols-outlined">event</span>
+                  <div class="deadline-text-group">
+                    <span class="date-str">{{ formatDueDate() }}</span>
+                    <span class="relative-str">({{ getRelativeDeadline() }})</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Package -->
+              <div class="meta-row">
+                <div class="meta-label">
+                  <span class="material-symbols-outlined">inventory_2</span>
+                  <span>Package</span>
+                </div>
+                <div class="meta-value package-val">
+                  <span class="material-symbols-outlined pkg-icon">folder_special</span>
+                  <span>{{ createTaskForm.get('packageName')?.value }}</span>
+                </div>
+              </div>
+
+              <!-- Attachments -->
+              <div class="meta-row">
+                <div class="meta-label">
+                  <span class="material-symbols-outlined">attach_file</span>
+                  <span>Attachments</span>
+                </div>
+                <div class="meta-value attach-val">
+                  <span class="material-symbols-outlined paperclip">attachment</span>
+                  <span>{{ createdBriefFileName() ? '1 file' : '0 files' }}</span>
+                </div>
               </div>
             </div>
-            <div class="form-group col-4">
-              <label for="dashTaskDueDate"
-                >Target Completion Date <span class="required-star">*</span></label
-              >
-              <div class="input-with-icon">
-                <span class="material-symbols-outlined input-icon">event</span>
-                <input
-                  id="dashTaskDueDate"
-                  type="date"
-                  formControlName="dueDate"
-                  [min]="todayDate"
-                  class="form-input"
-                />
-              </div>
-            </div>
+
+            <!-- Ready To Go Helper Box -->
+           
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline" (click)="onClose()">
-            Cancel
-          </button>
-          <button
-            type="submit"
-            class="btn btn-primary btn-submit-task"
-            [disabled]="createTaskForm.invalid"
-          >
-            <span class="material-symbols-outlined fs-18">add_task</span>
-            <span>Assign Task</span>
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   </div>
 }

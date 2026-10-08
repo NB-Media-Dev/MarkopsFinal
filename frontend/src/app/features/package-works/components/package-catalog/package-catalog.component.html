@@ -1,67 +1,85 @@
 <div class="packages-catalog-container">
-  <!-- Packages Cards Grid matching user's design -->
+  <!-- Packages Cards Grid matching Image 1 -->
   @if (filteredProductPackages.length > 0) {
     <div class="custom-packages-grid">
-      @for (pkg of filteredProductPackages; track pkg.id || pkg.name) {
+      @for (pkg of paginatedProductPackages; track pkg.id || pkg.name) {
         <div
           class="package-display-card"
           (click)="onOpenPackage(pkg)"
           [attr.data-package-id]="pkg.id"
         >
           <!-- Top Banner Image Area -->
-          <div class="package-display-banner">
+          <div class="package-display-banner" [class.is-blank]="!pkg.imageUrl">
             @if (pkg.imageUrl) {
               <img
                 [src]="formatAssetUrl(pkg.imageUrl)"
                 [alt]="pkg.name"
                 class="package-banner-image"
-                (error)="$any($event.target).src = '/vidhvaa-career-img.png'"
               />
-            }
-            @if (!pkg.imageUrl) {
-              <div class="package-banner-placeholder">
-                <div class="placeholder-crest">
-                  <span class="material-symbols-outlined">category</span>
-                </div>
-                <span class="placeholder-title">{{ pkg.name }}</span>
+            } @else {
+              <div class="package-banner-blank">
+                <span class="material-symbols-outlined blank-icon">image</span>
               </div>
             }
-            <!-- Top-Right Actions Overlay (Edit & Delete) -->
-            <div class="package-card-actions-overlay">
-              @if (canDeletePackage) {
-                <button
-                  type="button"
-                  (click)="onDeletePackage(pkg, $event)"
-                  class="package-card-action-icon delete-icon"
-                  title="Delete Package"
-                >
-                  <span class="material-symbols-outlined">delete</span>
-                </button>
+
+            <!-- Category Tag Floating Pill (Top-Left) -->
+          
+
+            <!-- Top-Right 3-Dots Menu Button -->
+            <div class="package-card-menu-wrapper" (click)="$event.stopPropagation()">
+              <button
+                type="button"
+                class="package-menu-btn"
+                (click)="toggleMenu(pkg, $event)"
+                title="Options"
+                aria-label="Package options"
+              >
+                <span class="material-symbols-outlined">more_vert</span>
+              </button>
+
+              @if (activeMenuPkgId === pkg.id) {
+                <div class="package-menu-dropdown">
+                  @if (canEditPackage) {
+                    <button type="button" class="package-menu-item edit-item" (click)="onEditPackage(pkg, $event)">
+                      <span class="material-symbols-outlined">edit</span>
+                      <span>Edit Package</span>
+                    </button>
+                  }
+                  @if (canDeletePackage) {
+                    <button type="button" class="package-menu-item delete-item" (click)="onDeletePackage(pkg, $event)">
+                      <span class="material-symbols-outlined">delete</span>
+                      <span>Delete Package</span>
+                    </button>
+                  }
+                  <button type="button" class="package-menu-item open-item" (click)="onOpenPackage(pkg)">
+                    <span class="material-symbols-outlined">launch</span>
+                    <span>Open Workspace</span>
+                  </button>
+                </div>
               }
             </div>
           </div>
-          <!-- Bottom Card Content -->
+
+          <!-- Bottom Card Content Area -->
           <div class="package-display-info">
-            <div class="package-title-meta-box">
-              <h3 class="package-display-title" [title]="pkg.name">{{ pkg.name }}</h3>
-              <div class="package-meta-row">
+            <!-- Header Row with Squircle Icon & Title/Desc -->
+            <div class="package-header-row">
+              <div class="package-squircle-icon">
+                <span class="material-symbols-outlined">{{ getPackageSquircleIcon(pkg.name) }}</span>
+              </div>
+              <div class="package-title-desc-box">
+                <h3 class="package-display-title" [title]="pkg.name">{{ pkg.name }}</h3>
+        
               </div>
             </div>
-            <div class="package-display-btn-wrapper">
-              @if (canEditPackage) {
-                <button
-                  type="button"
-                  class="package-card-btn package-edit-btn"
-                  (click)="onEditPackage(pkg, $event)"
-                  title="Edit package details"
-                >
-                  <span class="material-symbols-outlined">edit</span>
-                  <span>Edit</span>
-                </button>
-              }
+
+            <!-- Footer Row with Tasks, Days, and Open Button -->
+            <div class="package-card-footer">
+            
+
               <button
                 type="button"
-                class="package-card-btn package-open-btn"
+                class="package-open-pill-btn"
                 (click)="onOpenPackage(pkg); $event.stopPropagation()"
                 [attr.id]="'btn-view-pkg-' + pkg.id"
               >
@@ -73,7 +91,53 @@
         </div>
       }
     </div>
+
+    <!-- Bottom Bar: Pagination + Watermark Branding -->
+    <div class="catalog-bottom-bar">
+      <!-- Subtle Decorative Leaves Motif (Bottom Left) -->
+      <div class="bottom-decorative-motif" aria-hidden="true">
+        <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 90C10 60 30 30 60 20C60 50 40 80 10 90Z" fill="#FED7AA" opacity="0.7"/>
+          <path d="M0 70C15 45 45 35 75 35C65 65 35 75 0 70Z" fill="#FDBA74" opacity="0.6"/>
+          <path d="M25 95C35 70 65 65 95 70C75 90 45 100 25 95Z" fill="#FED7AA" opacity="0.5"/>
+        </svg>
+      </div>
+
+      <div class="catalog-pagination">
+        <button
+          type="button"
+          class="pagination-nav-btn"
+          [disabled]="currentPage === 1"
+          (click)="selectPage(currentPage - 1)"
+          aria-label="Previous page"
+        >
+          <span class="material-symbols-outlined">chevron_left</span>
+        </button>
+
+        @for (page of pageNumbers; track page) {
+          <button
+            type="button"
+            class="pagination-num-btn"
+            [class.active]="currentPage === page"
+            (click)="selectPage(page)"
+          >
+            {{ page }}
+          </button>
+        }
+
+        <button
+          type="button"
+          class="pagination-nav-btn"
+          [disabled]="currentPage === totalPages"
+          (click)="selectPage(currentPage + 1)"
+          aria-label="Next page"
+        >
+          <span class="material-symbols-outlined">chevron_right</span>
+        </button>
+      </div>
+    </div>
   }
+
   <!-- Empty State -->
   @if (filteredProductPackages.length === 0) {
     <div class="packages-empty-state-card">
@@ -86,12 +150,12 @@
       </p>
       @if (canCreatePackage) {
         <button
-          (click)="onCreatePackage()"
+          type="button"
           class="empty-create-package-btn"
-          id="btn-empty-create-pkg"
+          (click)="onCreatePackage()"
         >
           <span class="material-symbols-outlined">add_circle</span>
-          <span>Create Package</span>
+          <span>Create New Package</span>
         </button>
       }
     </div>

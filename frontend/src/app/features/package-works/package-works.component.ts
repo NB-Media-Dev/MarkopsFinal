@@ -74,6 +74,8 @@ export class PackageWorksComponent implements OnInit {
   readonly availablePackages = FIXED_PACKAGES;
   readonly activePackageName = signal<string>('Careermate');
   readonly packageSearchQuery = signal<string>('');
+  readonly selectedCategoryFilter = signal<string>('ALL');
+  readonly isCategoryFilterOpen = signal<boolean>(false);
   readonly productHeroBanners = signal<Record<string, string>>({});
   readonly isSavingHeroBanner = signal<boolean>(false);
   readonly heroBannerError = signal<string | null>(null);
@@ -109,6 +111,12 @@ export class PackageWorksComponent implements OnInit {
   readonly activeWorkspacePackage = signal<ProductPackage | null>(null);
   readonly activeOperationTab = signal<string>('PACKAGES');
 
+  getPackageHeroBanner(pkg?: ProductPackage | null): string {
+    if (pkg?.imageUrl) {
+      return this.formatAssetUrl(pkg.imageUrl);
+    }
+    return this.activeHeroBanner();
+  }
 
   readonly isCreateProductPackageModalOpen = signal<boolean>(false);
   readonly isPackageDetailModalOpen = signal<boolean>(false);
@@ -353,10 +361,37 @@ export class PackageWorksComponent implements OnInit {
       return false;
     });
     const query = this.packageSearchQuery().trim().toLowerCase();
-    return query
-      ? matchingProduct.filter((pkg) => pkg.name.toLowerCase().includes(query))
-      : matchingProduct;
+    const catFilter = this.selectedCategoryFilter();
+
+    return matchingProduct.filter((pkg) => {
+      const matchesQuery = query
+        ? (pkg.name.toLowerCase().includes(query) || (pkg.description || '').toLowerCase().includes(query))
+        : true;
+      const cat = this.inferPackageCategory(pkg.name);
+      const matchesCategory = catFilter === 'ALL' || cat.toLowerCase() === catFilter.toLowerCase();
+      return matchesQuery && matchesCategory;
+    });
   });
+
+  inferPackageCategory(name: string): string {
+    const n = (name || '').toLowerCase();
+    if (n.includes('affair') || n.includes('design') || n.includes('art') || n.includes('ui')) return 'Design';
+    if (n.includes('social') || n.includes('post') || n.includes('feed') || n.includes('media')) return 'Social Media';
+    if (n.includes('brand') || n.includes('market') || n.includes('ads')) return 'Marketing';
+    if (n.includes('video') || n.includes('edit') || n.includes('anim') || n.includes('reel') || n.includes('motion')) return 'Video Editing';
+    if (n.includes('content') || n.includes('write') || n.includes('blog') || n.includes('seo') || n.includes('script')) return 'Content Writing';
+    return 'Design';
+  }
+
+  toggleCategoryFilterDropdown(event?: MouseEvent) {
+    if (event) event.stopPropagation();
+    this.isCategoryFilterOpen.update((v) => !v);
+  }
+
+  setCategoryFilter(category: string) {
+    this.selectedCategoryFilter.set(category);
+    this.isCategoryFilterOpen.set(false);
+  }
 
   getPackageCountForProduct(prodId: string): number {
     const all = this.packageService.packages();

@@ -75,16 +75,7 @@
             </button>
           }
         </div>
-        @if (canCreatePackage()) {
-          <button
-            (click)="openCreateProductPackageModal()"
-            class="header-create-pkg-btn"
-            id="btn-create-package-top"
-          >
-            <span class="material-symbols-outlined btn-icon">add_circle</span>
-            <span>Create Package</span>
-          </button>
-        }
+       
       }
 
       <!-- When inside a package workspace: Back button & product badge -->
@@ -125,7 +116,13 @@
       <p class="hero-banner-error" role="alert">{{ heroBannerError() }}</p>
     }
     <section class="catalog-toolbar" aria-label="Package catalog controls">
-      <h2>Available Packages</h2>
+      <div class="catalog-toolbar-header">
+      
+        <div class="catalog-title-group">
+          <h2>Available Packages</h2>
+
+        </div>
+      </div>
       <div class="catalog-actions">
         <label class="package-search">
           <span class="material-symbols-outlined" aria-hidden="true">search</span>
@@ -137,6 +134,9 @@
             (ngModelChange)="packageSearchQuery.set($event)"
           />
         </label>
+
+     
+
         @if (canCreatePackage()) {
           <button
             (click)="openCreateProductPackageModal()"
@@ -169,6 +169,60 @@
   @if (activeWorkspacePackage(); as selectedPkg) {
     <!-- LEVEL 2: 4 Hub Cards Overview (When NO department is clicked) -->
     @if (!activeDepartment()) {
+      @if (selectedPkg.imageUrl) {
+        <section
+          class="product-hero-banner"
+          [style.background-image]="'url(' + formatAssetUrl(selectedPkg.imageUrl) + ')'"
+        >
+          @if (canEditPackage()) {
+            <button
+              type="button"
+              class="hero-banner-edit-btn"
+              (click)="openEditProductPackageModal(selectedPkg, $event)"
+            >
+              <span class="material-symbols-outlined">edit</span>
+              <span>Edit Package</span>
+            </button>
+          }
+          <div class="product-hero-content">
+            <img
+              [src]="productVisual().logo"
+              [alt]="productVisual().title + ' logo'"
+              class="product-hero-logo"
+            />
+            <div class="product-hero-copy">
+              <h1>{{ selectedPkg.name }}</h1>
+              <p>{{ selectedPkg.description || productVisual().tagline }}</p>
+            </div>
+          </div>
+        </section>
+      } @else {
+        <!-- Simple, clean empty hero banner when package has no image -->
+        <section class="product-hero-banner hero-banner-blank">
+          @if (canEditPackage()) {
+            <button
+              type="button"
+              class="hero-banner-edit-btn blank-edit-btn"
+              (click)="openEditProductPackageModal(selectedPkg, $event)"
+            >
+              <span class="material-symbols-outlined">add_photo_alternate</span>
+              <span>Upload Banner</span>
+            </button>
+          }
+          <div class="blank-hero-content">
+            <img
+              [src]="productVisual().logo"
+              [alt]="productVisual().title + ' logo'"
+              class="product-hero-logo blank-hero-logo"
+            />
+            <div class="blank-hero-copy">
+              <h1>{{ selectedPkg.name }}</h1>
+              <p>{{ selectedPkg.description || productVisual().tagline }}</p>
+            </div>
+          </div>
+        </section>
+      }
+
       <app-package-hub-overview
         [packageMetrics]="packageMetrics()"
         [operationDepartments]="operationDepartments()"

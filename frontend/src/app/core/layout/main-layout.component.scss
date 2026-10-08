@@ -20,7 +20,7 @@
 .content-viewport {
   width: 100%;
   max-width: 1520px;
-  margin: 0 auto;
+  margin-top: 30px;
   box-sizing: border-box;
   padding: 0.25rem 1rem 1.5rem;
 
@@ -55,12 +55,11 @@
 .top-navbar {
   height: 50px;
   background-color: #FFFFFF;
-  border-bottom: 1px solid #F1D3A8;
   box-shadow: 0 1px 6px rgba(245, 158, 11, 0.05);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 1.75rem;
+  padding: 2rem 1.75rem;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -620,7 +619,7 @@
       display: inline-flex;
       align-items: center;
       gap: 0.45rem;
-      background-color: #172033;
+      background-color: #F59E0B;
       color: #FFFFFF;
       border-radius: 9999px;
       padding: 0.5rem 1.15rem;
@@ -661,7 +660,7 @@
 
       .action-icon-amber {
         font-size: 18px;
-        color: #F59E0B;
+        color: #f1f0ee;
       }
     }
 

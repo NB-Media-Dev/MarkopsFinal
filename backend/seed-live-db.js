@@ -7,7 +7,7 @@ const DB_URL = process.env.DATABASE_URL?.replace(/[?&]ssl-mode=[^&]*/i, '').repl
   console.log('Connected!');
 
  
-  const tables = ['roles', 'teams', 'users', 'campaigns', 'packages', 'ads', 'tasks', 'leads'];
+  const tables = ['roles', 'teams', 'users', 'campaigns', 'packages', 'ads', 'tasks', 'leads','product_catalog'];
   for (const t of tables) {
     try {
       await conn.query(`ALTER TABLE \`${t}\` MODIFY \`updated_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`);
@@ -15,6 +15,48 @@ const DB_URL = process.env.DATABASE_URL?.replace(/[?&]ssl-mode=[^&]*/i, '').repl
     } catch (e) {
       console.log(`Skip ${t}: ${e.message}`);
     }
+  }
+  
+   try {
+    await conn.query(`
+     CREATE TABLE product_catalog (
+  id VARCHAR(100) NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  short_name VARCHAR(100) NOT NULL,
+  display_title VARCHAR(255) NOT NULL,
+  tagline VARCHAR(255) NOT NULL,
+  card_tagline VARCHAR(255) NOT NULL,
+  icon VARCHAR(100) NOT NULL,
+  badge_color VARCHAR(50) NOT NULL,
+  card_theme VARCHAR(50) NOT NULL,
+  logo_url VARCHAR(500) NOT NULL,
+  card_image_url VARCHAR(500) NOT NULL,
+  hero_image_url VARCHAR(500) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_product_catalog_short_name (short_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+    console.log('Products table ensured');
+  } catch (e) {
+    console.log('Products table error:', e.message);
+  }
+
+  // Seed products
+  try {
+    await conn.query(`
+     INSERT INTO product_catalog
+  (id, name, short_name, display_title, tagline, card_tagline, icon, badge_color, card_theme, logo_url, card_image_url, hero_image_url, sort_order)
+VALUES
+  ('pkg_careermate', 'Vidhvaa CareerMate', 'Careermate', 'CareerMate', 'Learn • Grow • Build', 'CAREER & PLACEMENT SOLUTIONS', 'business_center', 'blue', 'careermate', '/vidhvaa-career-img.png', '/card-bg-careermate.jpg', '/careermate-hero-banner.jpg', 1),
+  ('pkg_classmate', 'Vidhvaa Classmate', 'Classmate', 'Classmate', 'Learn • Discover • Excel', 'STUDENT & LEARNING SOLUTIONS', 'school', 'emerald', 'classmate', '/vidhvaa-class-img.png', '/card-bg-classmate.jpg', '/classmate-hero-banner.jpg', 2),
+  ('pkg_jesus_messanger', 'Jesus the Messenger', 'Jesus the messanger', 'Jesus the Messenger', 'Share • Inspire • Empower', 'FAITH & MINISTRY SOLUTIONS', 'campaign', 'purple', 'jesus', '/jesus-img.png', '/card-bg-jesus.jpg', '/jesus-hero-banner.jpg', 3);
+    `);
+    console.log('Products seeded');
+  } catch (e) {
+    console.log('Products seed error:', e.message);
   }
 
  

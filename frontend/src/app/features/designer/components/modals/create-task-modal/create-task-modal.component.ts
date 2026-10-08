@@ -3,6 +3,14 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { TaskPriority } from '../../../../../core/models/task.model';
 
+export interface TaskTypeOption {
+  id: 'CURRENT_AFFAIR' | 'SOCIAL_MEDIA' | 'VIDEO' ; 
+  name: string;
+  subtitle: string;
+  icon: string;
+  color: 'orange' | 'purple' | 'blue' | 'green';
+}
+
 @Component({
   selector: 'app-create-task-modal',
   standalone: true,
@@ -30,10 +38,18 @@ export class CreateTaskModalComponent implements OnChanges {
 
   readonly todayDate = new Date().toISOString().split('T')[0];
 
+  readonly taskTypes: TaskTypeOption[] = [
+    { id: 'CURRENT_AFFAIR', name: 'Current Affair', subtitle: 'Banner Design', icon: 'campaign', color: 'orange' },
+    { id: 'SOCIAL_MEDIA', name: 'Social Media', subtitle: 'Post Design', icon: 'photo_library', color: 'purple' },
+    { id: 'VIDEO', name: 'Video', subtitle: 'Edit & Create', icon: 'play_arrow', color: 'blue' },
+   ];
+
+  readonly selectedTaskType = signal<'CURRENT_AFFAIR' | 'SOCIAL_MEDIA' | 'VIDEO'>('CURRENT_AFFAIR');
+
   readonly createTaskForm: FormGroup = this.fb.group({
-    title: ['', [Validators.required, Validators.minLength(3)]],
+    title: ['Banner Design', [Validators.required, Validators.minLength(2)]],
     packageName: ['Careermate', [Validators.required]],
-    description: [''],
+    description: ['Create a creative banner for current-affair with modern and clean design.'],
     assignedTo: ['', [Validators.required]],
     priority: ['HIGH' as TaskPriority, [Validators.required]],
     dueDate: [new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0], [Validators.required]],
@@ -55,15 +71,86 @@ export class CreateTaskModalComponent implements OnChanges {
     this.createdBriefFileName.set('');
     this.createdBriefDataUrl.set('');
     this.createdBriefContent.set('');
+    this.selectedTaskType.set('CURRENT_AFFAIR');
     const targetDesigner = this.preselectedDesignerId || (this.designers[0]?.id ? String(this.designers[0].id) : '');
+    const pkgName = this.defaultPackage || (this.availablePackages[0]?.name || 'Careermate');
     this.createTaskForm.reset({
-      title: '',
-      description: '',
-      packageName: this.defaultPackage || (this.availablePackages[0]?.name || 'Careermate'),
+      title: `${pkgName} Banner Design`,
+      description: 'Create a creative banner with modern and clean design.',
+      packageName: pkgName,
       assignedTo: targetDesigner,
       priority: 'HIGH',
       dueDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
     });
+  }
+
+  selectTaskType(type: TaskTypeOption): void {
+    this.selectedTaskType.set(type.id);
+    const pkg = this.createTaskForm.get('packageName')?.value || 'Package';
+    this.createTaskForm.patchValue({
+      title: `${type.name} - ${type.subtitle}`,
+      description: `Create ${type.name.toLowerCase()} design for ${pkg} with modern and clean visuals.`,
+    });
+  }
+
+  setPriority(p: TaskPriority): void {
+    this.createTaskForm.patchValue({ priority: p });
+  }
+
+  getSelectedDesignerName(): string {
+    const id = String(this.createTaskForm.get('assignedTo')?.value || '');
+    const found = this.designers.find((d) => String(d.id) === id);
+    return found ? found.name : (this.designers[0]?.name || 'Unassigned');
+  }
+
+  getDesignerInitials(name?: string): string {
+    const target = (name || this.getSelectedDesignerName()).trim();
+    if (!target) return 'DS';
+    const parts = target.split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return target.slice(0, 2).toUpperCase();
+  }
+
+  selectedTaskTypeLabel(): string {
+    const type = this.selectedTaskType();
+    switch (type) {
+      case 'CURRENT_AFFAIR':
+        return 'Current Affair';
+      case 'SOCIAL_MEDIA':
+        return 'Social Media';
+      case 'VIDEO':
+        return 'Video';
+      default:
+        return 'Select Task Type';
+    }
+  }
+  formatDueDate(dateStr?: string): string {
+    const raw = dateStr || this.createTaskForm.get('dueDate')?.value;
+    if (!raw) return 'No Deadline';
+    try {
+      const d = new Date(raw);
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch {
+      return raw;
+    }
+  }
+
+  getRelativeDeadline(dateStr?: string): string {
+    const raw = dateStr || this.createTaskForm.get('dueDate')?.value;
+    if (!raw) return '';
+    try {
+      const target = new Date(raw).getTime();
+      const now = new Date().setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Tomorrow';
+      if (diffDays > 1) return `In ${diffDays} days`;
+      return 'Overdue';
+    } catch {
+      return '';
+    }
   }
 
   getPackageIcon(packageName?: string): string {
