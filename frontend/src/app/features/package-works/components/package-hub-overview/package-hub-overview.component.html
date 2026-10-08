@@ -1,0 +1,289 @@
+<!-- Package Workspace KPIs (Designer 5-Card Lifecycle Grid OR Telecaller 5-Card Pipeline Grid OR Department 3-Card Bar) -->
+@if (isDesigner && designerPipelineCounts) {
+  <div class="kpi-grid package-hub-kpi-grid telecaller-kpi-grid">
+    <!-- Card 1: Total Tasks (Indigo Theme) -->
+    <div
+      class="kpi-card hub-kpi-card card-indigo"
+      (click)="onSelectDepartment('DESIGNER')"
+      style="cursor: pointer"
+      title="Click to view assigned design tasks"
+    >
+      <div class="kpi-squircle-icon icon-indigo">
+        <span class="material-symbols-outlined">draw</span>
+      </div>
+      <div class="kpi-info-cluster">
+        <div class="kpi-top-row">
+          <span class="kpi-title">Total Tasks</span>
+         
+        </div>
+        <span class="kpi-value">{{ designerPipelineCounts.all }}</span>
+      </div>
+    </div>
+
+    <!-- Card 2: In Progress (Amber Theme) -->
+    <div
+      class="kpi-card hub-kpi-card card-amber"
+      (click)="onSelectDepartment('DESIGNER')"
+      style="cursor: pointer"
+      title="Click to view active working drafts"
+    >
+      <div class="kpi-squircle-icon icon-amber">
+        <span class="material-symbols-outlined">pending_actions</span>
+      </div>
+      <div class="kpi-info-cluster">
+        <div class="kpi-top-row">
+          <span class="kpi-title">In Progress</span>
+      
+        </div>
+        <span class="kpi-value">{{ designerPipelineCounts.inProgress }}</span>
+      </div>
+    </div>
+
+    <!-- Card 3: Revisions (Rose Theme) -->
+    <div
+      class="kpi-card hub-kpi-card card-rose"
+      (click)="onSelectDepartment('DESIGNER')"
+      style="cursor: pointer"
+      title="Click to view tasks needing revision"
+    >
+      <div class="kpi-squircle-icon icon-rose">
+        <span class="material-symbols-outlined">rate_review</span>
+      </div>
+      <div class="kpi-info-cluster">
+        <div class="kpi-top-row">
+          <span class="kpi-title">Revisions</span>
+         
+        </div>
+        <span class="kpi-value">{{ designerPipelineCounts.revision }}</span>
+      </div>
+    </div>
+
+    <!-- Card 4: In Review (Purple Theme) -->
+    <div
+      class="kpi-card hub-kpi-card card-purple"
+      (click)="onSelectDepartment('DESIGNER')"
+      style="cursor: pointer"
+      title="Click to view submitted designs waiting for review"
+    >
+      <div class="kpi-squircle-icon icon-purple">
+        <span class="material-symbols-outlined">hourglass_top</span>
+      </div>
+      <div class="kpi-info-cluster">
+        <div class="kpi-top-row">
+          <span class="kpi-title">In Review</span>
+         
+        </div>
+        <span class="kpi-value">{{ designerPipelineCounts.inReview }}</span>
+      </div>
+    </div>
+
+    <!-- Card 5: Approved Creatives (Emerald Theme) -->
+    <div
+      class="kpi-card hub-kpi-card card-emerald"
+      (click)="onSelectDepartment('DESIGNER')"
+      style="cursor: pointer"
+      title="Click to view approved & completed creatives"
+    >
+      <div class="kpi-squircle-icon icon-emerald">
+        <span class="material-symbols-outlined">verified</span>
+      </div>
+      <div class="kpi-info-cluster">
+        <div class="kpi-top-row">
+          <span class="kpi-title">Approved</span>
+     
+        </div>
+        <span class="kpi-value">{{ designerPipelineCounts.approved }}</span>
+      </div>
+    </div>
+  </div>
+} @else if (isTelecaller && telecallerPipelineCounts) {
+  <div class="kpi-grid package-hub-kpi-grid telecaller-kpi-grid">
+    <!-- Card 1: Total Leads (Indigo Theme) -->
+    <div
+      class="kpi-card hub-kpi-card card-indigo"
+      (click)="onSelectDepartment('TELECALLING')"
+      style="cursor: pointer"
+      title="Click to view assigned leads queue"
+    >
+      <div class="kpi-squircle-icon icon-indigo">
+        <span class="material-symbols-outlined">all_inbox</span>
+      </div>
+      <div class="kpi-info-cluster">
+        <div class="kpi-top-row">
+          <span class="kpi-title">Total Leads</span>
+          <span class="kpi-badge-chip chip-indigo">Queue</span>
+        </div>
+        <span class="kpi-value">{{ telecallerPipelineCounts.all }}</span>
+      </div>
+    </div>
+
+    <!-- Card 2: Never Called (Rose Theme) -->
+    <div
+      class="kpi-card hub-kpi-card card-rose"
+      (click)="onSelectDepartment('TELECALLING')"
+      style="cursor: pointer"
+      title="Click to view fresh untouched leads"
+    >
+      <div class="kpi-squircle-icon icon-rose">
+        <span class="material-symbols-outlined">mark_email_unread</span>
+      </div>
+      <div class="kpi-info-cluster">
+        <div class="kpi-top-row">
+          <span class="kpi-title">Never Called</span>
+          <span class="kpi-badge-chip chip-rose">Fresh</span>
+        </div>
+        <span class="kpi-value">{{ telecallerPipelineCounts.new }}</span>
+      </div>
+    </div>
+
+    <!-- Card 3: Follow-ups (Amber Theme) -->
+    <div
+      class="kpi-card hub-kpi-card card-amber"
+      (click)="onSelectDepartment('TELECALLING')"
+      style="cursor: pointer"
+      title="Click to view scheduled follow-ups"
+    >
+      <div class="kpi-squircle-icon icon-amber">
+        <span class="material-symbols-outlined">campaign</span>
+      </div>
+      <div class="kpi-info-cluster">
+        <div class="kpi-top-row">
+          <span class="kpi-title">Follow-ups</span>
+          <span class="kpi-badge-chip chip-amber">Scheduled</span>
+        </div>
+        <span class="kpi-value">{{ telecallerPipelineCounts.followUp }}</span>
+      </div>
+    </div>
+
+    <!-- Card 4: Interested (Purple Theme) -->
+    <div
+      class="kpi-card hub-kpi-card card-purple"
+      (click)="onSelectDepartment('TELECALLING')"
+      style="cursor: pointer"
+      title="Click to view interested high-intent leads"
+    >
+      <div class="kpi-squircle-icon icon-purple">
+        <span class="material-symbols-outlined">local_fire_department</span>
+      </div>
+      <div class="kpi-info-cluster">
+        <div class="kpi-top-row">
+          <span class="kpi-title">Interested</span>
+          <span class="kpi-badge-chip chip-purple">Pipeline</span>
+        </div>
+        <span class="kpi-value">{{ telecallerPipelineCounts.interested }}</span>
+      </div>
+    </div>
+
+    <!-- Card 5: Paid Deals (Emerald Theme) -->
+    <div
+      class="kpi-card hub-kpi-card card-emerald"
+      (click)="onSelectDepartment('TELECALLING')"
+      style="cursor: pointer"
+      title="Click to view paid / converted leads"
+    >
+      <div class="kpi-squircle-icon icon-emerald">
+        <span class="material-symbols-outlined">verified</span>
+      </div>
+      <div class="kpi-info-cluster">
+        <div class="kpi-top-row">
+          <span class="kpi-title">PAID</span>
+          <span class="kpi-badge-chip chip-emerald">Paid</span>
+        </div>
+        <span class="kpi-value">{{ telecallerPipelineCounts.qualified }}</span>
+      </div>
+    </div>
+  </div>
+} @else if (packageMetrics) {
+  <div class="kpi-grid package-hub-kpi-grid">
+    <!-- Card 1: Total Designer Tasks (Rose Theme) -->
+    <div
+      class="kpi-card card-tasks hub-kpi-card"
+      style="cursor: pointer"
+      title="Click to view Designer Tasks"
+    >
+      <div class="kpi-squircle-icon icon-rose">
+        <span class="material-symbols-outlined">palette</span>
+      </div>
+      <div class="kpi-info-cluster">
+        <div class="kpi-top-row">
+          <span class="kpi-title">Total Tasks</span>
+          <span class="kpi-badge-chip chip-rose">Designer</span>
+        </div>
+        <span class="kpi-value">{{ packageMetrics.totalTasks }}</span>
+      </div>
+    </div>
+    <!-- Card 2: Total Campaigns (Amber Theme) -->
+    <div
+      class="kpi-card card-revenue hub-kpi-card"
+      style="cursor: pointer"
+      title="Click to view Digital Marketing Campaigns"
+    >
+      <div class="kpi-squircle-icon icon-amber">
+        <span class="material-symbols-outlined">campaign</span>
+      </div>
+      <div class="kpi-info-cluster">
+        <div class="kpi-top-row">
+          <span class="kpi-title">Total Campaigns</span>
+          <span class="kpi-badge-chip chip-amber">Marketing</span>
+        </div>
+        <span class="kpi-value">{{ packageMetrics.totalCampaigns }}</span>
+      </div>
+    </div>
+    <!-- Card 3: Total Leads (Purple Theme) -->
+    <div
+      class="kpi-card card-leads hub-kpi-card"
+      style="cursor: pointer"
+      title="Click to view Leads Pipeline"
+    >
+      <div class="kpi-squircle-icon icon-purple">
+        <span class="material-symbols-outlined">groups</span>
+      </div>
+      <div class="kpi-info-cluster">
+        <div class="kpi-top-row">
+          <span class="kpi-title">Total Leads</span>
+          <span class="kpi-badge-chip chip-purple">Pipeline</span>
+        </div>
+        <span class="kpi-value">{{ packageMetrics.totalLeads | number }}</span>
+      </div>
+    </div>
+  </div>
+}
+<!-- Hub Section Title Bar -->
+<div class="hub-section-header">
+  <div class="hub-header-titles">
+    <h2 class="hub-section-title">Department Operations</h2>
+  </div>
+</div>
+<!-- 4 Vibrant Department Navigation Cards (Elevated Large Grid) -->
+@if (operationDepartments.length > 0) {
+  <div class="hub-departments-grid">
+    @for (dept of operationDepartments; track dept.id) {
+      <div
+        class="dept-showcase-card"
+        [ngClass]="'dept-card-' + dept.id.toLowerCase()"
+        (click)="onSelectDepartment(dept.id)"
+      >
+        <!-- Top Banner Pill & Icon -->
+        <div class="dept-card-header">
+          <div class="dept-card-icon-box">
+            <span class="material-symbols-outlined">{{ dept.icon }}</span>
+          </div>
+          @if (dept.badge) {
+            <span class="dept-card-badge">{{ dept.badge }}</span>
+          }
+        </div>
+        <!-- Title & Description -->
+        <div class="dept-card-body">
+          <h3 class="dept-card-title">{{ dept.label }}</h3>
+        </div>
+        <!-- Bottom Footer Link with Animated Arrow -->
+        <div class="dept-card-footer">
+          <div class="dept-card-action">
+            <span class="action-text">Open </span>
+            <span class="material-symbols-outlined action-arrow">arrow_forward</span>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+}

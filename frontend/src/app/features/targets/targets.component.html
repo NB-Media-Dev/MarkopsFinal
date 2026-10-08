@@ -1,0 +1,425 @@
+<div class="targets-page" [class.embedded-view]="embedded">
+  <header class="page-header">
+    
+    <div class="header-actions">
+      @if (isManagerOrAdmin()) {
+        <button class="btn-action-primary" (click)="openCommonModal()">
+          <span class="material-symbols-outlined icon-glow">tune</span>
+          <span>Set Common Target</span>
+        </button>
+          <button
+        class="btn-action-secondary"
+        [disabled]="isEvaluating()"
+        (click)="runTargetComplianceCheck()"
+      >
+        <span class="material-symbols-outlined fs-18">notifications_active</span>
+        <span>{{ isEvaluating() ? 'Evaluating Quotas...' : 'Check Target Compliance' }}</span>
+      </button>
+      }
+    
+    </div>
+  </header>
+
+  <!-- Evaluation Alert Summary Banner (Admin & Marketing Manager Only) -->
+  @if (isManagerOrAdmin() && lastEvaluationSummary(); as summary) {
+    <div class="alert-banner alert-warning">
+      <div class="alert-icon-wrap">
+        <span class="material-symbols-outlined">warning</span>
+      </div>
+      <div class="alert-text">
+        <strong>Target Compliance Scan Completed: </strong>
+        @if (summary.alertedCount > 0) {
+          <span>
+            Found <strong>{{ summary.alertedCount }} telecallers</strong> behind target today ({{
+              summary.deficitTelecallers.join(', ')
+            }}). Alert notifications broadcast to <strong>Administrator</strong> and
+            <strong>Marketing Manager</strong>.
+          </span>
+        }
+        @if (summary.alertedCount === 0) {
+          <span>
+            All active telecallers have met or are on track to achieve their daily targets! No
+            deficit alerts required.
+          </span>
+        }
+      </div>
+      <button class="close-banner-btn" (click)="lastEvaluationSummary.set(null)">
+        <span class="material-symbols-outlined fs-16">close</span>
+      </button>
+    </div>
+  }
+
+  <!-- KPI Summary Cards (Medium-Sized Luxury Design) -->
+  <!-- Manager & Admin KPI Summary Cards -->
+  @if (isManagerOrAdmin() && summaryKpis(); as kpis) {
+    <section class="kpi-grid">
+        <div class="kpi-card card-pkg-works">
+          <div class="kpi-top-row">
+            <div class="kpi-squircle-icon icon-indigo">
+              <span class="material-symbols-outlined">groups</span>
+            </div>
+            <div class="kpi-pill-badge pill-indigo">Roster</div>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-title">ACTIVE TELECALLERS</span>
+            <div class="kpi-value">{{ kpis.totalTelecallers }}</div>
+          </div>
+          <div class="kpi-footer-row">
+            <span class="kpi-footer-text">Monitored Daily</span>
+            <span class="kpi-footer-pill pill-indigo">Quota Active</span>
+          </div>
+        </div>
+        <div class="kpi-card card-conversion">
+          <div class="kpi-top-row">
+            <div class="kpi-squircle-icon icon-emerald">
+              <span class="material-symbols-outlined">verified</span>
+            </div>
+            <div class="kpi-pill-badge pill-emerald">Optimal</div>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-title">COMPLIANCE RATE</span>
+            <div class="kpi-value">{{ kpis.overallComplianceRatePct }}%</div>
+          </div>
+          <div class="kpi-footer-row">
+            <span class="kpi-footer-text">Overall Team Average</span>
+            <span class="kpi-footer-pill pill-emerald">Yield</span>
+          </div>
+        </div>
+        <div class="kpi-card card-revenue">
+          <div class="kpi-top-row">
+            <div class="kpi-squircle-icon icon-amber">
+              <span class="material-symbols-outlined">trending_up</span>
+            </div>
+            <div class="kpi-pill-badge pill-amber">On Schedule</div>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-title">ON-TRACK / ACHIEVED</span>
+            <div class="kpi-value">{{ kpis.achievedCount + kpis.onTrackCount }}</div>
+          </div>
+          <div class="kpi-footer-row">
+            <span class="kpi-footer-text">Meeting Daily Goals</span>
+            <span class="kpi-footer-pill pill-amber">Success</span>
+          </div>
+        </div>
+        <div class="kpi-card card-tasks">
+          <div class="kpi-top-row">
+            <div class="kpi-squircle-icon icon-rose">
+              <span class="material-symbols-outlined">report_problem</span>
+            </div>
+            <div class="kpi-pill-badge pill-rose">Attention</div>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-title">TARGET DEFICITS</span>
+            <div class="kpi-value">{{ kpis.deficitCount }}</div>
+          </div>
+          <div class="kpi-footer-row">
+            <span class="kpi-footer-text">Behind Quota</span>
+            <span class="kpi-footer-pill pill-rose">Requires Action</span>
+          </div>
+        </div>
+      </section>
+    }
+    <!-- Telecaller Personal Target Progress KPI Cards -->
+    @if (!isManagerOrAdmin() && myTargetProgress(); as myTgt) {
+      <section class="kpi-grid">
+        <div class="kpi-card card-pkg-works">
+          <div class="kpi-top-row">
+            <div class="kpi-squircle-icon icon-indigo">
+              <span class="material-symbols-outlined">track_changes</span>
+            </div>
+            <div class="kpi-pill-badge pill-indigo">Quota</div>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-title">DAILY CALL GOAL</span>
+            <div class="kpi-value">{{ myTgt.dailyCallsTarget }}</div>
+          </div>
+          <div class="kpi-footer-row">
+            <span class="kpi-footer-text">Assigned Target</span>
+            <span class="kpi-footer-pill pill-indigo">Calls</span>
+          </div>
+        </div>
+        <div class="kpi-card card-conversion">
+          <div class="kpi-top-row">
+            <div class="kpi-squircle-icon icon-emerald">
+              <span class="material-symbols-outlined">call</span>
+            </div>
+            <div class="kpi-pill-badge pill-emerald">Logged</div>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-title">CALLS COMPLETED</span>
+            <div class="kpi-value">{{ myTgt.callsCompletedToday }}</div>
+          </div>
+          <div class="kpi-footer-row">
+            <span class="kpi-footer-text">Target: {{ myTgt.dailyCallsTarget }}</span>
+            <span class="kpi-footer-pill pill-emerald">Completed</span>
+          </div>
+        </div>
+        <div class="kpi-card card-leads">
+          <div class="kpi-top-row">
+            <div class="kpi-squircle-icon icon-purple">
+              <span class="material-symbols-outlined">stars</span>
+            </div>
+            <div class="kpi-pill-badge pill-purple">Interested</div>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-title">INTERESTED LEADS</span>
+            <div class="kpi-value">{{ myTgt.interestedCompletedToday }}</div>
+          </div>
+          <div class="kpi-footer-row">
+            <span class="kpi-footer-text">Goal: {{ myTgt.dailyInterestedTarget }} leads</span>
+            <span class="kpi-footer-pill pill-purple">Pipeline</span>
+          </div>
+        </div>
+        <div class="kpi-card card-revenue">
+          <div class="kpi-top-row">
+            <div class="kpi-squircle-icon icon-amber">
+              <span class="material-symbols-outlined">verified</span>
+            </div>
+            <div class="kpi-pill-badge pill-amber">Progress</div>
+          </div>
+          <div class="kpi-body">
+            <span class="kpi-title">ACHIEVEMENT RATE</span>
+            <div class="kpi-value">{{ myTgt.callsAchievementPct }}%</div>
+          </div>
+          <div class="kpi-footer-row">
+            <span class="kpi-footer-text">{{ myTgt.status }}</span>
+            <span class="kpi-footer-pill pill-amber">Status</span>
+          </div>
+        </div>
+      </section>
+    }
+
+  <!-- Controls & Filters Bar (Manager & Admin Only) -->
+  @if (isManagerOrAdmin()) {
+    <div class="toolbar-card">
+      <div class="search-box">
+        <span class="material-symbols-outlined search-icon">search</span>
+        <input
+          type="text"
+          placeholder="Search telecallers by name, email, or department..."
+          [value]="searchQuery()"
+          (input)="onSearch($event)"
+        />
+      </div>
+
+      <div class="segmented-tabs">
+        <button
+          class="tab-pill-btn"
+          [class.active]="statusFilter() === 'ALL'"
+          (click)="setFilter('ALL')"
+        >
+          All Telecallers
+        </button>
+        <button
+          class="tab-pill-btn"
+          [class.active]="statusFilter() === 'ON_TRACK'"
+          (click)="setFilter('ON_TRACK')"
+        >
+          <span class="tab-indicator-dot dot-active"></span>
+          On Track
+        </button>
+        <button
+          class="tab-pill-btn"
+          [class.active]="statusFilter() === 'ACHIEVED'"
+          (click)="setFilter('ACHIEVED')"
+        >
+          <span class="tab-indicator-dot dot-achieved"></span>
+          Achieved
+        </button>
+        <button
+          class="tab-pill-btn"
+          [class.active]="statusFilter() === 'BEHIND_TARGET'"
+          (click)="setFilter('BEHIND_TARGET')"
+        >
+          <span class="tab-indicator-dot dot-behind"></span>
+          Behind Target
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Telecaller Targets Table Card -->
+  <div class="table-card card-targets-perf">
+    <div class="card-title-bar">
+      <div class="title-with-badge">
+        <div class="title-icon-squircle">
+          <span class="material-symbols-outlined">track_changes</span>
+        </div>
+        <div>
+          <h3>{{ isManagerOrAdmin() ? 'Telecaller Daily Target Performance & Quotas' : 'My Daily Target Performance & Quotas' }}</h3>
+          <span class="table-sub-meta">
+            @if (isManagerOrAdmin()) {
+              {{ filteredProgressList().length }} telecaller accounts monitored
+            } @else {
+              Personal Daily Target & Call Performance Record
+            }
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Telecaller</th>
+            <th>Daily Calls Target</th>
+            <th>Calls Completed Today</th>
+            <th>Interested Leads Goal</th>
+            <th>Calls Achievement %</th>
+            <th>Status</th>
+            @if (isManagerOrAdmin()) {
+              <th class="text-right">Actions</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of filteredProgressList(); track item) {
+            <tr class="target-row">
+              <td>
+                <div class="user-meta-cell">
+                  <span class="font-bold user-name-str">{{ item.telecallerName }}</span>
+                  <span class="text-subtle user-email-str">{{ item.telecallerEmail }}</span>
+                </div>
+              </td>
+              <td>
+                <span class="metric-quota-pill">{{ item.dailyCallsTarget }} Calls</span>
+              </td>
+              <td>
+                <span class="font-bold text-dark">{{ item.callsCompletedToday }} Calls</span>
+              </td>
+              <td>
+                <span class="font-bold text-purple"
+                  >{{ item.interestedCompletedToday }} / {{ item.dailyInterestedTarget }}</span
+                >
+              </td>
+              <td>
+                <div class="achievement-progress-box">
+                  <span class="font-bold text-dark">{{ item.callsAchievementPct }}%</span>
+                  <div class="progress-bar-bg">
+                    <div
+                      class="progress-bar-fill"
+                      [ngClass]="{
+                        'fill-emerald': item.status === 'ACHIEVED',
+                        'fill-blue': item.status === 'ON_TRACK',
+                        'fill-rose':
+                          item.status === 'BEHIND_TARGET' || item.status === 'CRITICAL_DEFICIT',
+                      }"
+                      [style.width.%]="
+                        item.callsAchievementPct > 100 ? 100 : item.callsAchievementPct
+                      "
+                    ></div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span
+                  class="status-pill"
+                  [ngClass]="{
+                    'status-pill-active': item.status === 'ACHIEVED',
+                    'status-pill-blue': item.status === 'ON_TRACK',
+                    'status-pill-danger':
+                      item.status === 'BEHIND_TARGET' || item.status === 'CRITICAL_DEFICIT',
+                  }"
+                >
+                  <span class="pill-glow-dot">●</span> {{ item.status }}
+                </span>
+              </td>
+              @if (isManagerOrAdmin()) {
+                <td class="text-right">
+                  <button class="btn-action-secondary btn-sm" (click)="openEditModal(item)">
+                    <span class="material-symbols-outlined fs-16">edit</span>
+                    <span>Set Target</span>
+                  </button>
+                </td>
+              }
+            </tr>
+          }
+          @if (filteredProgressList().length === 0) {
+            <tr>
+              <td [attr.colspan]="isManagerOrAdmin() ? 7 : 6" class="empty-state-cell">
+                <div class="empty-state-box">
+                  <div class="empty-icon-squircle">
+                    <span class="material-symbols-outlined">track_changes</span>
+                  </div>
+                  <h4 class="empty-title">No telecallers found</h4>
+                  <p class="empty-subtitle">Adjust your search query or configure new targets.</p>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TARGET CONFIGURATION MODAL -->
+  @if (isEditModalOpen()) {
+    <div class="modal-backdrop" (click)="closeEditModal()">
+      <div class="modal-card modal-md" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <div class="modal-squircle-icon">
+              <span class="material-symbols-outlined">tune</span>
+            </div>
+            <div>
+              @if (editingItem(); as item) {
+                <h2>Set Target for {{ item.telecallerName }}</h2>
+                <p class="modal-sub">
+                  Configure individual daily call quota and lead goals for this telecaller
+                </p>
+              } @else {
+                <h2>Set Common Target</h2>
+                <p class="modal-sub">
+                  Configure common daily call volume quotas and lead thresholds for all telecallers
+                </p>
+              }
+            </div>
+          </div>
+          <button class="btn-close-modal" (click)="closeEditModal()" aria-label="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          @if (editingItem(); as item) {
+            <div class="target-user-info-banner">
+              <span class="material-symbols-outlined fs-18 text-primary">person</span>
+              <span>Setting custom target specifically for <strong>{{ item.telecallerName }}</strong> ({{ item.telecallerEmail }})</span>
+            </div>
+          }
+          <div class="form-group">
+            <label class="form-label">Daily Calls Target <span class="required">*</span></label>
+            <input
+              type="number"
+              min="1"
+              max="300"
+              [(ngModel)]="targetInputCalls"
+              placeholder="e.g. 30"
+              class="form-input"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label"
+              >Daily Interested Leads Target <span class="required">*</span></label
+            >
+            <input
+              type="number"
+              min="0"
+              max="50"
+              [(ngModel)]="targetInputInterested"
+              placeholder="e.g. 5"
+              class="form-input"
+            />
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-action-secondary" (click)="closeEditModal()">Cancel</button>
+          <button class="btn-action-primary" (click)="saveTarget()">
+            <span class="material-symbols-outlined icon-glow">save</span>
+            <span>{{ editingItem() ? 'Save User Target' : 'Apply Common Target' }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

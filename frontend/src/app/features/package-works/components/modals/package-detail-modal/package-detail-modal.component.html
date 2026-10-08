@@ -1,0 +1,84 @@
+@if (isOpen && pkg) {
+  <div class="custom-modal-overlay" (click)="onClose()">
+    <div class="custom-modal-container package-detail-modal" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="custom-modal-header">
+        <div class="modal-title-with-badge">
+          <div class="modal-header-icon-squircle icon-indigo">
+            <span class="material-symbols-outlined">inventory_2</span>
+          </div>
+          <div>
+            <h2 class="modal-main-heading">{{ pkg.name }}</h2>
+            <span class="modal-sub-badge">Product: {{ getProductNameForPackage(pkg) }}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="modal-close-icon-btn"
+          (click)="onClose()"
+          title="Close dialog"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <!-- Modal Body -->
+      <div class="custom-modal-body">
+        <!-- Banner Image -->
+        @if (pkg.imageUrl) {
+          <div class="detail-banner-card mb-4">
+            <img
+              [src]="formatAssetUrl(pkg.imageUrl)"
+              [alt]="pkg.name"
+              class="detail-banner-img"
+              (error)="$any($event.target).src = '/vidhvaa-career-img.png'"
+            />
+          </div>
+        }
+        <!-- Detail Meta Grid -->
+        <div class="detail-meta-grid">
+          <div class="detail-meta-item">
+            <span class="detail-label">Package Name</span>
+            <span class="detail-value font-bold">{{ pkg.name }}</span>
+          </div>
+          <div class="detail-meta-item">
+            <span class="detail-label">Associated Product</span>
+            <span class="detail-value text-indigo">{{ getProductNameForPackage(pkg) }}</span>
+          </div>
+          @if (pkg.price !== null && pkg.price !== undefined) {
+            <div class="detail-meta-item">
+              <span class="detail-label">Price / Registration Fee</span>
+              <span class="detail-value text-emerald font-bold"
+                >₹{{ pkg.price | number: '1.0-0' }}</span
+              >
+            </div>
+          }
+          @if (pkg.createdAt) {
+            <div class="detail-meta-item">
+              <span class="detail-label">Created Date</span>
+              <span class="detail-value text-slate-600">{{
+                pkg.createdAt | date: 'mediumDate'
+              }}</span>
+            </div>
+          }
+        </div>
+        <!-- Description -->
+        @if (pkg.description) {
+          <div class="detail-desc-block mt-3">
+            <h4 class="detail-desc-title">Description</h4>
+            <p class="detail-desc-text">{{ pkg.description }}</p>
+          </div>
+        }
+      </div>
+      <!-- Modal Footer -->
+      <div class="custom-modal-footer">
+        <button type="button" class="btn-modal-secondary" (click)="onClose()">
+          Close
+        </button>
+        <button type="button" class="btn-modal-primary" (click)="onViewTasks()">
+          <span class="material-symbols-outlined btn-icon">draw</span>
+          <span>View Package Tasks</span>
+        </button>
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,98 @@
+<div class="ads-page" [class.embedded-view]="embedded">
+  <!-- Standalone Page Header -->
+  @if (!embedded) {
+    <header class="page-header">
+      <div class="header-titles-group">
+        <div class="page-meta-track">AD PERFORMANCE & ATTRIBUTION</div>
+        <h1 class="page-heading">
+          <a routerLink="/dashboard" class="title-back-btn" title="Back to Dashboard">
+            <span class="arrow-char">←</span>
+          </a>
+          <span>Digital Ad Metrics & Accounts</span>
+        </h1>
+        <p class="page-sub">
+          Ad level spend tracking, impressions, CTR, CPC, and direct lead generation metrics
+        </p>
+      </div>
+      @if (canManageAds()) {
+        <div class="header-actions">
+          <button class="btn-action-secondary" [disabled]="syncing()" (click)="syncAdAccounts()">
+            <span class="material-symbols-outlined fs-18" [class.spinning]="syncing()">sync</span>
+            <span>{{ syncing() ? 'Syncing...' : 'Sync Ad Accounts' }}</span>
+          </button>
+          <button class="btn-action-primary" (click)="openCreateModal()">
+            <span class="material-symbols-outlined icon-glow">add_chart</span>
+            <span>Add Ad Metric</span>
+          </button>
+        </div>
+      }
+    </header>
+  }
+
+  <!-- Flash Messages -->
+  @if (successMessage()) {
+    <div class="alert-banner alert-success">
+      <div class="alert-icon-wrap">
+        <span class="material-symbols-outlined">check_circle</span>
+      </div>
+      <span class="alert-text">{{ successMessage() }}</span>
+    </div>
+  }
+
+  @if (errorMessage()) {
+    <div class="alert-banner alert-danger">
+      <div class="alert-icon-wrap">
+        <span class="material-symbols-outlined">error</span>
+      </div>
+      <span class="alert-text">{{ errorMessage() }}</span>
+    </div>
+  }
+
+  <!-- 1. Top KPI Summary Cards -->
+  <app-ad-kpis
+    [totalSpend]="totalSpend()"
+    [filteredAdsCount]="filteredAds.length"
+    [totalLeads]="totalLeads()"
+    [averageCpl]="averageCpl()"
+    [averageCtr]="averageCtr()"
+  ></app-ad-kpis>
+
+  <!-- 2. Filter & Search Toolbar Card -->
+  <app-ads-toolbar
+    [searchQuery]="searchQuery()"
+    [filterPlatform]="filterPlatform()"
+    (searchChange)="searchQuery.set($event)"
+    (filterChange)="filterPlatform.set($event)"
+  ></app-ads-toolbar>
+
+  <!-- 3. Primary Ads Table Card -->
+  <app-ads-table
+    [ads]="filteredAds"
+    [canManageAds]="canManageAds()"
+    (create)="openCreateModal()"
+    (edit)="openEditModal($event)"
+    (delete)="confirmDelete($event)"
+  ></app-ads-table>
+
+  <!-- 4. Create / Edit Modal -->
+  <app-ad-form-modal
+    [isOpen]="showModal()"
+    [isEditing]="isEditing()"
+    [formModel]="formModel"
+    [campaigns]="filteredCampaigns()"
+    [tasks]="taskService.tasks()"
+    [packageFilter]="packageFilterSignal()"
+    [computedModalCpl]="computedModalCpl"
+    [computedModalCtr]="computedModalCtr"
+    (campaignSelected)="onCampaignSelected($event)"
+    (closeModal)="closeModal()"
+    (save)="saveAd()"
+  ></app-ad-form-modal>
+
+  <!-- 5. Delete Confirmation Modal -->
+  <app-ad-delete-modal
+    [target]="deleteConfirmTarget()"
+    (cancel)="cancelDelete()"
+    (confirm)="executeDelete()"
+  ></app-ad-delete-modal>
+</div>

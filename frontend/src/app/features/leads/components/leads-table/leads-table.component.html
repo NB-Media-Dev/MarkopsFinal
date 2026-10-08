@@ -1,0 +1,252 @@
+<!-- Leads Data Table Card -->
+<div class="table-card card-leads-perf">
+  <div class="card-title-bar">
+    <div class="title-with-badge">
+      <div class="title-icon-squircle">
+        <span class="material-symbols-outlined">groups</span>
+      </div>
+      <div>
+        <h3>{{ isTelecaller ? 'My Assigned Leads' : 'Leads Directory' }}</h3>
+        <span class="table-sub-meta">
+          Showing {{ paginatedLeads.length }} of {{ filteredLeads.length }} leads
+          @if (hasActiveFilters) {
+            <span>(filtered from {{ myLeadsList.length }})</span>
+          }
+        </span>
+      </div>
+    </div>
+    <!-- Quick Page Size Selector in Header -->
+    @if (filteredLeads.length > 0) {
+      <div class="table-header-page-size">
+        <label>Show:</label>
+        <select
+          [ngModel]="pageSize"
+          (ngModelChange)="setPageSize($event)"
+          class="page-size-header-select"
+        >
+          @for (size of pageSizeOptions; track size) {
+            <option [value]="size">{{ size }} rows</option>
+          }
+        </select>
+      </div>
+    }
+  </div>
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Lead Name</th>
+          <th>Contact Info</th>
+          <th>Source</th>
+          <th>Campaign</th>
+          <th>Status</th>
+          <th>Assigned Telecaller</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (lead of paginatedLeads; track lead.id) {
+          <tr class="lead-row">
+            <td>
+              <div class="lead-name-cell">
+                <span class="font-bold lead-fullname"
+                  >{{ lead.firstName }} {{ lead.lastName }}</span
+                >
+              </div>
+            </td>
+            <td>
+              <div class="contact-box">
+                <span class="contact-phone">{{ lead.phone }}</span>
+                @if (lead.email) {
+                  <span class="contact-email">{{ lead.email }}</span>
+                }
+              </div>
+            </td>
+            <td>
+              <span class="source-tag">{{ lead.source }}</span>
+            </td>
+            <td>
+              <span class="campaign-name-txt">{{
+                lead.campaignName || 'General Campaign'
+              }}</span>
+            </td>
+            <td>
+              <span class="status-pill" [ngClass]="getStatusBadgeClass(lead.status)">
+                <span class="pill-glow-dot">●</span> {{ (lead.status || '').replace('_', ' ') }}
+              </span>
+            </td>
+            <td>
+              @if (lead.assigneeName) {
+                <div class="telecaller-tag-chip">
+                  <span class="material-symbols-outlined icon-chip">headset_mic</span>
+                  <span>{{ lead.assigneeName }}</span>
+                </div>
+              }
+              @if (!lead.assigneeName) {
+                <span class="unassigned-txt">Unassigned</span>
+              }
+            </td>
+            <td class="text-right">
+              <div class="lead-actions-cluster">
+                <button
+                  class="btn-action-detail btn-sm"
+                  (click)="leadDetails.emit(lead)"
+                  title="View complete interaction and telecalling call history"
+                >
+                  <span class="material-symbols-outlined fs-15">visibility</span>
+                  <span>View Details</span>
+                </button>
+                @if (canReassign(lead)) {
+                  <button
+                    class="btn-action-secondary btn-sm"
+                    (click)="reassign.emit(lead)"
+                    title="Assign / Reassign Telecaller (Creator only)"
+                  >
+                    <span class="material-symbols-outlined fs-15">assignment_ind</span>
+                    <span>Reassign</span>
+                  </button>
+                }
+                @if (canEditOrDelete(lead)) {
+                  <button
+                    class="btn-action-edit btn-sm"
+                    (click)="edit.emit(lead)"
+                    title="Edit Lead (Creator only)"
+                  >
+                    <span class="material-symbols-outlined fs-15">edit</span>
+                    <span>Edit</span>
+                  </button>
+                }
+                @if (canEditOrDelete(lead)) {
+                  <button
+                    class="btn-action-delete btn-sm"
+                    (click)="delete.emit(lead)"
+                    title="Delete Lead (Creator only)"
+                  >
+                    <span class="material-symbols-outlined fs-15">delete</span>
+                    <span>Delete</span>
+                  </button>
+                }
+              </div>
+            </td>
+          </tr>
+        }
+        <!-- Empty State -->
+        @if (filteredLeads.length === 0) {
+          <tr>
+            <td colspan="7" class="empty-state-cell">
+              <div class="empty-state-box">
+                <div class="empty-icon-squircle">
+                  <span class="material-symbols-outlined">{{
+                    hasActiveFilters ? 'filter_list_off' : 'contacts'
+                  }}</span>
+                </div>
+                <h4 class="empty-title">
+                  {{
+                    hasActiveFilters
+                      ? 'No leads match your filter criteria'
+                      : isTelecaller
+                        ? 'No leads assigned to you yet'
+                        : 'No leads found'
+                  }}
+                </h4>
+                @if (hasActiveFilters) {
+                  <p class="empty-subtitle">
+                    Try adjusting your search query, status, telecaller or campaign filter.
+                  </p>
+                }
+                @if (!hasActiveFilters) {
+                  <p class="empty-subtitle">
+                    {{
+                      isTelecaller
+                        ? 'New leads assigned by Digital Marketing will appear here.'
+                        : 'New Meta leads and manually added leads will appear here.'
+                    }}
+                  </p>
+                }
+                @if (hasActiveFilters) {
+                  <button class="btn-action-secondary btn-sm" (click)="resetFilters.emit()">
+                    <span class="material-symbols-outlined fs-15">restart_alt</span>
+                    <span>Reset All Filters</span>
+                  </button>
+                }
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <!-- Pagination Footer Bar -->
+  @if (filteredLeads.length > 0) {
+    <div class="table-pagination-bar">
+      <div class="pagination-info">
+        <span>
+          Showing <strong>{{ (currentPage - 1) * pageSize + 1 }}</strong> -
+          <strong>{{ mathMin(currentPage * pageSize, filteredLeads.length) }}</strong> of
+          <strong>{{ filteredLeads.length }}</strong> leads
+          @if (hasActiveFilters) {
+            <span class="filtered-from-note"> (filtered from {{ myLeadsList.length }})</span>
+          }
+        </span>
+      </div>
+      <div class="pagination-controls-cluster">
+        <!-- Page Navigation Buttons -->
+        @if (totalPages > 1) {
+          <div class="pagination-nav-group">
+            <button
+              type="button"
+              class="btn-page-nav"
+              [disabled]="currentPage === 1"
+              (click)="setPage(1)"
+              title="First Page"
+            >
+              <span class="material-symbols-outlined fs-16">first_page</span>
+            </button>
+            <button
+              type="button"
+              class="btn-page-nav"
+              [disabled]="currentPage === 1"
+              (click)="prevPage()"
+              title="Previous Page"
+            >
+              <span class="material-symbols-outlined fs-16">chevron_left</span>
+            </button>
+            @for (p of getPageNumbers(); track p) {
+              @if (p === '...') {
+                <span class="page-ellipsis">...</span>
+              }
+              @if (p !== '...') {
+                <button
+                  type="button"
+                  class="btn-page-num"
+                  [class.active-page]="p === currentPage"
+                  (click)="setPage(p)"
+                >
+                  {{ p }}
+                </button>
+              }
+            }
+            <button
+              type="button"
+              class="btn-page-nav"
+              [disabled]="currentPage === totalPages"
+              (click)="nextPage()"
+              title="Next Page"
+            >
+              <span class="material-symbols-outlined fs-16">chevron_right</span>
+            </button>
+            <button
+              type="button"
+              class="btn-page-nav"
+              [disabled]="currentPage === totalPages"
+              (click)="setPage(totalPages)"
+              title="Last Page"
+            >
+              <span class="material-symbols-outlined fs-16">last_page</span>
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,56 @@
+@if (isOpen) {
+  <div class="modal-backdrop">
+    <div class="modal-card doc-viewer-modal">
+      <div class="modal-header">
+        <div class="header-title-box">
+          <span class="material-symbols-outlined doc-header-icon">description</span>
+          <div>
+            <h3>{{ docName }}</h3>
+            <span class="doc-subhead">Document Brief & Asset Preview</span>
+          </div>
+        </div>
+        <div class="header-actions-right d-flex align-items-center gap-2">
+          @if (rawDocDownloadUrl) {
+            <a
+              [href]="rawDocDownloadUrl"
+              target="_blank"
+              class="btn btn-secondary btn-sm d-inline-flex align-items-center gap-1"
+              title="Open or Download in New Tab"
+            >
+              <span class="material-symbols-outlined fs-16">open_in_new</span>
+              <span>Open in New Tab</span>
+            </a>
+          }
+          <button class="close-btn" (click)="onClose()" title="Close Document">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body doc-viewer-body">
+        <div class="iframe-container">
+          @if (activeIframeUrl) {
+            <object
+              [data]="activeIframeUrl"
+              type="application/pdf"
+              class="doc-iframe"
+              title="Document Content Preview"
+            >
+              <iframe
+                [src]="activeIframeUrl"
+                class="doc-iframe"
+                title="Document Content Preview"
+              ></iframe>
+            </object>
+          }
+          @if (!activeIframeUrl) {
+            <iframe
+              [srcdoc]="activeIframeSrcdoc"
+              class="doc-iframe"
+              title="Document Content Preview"
+            ></iframe>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+}

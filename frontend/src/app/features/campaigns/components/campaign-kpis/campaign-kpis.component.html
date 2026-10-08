@@ -1,0 +1,68 @@
+<section class="kpi-grid">
+  <div class="kpi-card card-revenue">
+    <div class="kpi-top-row">
+      <div class="kpi-squircle-icon icon-amber">
+        <span class="currency-symbol">₹</span>
+      </div>
+    </div>
+    <div class="kpi-body">
+      <span class="kpi-title">TOTAL AD SPEND</span>
+      <div class="kpi-value">₹{{ totalSpend | number: '1.2-2' }}</div>
+    </div>
+    <div class="kpi-footer-row">
+      <span class="kpi-footer-text">Budget: ₹{{ totalBudget | number: '1.0-0' }}</span>
+      <span class="kpi-footer-pill pill-amber">{{ budgetUsedPercent }}% Allocated</span>
+    </div>
+  </div>
+
+  <div class="kpi-card card-leads">
+    <div class="kpi-top-row">
+      <div class="kpi-squircle-icon icon-purple">
+        <span class="material-symbols-outlined">groups</span>
+      </div>
+    </div>
+    <div class="kpi-body">
+      <span class="kpi-title">TOTAL LEADS</span>
+      <div class="kpi-value">{{ totalLeads | number }}</div>
+    </div>
+    <div class="kpi-footer-row">
+      <span class="kpi-footer-text">PAID: {{ totalQualifiedLeads | number }}</span>
+      <span class="kpi-footer-pill pill-purple">+{{ totalLeads | number }} Total</span>
+    </div>
+  </div>
+
+  <div class="kpi-card card-conversion">
+    <div class="kpi-top-row">
+      <div class="kpi-squircle-icon icon-emerald">
+        <span class="material-symbols-outlined">trending_down</span>
+      </div>
+    </div>
+    <div class="kpi-body">
+      <span class="kpi-title">AVERAGE CPL</span>
+      <div class="kpi-value">₹{{ averageCpl }}</div>
+    </div>
+    <div class="kpi-footer-progress">
+      <div class="kpi-progress-meta">
+        <span class="kpi-footer-text">Cost Efficiency</span>
+        <span class="kpi-footer-text text-emerald font-semibold">Per Acquisition</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="kpi-card card-tasks">
+    <div class="kpi-top-row">
+      <div class="kpi-squircle-icon icon-rose">
+        <span class="material-symbols-outlined">verified</span>
+      </div>
+      <div class="kpi-pill-badge pill-rose">{{ overallConvRate }}% Rate</div>
+    </div>
+    <div class="kpi-body">
+      <span class="kpi-title">TOTAL CONVERSIONS</span>
+      <div class="kpi-value">{{ totalConversions | number }}</div>
+    </div>
+    <div class="kpi-footer-row">
+      <span class="kpi-footer-text">Funnel Yield</span>
+      <span class="kpi-footer-pill pill-rose">High Intent</span>
+    </div>
+  </div>
+</section>

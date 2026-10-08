@@ -1,0 +1,131 @@
+<div class="mo-login-page">
+  <div class="mo-login-center-container">
+    <!-- Brand Logo & Name Header -->
+    <div class="mo-brand-header">
+      <img src="/favicon.png" alt="MarkOps Logo" class="mo-brand-logo-img" />
+      <span class="mo-brand-title">MarkOps</span>
+    </div>
+
+    <!-- Centered Login Card -->
+    <div class="mo-card-wrapper">
+      <header class="mo-card-header">
+        <h2 class="mo-card-title">Sign in to your account</h2>
+        <p class="mo-card-subtitle">Welcome back! Please enter your details.</p>
+      </header>
+
+      <!-- Global Auth Error Alert -->
+      @if (authService.authError()) {
+        <div class="mo-alert mo-alert-danger" role="alert">
+          <svg class="alert-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>{{ authService.authError() }}</span>
+        </div>
+      }
+
+      <!-- Production Authentication Form -->
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="mo-login-form" novalidate>
+        <!-- Email Field -->
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <div class="input-wrapper">
+            <input
+              id="email"
+              type="email"
+              formControlName="email"
+              placeholder="name@markops.io"
+              autocomplete="email"
+              [class.is-invalid]="loginSubmitted() && loginForm.get('email')?.invalid"
+            />
+            <span class="input-icon">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+            </span>
+          </div>
+          @if (loginSubmitted() && loginForm.get('email')?.errors?.['required']) {
+            <span class="field-error">Email is required.</span>
+          }
+          @if (loginSubmitted() && loginForm.get('email')?.errors?.['email']) {
+            <span class="field-error">Please enter a valid email address.</span>
+          }
+        </div>
+
+        <!-- Password Field -->
+        <div class="form-group">
+          <div class="label-row">
+            <label for="password">Password</label>
+          </div>
+          <div class="input-wrapper">
+            <input
+              id="password"
+              [type]="showPassword() ? 'text' : 'password'"
+              formControlName="password"
+              placeholder="Enter your password"
+              autocomplete="current-password"
+              [class.is-invalid]="loginSubmitted() && loginForm.get('password')?.invalid"
+            />
+            <span class="input-icon">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </span>
+            <button
+              type="button"
+              class="toggle-password-btn"
+              (click)="togglePasswordVisibility()"
+              [title]="showPassword() ? 'Hide password' : 'Show password'"
+            >
+              @if (showPassword()) {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                  <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+              } @else {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+              }
+            </button>
+          </div>
+          @if (loginSubmitted() && loginForm.get('password')?.errors?.['required']) {
+            <span class="field-error">Password is required.</span>
+          }
+        </div>
+
+        <!-- Remember Session Checkbox -->
+        <div class="form-group-checkbox">
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="rememberMe" />
+            <span>Keep session active on this device</span>
+          </label>
+        </div>
+
+        <!-- Submit Button -->
+        <button
+          type="submit"
+          class="mo-submit-btn"
+          [disabled]="authService.isLoading()"
+        >
+          @if (authService.isLoading()) {
+            <span class="spinner"></span>
+            <span>Authenticating...</span>
+          } @else {
+            <span>Sign In to Dashboard</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
+          }
+        </button>
+      </form>
+    </div>
+
+    <!-- Subtle Footer branding -->
+    <footer class="mo-login-footer">
+      <span>MarkOps &bull; Marketing Operations Platform</span>
+    </footer>
+  </div>
+</div>

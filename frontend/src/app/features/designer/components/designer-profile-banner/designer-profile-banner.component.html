@@ -1,0 +1,36 @@
+@if (designer) {
+  <div class="designer-profile-banner">
+    <div class="banner-left">
+      <div class="banner-avatar" [style.backgroundColor]="designer.avatarColor">
+        {{ getInitials(designer.name) }}
+      </div>
+      <div class="banner-info">
+        <div class="banner-title-row">
+          <h2>{{ designer.name }}</h2>
+          <span class="dept-badge">{{ designer.department }}</span>
+        </div>
+        <span class="banner-email">{{ designer.email }}</span>
+      </div>
+    </div>
+    <div class="banner-right">
+      <div class="designer-stat-badges">
+        <div class="stat-badge-item badge-completed">
+          <span class="badge-num">{{ designer.completedCount }}</span>
+          <span class="badge-label">Completed</span>
+        </div>
+        <div class="stat-badge-item badge-pending">
+          <span class="badge-num">{{ designer.pendingCount }}</span>
+          <span class="badge-label">Pending</span>
+        </div>
+        <div class="stat-badge-item badge-progress">
+          <span class="badge-num">{{ designer.inProgressCount || 0 }}</span>
+          <span class="badge-label">In Progress</span>
+        </div>
+        <div class="stat-badge-item badge-total">
+          <span class="badge-num">{{ designer.totalCount }}</span>
+          <span class="badge-label">Total Tasks</span>
+        </div>
+      </div>
+    </div>
+  </div>
+}

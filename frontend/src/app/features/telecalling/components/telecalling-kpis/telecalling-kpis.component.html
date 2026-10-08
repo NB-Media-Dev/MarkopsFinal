@@ -1,0 +1,142 @@
+@if (!embedded) {
+  <!-- 1. Telecaller Personal KPI Cards -->
+  @if (isTelecaller && myStats) {
+    <section class="kpi-grid">
+      <div class="kpi-card card-leads">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-purple">
+            <span class="material-symbols-outlined">contacts</span>
+          </div>
+          <div class="kpi-pill-badge pill-purple">Assigned</div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">ASSIGNED QUEUE</span>
+          <div class="kpi-value">{{ myStats.assignedCount }}</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text"
+            >Pending Calls: {{ myStats.assignedCount - myStats.callsCount }}</span
+          >
+          <span class="kpi-footer-pill pill-purple">Queue</span>
+        </div>
+      </div>
+      <div class="kpi-card card-conversion">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-emerald">
+            <span class="material-symbols-outlined">call_log</span>
+          </div>
+          <div class="kpi-pill-badge pill-emerald">Activity</div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">CALLS LOGGED</span>
+          <div class="kpi-value">{{ myStats.callsCount }}</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text">Attended: {{ myStats.attendedCount }}</span>
+          <span class="kpi-footer-pill pill-emerald">Logged</span>
+        </div>
+      </div>
+      <div class="kpi-card card-pkg-works">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-indigo">
+            <span class="material-symbols-outlined">verified</span>
+          </div>
+          <div class="kpi-pill-badge pill-indigo">Prospects</div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">INTERESTED LEADS</span>
+          <div class="kpi-value">{{ myStats.interestedCount }}</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text">High Intent</span>
+          <span class="kpi-footer-pill pill-indigo">Ready for BDM</span>
+        </div>
+      </div>
+      <div class="kpi-card card-revenue">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-amber">
+            <span class="material-symbols-outlined">phone_missed</span>
+          </div>
+          <div class="kpi-pill-badge pill-amber">Lost</div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">NOT INTERESTED</span>
+          <div class="kpi-value">{{ myStats.notInterestedCount }}</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text">Closed / Disqualified</span>
+          <span class="kpi-footer-pill pill-amber">Archived</span>
+        </div>
+      </div>
+    </section>
+  }
+  <!-- 2. Admin & Manager Team KPI Overview Cards -->
+  @if (!isTelecaller && teamSummaryKpis) {
+    <section class="kpi-grid">
+      <div class="kpi-card card-pkg-works">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-indigo">
+            <span class="material-symbols-outlined">groups</span>
+          </div>
+          <div class="kpi-pill-badge pill-indigo">Team</div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">ACTIVE TELECALLERS</span>
+          <div class="kpi-value">{{ teamSummaryKpis.activeTelecallers }}</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text">Assigned Agents</span>
+          <span class="kpi-footer-pill pill-indigo">Active</span>
+        </div>
+      </div>
+      <div class="kpi-card card-conversion">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-emerald">
+            <span class="material-symbols-outlined">call</span>
+          </div>
+          <div class="kpi-pill-badge pill-emerald">Total Calls</div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">CALLS LOGGED</span>
+          <div class="kpi-value">{{ teamSummaryKpis.totalCalls }}</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text">Across All Channels</span>
+          <span class="kpi-footer-pill pill-emerald">Success</span>
+        </div>
+      </div>
+      <div class="kpi-card card-leads">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-purple">
+            <span class="material-symbols-outlined">verified</span>
+          </div>
+          <div class="kpi-pill-badge pill-purple">Pipeline</div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">INTERESTED LEADS</span>
+          <div class="kpi-value">{{ teamSummaryKpis.interestedLeads }}</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text">Qualified Pipeline</span>
+          <span class="kpi-footer-pill pill-purple">High Quality</span>
+        </div>
+      </div>
+      <div class="kpi-card card-revenue">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-amber">
+            <span class="material-symbols-outlined">percent</span>
+          </div>
+          <div class="kpi-pill-badge pill-amber">Conversion</div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">CONVERSION RATE</span>
+          <div class="kpi-value">{{ teamSummaryKpis.avgConversionRate }}%</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text">Team Performance</span>
+          <span class="kpi-footer-pill pill-amber">Average Yield</span>
+        </div>
+      </div>
+    </section>
+  }
+}

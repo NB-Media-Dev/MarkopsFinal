@@ -1,0 +1,119 @@
+<div class="performance-page">
+  <header class="page-header">
+    <div>
+      <h1>Designer Operational Performance</h1>
+      <p class="subtitle">
+        Individual designer workload, first-time approval rates, artwork turnaround, and revision
+        tracking
+      </p>
+    </div>
+  </header>
+
+  <!-- Summary Ratios Grid -->
+  @if (metrics(); as m) {
+    <div class="perf-grid">
+      <!-- Overall Designer Ratios -->
+      <div class="perf-card">
+        <div class="card-header">
+          <span class="material-symbols-outlined icon-amber">palette</span>
+          <h3>Overall Designer Operational Ratios</h3>
+        </div>
+        <div class="ratio-list">
+          <div class="ratio-item">
+            <span>First-Time Approval Rate</span>
+            <span class="ratio-val text-green">{{ m.designerRatios.approvalRatePct }}%</span>
+          </div>
+          <div class="ratio-item">
+            <span>Average Task Turnaround</span>
+            <span class="ratio-val">{{ m.designerRatios.averageCompletionHours }} Hours</span>
+          </div>
+          <div class="ratio-item">
+            <span>On-Time Artwork Delivery</span>
+            <span class="ratio-val text-blue">{{ m.designerRatios.onTimeDeliveryPct }}%</span>
+          </div>
+          <div class="ratio-item">
+            <span>Total Revision Count</span>
+            <span class="ratio-val">{{ m.designerRatios.totalRevisions }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Individual Designer Performance Table -->
+  <div class="card mt-3">
+    <div class="card-header">
+      <div class="header-title-group">
+        <span class="material-symbols-outlined text-amber fs-20">badge</span>
+        <h3>Individual Designer Performance Ratios</h3>
+      </div>
+      <span class="badge badge-amber">{{ designerPerformanceList().length }} Active Designers</span>
+    </div>
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Designer Name</th>
+            <th>Total Assigned</th>
+            <th>In Progress</th>
+            <th>Under Review</th>
+            <th>Completed</th>
+            <th>Revisions</th>
+            <th>Approval Rate</th>
+            <th>On-Time Delivery</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (d of designerPerformanceList(); track d) {
+            <tr>
+              <td>
+                <div class="user-meta-cell">
+                  <span class="font-bold text-dark">{{ d.fullName }}</span>
+                  <span class="text-subtle fs-12">{{ d.email }}</span>
+                </div>
+              </td>
+              <td>
+                <span class="badge badge-blue font-bold">{{ d.totalAssigned }} Tasks</span>
+              </td>
+              <td>
+                <span class="font-bold text-amber">{{ d.inProgress }}</span>
+              </td>
+              <td>
+                <span class="font-bold text-purple">{{ d.submittedWaiting }}</span>
+              </td>
+              <td>
+                <span class="font-bold text-green">{{ d.completed }}</span>
+              </td>
+              <td>
+                <span class="font-bold" [class.text-danger]="d.revisionsRequired > 0"
+                  >{{ d.totalRevisions }} Revisions</span
+                >
+              </td>
+              <td>
+                <div class="approval-rate-box">
+                  <span class="font-bold text-green">{{ d.approvalRatePct }}%</span>
+                  <div class="progress-bar-bg">
+                    <div
+                      class="progress-bar-fill bg-green"
+                      [style.width.%]="d.approvalRatePct"
+                    ></div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="badge badge-teal font-bold">{{ d.onTimeDeliveryPct }}% On-Time</span>
+              </td>
+            </tr>
+          }
+          @if (designerPerformanceList().length === 0) {
+            <tr>
+              <td colspan="8" class="text-center py-4 text-subtle">
+                No designer performance metrics found.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,113 @@
+<div class="telecalling-page" [class.embedded-view]="embedded">
+  @if (!embedded) {
+    <header class="page-header">
+      <div class="header-titles-group">
+        <div class="page-meta-track">TELECALLING PIPELINE & OUTREACH</div>
+        <h1 class="page-heading">
+          <a routerLink="/dashboard" class="title-back-btn" title="Back to Dashboard">
+            <span class="arrow-char">←</span>
+          </a>
+          <span>Telecalling Operations</span>
+        </h1>
+        <p class="page-sub">
+          Log call activity, status updates, duration tracking, and follow-up schedules
+        </p>
+      </div>
+      @if (authService.currentUser(); as user) {
+        <div class="user-profile-badge">
+          <div class="user-avatar-dot">{{ user.fullName ? user.fullName[0] : 'U' }}</div>
+          <div class="user-badge-meta">
+            <span class="user-name">{{ user.fullName }}</span>
+            <span class="user-role">{{ user.role }}</span>
+          </div>
+        </div>
+      }
+    </header>
+  }
+
+  <!-- TOP ROLE-BASED KPI CARDS -->
+  <app-telecalling-kpis
+    [embedded]="embedded"
+    [isTelecaller]="isTelecaller()"
+    [myStats]="myStats()"
+    [teamSummaryKpis]="teamSummaryKpis()"
+  ></app-telecalling-kpis>
+
+  <!-- Quick Action Calling Pipeline Strip (Interactive Filter Cards) -->
+  <app-telecalling-pipeline-strip
+    [viewMode]="viewMode"
+    [dateFilter]="dateFilter()"
+    [customDate]="customDate()"
+    [todayDate]="todayDate"
+    [selectedCampaign]="selectedCampaign()"
+    [availableCampaigns]="availableCampaigns()"
+    [assignedLeadsCount]="assignedLeads().length"
+    [pipelineStatusFilter]="pipelineStatusFilter()"
+    [pipelineCounts]="pipelineCounts()"
+    (dateFilterChange)="setDateFilter($event)"
+    (customDateChange)="setCustomDate($event)"
+    (campaignChange)="selectCampaign($event)"
+    (resetFilters)="resetAllFilters()"
+    (pipelineFilterChange)="setPipelineFilter($event)"
+  ></app-telecalling-pipeline-strip>
+
+  <!-- Full-Width Unified Call Queue & Lead Performance Table -->
+  <app-telecalling-queue-table
+    [isTelecaller]="isTelecaller()"
+    [queueFilter]="queueFilter()"
+    [totalLeadsCount]="leadService.leads().length"
+    [myLeadsCount]="myLeads().length"
+    [paginatedLeads]="paginatedLeads()"
+    [filteredAssignedLeads]="filteredAssignedLeads()"
+    [pipelineStatusFilter]="pipelineStatusFilter()"
+    [searchQuery]="searchQuery()"
+    [pipelineFilterLabel]="getPipelineFilterLabel()"
+    [canLogCalls]="canLogCalls()"
+    [selectedCampaign]="selectedCampaign()"
+    [dateFilter]="dateFilter()"
+    [getStatusBadgeClassFn]="getStatusBadgeClassFn"
+    [getLeadCurrentStatusFn]="getLeadCurrentStatusFn"
+    [hasScheduledCallbackFn]="hasScheduledCallbackFn"
+    [getFollowUpTimeLabelFn]="getFollowUpTimeLabelFn"
+    [isFollowUpDueFn]="isFollowUpDueFn"
+    [getLeadCreatorNameFn]="getLeadCreatorNameFn"
+    [getLeadMetricsFn]="getLeadMetricsFn"
+    [currentPage]="currentPage()"
+    [pageSize]="pageSize()"
+    [totalPages]="totalPages()"
+    [pageNumbers]="getPageNumbers()"
+    (queueFilterChange)="setQueueFilter($event)"
+    (searchQueryChange)="setSearchQuery($event)"
+    (pipelineFilterChange)="setPipelineFilter($event)"
+    (resetAllFilters)="resetAllFilters()"
+    (openCallDrawer)="openCallDrawer($event)"
+    (openLeadHistory)="openLeadHistory($event)"
+    (pageChange)="setPage($event)"
+    (nextPage)="nextPage()"
+    (prevPage)="prevPage()"
+  ></app-telecalling-queue-table>
+
+  <!-- LEAD CALL HISTORY & DETAILS MODAL -->
+  <app-call-history-modal
+    [lead]="selectedLeadForHistory()"
+    [leadHistoryCalls]="getLeadHistoryCalls(selectedLeadForHistory())"
+    [canLogCalls]="canLogCalls()"
+    [getStatusBadgeClassFn]="getStatusBadgeClassFn"
+    (closeModal)="closeLeadHistory()"
+    (openCallDrawer)="openCallDrawer($event)"
+  ></app-call-history-modal>
+
+  <!-- CALL LOGGING MODAL DRAWER -->
+  <app-call-log-modal
+    [lead]="selectedLeadForCall()"
+    [(callOutcome)]="callOutcome"
+    [(callDuration)]="callDuration"
+    [(callRemarks)]="callRemarks"
+    [(enableReminder)]="enableReminder"
+    [(followUpDate)]="followUpDate"
+    [(followUpTime)]="followUpTime"
+    [todayDate]="todayDate"
+    (closeModal)="closeDrawer()"
+    (saveCallLog)="submitCallLog()"
+  ></app-call-log-modal>
+</div>

@@ -1,0 +1,52 @@
+@if (isOpen) {
+  <div class="modal-backdrop doc-viewer-backdrop" (click)="onClose()">
+    <div class="modal-box doc-viewer-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>
+          <span class="material-symbols-outlined">{{
+            isImageDoc ? 'image' : 'description'
+          }}</span>
+          {{ activeDocName }}
+        </h2>
+        <div class="d-flex align-items-center gap-4">
+          @if (activeDocUrl) {
+            <button
+              type="button"
+              class="btn btn-xs btn-outline"
+              (click)="onDownload($event)"
+              title="Download File"
+            >
+              <span class="material-symbols-outlined fs-14">download</span>
+              Download
+            </button>
+          }
+          <button class="close-btn" (click)="onClose()" title="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body doc-viewer-body p-0">
+        <!-- If Image: Display directly in high-res responsive viewer -->
+        @if (isImageDoc) {
+          <div class="image-preview-wrapper">
+            <img [src]="activeImageUrl" [alt]="activeDocName" class="preview-img-full" />
+          </div>
+        }
+        <!-- If PDF / Iframe document -->
+        @if (!isImageDoc && activeIframeUrl) {
+          <iframe [src]="activeIframeUrl" class="doc-iframe" title="Document Content Preview">
+          </iframe>
+        }
+        <!-- If Text / HTML fallback -->
+        @if (!isImageDoc && !activeIframeUrl) {
+          <iframe
+            [srcdoc]="activeIframeSrcdoc"
+            class="doc-iframe"
+            title="Document Content Preview"
+          >
+          </iframe>
+        }
+      </div>
+    </div>
+  </div>
+}

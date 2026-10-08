@@ -1,0 +1,876 @@
+<div class="task-detail-page">
+  <!-- Top Navigation & Breadcrumbs Bar -->
+  <div class="top-nav-bar">
+    <div class="nav-left">
+      <button type="button" class="btn-back" (click)="goBack()" title="Back">
+        <span class="material-symbols-outlined icon-back">arrow_back</span>
+        <span>Back</span>
+      </button>
+      <div class="breadcrumbs">
+        <a routerLink="/dashboard" class="bc-item">Dashboard</a>
+        <span class="bc-sep">/</span>
+        <a routerLink="/package-works" class="bc-item">Package Works</a>
+        @if (task()?.packageName) {
+          <span class="bc-sep">/</span>
+        }
+        @if (task()?.packageName) {
+          <span class="bc-item bc-package">{{ task()?.packageName }}</span>
+        }
+        <span class="bc-sep">/</span>
+        <span class="bc-item active">{{ task()?.title || 'Task Details' }}</span>
+      </div>
+    </div>
+
+    @if (task(); as t) {
+      <div class="nav-right">
+        <button type="button" class="btn-sync" (click)="refreshTask()" title="Sync Real-Time Data">
+          <span class="material-symbols-outlined">refresh</span>
+          <span>Sync</span>
+        </button>
+        <!-- Contextual Action Buttons -->
+        @if (canStartWork(t)) {
+          <button
+            type="button"
+            class="btn-action btn-start-work"
+            (click)="onStartWork()"
+            title="Start Working on Task"
+          >
+            <span class="material-symbols-outlined">play_arrow</span>
+            <span>Start Working</span>
+          </button>
+        }
+        @if (t.status === 'REVISION_REQUIRED' && canSubmitWork(t)) {
+          <button
+            type="button"
+            class="btn-action btn-start-redesign"
+            (click)="onStartRedesign()"
+            title="Start Redesign Process"
+          >
+            <span class="material-symbols-outlined">refresh</span>
+            <span>Start Redesign</span>
+          </button>
+        }
+        @if (canSubmitWork(t)) {
+          <button
+            type="button"
+            class="btn-action btn-upload-version"
+            (click)="openUploadModal()"
+            title="Upload Creative Asset"
+          >
+            <span class="material-symbols-outlined">cloud_upload</span>
+            <span>Upload Version</span>
+          </button>
+        }
+        @if (canReview(t)) {
+          <button
+            type="button"
+            class="btn-action btn-approve"
+            (click)="onApproveQuick()"
+            title="Approve Design"
+          >
+            <span class="material-symbols-outlined">check_circle</span>
+            <span>Approve</span>
+          </button>
+        }
+        @if (canReview(t)) {
+          <button
+            type="button"
+            class="btn-action btn-redesign"
+            (click)="openRedesignModal()"
+            title="Request Redesign"
+          >
+            <span class="material-symbols-outlined">rate_review</span>
+            <span>Redesign</span>
+          </button>
+        }
+        @if (canDeleteTask(t)) {
+          <button
+            type="button"
+            class="btn-action btn-delete"
+            (click)="onDeleteTask()"
+            title="Delete Task"
+          >
+            <span class="material-symbols-outlined">delete</span>
+          </button>
+        }
+      </div>
+    }
+  </div>
+
+  <!-- Loading State -->
+  @if (isLoading()) {
+    <div class="loading-state-box">
+      <div class="spinner"></div>
+      <p>Loading task details from database...</p>
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (!isLoading() && error()) {
+    <div class="error-state-box">
+      <span class="material-symbols-outlined error-icon">error</span>
+      <div class="error-msg">
+        <h4>Failed to load task</h4>
+        <p>{{ error() }}</p>
+        <button type="button" class="btn-retry" (click)="refreshTask()">Try Again</button>
+      </div>
+    </div>
+  }
+
+  <!-- Main Task Content -->
+  @if (!isLoading() && task(); as t) {
+    <div class="task-content-wrapper">
+      <!-- Hero Header Card -->
+      <div class="hero-header-card">
+        <div class="hero-left">
+          <div class="hero-squircle-badge" [ngClass]="'badge-status-' + (t.status | lowercase)">
+            {{ (t.packageName || t.title || 'T')[0].toUpperCase() }}
+          </div>
+          <div class="hero-titles">
+            <div class="hero-chips-line">
+              <span class="status-badge" [ngClass]="getStatusBadgeClass(t.status)">
+                <span class="status-dot"></span>
+                {{ t.status }}
+              </span>
+              <span class="priority-pill" [ngClass]="getPriorityBadgeClass(t.priority)">{{
+                t.priority
+              }}</span>
+              @if (t.packageName) {
+                <span class="package-tag-chip">
+                  <span class="material-symbols-outlined chip-icon">category</span>
+                  {{ t.packageName }}
+                </span>
+              }
+              <span class="task-hash-id">#{{ getShortId(t.id) }}</span>
+            </div>
+            <h1 class="hero-title">{{ t.title }}</h1>
+          </div>
+        </div>
+        <div class="hero-right">
+          <!-- Progress Metric -->
+          <div class="hero-metric-card">
+            <div class="metric-top">
+              <span class="metric-label">Completion</span>
+              <span class="metric-val">{{ getTaskProgress(t) }}%</span>
+            </div>
+            <div class="metric-progress-bg">
+              <div class="metric-progress-fill" [style.width.%]="getTaskProgress(t)"></div>
+            </div>
+          </div>
+          <!-- Designer Assignee Pill -->
+          <div class="hero-assignee-card">
+            <div class="assignee-avatar">
+              <span class="material-symbols-outlined">brush</span>
+            </div>
+            <div class="assignee-meta">
+              <span class="assignee-label">Assigned Designer</span>
+              <strong class="assignee-name">{{ getAssigneeName(t) }}</strong>
+            </div>
+          </div>
+          <!-- Due Date Pill -->
+          @if (t.dueDate) {
+            <div class="hero-date-card">
+              <div class="date-icon-box">
+                <span class="material-symbols-outlined">event</span>
+              </div>
+              <div class="date-meta">
+                <span class="date-label">Due Date</span>
+                <strong class="date-val">{{ formatDate(t.dueDate) }}</strong>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+      <!-- Workflow Stepper Pipeline -->
+      <div class="workflow-stepper-card">
+        <div class="stepper-title-row">
+          <span class="material-symbols-outlined icon-sub">route</span>
+          <span class="stepper-title">WORKFLOW PIPELINE</span>
+        </div>
+        <div class="stepper-track">
+          @for (step of getWorkflowSteps(t); track step; let i = $index) {
+            <div class="stepper-node" [ngClass]="'state-' + step.state">
+              <div class="node-circle">
+                <span class="material-symbols-outlined">{{ step.icon }}</span>
+              </div>
+              <div class="node-text">
+                <span class="node-title">{{ step.title }}</span>
+                <span class="node-sub">{{ step.subtitle }}</span>
+              </div>
+              @if (i < getWorkflowSteps(t).length - 1) {
+                <div class="node-line"></div>
+              }
+            </div>
+          }
+        </div>
+      </div>
+      <!-- Revision Required Banner (If Applicable) -->
+      @if (t.status === 'REVISION_REQUIRED' && t.reviewerFeedback) {
+        <div class="revision-feedback-banner">
+          <div class="banner-icon-squircle">
+            <span class="material-symbols-outlined">rate_review</span>
+          </div>
+          <div class="banner-body">
+            <h4>Reviewer Redesign Feedback</h4>
+            @if (parseBulletPoints(t.reviewerFeedback).length === 1) {
+              <p class="banner-text">"{{ parseBulletPoints(t.reviewerFeedback)[0] }}"</p>
+            }
+            @if (parseBulletPoints(t.reviewerFeedback).length > 1) {
+              <ul class="banner-bullets">
+                @for (bullet of parseBulletPoints(t.reviewerFeedback); track bullet) {
+                  <li>{{ bullet }}</li>
+                }
+              </ul>
+            }
+          </div>
+          @if (canSubmitWork(t)) {
+            <div class="banner-action">
+              <button type="button" class="btn-banner-redesign" (click)="openUploadModal()">
+                <span class="material-symbols-outlined">cloud_upload</span>
+                <span>Upload Revised Creative</span>
+              </button>
+            </div>
+          }
+        </div>
+      }
+      <!-- Tab Navigation -->
+      <div class="tab-nav-container">
+        <button
+          type="button"
+          class="tab-btn"
+          [class.active]="activeTab() === 'DETAIL'"
+          (click)="activeTab.set('DETAIL')"
+        >
+          <span class="material-symbols-outlined">description</span>
+          <span>Task Brief & Specs</span>
+        </button>
+        <button
+          type="button"
+          class="tab-btn"
+          [class.active]="activeTab() === 'VERSIONS'"
+          (click)="activeTab.set('VERSIONS')"
+        >
+          <span class="material-symbols-outlined">collections</span>
+          <span>Creative Versions</span>
+          @if (t.versions && t.versions.length > 0) {
+            <span class="tab-badge">{{ t.versions.length }}</span>
+          }
+        </button>
+        <button
+          type="button"
+          class="tab-btn"
+          [class.active]="activeTab() === 'HISTORY'"
+          (click)="activeTab.set('HISTORY')"
+        >
+          <span class="material-symbols-outlined">history_edu</span>
+          <span>Task History</span>
+          @if (getGitCommitTimeline(t).length > 0) {
+            <span class="tab-badge">{{ getGitCommitTimeline(t).length }}</span>
+          }
+        </button>
+      </div>
+      <!-- TAB 1: TASK BRIEF & SPECS -->
+      @if (activeTab() === 'DETAIL') {
+        <div class="tab-pane detail-pane">
+          <div class="pane-grid">
+            <!-- Left Column: Description & Requirement Document -->
+            <div class="pane-col-main">
+              <!-- Description Card (Only when custom description is provided) -->
+              @if (hasCustomDescription(t)) {
+                <div class="content-card description-card">
+                  <div class="card-header">
+                    <span class="material-symbols-outlined card-header-icon">subject</span>
+                    <h3 class="card-title">Task Description & Creative Brief</h3>
+                  </div>
+                  <div class="card-body">
+                    <p class="description-text">
+                      {{ getCleanDescription(t) }}
+                    </p>
+                  </div>
+                </div>
+              }
+              <!-- Requirement Document Card -->
+              <div class="content-card requirement-card">
+                <div class="card-header">
+                  <span class="material-symbols-outlined card-header-icon">attachment</span>
+                  <h3 class="card-title">Requirement Document & Reference Assets</h3>
+                </div>
+                <div class="card-body">
+                  @if (t.attachmentUrl || t.attachmentName || t.content) {
+                    <div class="req-file-box">
+                      <div class="req-file-left">
+                        <div
+                          class="req-icon-badge"
+                          [class.is-pdf]="isPdf(t.attachmentName || t.attachmentUrl)"
+                        >
+                          <span class="material-symbols-outlined">
+                            {{
+                              isPdf(t.attachmentName || t.attachmentUrl)
+                                ? 'picture_as_pdf'
+                                : 'description'
+                            }}
+                          </span>
+                        </div>
+                        <div class="req-file-meta">
+                          <h4 class="req-filename">
+                            {{
+                              t.attachmentName ||
+                                (t.title
+                                  ? (t.title | lowercase) + '-brief.png'
+                                  : 'Creative_Brief.pdf')
+                            }}
+                          </h4>
+                          <span class="req-filesub">Task Requirement Brief • Attached Asset</span>
+                        </div>
+                      </div>
+                      <div class="req-file-actions">
+                        <button
+                          type="button"
+                          class="btn-req-action btn-preview"
+                          (click)="openDocViewer(t.attachmentUrl, t.attachmentName, t.content)"
+                          title="Preview Requirement File"
+                        >
+                          <span class="material-symbols-outlined">visibility</span>
+                          <span>Preview</span>
+                        </button>
+                        @if (t.attachmentUrl) {
+                          <button
+                            type="button"
+                            class="btn-req-action btn-download"
+                            (click)="
+                              downloadFile(
+                                t.attachmentUrl,
+                                t.attachmentName || 'Requirement_Brief.png'
+                              )
+                            "
+                            title="Download Requirement File"
+                          >
+                            <span class="material-symbols-outlined">download</span>
+                            <span>Download</span>
+                          </button>
+                        }
+                      </div>
+                    </div>
+                  }
+                  <!-- Inline Preview if image -->
+                  @if (t.attachmentUrl && isImage(t.attachmentUrl)) {
+                    <div class="image-preview-card">
+                      <div
+                        class="img-wrapper"
+                        (click)="openImageViewer(t.attachmentUrl, t.attachmentName || t.title)"
+                      >
+                        <img
+                          [src]="t.attachmentUrl"
+                          [alt]="t.attachmentName || 'Requirement Asset'"
+                        />
+                        <div class="img-overlay">
+                          <span class="material-symbols-outlined">zoom_in</span>
+                          <span>Click to Expand</span>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                  @if (!t.attachmentUrl && !t.attachmentName && !t.content) {
+                    <div class="empty-desc-box">
+                      <span class="material-symbols-outlined">folder_off</span>
+                      <span>No requirement documents attached to this task.</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+            <!-- Right Column: Task Information (Non-repeated unique metadata) -->
+            <div class="pane-col-side">
+              <div class="content-card meta-card">
+                <div class="card-header">
+                  <span class="material-symbols-outlined card-header-icon">info</span>
+                  <h3 class="card-title">Task Information</h3>
+                </div>
+                <div class="card-body meta-card-body">
+                  <!-- Creator Details -->
+                  <div class="person-box">
+                    <div class="person-avatar avatar-creator">
+                      <span class="material-symbols-outlined">person</span>
+                    </div>
+                    <div class="person-meta">
+                      <span class="person-role-tag">Task Creator</span>
+                      <strong class="person-name">{{ getCreatorName(t) }}</strong>
+                      <span class="person-role-desc">{{ t.creatorRole || 'Administrator' }}</span>
+                    </div>
+                  </div>
+                  <div class="meta-divider"></div>
+                  <!-- Timestamps -->
+                  <div class="meta-list">
+                    <div class="meta-row">
+                      <span class="meta-key">Created:</span>
+                      <span class="meta-val">{{ formatDateTime(t.createdAt) }}</span>
+                    </div>
+                    @if (t.updatedAt) {
+                      <div class="meta-row">
+                        <span class="meta-key">Last Updated:</span>
+                        <span class="meta-val">{{ formatDateTime(t.updatedAt) }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      }
+      <!-- TAB 2: CREATIVE VERSIONS -->
+      @if (activeTab() === 'VERSIONS') {
+        <div class="tab-pane versions-pane">
+          <!-- Upload New Version CTA if eligible -->
+          @if (canSubmitWork(t)) {
+            <div class="upload-version-cta-card">
+              <div class="cta-left">
+                <div class="cta-icon-box">
+                  <span class="material-symbols-outlined">add_photo_alternate</span>
+                </div>
+                <div class="cta-text">
+                  <h3>Submit New Creative Version</h3>
+                  <p>Upload revised PNG, JPG, or PDF design assets with changelog notes.</p>
+                </div>
+              </div>
+              <button type="button" class="btn-cta-upload" (click)="openUploadModal()">
+                <span class="material-symbols-outlined">cloud_upload</span>
+                <span>Upload Version v{{ (t.versions?.length || 0) + 1 }}.0</span>
+              </button>
+            </div>
+          }
+          <!-- Versions List -->
+          @if (t.versions && t.versions.length > 0) {
+            <div class="versions-feed">
+              @for (ver of t.versions; track ver; let vIdx = $index) {
+                <div class="version-entry-card">
+                  <div class="ver-header">
+                    <div class="ver-header-left">
+                      <span class="ver-chip">v{{ ver.versionNumber }}.0</span>
+                      <span class="status-badge status-review">SUBMITTED</span>
+                      @if (getVersionDuration(ver, t)) {
+                        <span class="ver-duration-badge" title="Turnaround duration from In Progress to Upload">
+                          <span class="material-symbols-outlined icon-timer">schedule</span>
+                          <span>Duration: {{ getVersionDuration(ver, t) }}</span>
+                        </span>
+                      }
+                      <span class="ver-date">{{ formatCommitDate(ver.createdAt) }}</span>
+                    </div>
+                    <div class="ver-header-right">
+                      <span class="ver-author">
+                        <span class="material-symbols-outlined icon-author">brush</span>
+                        <span>{{ ver.submittedByName || getAssigneeName(t) }}</span>
+                      </span>
+                    </div>
+                  </div>
+                  <div class="ver-body">
+                    <!-- Asset Preview Container -->
+                    @if (getVersionAssetUrl(ver)) {
+                      <div class="ver-asset-preview">
+                        <div
+                          class="asset-img-container"
+                          (click)="openImageViewer(getVersionAssetUrl(ver), ver.fileName)"
+                        >
+                          <img [src]="getVersionAssetUrl(ver)" [alt]="ver.fileName" />
+                          <div class="asset-hover-overlay">
+                            <span class="material-symbols-outlined">zoom_in</span>
+                            <span>View Fullsize</span>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                    <!-- Asset Details & Changelog -->
+                    <div class="ver-meta-section">
+                      <div class="ver-file-info-row">
+                        <div class="file-name-group">
+                          <span class="material-symbols-outlined file-ico">image</span>
+                          <strong class="file-title">{{ ver.fileName }}</strong>
+                          @if (ver.fileSize) {
+                            <span class="file-size">{{ getVersionFileSize(ver) }}</span>
+                          }
+                        </div>
+                        <div class="file-actions">
+                          <button
+                            type="button"
+                            class="btn-file-action"
+                            (click)="openImageViewer(getVersionAssetUrl(ver), ver.fileName)"
+                            title="Fullscreen Preview"
+                          >
+                            <span class="material-symbols-outlined">fullscreen</span>
+                            <span>Preview</span>
+                          </button>
+                          <button
+                            type="button"
+                            class="btn-file-action"
+                            (click)="downloadFile(getVersionAssetUrl(ver), ver.fileName)"
+                            title="Download Asset"
+                          >
+                            <span class="material-symbols-outlined">download</span>
+                            <span>Download</span>
+                          </button>
+                        </div>
+                      </div>
+                      <!-- Changelog / Designer Notes -->
+                      @if (ver.changelog) {
+                        <div class="changelog-container">
+                          <h5 class="changelog-heading">
+                            <span class="material-symbols-outlined">history</span>
+                            <span>CHANGELOG & NOTES</span>
+                          </h5>
+                          <ul class="changelog-bullets">
+                            @for (pt of parseBulletPoints(ver.changelog); track pt) {
+                              <li>{{ pt }}</li>
+                            }
+                          </ul>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+          <!-- Empty Versions State -->
+          @if (!t.versions || t.versions.length === 0) {
+            <div class="empty-versions-state">
+              <div class="empty-icon-circle">
+                <span class="material-symbols-outlined">image_not_supported</span>
+              </div>
+              <h4>No Creative Versions Uploaded Yet</h4>
+              <p>
+                Once the assigned designer uploads artworks, versions will be tracked here with
+                revision history.
+              </p>
+              @if (canSubmitWork(t)) {
+                <button type="button" class="btn-empty-upload" (click)="openUploadModal()">
+                  <span class="material-symbols-outlined">cloud_upload</span>
+                  <span>Upload Initial Version</span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+      <!-- TAB 3: ACTIVITY & GIT HISTORY -->
+      @if (activeTab() === 'HISTORY') {
+        <div class="tab-pane history-pane">
+          <div class="git-timeline-card">
+            <div class="git-timeline-stream">
+              @for (node of getGitCommitTimeline(t); track node) {
+                <div class="git-timeline-node" [ngClass]="node.nodeClass">
+                  <!-- Timeline Stem Point -->
+                  <div class="timeline-point">
+                    <span class="material-symbols-outlined point-icon">
+                      {{
+                        node.type === 'VERSION'
+                          ? 'upload_file'
+                          : node.type === 'REVISION'
+                            ? 'rate_review'
+                            : node.type === 'APPROVED'
+                              ? 'verified'
+                              : 'check_circle'
+                      }}
+                    </span>
+                  </div>
+                  <!-- Content Card -->
+                  <div class="timeline-card">
+                    <div class="tl-card-top">
+                      <div class="tl-author-line">
+                        <span class="tl-hash">#{{ node.hash }}</span>
+                        <span class="tl-author-role" [ngClass]="node.authorRoleClass">{{
+                          node.authorLabel
+                        }}</span>
+                        <span class="status-badge" [ngClass]="node.badgeClass">{{
+                          node.badge
+                        }}</span>
+                        @if (node.duration) {
+                          <span class="ver-duration-badge" title="Turnaround duration from In Progress to Upload">
+                            <span class="material-symbols-outlined icon-timer">schedule</span>
+                            <span>Duration: {{ node.duration }}</span>
+                          </span>
+                        }
+                      </div>
+                      <span class="tl-timestamp">{{ node.relativeTime }}</span>
+                    </div>
+                    <div class="tl-message-block">
+                      @if (node.message) {
+                        <p class="tl-message">{{ node.message }}</p>
+                      }
+                      @if (node.bulletPoints && node.bulletPoints.length > 0) {
+                        <ul class="tl-bullets">
+                          @for (b of node.bulletPoints; track b) {
+                            <li>{{ b }}</li>
+                          }
+                        </ul>
+                      }
+                    </div>
+                    <!-- If version file attached -->
+                    @if (node.fileName) {
+                      <div
+                        class="tl-file-chip"
+                        (click)="openImageViewer(node.fileUrl || node.fileContent, node.fileName)"
+                      >
+                        <span class="material-symbols-outlined">attachment</span>
+                        <span>{{ node.fileName }}</span>
+                        <span class="material-symbols-outlined fs-14">open_in_new</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL 1: UPLOAD CREATIVE VERSION -->
+<!-- ========================================================================= -->
+@if (isUploadModalOpen()) {
+  <div class="modal-backdrop" (click)="closeUploadModal()">
+    <div class="modal-window upload-modal-window" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="header-icon-box">
+          <span class="material-symbols-outlined">cloud_upload</span>
+        </div>
+        <div class="header-titles">
+          <h3>Upload Creative Deliverable</h3>
+          <p>Submit artwork version for {{ task()?.title }}</p>
+        </div>
+        <button type="button" class="btn-close" (click)="closeUploadModal()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <form [formGroup]="uploadForm" (ngSubmit)="onSubmitUpload()" class="modal-form">
+        <div class="form-body">
+          <!-- Hidden file input -->
+          <input
+            type="file"
+            id="taskDetailCreativeFileInput"
+            style="display: none"
+            accept="image/*,.pdf"
+            (change)="onFileSelected($event)"
+          />
+          <!-- Dropzone / Picker -->
+          <div
+            class="file-dropzone"
+            (click)="triggerFileInput()"
+            [class.has-file]="!!selectedFileObject()"
+          >
+            <span class="material-symbols-outlined dropzone-icon">
+              {{ selectedFileObject() ? 'check_circle' : 'add_photo_alternate' }}
+            </span>
+            @if (!selectedFileObject()) {
+              <div class="dropzone-text">
+                <strong>Click to upload artwork file</strong>
+                <span>Supports PNG, JPG, WebP, SVG, and PDF (Max 50MB)</span>
+              </div>
+            }
+            @if (selectedFileObject(); as f) {
+              <div class="dropzone-selected-meta">
+                <strong>{{ f.name }}</strong>
+                <span>{{ (f.size / (1024 * 1024)).toFixed(2) }} MB • Click to change file</span>
+              </div>
+            }
+          </div>
+          <!-- Live Preview if Image -->
+          @if (selectedFileDataUrl()) {
+            <div class="modal-preview-box">
+              <img [src]="selectedFileDataUrl()" alt="Upload preview" />
+            </div>
+          }
+          <!-- Changelog Textarea with Bullet Enter Handling -->
+          <div class="form-group">
+            <label for="tdChangelog" class="form-label">
+              <span>Changelog / Deliverable Notes</span>
+              <span class="badge-required">*</span>
+            </label>
+            <div class="quick-snippets-bar">
+              <span class="snippets-label">Quick Snippets:</span>
+              @for (s of quickChangelogSnippets; track s) {
+                <button type="button" class="btn-snippet" (click)="appendChangelog(s)">
+                  {{ s.replace('• ', '') }}
+                </button>
+              }
+            </div>
+            <textarea
+              id="tdChangelog"
+              class="form-textarea"
+              rows="4"
+              formControlName="changelog"
+              (keydown)="onChangelogKeyDown($event)"
+              placeholder="Type bullet notes and press Enter to automatically continue bullets..."
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-cancel" (click)="closeUploadModal()">Cancel</button>
+          <button type="submit" class="btn-submit-upload" [disabled]="uploadForm.invalid">
+            <span class="material-symbols-outlined">publish</span>
+            <span>Submit for Review</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- ========================================================================= -->
+<!-- MODAL 2: REQUEST REDESIGN MODAL -->
+<!-- ========================================================================= -->
+@if (isRedesignModalOpen()) {
+  <div class="modal-backdrop" (click)="closeRedesignModal()">
+    <div class="modal-window redesign-modal-window" (click)="$event.stopPropagation()">
+      <div class="modal-header header-redesign">
+        <div class="header-icon-box box-danger">
+          <span class="material-symbols-outlined">rate_review</span>
+        </div>
+        <div class="header-titles">
+          <h3>Request Creative Redesign</h3>
+          <p>Provide specific revision feedback to the assigned designer</p>
+        </div>
+        <button type="button" class="btn-close" (click)="closeRedesignModal()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="quick-snippets-bar">
+          <span class="snippets-label">Suggested Feedback:</span>
+          @for (s of quickRedesignSnippets; track s) {
+            <button
+              type="button"
+              class="btn-snippet btn-snippet-danger"
+              (click)="appendRedesignSnippet(s)"
+            >
+              {{ s.replace('• ', '') }}
+            </button>
+          }
+        </div>
+        <div class="form-group">
+          <label for="tdRedesignReason" class="form-label">
+            <span>Required Revision Points</span>
+            <span class="badge-required">*</span>
+          </label>
+          <textarea
+            id="tdRedesignReason"
+            class="form-textarea"
+            rows="5"
+            [ngModel]="redesignReason()"
+            (ngModelChange)="redesignReason.set($event)"
+            (keydown)="onRedesignReasonKeyDown($event)"
+            placeholder="Enter detailed feedback points (Press Enter for bullets)..."
+          ></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeRedesignModal()">Cancel</button>
+        <button
+          type="button"
+          class="btn-submit-redesign"
+          [disabled]="!redesignReason().trim() || isSubmittingRedesign()"
+          (click)="submitRedesign()"
+        >
+          <span class="material-symbols-outlined">send</span>
+          <span>Submit Redesign Request</span>
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ========================================================================= -->
+<!-- MODAL 3: FULLSCREEN IMAGE VIEWER LIGHTBOX -->
+<!-- ========================================================================= -->
+@if (isImageViewerOpen()) {
+  <div class="modal-backdrop lightbox-backdrop" (click)="closeImageViewer()">
+    <div class="lightbox-container" (click)="$event.stopPropagation()">
+      <div class="lightbox-header">
+        <div class="lh-title">{{ imageViewerTitle() }}</div>
+        <div class="lh-actions">
+          <button
+            type="button"
+            class="btn-lh"
+            (click)="downloadFile(imageViewerUrl(), imageViewerTitle())"
+            title="Download Image"
+          >
+            <span class="material-symbols-outlined">download</span>
+          </button>
+          <button type="button" class="btn-lh" (click)="closeImageViewer()" title="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      </div>
+      <div class="lightbox-image-box">
+        <img [src]="imageViewerUrl()" [alt]="imageViewerTitle()" />
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ========================================================================= -->
+<!-- MODAL 4: DOCUMENT VIEWER MODAL -->
+<!-- ========================================================================= -->
+@if (isDocViewerOpen()) {
+  <div class="modal-backdrop" (click)="closeDocViewer()">
+    <div class="modal-window doc-modal-window" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="header-icon-box">
+          <span class="material-symbols-outlined">description</span>
+        </div>
+        <div class="header-titles">
+          <h3>{{ docViewerTitle() }}</h3>
+          <p>Document Brief & Reference Specifications</p>
+        </div>
+        <button type="button" class="btn-close" (click)="closeDocViewer()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body doc-modal-body">
+        @if (docViewerRawUrl() && isImage(docViewerRawUrl())) {
+          <div class="doc-image-preview">
+            <img [src]="docViewerRawUrl()" [alt]="docViewerTitle()" class="doc-preview-img" />
+          </div>
+        }
+        @else if (docViewerUrl()) {
+          <iframe [src]="docViewerUrl()" class="doc-iframe" title="Document Preview"></iframe>
+        }
+        @else if (docViewerContent()) {
+          <div class="doc-text-content">
+            <p>{{ docViewerContent() }}</p>
+          </div>
+        }
+        @else {
+          <div class="doc-fallback">
+            <p>Unable to preview this document format directly.</p>
+            @if (docViewerRawUrl()) {
+              <button
+                type="button"
+                class="btn-download"
+                (click)="downloadFile(docViewerRawUrl(), docViewerTitle())"
+              >
+                <span class="material-symbols-outlined">download</span>
+                <span>Download File</span>
+              </button>
+            }
+          </div>
+        }
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" (click)="closeDocViewer()">Close</button>
+        @if (docViewerRawUrl()) {
+          <button
+            type="button"
+            class="btn-download"
+            (click)="downloadFile(docViewerRawUrl(), docViewerTitle())"
+          >
+            <span class="material-symbols-outlined">download</span>
+            <span>Download File</span>
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}

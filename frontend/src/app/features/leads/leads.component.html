@@ -1,0 +1,185 @@
+<div class="leads-page" [class.embedded-view]="embedded">
+  @if (!embedded) {
+    <header class="page-header">
+      <div class="header-titles-group">
+        <h1 class="page-heading">
+          <a routerLink="/dashboard" class="title-back-btn" title="Back to Dashboard">
+            <span class="arrow-char">←</span>
+          </a>
+          <span>Lead Management</span>
+        </h1>
+        @if (isTelecaller()) {
+          <p class="page-sub">View and track your assigned lead queue and pipeline status</p>
+        }
+      </div>
+      <div class="header-actions">
+        @if (canCreateLeads()) {
+          <button class="btn-action-secondary" (click)="openModal()">
+            <span class="material-symbols-outlined fs-18">person_add</span>
+            <span>Add Lead</span>
+          </button>
+        }
+        @if (!canCreateLeads() && !isTelecaller()) {
+          <div class="role-restricted-badge">
+            <span class="material-symbols-outlined text-amber">lock</span>
+            <span>Lead creation restricted to Marketing roles</span>
+          </div>
+        }
+      </div>
+    </header>
+  }
+
+  <!-- Embedded Toolbar Header (Visible inside Package Works) -->
+  @if (embedded) {
+    <div class="embedded-header-card">
+      <div class="embedded-info">
+        <div class="embedded-squircle-icon">
+          <span class="material-symbols-outlined">groups</span>
+        </div>
+        <div>
+          <h3 class="embedded-title">
+            {{ isTelecaller() ? 'Assigned Leads Workspace' : 'Leads Workspace' }}
+          </h3>
+          <p class="embedded-sub">
+            Manage lead allocations, contact information, and pipeline progress
+          </p>
+        </div>
+      </div>
+      <div class="header-actions">
+        @if (canCreateLeads()) {
+          <button class="btn-action-secondary btn-sm" (click)="openModal()">
+            <span class="material-symbols-outlined fs-16">person_add</span>
+            <span>Add Lead</span>
+          </button>
+        }
+        @if (!canCreateLeads() && !isTelecaller()) {
+          <div class="role-restricted-badge">
+            <span class="material-symbols-outlined text-amber fs-16">lock</span>
+            <span>Lead creation restricted to Marketing roles</span>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- TAB 1: ALL LEADS LIST VIEW -->
+  @if (activeTab() === 'LEADS_LIST') {
+    <!-- 1. Leads Toolbar & Filters -->
+    <app-leads-toolbar
+      [searchQuery]="searchQuery()"
+      [filterStatus]="filterStatus()"
+      [filterTelecaller]="filterTelecaller()"
+      [filterCampaign]="filterCampaign()"
+      [isTelecaller]="isTelecaller()"
+      [activeTelecallers]="activeTelecallers()"
+      [availableCampaigns]="availableCampaigns()"
+      [hasActiveFilters]="hasActiveFilters()"
+      [filteredLeadsCount]="filteredLeads.length"
+      [myLeadsCount]="myLeadsList().length"
+      (searchChange)="onSearchChange($event)"
+      (statusChange)="onStatusChange($event)"
+      (telecallerChange)="onTelecallerChange($event)"
+      (campaignChange)="onCampaignChange($event)"
+      (resetFilters)="resetFilters()"
+    ></app-leads-toolbar>
+
+    <!-- 2. Leads Data Table Card -->
+    <app-leads-table
+      [isTelecaller]="isTelecaller()"
+      [paginatedLeads]="paginatedLeads"
+      [filteredLeads]="filteredLeads"
+      [myLeadsList]="myLeadsList()"
+      [hasActiveFilters]="hasActiveFilters()"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="pageSizeOptions"
+      [currentPage]="currentPage()"
+      [totalPages]="totalPages()"
+      [canReassignLeadFn]="canReassignLead.bind(this)"
+      [canEditOrDeleteLeadFn]="canEditOrDeleteLead.bind(this)"
+      [getStatusBadgeClassFn]="getStatusBadgeClass.bind(this)"
+      (pageSizeChange)="setPageSize($event)"
+      (pageChange)="setPage($event)"
+      (leadDetails)="openLeadDetails($event)"
+      (reassign)="assignLead($event)"
+      (edit)="openEditLeadModal($event)"
+      (delete)="deleteLead($event)"
+      (resetFilters)="resetFilters()"
+    ></app-leads-table>
+  }
+
+  <!-- TAB 2: TELECALLING MONITORING DASHBOARD -->
+  @if (activeTab() === 'TELECALLING_MONITOR') {
+    <app-telecalling-monitor
+      [summary]="leadService.summary()"
+    ></app-telecalling-monitor>
+  }
+
+  <!-- MODAL 1: SINGLE MANUAL LEAD MODAL -->
+  <app-add-lead-modal
+    [isOpen]="showModal()"
+    [newFirstName]="newFirstName"
+    [newLastName]="newLastName"
+    [newEmail]="newEmail"
+    [newPhone]="newPhone"
+    [newSource]="newSource"
+    [newCampaignId]="newCampaignId"
+    [newAssignedTelecallerId]="newAssignedTelecallerId"
+    [availableCampaigns]="availableCampaigns()"
+    [activeTelecallers]="activeTelecallers()"
+    [isCreatingLead]="isCreatingLead()"
+    (newFirstNameChange)="newFirstName = $event"
+    (newLastNameChange)="newLastName = $event"
+    (newEmailChange)="newEmail = $event"
+    (newPhoneChange)="newPhone = $event"
+    (newSourceChange)="newSource = $event"
+    (campaignChange)="onCampaignSelectChange($event)"
+    (telecallerChange)="onTelecallerSelectChange($event)"
+    (closeModal)="closeModal()"
+    (save)="createLead()"
+  ></app-add-lead-modal>
+
+  <!-- MODAL 2: MANUAL ASSIGN MODAL -->
+  <app-assign-lead-modal
+    [lead]="selectedLeadForAssign"
+    [selectedUserId]="selectedUserId"
+    [realUsersList]="realUsersList()"
+    (userSelected)="onUserSelected($event)"
+    (cancel)="selectedLeadForAssign = null"
+    (confirm)="confirmAssign()"
+  ></app-assign-lead-modal>
+
+  <!-- MODAL 3: EDIT LEAD MODAL (Creator Only) -->
+  <app-edit-lead-modal
+    [isOpen]="showEditModal()"
+    [lead]="editingLead()"
+    [editFirstName]="editFirstName"
+    [editLastName]="editLastName"
+    [editPhone]="editPhone"
+    [editEmail]="editEmail"
+    [editSource]="editSource"
+    [editCampaignName]="editCampaignName"
+    [editStatus]="editStatus"
+    [editAssignedTo]="editAssignedTo"
+    [editLeadError]="editLeadError()"
+    [isSavingEdit]="isSavingEdit()"
+    [realUsersList]="realUsersList()"
+    (editFirstNameChange)="editFirstName = $event"
+    (editLastNameChange)="editLastName = $event"
+    (editPhoneChange)="editPhone = $event"
+    (editEmailChange)="editEmail = $event"
+    (editSourceChange)="editSource = $event"
+    (editCampaignNameChange)="editCampaignName = $event"
+    (editStatusChange)="editStatus = $event"
+    (editAssignedToChange)="editAssignedTo = $event"
+    (closeModal)="closeEditLeadModal()"
+    (save)="saveLeadEdit()"
+  ></app-edit-lead-modal>
+
+  <!-- MODAL 4: LEAD DETAILS & TELECALLING HISTORY MODAL -->
+  <app-lead-details-modal
+    [lead]="selectedLeadForDetails()"
+    [historyCalls]="getLeadHistoryCalls(selectedLeadForDetails())"
+    [getStatusBadgeClassFn]="getStatusBadgeClass.bind(this)"
+    (closeModal)="closeLeadDetails()"
+  ></app-lead-details-modal>
+</div>

@@ -1,0 +1,254 @@
+<div class="package-works-page">
+  <!-- Top Navigation & Header -->
+  <header class="page-header">
+    <div class="header-titles-group">
+      <!-- Navigation & Breadcrumbs Bar -->
+      <nav class="clean-breadcrumbs" aria-label="Breadcrumb">
+        <button type="button" class="btn-back" (click)="onBreadcrumbBack()" title="Back">
+          <span class="material-symbols-outlined icon-back">arrow_back</span>
+        </button>
+
+        <div class="breadcrumbs-list">
+          <a routerLink="/dashboard" class="bc-item">Dashboard</a>
+          <span class="bc-sep">/</span>
+
+          <!-- When inside a workspace package -->
+          @if (activeWorkspacePackage(); as selectedPkg) {
+            <button
+              type="button"
+              (click)="closePackageWorkspace()"
+              class="bc-item bc-btn"
+              title="Back to Packages List"
+            >
+              <span class="bc-item bc-package">{{ activePackageMeta().name }}</span>
+            </button>
+            <span class="bc-sep">/</span>
+            @if (activeDepartment(); as currentDept) {
+              <button
+                type="button"
+                (click)="backToPackageHub()"
+                class="bc-item bc-btn"
+                [title]="'Back to ' + selectedPkg.name + ' Overview'"
+              >
+                {{ selectedPkg.name }}
+              </button>
+              <span class="bc-sep">/</span>
+              <span class="bc-item active">{{ getDepartmentTitle(currentDept) }}</span>
+            } @else {
+              <span class="bc-item active">{{ selectedPkg.name }}</span>
+            }
+          } @else {
+            <span class="bc-item bc-package">{{ activePackageMeta().name }}</span>
+            <span class="bc-item">Package Works</span>
+          }
+        </div>
+      </nav>
+
+      <!-- Page Heading After Breadcrumbs -->
+      <div class="page-title-block">
+        <!-- Root Packages Catalog Level -->
+        @if (!activeWorkspacePackage()) {
+          <div class="catalog-heading-row">
+            <h1 class="page-main-heading">{{ activePackageMeta().name }} Product</h1>
+          </div>
+        }
+      </div>
+    </div>
+
+    <div class="header-actions-group">
+      <!-- When at Product level: Product Switcher Pills + Create Package Button -->
+      @if (!activeWorkspacePackage()) {
+        <div class="package-pill-switcher">
+          @for (pkg of availablePackages; track pkg) {
+            <button
+              class="package-switch-pill"
+              [class.active]="activePackageName().toLowerCase() === pkg.name.toLowerCase()"
+              [ngClass]="'pkg-pill-' + pkg.badgeColor"
+              (click)="selectPackage(pkg.name)"
+            >
+              <span>{{ pkg.name }}</span>
+              @if (getPackageCountForProduct(pkg.id) > 0) {
+                <span class="pkg-pill-count-chip">
+                  {{ getPackageCountForProduct(pkg.id) }}
+                </span>
+              }
+            </button>
+          }
+        </div>
+        @if (canCreatePackage()) {
+          <button
+            (click)="openCreateProductPackageModal()"
+            class="header-create-pkg-btn"
+            id="btn-create-package-top"
+          >
+            <span class="material-symbols-outlined btn-icon">add_circle</span>
+            <span>Create Package</span>
+          </button>
+        }
+      }
+
+      <!-- When inside a package workspace: Back button & product badge -->
+      @if (activeWorkspacePackage(); as selectedPkg) {
+        <div class="workspace-header-actions">
+          <span class="workspace-product-badge">Product: {{ activePackageMeta().name }}</span>
+        </div>
+      }
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- LEVEL 1: PRODUCT PACKAGES OVERVIEW (When no package is clicked)           -->
+  <!-- ========================================================================= -->
+  @if (!activeWorkspacePackage()) {
+    <section class="product-hero-banner" [style.background-image]="'url(' + productVisual().banner + ')'">
+      <div class="product-hero-content">
+        <img [src]="productVisual().logo" [alt]="productVisual().title + ' logo'" class="product-hero-logo" />
+        <div class="product-hero-copy">
+          <h1>{{ productVisual().title }}</h1>
+          <p>{{ productVisual().tagline }}</p>
+        </div>
+      </div>
+    </section>
+    <section class="catalog-toolbar" aria-label="Package catalog controls">
+      <h2>Available Packages</h2>
+      <div class="catalog-actions">
+        <label class="package-search">
+          <span class="material-symbols-outlined" aria-hidden="true">search</span>
+          <input
+            type="search"
+            placeholder="Search packages..."
+            aria-label="Search packages"
+            [ngModel]="packageSearchQuery()"
+            (ngModelChange)="packageSearchQuery.set($event)"
+          />
+        </label>
+        @if (canCreatePackage()) {
+          <button
+            (click)="openCreateProductPackageModal()"
+            class="catalog-create-package-btn"
+            id="btn-create-package-catalog"
+          >
+            <span class="material-symbols-outlined">add_circle</span>
+            <span>Create Package</span>
+          </button>
+        }
+      </div>
+    </section>
+    <app-package-catalog
+      [filteredProductPackages]="filteredProductPackages()"
+      [activePackageMeta]="activePackageMeta()"
+      [canCreatePackage]="canCreatePackage()"
+      [canEditPackage]="canEditPackage()"
+      [canDeletePackage]="canDeletePackage()"
+      [formatAssetUrlFn]="formatAssetUrl.bind(this)"
+      (openPackage)="openPackageWorkspace($event)"
+      (editPackage)="openEditProductPackageModal($event.pkg, $event.event)"
+      (deletePackage)="deleteProductPackage($event.pkg, $event.event)"
+      (createPackage)="openCreateProductPackageModal()"
+    ></app-package-catalog>
+  }
+
+  <!-- ========================================================================= -->
+  <!-- LEVEL 2 & 3: PACKAGE HUB OVERVIEW & DEPARTMENT OPERATIONS WORKSPACE       -->
+  <!-- ========================================================================= -->
+  @if (activeWorkspacePackage(); as selectedPkg) {
+    <!-- LEVEL 2: 4 Hub Cards Overview (When NO department is clicked) -->
+    @if (!activeDepartment()) {
+      <app-package-hub-overview
+        [packageMetrics]="packageMetrics()"
+        [operationDepartments]="operationDepartments()"
+        [isTelecaller]="isTelecaller()"
+        [telecallerPipelineCounts]="telecallerPipelineCounts()"
+        [isDesigner]="isDesigner()"
+        [designerPipelineCounts]="designerPipelineCounts()"
+        (departmentSelect)="selectDepartment($any($event))"
+      ></app-package-hub-overview>
+    }
+
+    <!-- LEVEL 3: Department Operations Workspace -->
+    @if (activeDepartment(); as currentDept) {
+      <app-package-department-view
+        [currentDept]="currentDept"
+        [activeDepartmentTabs]="activeDepartmentTabs()"
+        [activeOperationTab]="activeOperationTab()"
+        [currentFilterTarget]="currentFilterTarget()"
+        [activePackageName]="activePackageName()"
+        [activePackageMeta]="activePackageMeta()"
+        [filteredTransactions]="filteredTransactions()"
+        [packageReportSummary]="packageReportSummary()"
+        [filteredAuditLogs]="filteredAuditLogs()"
+        [getAuditLogCreatorFn]="getAuditLogCreator.bind(this)"
+        [getAuditLogAssigneeFn]="getAuditLogAssignee.bind(this)"
+        [getAuditLogTaskTitleFn]="getAuditLogTaskTitle.bind(this)"
+        [activePackageDisplayNameFn]="activePackageDisplayName.bind(this)"
+        (operationTabSelect)="selectOperationTab($event)"
+        (openTaskAudit)="openTaskAuditModal($event.log, $event.event)"
+      ></app-package-department-view>
+    }
+  }
+
+  <!-- DOCUMENT VIEWER MODAL -->
+  <app-doc-viewer-modal
+    [isOpen]="isDocViewerOpen()"
+    [activeDocName]="activeDocName()"
+    [activeDocUrl]="activeDocUrl()"
+    [isImageDoc]="isImageDoc()"
+    [activeImageUrl]="activeImageUrl()"
+    [activeIframeUrl]="activeIframeUrl()"
+    [activeIframeSrcdoc]="activeIframeSrcdoc()"
+    (close)="closeDocViewer()"
+    (download)="downloadAsset($event.event, $event.url, $event.fileName)"
+  ></app-doc-viewer-modal>
+
+  <!-- TASK DETAILS & STATUS HISTORY MODAL -->
+  <app-task-audit-modal
+    [isOpen]="isTaskAuditModalOpen()"
+    [auditTask]="selectedAuditTask()"
+    [activePackageMeta]="activePackageMeta()"
+    (close)="closeTaskAuditModal()"
+    (previewDoc)="openDocViewer($event.event, $event.url, $event.name, $event.content)"
+    (download)="downloadAsset($event.event, $event.url, $event.name)"
+  ></app-task-audit-modal>
+</div>
+
+<!-- ========================================================================= -->
+<!-- 9. CREATE PRODUCT PACKAGE MODAL -->
+<!-- ========================================================================= -->
+<app-create-package-modal
+  [isOpen]="isCreateProductPackageModalOpen()"
+  [activePackageMeta]="activePackageMeta()"
+  [form]="createProductPackageForm"
+  [imagePreview]="createdPackageImagePreview()"
+  [isSubmitting]="isSubmittingPackage()"
+  (closeModal)="closeCreateProductPackageModal()"
+  (submitPackage)="submitCreateProductPackage()"
+  (fileSelected)="onPackageImageFileSelected($event)"
+  (removeImage)="removePackageImageFile()"
+></app-create-package-modal>
+
+<!-- ========================================================================= -->
+<!-- 10. EDIT PRODUCT PACKAGE MODAL -->
+<!-- ========================================================================= -->
+<app-edit-package-modal
+  [isOpen]="isEditProductPackageModalOpen()"
+  [activePackageMeta]="activePackageMeta()"
+  [form]="editProductPackageForm"
+  [imagePreview]="editPackageImagePreview()"
+  [isSubmitting]="isSubmittingPackage()"
+  (closeModal)="closeEditProductPackageModal()"
+  (submitPackage)="submitEditProductPackage()"
+  (fileSelected)="onEditPackageImageFileSelected($event)"
+  (removeImage)="removeEditPackageImageFile()"
+></app-edit-package-modal>
+
+<!-- ========================================================================= -->
+<!-- 11. PRODUCT PACKAGE DETAIL MODAL -->
+<!-- ========================================================================= -->
+<app-package-detail-modal
+  [isOpen]="isPackageDetailModalOpen()"
+  [pkg]="selectedProductPackage()"
+  [getProductNameForPackageFn]="getProductNameForPackage.bind(this)"
+  [formatAssetUrlFn]="formatAssetUrl.bind(this)"
+  (closeModal)="closePackageDetailsModal()"
+  (viewPackageTasks)="openPackageWorkspace($event)"
+></app-package-detail-modal>

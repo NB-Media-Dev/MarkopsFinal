@@ -1,0 +1,127 @@
+.performance-page {
+  padding: 0.25rem 0 2rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.perf-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+.perf-card {
+  background: #FFFFFF;
+  border-radius: var(--mo-radius-lg);
+  border: 1px solid var(--mo-slate-200);
+  padding: 1.25rem;
+  box-shadow: var(--mo-shadow-sm);
+
+  @media (max-width: 480px) {
+    padding: 1rem;
+    border-radius: 14px;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+
+    h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--mo-navy-900);
+      margin: 0;
+    }
+  }
+}
+
+.ratio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ratio-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--mo-slate-50);
+  border: 1px solid var(--mo-slate-200);
+  padding: 0.75rem 1rem;
+  border-radius: var(--mo-radius-md);
+  font-size: 0.8125rem;
+  color: var(--mo-slate-600);
+
+  .ratio-val {
+    font-weight: 800;
+    font-size: 1rem;
+    color: var(--mo-navy-900);
+  }
+}
+
+.card {
+  background: #ffffff;
+  border-radius: var(--mo-radius-lg);
+  border: 1px solid var(--mo-slate-200);
+  box-shadow: var(--mo-shadow-sm);
+  padding: 1.25rem;
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+
+    h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--mo-navy-900);
+      margin: 0;
+    }
+  }
+}
+
+.header-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-meta-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.approval-rate-box {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+
+  .progress-bar-bg {
+    width: 70px;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 3px;
+    overflow: hidden;
+
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+
+      &.bg-green {
+        background: #16a34a;
+      }
+    }
+  }
+}
+

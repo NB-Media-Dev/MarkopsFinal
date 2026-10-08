@@ -1,0 +1,195 @@
+<div class="mo-dashboard-layout full-width-layout">
+  <main class="mo-main-content">
+    <header class="top-navbar">
+      <!-- Left: Brand Logo -->
+      <div class="navbar-left">
+        <a routerLink="/dashboard" class="brand-link" title="MarkOps Home">
+          <img src="/favicon.png" alt="MarkOps Logo" class="brand-logo-img" />
+          <span class="brand-text">MarkOps</span>
+        </a>
+      </div>
+
+      <!-- Right: Notifications, Divider, User Pill, Action Button -->
+      <div class="navbar-right">
+        <!-- Notification Bell Button -->
+        <div class="notification-wrapper">
+          <button
+            class="notif-bell-btn"
+            [class.has-unread]="notifService.unreadCount() > 0"
+            (click)="toggleNotificationFlyout()"
+            title="View Notifications"
+          >
+            <svg
+              class="bell-icon"
+              [class.bell-shake-anim]="notifService.unreadCount() > 0"
+              width="19"
+              height="19"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            @if (notifService.unreadCount() > 0) {
+              <span class="bell-dot-indicator"></span>
+            }
+          </button>
+
+          <!-- Notification Dropdown Flyout -->
+          @if (isNotificationFlyoutOpen()) {
+            <div class="notif-dropdown">
+              <div class="dropdown-header">
+                <div class="dropdown-header-top">
+                  <h4>System Notifications</h4>
+                  <div class="dropdown-actions">
+                    <button class="mark-all-btn" (click)="notifService.markAllAsRead()">
+                      Mark all read
+                    </button>
+                    <button class="close-notif-btn" (click)="closeNotificationFlyout()">×</button>
+                  </div>
+                </div>
+                <!-- Quick Filter Pills: All, Unread, Today -->
+                <div class="flyout-filter-bar">
+                  <button
+                    type="button"
+                    class="flyout-filter-chip"
+                    [class.active]="notifFlyoutFilter() === 'ALL'"
+                    (click)="setFlyoutFilter('ALL')"
+                  >
+                    All ({{ notifService.notifications().length }})
+                  </button>
+                  <button
+                    type="button"
+                    class="flyout-filter-chip"
+                    [class.active]="notifFlyoutFilter() === 'UNREAD'"
+                    (click)="setFlyoutFilter('UNREAD')"
+                  >
+                    Unread ({{ notifService.unreadCount() }})
+                  </button>
+                  <button
+                    type="button"
+                    class="flyout-filter-chip"
+                    [class.active]="notifFlyoutFilter() === 'TODAY'"
+                    (click)="setFlyoutFilter('TODAY')"
+                  >
+                    Today
+                  </button>
+                </div>
+              </div>
+              <div class="notif-items-list">
+                @for (item of flyoutNotifications(); track item) {
+                  <div
+                    class="notif-item clickable-notif"
+                    [class.unread]="!item.isRead"
+                    (click)="onNotificationClick(item)"
+                    title="Click to open related page"
+                  >
+                    <div class="notif-icon" [ngClass]="item.type.toLowerCase()">
+                      @switch (item.type) {
+                        @case ('SUCCESS') {
+                          <span class="material-symbols-outlined fs-16">check_circle</span>
+                        }
+                        @case ('WARNING') {
+                          <span class="material-symbols-outlined fs-16">warning</span>
+                        }
+                        @case ('ALERT') {
+                          <span class="material-symbols-outlined fs-16">bolt</span>
+                        }
+                        @default {
+                          <span class="material-symbols-outlined fs-16">info</span>
+                        }
+                      }
+                    </div>
+                    <div class="notif-content">
+                      <div class="notif-title-row">
+                        <span class="notif-title">{{ cleanTitle(item.title) }}</span>
+                        <span class="nav-arrow-hint">➔</span>
+                      </div>
+                      <div class="notif-message">{{ cleanTitle(item.message) }}</div>
+                      <div class="notif-time">{{ item.createdAt | date: 'shortTime' }}</div>
+                    </div>
+                  </div>
+                }
+                @if (notifService.notifications().length === 0) {
+                  <div class="empty-notif">No new notifications.</div>
+                }
+              </div>
+              <div class="dropdown-footer">
+                <a [routerLink]="['/notifications']" (click)="closeNotificationFlyout()"
+                  >View All Notifications</a
+                >
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="navbar-divider-vertical"></div>
+
+        <!-- User Profile Pill Card -->
+        <div class="header-user-pill">
+          <div class="user-avatar-navy">
+            {{ userInitials() }}
+          </div>
+          <div class="user-info-text">
+            <span class="user-fullname">{{
+              authService.currentUser()?.fullName || 'System Administrator'
+            }}</span>
+            <span class="user-role-label">{{ roleDisplayLabel() }}</span>
+          </div>
+        </div>
+
+        <!-- Action Button (Manage Users / Role action) -->
+        @if (roleAction(); as action) {
+          <a [routerLink]="[action.link]" class="header-action-dark-btn">
+            <span class="material-symbols-outlined action-icon-amber">{{ action.icon }}</span>
+            <span>{{ action.label }}</span>
+          </a>
+        }
+
+        <!-- Logout button (subtle pill) -->
+        <button class="header-logout-pill-btn" (click)="logout()" title="Sign Out">
+          <span class="material-symbols-outlined">logout</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Global Realtime Notification Toast Popup across entire App -->
+    @if (notifService.activeToast(); as toast) {
+      <div
+        class="global-realtime-toast"
+        [ngClass]="'toast-' + toast.type.toLowerCase()"
+        (click)="onToastClick(toast)"
+        title="Click notification to navigate to page"
+      >
+        <div class="toast-icon">
+          @if (toast.type === 'SUCCESS') {
+            <span class="material-symbols-outlined">check_circle</span>
+          }
+          @if (toast.type === 'WARNING') {
+            <span class="material-symbols-outlined">warning</span>
+          }
+          @if (toast.type === 'INFO') {
+            <span class="material-symbols-outlined">notifications_active</span>
+          }
+          @if (toast.type === 'ALERT') {
+            <span class="material-symbols-outlined">bolt</span>
+          }
+        </div>
+        <div class="toast-content">
+          <strong class="toast-title">{{ toast.title }}</strong>
+          <p class="toast-message">{{ toast.message }}</p>
+          <span class="toast-action-hint">Click to open ➔</span>
+        </div>
+        <button class="toast-close" (click)="onToastClose($event)" title="Close Notification">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+    }
+
+    <div class="content-viewport">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>

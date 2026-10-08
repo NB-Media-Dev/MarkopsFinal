@@ -1,0 +1,134 @@
+@if (isOpen) {
+  <div class="custom-modal-overlay" (click)="onClose()">
+    <div class="custom-modal-container create-package-modal" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="custom-modal-header">
+        <div class="modal-title-with-badge">
+          <div class="modal-header-icon-squircle icon-amber">
+            <span class="material-symbols-outlined">edit_note</span>
+          </div>
+          <div>
+            <h2 class="modal-main-heading">Edit Package</h2>
+            <span class="modal-sub-badge">Product: {{ activePackageMeta?.name }}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="modal-close-icon-btn"
+          (click)="onClose()"
+          title="Close dialog"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <!-- Modal Form -->
+      <form
+        [formGroup]="form"
+        (ngSubmit)="onSubmit()"
+        class="custom-modal-form-content"
+      >
+        <div class="custom-modal-body">
+          <!-- Package Name Field -->
+          <div class="form-group-block mb-3">
+            <label class="custom-form-label" for="edit-pkg-input-name">
+              Package Name <span class="required-star">*</span>
+            </label>
+            <input
+              id="edit-pkg-input-name"
+              type="text"
+              formControlName="name"
+              placeholder="e.g. TNPSC Group 4 General Studies 2026"
+              class="custom-form-input"
+              [class.is-invalid]="
+                form.get('name')?.invalid &&
+                form.get('name')?.touched
+              "
+            />
+            @if (
+              form.get('name')?.invalid &&
+              form.get('name')?.touched
+            ) {
+              <div class="field-validation-msg">
+                Package name is required (minimum 3 characters).
+              </div>
+            }
+          </div>
+          <!-- Banner Image Upload Field -->
+          <div class="form-group-block mb-3">
+            <label class="custom-form-label">
+              Package Banner Image <span class="optional-label">(Optional)</span>
+            </label>
+            <!-- Upload Drop Area when no image is selected -->
+            @if (!imagePreview) {
+              <div class="pkg-image-uploader-area">
+                <input
+                  type="file"
+                  id="edit-pkg-image-file-input"
+                  accept="image/*"
+                  class="pkg-file-hidden-input"
+                  (change)="onFileSelected($event)"
+                />
+                <label for="edit-pkg-image-file-input" class="pkg-upload-dropzone">
+                  <span class="material-symbols-outlined upload-cloud-icon"
+                    >add_photo_alternate</span
+                  >
+                  <span class="upload-prompt-text"
+                    ><strong>Click to upload</strong> or drag &amp; drop banner image</span
+                  >
+                  <span class="upload-sub-text">Supports PNG, JPG, JPEG, WebP</span>
+                </label>
+              </div>
+            }
+            <!-- Active Image Thumbnail Preview -->
+            @if (imagePreview) {
+              <div class="pkg-active-image-preview">
+                <div class="preview-img-container">
+                  <img
+                    [src]="imagePreview"
+                    alt="Package Banner Preview"
+                    class="preview-banner-thumbnail"
+                    (error)="$any($event.target).src = '/vidhvaa-career-img.png'"
+                  />
+                  <button
+                    type="button"
+                    class="remove-preview-btn"
+                    (click)="onRemoveImage()"
+                    title="Remove image"
+                  >
+                    <span class="material-symbols-outlined">delete</span>
+                    <span>Remove</span>
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+        <!-- Modal Footer -->
+        <div class="custom-modal-footer">
+          <button
+            type="button"
+            class="btn-modal-secondary"
+            (click)="onClose()"
+            [disabled]="isSubmitting"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn-modal-primary"
+            [disabled]="form.invalid || isSubmitting"
+            id="btn-submit-edit-package"
+          >
+            @if (!isSubmitting) {
+              <span class="material-symbols-outlined btn-icon">save</span>
+              <span>Save Changes</span>
+            }
+            @if (isSubmitting) {
+              <span>Saving...</span>
+            }
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

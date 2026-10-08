@@ -1,0 +1,189 @@
+@if (isOpen) {
+  <div class="modal-backdrop" (click)="onClose()">
+    <div class="modal-box create-task-modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge">
+            <span class="material-symbols-outlined">{{
+              getPackageIcon(createTaskForm.get('packageName')?.value)
+            }}</span>
+          </div>
+          <div>
+            <h2>Create {{ createTaskForm.get('packageName')?.value || 'Package' }}</h2>
+          </div>
+        </div>
+        <button class="close-btn" (click)="onClose()" title="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <form [formGroup]="createTaskForm" (ngSubmit)="onSubmit()">
+        <div class="modal-body">
+          <!-- Row 1: Task Title & Package Workspace Selection -->
+          <div class="form-row">
+            <div class="form-group col-8">
+              <label for="dashTaskTitle">Task Title <span class="required-star">*</span></label>
+              <div class="input-with-icon">
+                <span class="material-symbols-outlined input-icon">edit_note</span>
+                <input
+                  id="dashTaskTitle"
+                  type="text"
+                  formControlName="title"
+                  placeholder="e.g. {{
+                    createTaskForm.get('packageName')?.value || 'Package'
+                  }} Banner Design"
+                  class="form-input"
+                />
+              </div>
+            </div>
+            <div class="form-group col-4">
+              <label for="dashPackageName"
+                >Package Workspace <span class="required-star">*</span></label
+              >
+              <div class="select-wrapper">
+                <span class="material-symbols-outlined select-icon">folder_special</span>
+                <select
+                  id="dashPackageName"
+                  formControlName="packageName"
+                  class="form-input custom-select"
+                >
+                  @for (pkg of availablePackages; track pkg.name) {
+                    <option [value]="pkg.name">
+                      {{ pkg.name }}
+                    </option>
+                  }
+                </select>
+              </div>
+            </div>
+          </div>
+          <!-- Description & Creative Brief -->
+          <div class="form-group">
+            <label for="dashTaskDesc">Creative Brief & Design Instructions</label>
+            <textarea
+              id="dashTaskDesc"
+              formControlName="description"
+              rows="2"
+              placeholder="Provide design requirements ..."
+              class="form-input textarea-input"
+            ></textarea>
+          </div>
+          <!-- Custom File Upload Dropzone -->
+          <div class="form-group">
+            <label>Attach Content Document for Designer</label>
+            <div
+              class="file-upload-zone compact-dropzone"
+              [class.has-file]="createdBriefFileName()"
+            >
+              <input
+                type="file"
+                (change)="onTaskBriefFileSelected($event)"
+                accept="image/*,video/*,.pdf,.doc,.docx,.txt,.md,.json,.csv"
+                class="file-input-hidden"
+                id="dashBriefFileInput"
+              />
+              <label for="dashBriefFileInput" class="file-upload-label">
+                <div class="upload-icon-circle" [class.icon-attached]="createdBriefFileName()">
+                  <span class="material-symbols-outlined">{{
+                    createdBriefFileName() ? 'check_circle' : 'cloud_upload'
+                  }}</span>
+                </div>
+                <div class="upload-text-content">
+                  @if (!createdBriefFileName()) {
+                    <span class="upload-main-text">Click or drag document to attach brief</span>
+                    <span class="upload-sub-text"
+                      >Supports PDF, DOCX, TXT, Images, Markdown & CSV</span
+                    >
+                  }
+                  @if (createdBriefFileName()) {
+                    <div class="file-attached-info">
+                      <span class="upload-main-text text-success font-bold"
+                        >Attached: {{ createdBriefFileName() }}</span
+                      >
+                      <span class="upload-sub-text">File ready &bull; Click to change file</span>
+                    </div>
+                  }
+                </div>
+                @if (createdBriefFileName()) {
+                  <button
+                    type="button"
+                    class="btn-clear-attached"
+                    (click)="clearTaskBriefFile($event)"
+                    title="Remove attached file"
+                  >
+                    <span class="material-symbols-outlined">close</span>
+                  </button>
+                }
+              </label>
+            </div>
+          </div>
+          <!-- Row: Designer, Priority, and Due Date in 3 Medium-Width Columns -->
+          <div class="form-row form-row-3col">
+            <div class="form-group col-4">
+              <label for="dashAssignedDesigner"
+                >Assign to Designer <span class="required-star">*</span></label
+              >
+              <div class="select-wrapper">
+                <span class="material-symbols-outlined select-icon">person</span>
+                <select
+                  id="dashAssignedDesigner"
+                  formControlName="assignedTo"
+                  class="form-input custom-select"
+                >
+                  <option value="" disabled>Select Designer</option>
+                  @for (d of designers; track d.id) {
+                    <option [value]="d.id">{{ d.name }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+            <div class="form-group col-4">
+              <label for="dashTaskPriority"
+                >Task Priority <span class="required-star">*</span></label
+              >
+              <div class="select-wrapper">
+                <span class="material-symbols-outlined select-icon">flag</span>
+                <select
+                  id="dashTaskPriority"
+                  formControlName="priority"
+                  class="form-input custom-select"
+                >
+                  <option value="LOW">Low Priority</option>
+                  <option value="MEDIUM">Medium Priority</option>
+                  <option value="HIGH">High Priority</option>
+                  <option value="URGENT">Urgent Priority</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group col-4">
+              <label for="dashTaskDueDate"
+                >Target Completion Date <span class="required-star">*</span></label
+              >
+              <div class="input-with-icon">
+                <span class="material-symbols-outlined input-icon">event</span>
+                <input
+                  id="dashTaskDueDate"
+                  type="date"
+                  formControlName="dueDate"
+                  [min]="todayDate"
+                  class="form-input"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" (click)="onClose()">
+            Cancel
+          </button>
+          <button
+            type="submit"
+            class="btn btn-primary btn-submit-task"
+            [disabled]="createTaskForm.invalid"
+          >
+            <span class="material-symbols-outlined fs-18">add_task</span>
+            <span>Assign Task</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

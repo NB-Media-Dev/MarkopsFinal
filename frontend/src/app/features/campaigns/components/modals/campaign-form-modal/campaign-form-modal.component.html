@@ -1,0 +1,115 @@
+@if (isOpen) {
+  <div class="modal-backdrop" (click)="onClose()">
+    <div class="modal-card modal-lg" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-squircle-icon">
+            <span class="material-symbols-outlined">{{
+              isEditing ? 'edit_note' : 'add_circle'
+            }}</span>
+          </div>
+          <div>
+            <h2>{{ isEditing ? 'Edit Campaign' : 'Create New Campaign' }}</h2>
+            <p class="modal-sub">Configure ad spend, lead targets, CPL goals, and timelines</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" (click)="onClose()" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label class="form-label">Campaign Name <span class="required">*</span></label>
+            <input
+              type="text"
+              [(ngModel)]="formModel.name"
+              placeholder="e.g. Meta Q4 Leads Acceleration"
+              class="form-input"
+            />
+          </div>
+          <div class="form-group flex-1">
+            <label class="form-label">Status</label>
+            <select [(ngModel)]="formModel.status" class="form-input">
+              <option value="ACTIVE">Active</option>
+              <option value="PLANNING">Planning</option>
+              <option value="PAUSED">Paused</option>
+              <option value="COMPLETED">Completed</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label class="form-label">Objective</label>
+            <select [(ngModel)]="formModel.objective" class="form-input">
+              <option value="LEAD_GENERATION">Lead Generation</option>
+              <option value="BRAND_AWARENESS">Brand Awareness</option>
+              <option value="PERFORMANCE_SCALE">Performance Scale</option>
+              <option value="RETARGETING">Retargeting</option>
+            </select>
+          </div>
+          <div class="form-group flex-1">
+            <label class="form-label">Start Date</label>
+            <input
+              type="date"
+              [(ngModel)]="formModel.startDate"
+              [min]="todayDate"
+              class="form-input"
+            />
+          </div>
+          <div class="form-group flex-1">
+            <label class="form-label">Budget (₹)</label>
+            <input type="number" [(ngModel)]="formModel.budget" min="0" class="form-input" />
+          </div>
+        </div>
+        <!-- Metrics Row with Live Calculation Previews -->
+        <div class="section-divider">
+          <span>Performance & Conversion Metrics</span>
+        </div>
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label class="form-label">Spend (₹)</label>
+            <input type="number" [(ngModel)]="formModel.spend" min="0" class="form-input" />
+          </div>
+          <div class="form-group flex-1">
+            <label class="form-label">Leads Count</label>
+            <input type="number" [(ngModel)]="formModel.leadsCount" min="0" class="form-input" />
+          </div>
+          <div class="form-group flex-1">
+            <label class="form-label">PAID Leads</label>
+            <input
+              type="number"
+              [(ngModel)]="formModel.qualifiedLeads"
+              min="0"
+              class="form-input"
+            />
+          </div>
+          <div class="form-group flex-1">
+            <label class="form-label">Conversions</label>
+            <input type="number" [(ngModel)]="formModel.conversions" min="0" class="form-input" />
+          </div>
+        </div>
+        <!-- Auto Computed Metrics Badges -->
+        <div class="live-calc-panel">
+          <div class="calc-item calc-item-emerald">
+            <span class="calc-label">Auto-Computed CPL</span>
+            <span class="calc-val">₹{{ computedModalCpl }}</span>
+            <span class="calc-formula">(Spend / Leads)</span>
+          </div>
+          <div class="calc-item calc-item-purple">
+            <span class="calc-label">Auto-Computed Conv. Rate</span>
+            <span class="calc-val">{{ computedModalConvRate }}%</span>
+            <span class="calc-formula">(Conversions / Leads * 100)</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-action-secondary" (click)="onClose()">Cancel</button>
+        <button class="btn-action-primary" (click)="onSave()">
+          <span class="material-symbols-outlined icon-glow">save</span>
+          <span>{{ isEditing ? 'Update Campaign' : 'Save Campaign' }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+}

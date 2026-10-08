@@ -1,0 +1,312 @@
+@if (isOpen && auditTask) {
+  <div class="modal-backdrop task-audit-modal-backdrop" (click)="onClose()">
+    <div class="modal-box task-audit-modal-box" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="modal-header task-audit-header">
+        <div class="header-left-group">
+          <div class="audit-badge-row">
+            <span class="badge badge-purple">{{
+              auditTask.packageName || activePackageMeta?.name
+            }}</span>
+            <span class="badge" [ngClass]="getStatusBadgeClass(auditTask.status)">{{
+              auditTask.status
+            }}</span>
+            <span
+              class="badge"
+              [ngClass]="{
+                'badge-danger': auditTask.priority === 'HIGH' || auditTask.priority === 'URGENT',
+                'badge-amber': auditTask.priority === 'MEDIUM',
+                'badge-blue': auditTask.priority === 'LOW',
+              }"
+              >{{ auditTask.priority }} Priority</span
+            >
+            @if (auditTask.dueDate) {
+              <span class="badge badge-date">
+                <span class="material-symbols-outlined fs-13">event</span>
+                Due {{ auditTask.dueDate }}
+              </span>
+            }
+          </div>
+          <h2 class="audit-modal-title">{{ auditTask.title }}</h2>
+        </div>
+        <div class="header-actions">
+          <button class="close-btn" (click)="onClose()" title="Close">
+            <span class="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      </div>
+      <!-- Modal Body -->
+      <div class="modal-body task-audit-body">
+        <!-- Description Box -->
+        @if (auditTask.description) {
+          <div class="audit-spec-box mb-3">
+            <div class="spec-box-header">
+              <span class="material-symbols-outlined fs-15 text-subtle">description</span>
+              <span class="font-bold fs-13 text-dark">Description</span>
+            </div>
+            <div class="spec-box-content">{{ auditTask.description }}</div>
+          </div>
+        }
+        <!-- Section 2: Lifecycle Journey Stepper & Table -->
+        <div class="audit-section mb-3">
+          <div class="audit-section-header">
+            <div class="d-flex align-items-center gap-2">
+              <h3 class="section-title">Status History</h3>
+            </div>
+          </div>
+          <!-- Status Journey Stepper -->
+          <div class="journey-stepper-wrap mb-3">
+            <div class="stepper-item" [class.step-active]="auditTask.status === 'ASSIGNED'">
+              <span class="step-dot">1</span>
+              <span class="step-label">Assigned</span>
+            </div>
+            <div class="stepper-line" [class.line-active]="auditTask.status !== 'ASSIGNED'"></div>
+            <div class="stepper-item" [class.step-active]="auditTask.status === 'IN_PROGRESS'">
+              <span class="step-dot">2</span>
+              <span class="step-label">In Progress</span>
+            </div>
+            <div
+              class="stepper-line"
+              [class.line-active]="
+                auditTask.status === 'SUBMITTED' ||
+                auditTask.status === 'APPROVED' ||
+                auditTask.status === 'REDESIGN_REQUIRED' ||
+                auditTask.status === 'COMPLETED'
+              "
+            ></div>
+            <div class="stepper-item" [class.step-active]="auditTask.status === 'SUBMITTED'">
+              <span class="step-dot">3</span>
+              <span class="step-label">Submitted</span>
+            </div>
+            <div
+              class="stepper-line"
+              [class.line-active]="
+                auditTask.status === 'APPROVED' ||
+                auditTask.status === 'REDESIGN_REQUIRED' ||
+                auditTask.status === 'COMPLETED'
+              "
+            ></div>
+            <div
+              class="stepper-item"
+              [class.step-active]="
+                auditTask.status === 'APPROVED' ||
+                auditTask.status === 'REDESIGN_REQUIRED' ||
+                auditTask.status === 'COMPLETED'
+              "
+            >
+              <span
+                class="step-dot"
+                [class.dot-approved]="
+                  auditTask.status === 'APPROVED' || auditTask.status === 'COMPLETED'
+                "
+                [class.dot-revision]="auditTask.status === 'REDESIGN_REQUIRED'"
+                >4</span
+              >
+              <span class="step-label">{{
+                auditTask.status === 'REDESIGN_REQUIRED' ? 'Redesign' : 'Approved'
+              }}</span>
+            </div>
+          </div>
+          <!-- Status History Table -->
+          <div class="table-responsive audit-journey-table-container">
+            <table class="data-table audit-journey-table">
+              <thead>
+                <tr>
+                  <th>Stage</th>
+                  <th>Status</th>
+                  <th>Action By</th>
+                  <th>Date</th>
+                  <th>Remarks</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (step of getLifecycleJourney(auditTask); track step.stepNumber) {
+                  <tr class="journey-table-row">
+                    <td>
+                      <div class="font-bold text-slate-800 fs-13">{{ step.stage }}</div>
+                    </td>
+                    <td>
+                      <div class="d-flex align-items-center gap-1">
+                        <span class="badge badge-light-status fs-11">{{ step.fromStatus }}</span>
+                        <span class="material-symbols-outlined fs-12 text-muted"
+                          >arrow_forward</span
+                        >
+                        <span
+                          class="badge fs-11"
+                          [ngClass]="getStatusBadgeClass(step.toStatus)"
+                          >{{ step.toStatus }}</span
+                        >
+                      </div>
+                    </td>
+                    <td>
+                      <div class="actor-audit-name font-semibold text-slate-800 fs-13">
+                        {{ step.actorName }}
+                      </div>
+                      <span class="actor-audit-role text-subtle fs-11">{{ step.actorRole }}</span>
+                    </td>
+                    <td class="text-slate-600 fs-12 whitespace-nowrap">
+                      {{ step.timestamp | date: 'short' }}
+                    </td>
+                    <td class="text-slate-700 fs-12">
+                      <span class="journey-remark">{{ step.remarks }}</span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- Section 3: Attachments & Deliverables -->
+        <div class="audit-section mb-2">
+          <div class="audit-section-header">
+            <div class="d-flex align-items-center gap-2">
+              <span class="material-symbols-outlined text-primary fs-18">folder_open</span>
+              <h3 class="section-title">Attachments & Deliverables</h3>
+            </div>
+            @if (auditTask.versions?.length) {
+              <span class="text-subtle fs-12">
+                {{ auditTask.versions!.length }}
+                {{ auditTask.versions!.length === 1 ? 'version' : 'versions' }}
+              </span>
+            }
+          </div>
+          <!-- Creator Brief File Attachment -->
+          @if (auditTask.attachmentName || auditTask.attachmentUrl) {
+            <div class="deliverable-item-card mb-2">
+              <div class="file-item-main">
+                <div class="file-icon-box file-icon-pdf">
+                  <span class="material-symbols-outlined fs-20">description</span>
+                </div>
+                <div class="file-item-info">
+                  <div class="file-name-row">
+                    <span class="file-name">{{
+                      auditTask.attachmentName || 'Brief_Specification.pdf'
+                    }}</span>
+                    <span class="badge badge-blue fs-11">Brief</span>
+                  </div>
+                  <div class="file-meta">
+                    Uploaded by {{ getCreatorName(auditTask) }} •
+                    {{ auditTask.createdAt | date: 'mediumDate' }}
+                  </div>
+                </div>
+              </div>
+              <div class="file-item-actions-group">
+                <button
+                  type="button"
+                  class="btn-action-pill btn-preview"
+                  (click)="
+                    onPreviewDoc(
+                      $event,
+                      auditTask.attachmentUrl,
+                      auditTask.attachmentName,
+                      auditTask.content
+                    )
+                  "
+                >
+                  <span class="material-symbols-outlined fs-15">visibility</span>
+                  <span>Preview</span>
+                </button>
+                @if (auditTask.attachmentUrl) {
+                  <button
+                    type="button"
+                    class="btn-action-pill btn-download"
+                    (click)="
+                      onDownload($event, auditTask.attachmentUrl, auditTask.attachmentName)
+                    "
+                  >
+                    <span class="material-symbols-outlined fs-15">download</span>
+                    <span>Download</span>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+          <!-- Designer Deliverable Versions List -->
+          @if (auditTask.versions && auditTask.versions.length > 0) {
+            <div class="deliverables-list">
+              @for (ver of auditTask.versions; track ver.id || ver.versionNumber) {
+                <div class="deliverable-item-card">
+                  <div class="file-item-main">
+                    <div class="file-icon-box file-icon-img">
+                      <span class="material-symbols-outlined fs-20">image</span>
+                    </div>
+                    <div class="file-item-info">
+                      <div class="file-name-row">
+                        <span class="badge badge-purple fs-11 font-bold"
+                          >v{{ ver.versionNumber }}.0</span
+                        >
+                        <span class="file-name">{{ ver.fileName }}</span>
+                        @if (getVersionDuration(auditTask, ver); as dur) {
+                          <span
+                            class="badge badge-indigo fs-11 font-semibold ml-auto"
+                            title="In-Progress to Upload Duration"
+                          >
+                            ⏱️ {{ dur }}
+                          </span>
+                        }
+                      </div>
+                      <div class="file-meta">
+                        Submitted by {{ ver.submittedByName || getAssigneeName(auditTask) }} •
+                        {{ ver.createdAt | date: 'short' }}
+                      </div>
+                      @if (ver.changelog) {
+                        <div class="file-notes">
+                          <span class="material-symbols-outlined fs-13 text-muted"
+                            >chat_bubble</span
+                          >
+                          <div class="file-notes-bullets">
+                            @for (point of parseBulletPoints(ver.changelog); track point) {
+                              <div class="bullet-row">
+                                <span class="bullet-dot">•</span>
+                                <span class="bullet-text">{{ point }}</span>
+                              </div>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                  <div class="file-item-actions-group">
+                    <button
+                      type="button"
+                      class="btn-action-pill btn-preview"
+                      (click)="onPreviewDoc($event, ver.filePath, ver.fileName, ver.fileContent)"
+                    >
+                      <span class="material-symbols-outlined fs-15">visibility</span>
+                      <span>Preview</span>
+                    </button>
+                    @if (ver.filePath) {
+                      <button
+                        type="button"
+                        class="btn-action-pill btn-download"
+                        (click)="onDownload($event, ver.filePath, ver.fileName)"
+                      >
+                        <span class="material-symbols-outlined fs-15">download</span>
+                        <span>Download</span>
+                      </button>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <div
+              class="no-file-notice p-3 text-subtle fs-12 bg-slate-50 border rounded-8 text-center"
+            >
+              <span class="material-symbols-outlined fs-18 text-muted d-block mb-1"
+                >hourglass_empty</span
+              >
+              No deliverables uploaded by designer yet.
+            </div>
+          }
+        </div>
+      </div>
+      <!-- Modal Footer -->
+      <div class="modal-footer d-flex justify-content-end align-items-center">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="onClose()">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+}

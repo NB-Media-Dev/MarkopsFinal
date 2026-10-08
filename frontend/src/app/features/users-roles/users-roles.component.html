@@ -1,0 +1,472 @@
+<div class="users-roles-page">
+  <header class="page-header">
+    <div class="header-titles-group">
+      <h1 class="page-heading">
+        <a routerLink="/dashboard" class="title-back-btn" title="Back to Dashboard">
+          <span class="arrow-char">←</span>
+        </a>
+        <span>Users & Roles Management</span>
+      </h1>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn-obsidian-action" (click)="openCreateUserModal()">
+        <span class="material-symbols-outlined btn-gold-icon">add</span>
+        <span>Create User</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Success Notification Alert -->
+  @if (userSuccessMsg()) {
+    <div class="alert-banner alert-success">
+      <div class="alert-icon-wrap">
+        <span class="material-symbols-outlined">check_circle</span>
+      </div>
+      <div class="alert-text"><strong>Success:</strong> {{ userSuccessMsg() }}</div>
+      <button class="close-banner-btn" (click)="userSuccessMsg.set(null)">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+  }
+
+  <!-- Error Notification Alert -->
+  @if (userErrorMsg()) {
+    <div class="alert-banner alert-danger">
+      <div class="alert-icon-wrap">
+        <span class="material-symbols-outlined">error</span>
+      </div>
+      <div class="alert-text"><strong>Error:</strong> {{ userErrorMsg() }}</div>
+      <button class="close-banner-btn" (click)="userErrorMsg.set(null)">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+  }
+
+  <!-- 3 TOP KPI SUMMARY CARDS (Medium-Sized Luxury Design) -->
+  <section class="kpi-grid">
+    <div class="kpi-card card-users">
+      <div class="kpi-top-row">
+        <div class="kpi-squircle-icon icon-indigo">
+          <span class="material-symbols-outlined">group</span>
+        </div>
+      </div>
+      <div class="kpi-body">
+        <span class="kpi-title">TOTAL USERS</span>
+        <div class="kpi-value">{{ userMgmtService.totalUsersCount() }}</div>
+      </div>
+      <div class="kpi-footer-row">
+        <span class="kpi-footer-text">Platform Accounts</span>
+      </div>
+    </div>
+
+    <div class="kpi-card card-active">
+      <div class="kpi-top-row">
+        <div class="kpi-squircle-icon icon-emerald">
+          <span class="material-symbols-outlined">verified_user</span>
+        </div>
+      </div>
+      <div class="kpi-body">
+        <span class="kpi-title">ACTIVE ACCOUNTS</span>
+        <div class="kpi-value">{{ userMgmtService.activeUsersCount() }}</div>
+      </div>
+      <div class="kpi-footer-row">
+        <span class="kpi-footer-text">Enabled Access</span>
+      </div>
+    </div>
+
+    <div class="kpi-card card-roles">
+      <div class="kpi-top-row">
+        <div class="kpi-squircle-icon icon-amber">
+          <span class="material-symbols-outlined">shield</span>
+        </div>
+      </div>
+      <div class="kpi-body">
+        <span class="kpi-title">SYSTEM ROLES</span>
+        <div class="kpi-value">5</div>
+      </div>
+      <div class="kpi-footer-row">
+        <span class="kpi-footer-text">Permission Tiers</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Filter & Search Toolbar Card -->
+  <div class="toolbar-card">
+    <div class="search-box">
+      <span class="material-symbols-outlined search-icon">search</span>
+      <input
+        type="text"
+        placeholder="Search users by name, email or department..."
+        [value]="userSearchQuery()"
+        (input)="onSearchUser($event)"
+      />
+    </div>
+
+    <div class="filter-pills-bar">
+      <button
+        class="filter-pill-btn"
+        [class.active]="selectedRoleFilter() === 'ALL'"
+        (click)="onFilterRole('ALL')"
+      >
+        All Roles
+      </button>
+      <button
+        class="filter-pill-btn"
+        [class.active]="selectedRoleFilter() === 'ADMINISTRATOR'"
+        (click)="onFilterRole('ADMINISTRATOR')"
+      >
+        Admin
+      </button>
+      <!-- <button
+        class="filter-pill-btn"
+        [class.active]="selectedRoleFilter() === 'MARKETING_MANAGER'"
+        (click)="onFilterRole('MARKETING_MANAGER')"
+      >
+        Marketing Mgr
+      </button> -->
+      <button
+        class="filter-pill-btn"
+        [class.active]="selectedRoleFilter() === 'DIGITAL_MARKETING'"
+        (click)="onFilterRole('DIGITAL_MARKETING')"
+      >
+        Digital Marketing
+      </button>
+      <button
+        class="filter-pill-btn"
+        [class.active]="selectedRoleFilter() === 'BDM'"
+        (click)="onFilterRole('BDM')"
+      >
+        BDM
+      </button>
+      <button
+        class="filter-pill-btn"
+        [class.active]="selectedRoleFilter() === 'DESIGNER'"
+        (click)="onFilterRole('DESIGNER')"
+      >
+        Designer
+      </button>
+      <button
+        class="filter-pill-btn"
+        [class.active]="selectedRoleFilter() === 'TELECALLER'"
+        (click)="onFilterRole('TELECALLER')"
+      >
+        Telecaller
+      </button>
+    </div>
+  </div>
+
+  <!-- Users Table Card -->
+  <div class="table-card card-users-perf">
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>USER</th>
+            <th>ROLE</th>
+            <th>STATUS</th>
+            <th>LAST LOGIN</th>
+            <th>CREATED</th>
+            <th class="text-right">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (user of filteredUsers(); track trackById($index, user)) {
+            <tr class="user-table-row">
+              <td>
+                <div class="user-profile-cell">
+                  <div class="avatar-squircle" [ngClass]="user.role.toLowerCase()">
+                    {{ user.fullName.charAt(0).toUpperCase() }}
+                  </div>
+                  <div class="user-meta">
+                    <span class="user-name-strong">{{ user.fullName }}</span>
+                    <span class="user-email-sub">{{ user.email }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="role-badge" [ngClass]="user.role.toLowerCase()">
+                  {{ user.role.replace('_', ' ') }}
+                </span>
+              </td>
+              <td>
+                <button
+                  type="button"
+                  class="status-pill-toggle"
+                  [class.is-active]="user.isActive"
+                  (click)="toggleUserStatus(user)"
+                  [title]="user.isActive ? 'Deactivate account' : 'Activate account'"
+                >
+                  <span class="toggle-text">{{ user.isActive ? 'ACTIVE' : 'INACTIVE' }}</span>
+                </button>
+              </td>
+              <td>
+                <span class="date-str font-mono">{{ user.lastLoginAt || 'Never' }}</span>
+              </td>
+              <td>
+                <span class="date-str font-mono">{{ user.createdAt }}</span>
+              </td>
+              <td class="text-right">
+                <div class="action-btn-group">
+                  <button
+                    class="btn-icon-action btn-edit"
+                    (click)="openEditUserModal(user)"
+                    title="Edit user details"
+                  >
+                    <span class="material-symbols-outlined icon-xs">edit</span>
+                  </button>
+                  <button
+                    class="btn-icon-action btn-delete"
+                    (click)="deleteUser(user)"
+                    title="Delete user"
+                  >
+                    <span class="material-symbols-outlined icon-xs">delete</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+
+          @if (filteredUsers().length === 0) {
+            <tr>
+              <td colspan="6" class="empty-state-cell">
+                <div class="empty-state-box">
+                  <div class="empty-icon-squircle">
+                    <span class="material-symbols-outlined">person_search</span>
+                  </div>
+                  <h4 class="empty-title">No user accounts found</h4>
+                  <p class="empty-subtitle">
+                    There are no user accounts matching "{{ userSearchQuery() }}" in the selected
+                    role filter.
+                  </p>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- CREATE USER MODAL -->
+@if (isCreateUserModalOpen()) {
+  <div class="modal-backdrop" (click)="closeCreateUserModal()">
+    <div class="modal-card modal-md" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-squircle-icon">
+            <span class="material-symbols-outlined">person_add</span>
+          </div>
+          <div>
+            <h2>Create Platform User</h2>
+            <p class="modal-sub">
+              Add a new team member and assign their system role and access credentials
+            </p>
+          </div>
+        </div>
+        <button class="btn-close-modal" (click)="closeCreateUserModal()" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <form
+        [formGroup]="createUserForm"
+        (ngSubmit)="onSubmitCreateUser()"
+        class="modal-form"
+        novalidate
+        autocomplete="off"
+      >
+        <div class="modal-body">
+          @if (userErrorMsg()) {
+            <div class="modal-inline-error">
+              <span class="material-symbols-outlined fs-16">error</span>
+              <span>{{ userErrorMsg() }}</span>
+            </div>
+          }
+          <div class="form-group">
+            <label class="form-label">Full Name <span class="required">*</span></label>
+            <input
+              type="text"
+              formControlName="fullName"
+              placeholder="e.g. Sarah Jenkins"
+              class="form-input"
+              autocomplete="off"
+            />
+            @if (createFormSubmitted() && createUserForm.get('fullName')?.invalid) {
+              <span class="field-error"> Full name is required (min 2 chars). </span>
+            }
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address <span class="required">*</span></label>
+            <input
+              type="email"
+              formControlName="email"
+              placeholder="e.g. sarah@markops.io"
+              class="form-input"
+              autocomplete="new-password"
+            />
+            @if (createFormSubmitted() && createUserForm.get('email')?.invalid) {
+              <span class="field-error"> Valid email address is required. </span>
+            }
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password <span class="required">*</span></label>
+            <div class="password-input-wrapper">
+              <input
+                [type]="showCreatePassword() ? 'text' : 'password'"
+                formControlName="password"
+                placeholder="Minimum 6 characters"
+                class="form-input"
+                autocomplete="new-password"
+              />
+              <button
+                type="button"
+                class="eye-toggle-btn"
+                (click)="toggleCreatePasswordVisibility()"
+                title="Toggle visibility"
+              >
+                <span class="material-symbols-outlined fs-18">
+                  {{ showCreatePassword() ? 'visibility_off' : 'visibility' }}
+                </span>
+              </button>
+            </div>
+            @if (createFormSubmitted() && createUserForm.get('password')?.invalid) {
+              <span class="field-error"> Password is required (minimum 6 characters). </span>
+            }
+          </div>
+          <div class="form-group">
+            <label class="form-label">System Role <span class="required">*</span></label>
+            <select formControlName="role" class="form-select">
+              @for (roleItem of systemRoles; track roleItem) {
+                <option [value]="roleItem.code">
+                  {{ roleItem.label }}
+                </option>
+              }
+            </select>
+          </div>
+          <div class="form-group-checkbox">
+            <label class="checkbox-label">
+              <input type="checkbox" formControlName="isActive" />
+              <span>Enable active account access</span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-action-secondary" (click)="closeCreateUserModal()">
+            Cancel
+          </button>
+          <button type="submit" class="btn-action-primary">
+            <span class="material-symbols-outlined icon-glow">check</span>
+            <span>Create Account</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- EDIT USER MODAL -->
+@if (isEditUserModalOpen()) {
+  <div class="modal-backdrop" (click)="closeEditUserModal()">
+    <div class="modal-card modal-md" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-squircle-icon">
+            <span class="material-symbols-outlined">manage_accounts</span>
+          </div>
+          <div>
+            <h2>Edit User Account</h2>
+            <p class="modal-sub">
+              Update profile details, assign new role, or reset password credentials
+            </p>
+          </div>
+        </div>
+        <button class="btn-close-modal" (click)="closeEditUserModal()" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <form
+        [formGroup]="editUserForm"
+        (ngSubmit)="onSubmitEditUser()"
+        class="modal-form"
+        novalidate
+      >
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Full Name <span class="required">*</span></label>
+            <input
+              type="text"
+              formControlName="fullName"
+              placeholder="Full name"
+              class="form-input"
+            />
+            @if (editFormSubmitted() && editUserForm.get('fullName')?.invalid) {
+              <span class="field-error"> Full name is required. </span>
+            }
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Address <span class="required">*</span></label>
+            <input
+              type="email"
+              formControlName="email"
+              placeholder="Email address"
+              class="form-input"
+            />
+            @if (editFormSubmitted() && editUserForm.get('email')?.invalid) {
+              <span class="field-error"> Valid email is required. </span>
+            }
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reset Password</label>
+            <div class="password-input-wrapper">
+              <input
+                [type]="showEditPassword() ? 'text' : 'password'"
+                formControlName="password"
+                placeholder="Leave blank to keep current password"
+                class="form-input"
+              />
+              <button
+                type="button"
+                class="eye-toggle-btn"
+                (click)="toggleEditPasswordVisibility()"
+                title="Toggle visibility"
+              >
+                <span class="material-symbols-outlined fs-18">
+                  {{ showEditPassword() ? 'visibility_off' : 'visibility' }}
+                </span>
+              </button>
+            </div>
+            @if (editFormSubmitted() && editUserForm.get('password')?.invalid) {
+              <span class="field-error"> Password must be at least 6 characters. </span>
+            }
+          </div>
+          <div class="form-group">
+            <label class="form-label">System Role <span class="required">*</span></label>
+            <select formControlName="role" class="form-select">
+              @for (roleItem of systemRoles; track roleItem) {
+                <option [value]="roleItem.code">
+                  {{ roleItem.label }}
+                </option>
+              }
+            </select>
+          </div>
+          <div class="form-group-checkbox">
+            <label class="checkbox-label">
+              <input type="checkbox" formControlName="isActive" />
+              <span>Enable active account access</span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-action-secondary" (click)="closeEditUserModal()">
+            Cancel
+          </button>
+          <button type="submit" class="btn-action-primary">
+            <span class="material-symbols-outlined icon-glow">save</span>
+            <span>Save Changes</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

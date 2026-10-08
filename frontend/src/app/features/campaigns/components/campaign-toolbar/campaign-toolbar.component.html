@@ -1,0 +1,67 @@
+<div class="toolbar-card">
+  <div class="search-box">
+    <span class="material-symbols-outlined search-icon">search</span>
+    <input
+      type="text"
+      [ngModel]="searchQuery"
+      (ngModelChange)="onSearch($event)"
+      placeholder="Search by campaign name or objective..."
+    />
+    @if (searchQuery) {
+      <button class="clear-search-btn" (click)="clearSearch()" title="Clear Search">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    }
+  </div>
+
+  <div class="segmented-tabs">
+    <button
+      type="button"
+      class="tab-pill-btn"
+      [class.active]="filterStatus === 'ALL'"
+      (click)="setFilter('ALL')"
+    >
+      All ({{ totalCampaignsCount }})
+    </button>
+
+    <button
+      type="button"
+      class="tab-pill-btn"
+      [class.active]="filterStatus === 'ACTIVE'"
+      (click)="setFilter('ACTIVE')"
+    >
+      <span class="tab-indicator-dot dot-active"></span>
+      Active ({{ activeCount }})
+    </button>
+
+    <button
+      type="button"
+      class="tab-pill-btn"
+      [class.active]="filterStatus === 'PLANNING'"
+      (click)="setFilter('PLANNING')"
+    >
+      <span class="tab-indicator-dot dot-planning"></span>
+      Planning ({{ planningCount }})
+    </button>
+
+    <button
+      type="button"
+      class="tab-pill-btn"
+      [class.active]="filterStatus === 'PAUSED'"
+      (click)="setFilter('PAUSED')"
+    >
+      <span class="tab-indicator-dot dot-paused"></span>
+      Paused ({{ pausedCount }})
+    </button>
+
+    <button
+      type="button"
+      class="tab-pill-btn"
+      [class.active]="filterStatus === 'COMPLETED'"
+      (click)="setFilter('COMPLETED')"
+    >
+      <span class="tab-indicator-dot dot-completed"></span>
+      Completed ({{ completedCount }})
+    </button>
+  </div>
+</div>

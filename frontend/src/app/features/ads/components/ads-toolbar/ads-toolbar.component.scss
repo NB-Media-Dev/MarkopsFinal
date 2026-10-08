@@ -1,0 +1,116 @@
+.toolbar-card {
+  background: #FFFFFF;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 20px;
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: #F8FAFC;
+    border: 1.5px solid #E2E8F0;
+    border-radius: 999px;
+    padding: 0.55rem 1rem;
+    flex: 1;
+    min-width: 260px;
+    transition: all 0.18s ease;
+
+    &:focus-within {
+      background: #FFFFFF;
+      border-color: #4F46E5;
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+    }
+
+    .search-icon {
+      color: #94A3B8;
+      font-size: 20px;
+    }
+
+    input {
+      border: none;
+      background: transparent;
+      outline: none;
+      font-size: 0.84375rem;
+      width: 100%;
+      color: #0F172A;
+      font-weight: 500;
+
+      &::placeholder {
+        color: #94A3B8;
+      }
+    }
+
+    .clear-search-btn {
+      border: none;
+      background: transparent;
+      padding: 0;
+      color: #94A3B8;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+
+      .material-symbols-outlined {
+        font-size: 16px;
+      }
+
+      &:hover {
+        color: #0F172A;
+      }
+    }
+  }
+
+  .segmented-tabs {
+    display: flex;
+    background: #F1F5F9;
+    border-radius: 999px;
+    padding: 3px;
+    gap: 3px;
+    flex-wrap: wrap;
+
+    .tab-pill-btn {
+      border: none;
+      background: transparent;
+      padding: 0.38rem 0.95rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #64748B;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+
+      .tab-indicator-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+
+        &.dot-meta { background-color: #0064E0; }
+        &.dot-google { background-color: #EA4335; }
+        &.dot-instagram { background-color: #E1306C; }
+        &.dot-linkedin { background-color: #0A66C2; }
+        &.dot-youtube { background-color: #FF0000; }
+      }
+
+      &:hover {
+        color: #0F172A;
+      }
+
+      &.active {
+        background-color: #FFFFFF;
+        color: #0F172A;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        font-weight: 700;
+      }
+    }
+  }
+}

@@ -1,0 +1,204 @@
+@if (summary; as sum) {
+  <div class="dashboard-overview">
+    <!-- High Level KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card border-blue">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-blue">
+            <span class="material-symbols-outlined">groups</span>
+          </div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">Total Leads</span>
+          <div class="kpi-value">{{ sum.totalLeads }}</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text">{{ sum.assignedLeads }} Assigned</span>
+          <span class="kpi-footer-pill pill-blue">{{ sum.unassignedLeads }} Unassigned</span>
+        </div>
+      </div>
+      <div class="kpi-card border-emerald">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-emerald">
+            <span class="material-symbols-outlined">call</span>
+          </div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">Total Calls</span>
+          <div class="kpi-value">{{ sum.totalCallsLogged }}</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text">Telecaller Calls</span>
+          <span class="kpi-footer-pill pill-emerald">Active Log</span>
+        </div>
+      </div>
+      <div class="kpi-card border-purple">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-purple">
+            <span class="material-symbols-outlined">thumb_up</span>
+          </div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">Interested Leads</span>
+          <div class="kpi-value">{{ sum.statusBreakdown['INTERESTED'] || 0 }}</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text">{{ sum.statusBreakdown['PAID'] || 0 }} PAID</span>
+          <span class="kpi-footer-pill pill-purple">High Intent</span>
+        </div>
+      </div>
+      <div class="kpi-card border-amber">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-amber">
+            <span class="material-symbols-outlined">headset_mic</span>
+          </div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">Telecallers</span>
+          <div class="kpi-value">{{ sum.telecallerMetrics.length }}</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text">Active Queue</span>
+          <span class="kpi-footer-pill pill-amber">Equal Distribution</span>
+        </div>
+      </div>
+    </div>
+    <!-- Telecaller Equal Allocation & Progress Cards -->
+    <div class="card-section mt-6">
+      <div class="section-header">
+        <div>
+          <h3>Telecaller Performance</h3>
+          <p class="subtitle">Overview of lead distribution and call outcomes per telecaller</p>
+        </div>
+      </div>
+      <div class="telecaller-metrics-grid">
+        @for (tc of sum.telecallerMetrics; track tc) {
+          <div class="telecaller-metric-card">
+            <div class="tc-header">
+              <div class="tc-avatar">
+                <span class="material-symbols-outlined">person</span>
+              </div>
+              <div>
+                <div class="tc-name">{{ tc.fullName }}</div>
+                <div class="tc-dept">{{ tc.email }}</div>
+              </div>
+              <span class="badge badge-teal">Equal Share</span>
+            </div>
+            <div class="tc-stats-row">
+              <div class="tc-stat">
+                <span class="stat-label">Assigned</span>
+                <span class="stat-val font-bold text-primary">{{ tc.assignedLeadsCount }}</span>
+              </div>
+              <div class="tc-stat">
+                <span class="stat-label">Calls</span>
+                <span class="stat-val font-bold text-emerald">{{ tc.callsLoggedCount }}</span>
+              </div>
+              <div class="tc-stat">
+                <span class="stat-label">Interested</span>
+                <span class="stat-val font-bold text-purple">{{ tc.interestedCount }}</span>
+              </div>
+            </div>
+            <div class="progress-bar-container mt-3">
+              <div class="progress-info">
+                <span>Progress</span>
+                <span
+                  >{{
+                    tc.assignedLeadsCount > 0
+                      ? Math.round((tc.callsLoggedCount / tc.assignedLeadsCount) * 100)
+                      : 0
+                  }}%</span
+                >
+              </div>
+              <div class="progress-track">
+                <div
+                  class="progress-fill"
+                  [style.width.%]="
+                    tc.assignedLeadsCount > 0
+                      ? Math.min(100, (tc.callsLoggedCount / tc.assignedLeadsCount) * 100)
+                      : 0
+                  "
+                ></div>
+              </div>
+            </div>
+            <div class="call-outcomes-badges mt-3">
+              <span class="mini-badge bg-emerald-subtle" title="Attended Calls">
+                <span class="material-symbols-outlined text-emerald fs-14">call_made</span>
+                Attended: {{ tc.attendedCount }}
+              </span>
+              <span class="mini-badge bg-amber-subtle" title="Not Attended">
+                <span class="material-symbols-outlined text-amber fs-14">phone_missed</span> Not
+                Attended: {{ tc.notAttendedCount }}
+              </span>
+              <span class="mini-badge bg-danger-subtle" title="Not Interested">
+                <span class="material-symbols-outlined text-danger fs-14">thumb_down</span> Not
+                Interested: {{ tc.notInterestedCount }}
+              </span>
+              <span class="mini-badge bg-slate-subtle" title="Avg Call Duration">
+                <span class="material-symbols-outlined text-slate fs-14">timer</span> Avg:
+                {{ tc.avgDurationSeconds }}s
+              </span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+    <!-- Telecaller Table Breakdown -->
+    <div class="table-card mt-6">
+      <div class="card-header-flex">
+        <h3>Telecaller Overview Matrix</h3>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Telecaller Name</th>
+              <th>Department</th>
+              <th>Assigned Leads</th>
+              <th>Calls Logged</th>
+              <th>Attended</th>
+              <th>Not Attended</th>
+              <th>Interested</th>
+              <th>Not Interested</th>
+              <th>Total Duration</th>
+              <th>Connect Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (tc of sum.telecallerMetrics; track tc) {
+              <tr>
+                <td class="font-bold">
+                  <div class="user-inline">
+                    <span class="material-symbols-outlined text-teal">account_circle</span>
+                    <span>{{ tc.fullName }}</span>
+                  </div>
+                </td>
+                <td>{{ tc.department }}</td>
+                <td class="font-bold text-blue">{{ tc.assignedLeadsCount }} Leads</td>
+                <td>{{ tc.callsLoggedCount }}</td>
+                <td>
+                  <span class="text-emerald font-bold">{{ tc.attendedCount }}</span>
+                </td>
+                <td>
+                  <span class="text-amber">{{ tc.notAttendedCount }}</span>
+                </td>
+                <td>
+                  <span class="badge badge-purple">{{ tc.interestedCount }}</span>
+                </td>
+                <td>
+                  <span class="text-danger">{{ tc.notInterestedCount }}</span>
+                </td>
+                <td>
+                  {{ Math.floor(tc.totalDurationSeconds / 60) }}m
+                  {{ tc.totalDurationSeconds % 60 }}s
+                </td>
+                <td>
+                  <span class="badge badge-green">{{ tc.conversionRate }}%</span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+}

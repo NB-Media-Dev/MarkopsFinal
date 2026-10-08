@@ -1,0 +1,58 @@
+<!-- MANUAL ASSIGN MODAL -->
+@if (lead) {
+  <div class="modal-backdrop" (click)="onCancel()">
+    <div class="modal-card modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-squircle-icon">
+            <span class="material-symbols-outlined">assignment_ind</span>
+          </div>
+          <div>
+            <h2>Assign Lead</h2>
+            <p class="modal-sub">
+              {{ lead.firstName }} {{ lead.lastName }}
+            </p>
+          </div>
+        </div>
+        <button
+          class="btn-close-modal"
+          (click)="onCancel()"
+          aria-label="Close"
+          type="button"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Select Telecaller <span class="required">*</span></label>
+          <select
+            [ngModel]="selectedUserId"
+            (ngModelChange)="onUserChange($event)"
+            class="form-input"
+          >
+            <option value="" disabled>-- Select Telecaller --</option>
+            @for (user of realUsersList; track user.id) {
+              <option [value]="user.id">
+                {{ user.fullName }}
+              </option>
+            }
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-action-secondary" (click)="onCancel()" type="button">
+          Cancel
+        </button>
+        <button
+          class="btn-action-primary"
+          (click)="onConfirm()"
+          [disabled]="!selectedUserId"
+          type="button"
+        >
+          <span>Assign Lead</span>
+        </button>
+      </div>
+    </div>
+  </div>
+}

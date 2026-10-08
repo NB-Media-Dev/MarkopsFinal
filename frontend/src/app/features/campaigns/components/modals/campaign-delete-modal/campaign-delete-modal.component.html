@@ -1,0 +1,38 @@
+@if (target) {
+  <div class="modal-backdrop" (click)="onCancel()">
+    <div class="modal-card modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header header-danger">
+        <div class="modal-title-wrap">
+          <div class="modal-squircle-icon icon-danger">
+            <span class="material-symbols-outlined">warning</span>
+          </div>
+          <div>
+            <h2>Delete Campaign</h2>
+            <p class="modal-sub">Irreversible action confirmation</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" (click)="onCancel()">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p class="delete-msg">
+          Are you sure you want to delete
+          <strong class="delete-target-name">{{ target.name }}</strong
+          >?
+        </p>
+        <p class="delete-sub">
+          This action will remove all associated campaign metrics, spend calculations, and
+          historical lead link data.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-action-secondary" (click)="onCancel()">Cancel</button>
+        <button class="btn-action-danger" (click)="onConfirm()">
+          <span class="material-symbols-outlined">delete_forever</span>
+          <span>Delete Campaign</span>
+        </button>
+      </div>
+    </div>
+  </div>
+}

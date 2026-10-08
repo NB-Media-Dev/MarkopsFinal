@@ -1,0 +1,170 @@
+<div
+  class="task-card"
+  [class.selected]="isSelected"
+  (click)="onView($event)"
+>
+  <!-- Card Header Topbar: Left Squircle + Package Chip | Right Priority & Status -->
+  <div class="task-card-header">
+    <div class="task-header-left">
+      <div
+        class="task-squircle-badge"
+        [ngClass]="'badge-status-' + (task.status | lowercase)"
+      >
+        {{ (task.packageName || task.title || 'C')[0].toUpperCase() }}
+      </div>
+    </div>
+    <div class="task-badges-right">
+      <span class="priority-pill" [ngClass]="getPriorityBadgeClass(task.priority)">{{
+        task.priority
+      }}</span>
+      <span class="status-badge" [ngClass]="getStatusBadgeClass(task.status)">{{
+        task.status
+      }}</span>
+    </div>
+  </div>
+
+  <!-- Task Title & Creator-Assignee Flow -->
+  <div class="task-title-section">
+    <h3 class="task-title" [title]="task.title">{{ task.title }}</h3>
+    <div class="task-flow-line">
+      <span class="flow-pill flow-creator" title="Creator">
+        <span class="material-symbols-outlined icon-4xs">person</span>
+        <span>{{ getShortCreator() }}</span>
+      </span>
+      <span class="material-symbols-outlined flow-arrow">arrow_forward</span>
+      <span class="flow-pill flow-assignee" title="Assigned Designer">
+        <span class="material-symbols-outlined icon-4xs">brush</span>
+        <span>{{ getShortAssignee() }}</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- Task Description (Comfortable reading size & line-height) -->
+  @if (hasCustomDescription()) {
+    <p class="task-desc">{{ getCleanDescription() }}</p>
+  }
+
+  <!-- Requirement Attachment (Spacious & Clean Chip) -->
+  @if (task.attachmentName || task.attachmentUrl || task.content) {
+    <div
+      class="requirement-chip"
+      (click)="onOpenDoc($event)"
+      [title]="'View requirement: ' + (task.attachmentName || 'Content Brief')"
+    >
+      <span class="material-symbols-outlined req-icon">description</span>
+      <span class="req-name">{{
+        task.attachmentName || task.content || 'Content_Brief.pdf'
+      }}</span>
+      <span class="material-symbols-outlined open-icon">open_in_new</span>
+    </div>
+  }
+
+  <!-- Revision Feedback Alert if Redesign was requested -->
+  @if (task.status === 'REVISION_REQUIRED' && task.reviewerFeedback) {
+    <div class="revision-feedback-alert">
+      <span class="material-symbols-outlined alert-icon">rate_review</span>
+      <span class="alert-body">"{{ task.reviewerFeedback }}"</span>
+    </div>
+  }
+
+  <!-- Progress Bar -->
+  <div class="progress-container">
+    <div class="progress-bar-bg">
+      <div class="progress-fill" [style.width.%]="getTaskProgress()"></div>
+    </div>
+    <span class="progress-pct">{{ getTaskProgress() }}%</span>
+  </div>
+
+  <!-- Footer: Due Date & Actions -->
+  <div class="task-card-footer">
+    <div class="footer-meta-left">
+      <span class="meta-due-date">
+        <span class="material-symbols-outlined icon-xs">calendar_today</span>
+        {{ task.dueDate | date: 'mediumDate' }}
+      </span>
+      @if (task.versions && task.versions.length > 0) {
+        <span class="version-chip"> v{{ task.versions[0].versionNumber }}.0 </span>
+      }
+    </div>
+    <div class="task-card-actions" (click)="$event.stopPropagation()">
+      <!-- 1. Designer: Start Work (When ASSIGNED) -->
+      @if (canStartWork()) {
+        <button
+          type="button"
+          class="btn-card-action btn-card-start"
+          (click)="onStartWork()"
+          title="Start Canvas Work"
+        >
+          <span class="material-symbols-outlined icon-xs">play_arrow</span>
+          <span>Start Work</span>
+        </button>
+      }
+      <!-- 2. Designer: Upload Design (When IN_PROGRESS) -->
+      @if (canUploadDesign()) {
+        <button
+          type="button"
+          class="btn-card-action btn-card-upload"
+          (click)="onUploadDesign()"
+          title="Upload Design Creative + Message"
+        >
+          <span class="material-symbols-outlined icon-xs">upload_file</span>
+          <span>Upload Design</span>
+        </button>
+      }
+      <!-- 3. Designer: Start Redesign (When REDESIGN_REQUIRED) -->
+      @if (canStartRedesign()) {
+        <button
+          type="button"
+          class="btn-card-action btn-card-start"
+          (click)="onStartRedesign()"
+          title="Start Working on Requested Redesign"
+        >
+          <span class="material-symbols-outlined icon-xs">refresh</span>
+          <span>Start Redesign</span>
+        </button>
+      }
+      <!-- 4. Creator / Manager: Approve & Redesign (When SUBMITTED) -->
+      @if (canReview()) {
+        <button
+          type="button"
+          class="btn-card-action btn-card-start text-success"
+          (click)="onApprove()"
+          title="Approve Design Creative"
+        >
+          <span class="material-symbols-outlined icon-xs">check_circle</span>
+          <span>Approve</span>
+        </button>
+        <button
+          type="button"
+          class="btn-card-action btn-card-review text-danger"
+          (click)="onOpenRedesign()"
+          title="Request Redesign with Feedback"
+        >
+          <span class="material-symbols-outlined icon-xs">rate_review</span>
+          <span>Redesign</span>
+        </button>
+      }
+      <!-- View Detail Button -->
+      <button
+        type="button"
+        class="btn-card-action btn-card-view"
+        (click)="onView($event)"
+        title="View Details"
+      >
+        <span class="material-symbols-outlined icon-xs">visibility</span>
+        <span>View Detail</span>
+      </button>
+      <!-- Delete (Only Task Creator) -->
+      @if (canDeleteTask()) {
+        <button
+          type="button"
+          class="btn-icon-trash"
+          (click)="onDelete($event)"
+          title="Delete Task"
+        >
+          <span class="material-symbols-outlined icon-xs">delete</span>
+        </button>
+      }
+    </div>
+  </div>
+</div>

@@ -1,0 +1,99 @@
+<div class="packages-catalog-container">
+  <!-- Packages Cards Grid matching user's design -->
+  @if (filteredProductPackages.length > 0) {
+    <div class="custom-packages-grid">
+      @for (pkg of filteredProductPackages; track pkg.id || pkg.name) {
+        <div
+          class="package-display-card"
+          (click)="onOpenPackage(pkg)"
+          [attr.data-package-id]="pkg.id"
+        >
+          <!-- Top Banner Image Area -->
+          <div class="package-display-banner">
+            @if (pkg.imageUrl) {
+              <img
+                [src]="formatAssetUrl(pkg.imageUrl)"
+                [alt]="pkg.name"
+                class="package-banner-image"
+                (error)="$any($event.target).src = '/vidhvaa-career-img.png'"
+              />
+            }
+            @if (!pkg.imageUrl) {
+              <div class="package-banner-placeholder">
+                <div class="placeholder-crest">
+                  <span class="material-symbols-outlined">category</span>
+                </div>
+                <span class="placeholder-title">{{ pkg.name }}</span>
+              </div>
+            }
+            <!-- Top-Right Actions Overlay (Edit & Delete) -->
+            <div class="package-card-actions-overlay">
+              @if (canDeletePackage) {
+                <button
+                  type="button"
+                  (click)="onDeletePackage(pkg, $event)"
+                  class="package-card-action-icon delete-icon"
+                  title="Delete Package"
+                >
+                  <span class="material-symbols-outlined">delete</span>
+                </button>
+              }
+            </div>
+          </div>
+          <!-- Bottom Card Content -->
+          <div class="package-display-info">
+            <div class="package-title-meta-box">
+              <h3 class="package-display-title" [title]="pkg.name">{{ pkg.name }}</h3>
+              <div class="package-meta-row">
+              </div>
+            </div>
+            <div class="package-display-btn-wrapper">
+              @if (canEditPackage) {
+                <button
+                  type="button"
+                  class="package-card-btn package-edit-btn"
+                  (click)="onEditPackage(pkg, $event)"
+                  title="Edit package details"
+                >
+                  <span class="material-symbols-outlined">edit</span>
+                  <span>Edit</span>
+                </button>
+              }
+              <button
+                type="button"
+                class="package-card-btn package-open-btn"
+                (click)="onOpenPackage(pkg); $event.stopPropagation()"
+                [attr.id]="'btn-view-pkg-' + pkg.id"
+              >
+                <span>Open</span>
+                <span class="material-symbols-outlined">arrow_forward</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+  <!-- Empty State -->
+  @if (filteredProductPackages.length === 0) {
+    <div class="packages-empty-state-card">
+      <div class="empty-squircle-icon">
+        <span class="material-symbols-outlined">inventory_2</span>
+      </div>
+      <h3 class="empty-state-title">No Packages Found</h3>
+      <p class="empty-state-desc">
+        There are currently no packages configured under {{ activePackageMeta?.name || 'Product' }}.
+      </p>
+      @if (canCreatePackage) {
+        <button
+          (click)="onCreatePackage()"
+          class="empty-create-package-btn"
+          id="btn-empty-create-pkg"
+        >
+          <span class="material-symbols-outlined">add_circle</span>
+          <span>Create Package</span>
+        </button>
+      }
+    </div>
+  }
+</div>

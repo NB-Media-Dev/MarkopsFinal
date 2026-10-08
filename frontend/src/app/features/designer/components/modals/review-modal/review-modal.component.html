@@ -1,0 +1,50 @@
+@if (isOpen) {
+  <div class="modal-backdrop" (click)="onClose()">
+    <div class="modal-box review-modal-box" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge">
+            <span class="material-symbols-outlined">rate_review</span>
+          </div>
+          <div>
+            <h2 class="modal-title-text">Review Design Submission</h2>
+            <span class="modal-subtitle-text"
+              >Approve or request redesign from the creative designer</span
+            >
+          </div>
+        </div>
+        <button class="close-btn" (click)="onClose()" title="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <form [formGroup]="reviewForm" (ngSubmit)="onSubmit()">
+        <div class="modal-body p-4">
+          <div class="form-group mb-3">
+            <label class="form-label-bold">Decision *</label>
+            <select formControlName="action" class="form-control-modern">
+              <option value="APPROVE">Approve Design (Mark Complete)</option>
+              <option value="REQUEST_REVISION">Request Redesign (Return to In-Progress)</option>
+            </select>
+          </div>
+          <div class="form-group mb-2">
+            <label class="form-label-bold">Feedback & Instructions *</label>
+            <textarea
+              formControlName="remark"
+              rows="3"
+              class="form-control-modern textarea-modern"
+              placeholder="Enter review remarks or instructions..."
+            ></textarea>
+          </div>
+        </div>
+        <div class="modal-footer review-modal-footer">
+          <button type="button" class="btn btn-ghost-modern" (click)="onClose()">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary-gradient" [disabled]="reviewForm.invalid">
+            Submit Review
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

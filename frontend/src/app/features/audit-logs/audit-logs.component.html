@@ -1,0 +1,231 @@
+<div class="audit-logs-page">
+  <header class="page-header">
+    <div class="header-titles-group">
+      <h1 class="page-heading">
+        <a routerLink="/dashboard" class="title-back-btn" title="Back to Dashboard">
+          <span class="arrow-char">←</span>
+        </a>
+        <span>Security & Operational Audit Trail</span>
+      </h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn-obsidian-refresh" (click)="fetchAuditLogs()">
+        <span class="material-symbols-outlined btn-gold-icon">refresh</span>
+        <span>Refresh Records</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 3 TOP KPI SUMMARY CARDS (Medium-Sized Luxury Design) -->
+  <section class="kpi-grid">
+    <div class="kpi-card card-events">
+      <div class="kpi-top-row">
+        <div class="kpi-squircle-icon icon-indigo">
+          <span class="material-symbols-outlined">shield_lock</span>
+        </div>
+        <div class="kpi-pill-badge pill-indigo">Immutable</div>
+      </div>
+      <div class="kpi-body">
+        <span class="kpi-title">TOTAL RECORDED EVENTS</span>
+        <div class="kpi-value">{{ totalLogsCount() }}</div>
+      </div>
+      <div class="kpi-footer-row">
+        <span class="kpi-footer-text">Audit Traceability</span>
+        <span class="kpi-footer-pill pill-indigo">100% Retained</span>
+      </div>
+    </div>
+
+    <div class="kpi-card card-logins">
+      <div class="kpi-top-row">
+        <div class="kpi-squircle-icon icon-emerald">
+          <span class="material-symbols-outlined">vpn_key</span>
+        </div>
+        <div class="kpi-pill-badge pill-emerald">Verified</div>
+      </div>
+      <div class="kpi-body">
+        <span class="kpi-title">AUTH & ACCESS EVENTS</span>
+        <div class="kpi-value">{{ loginEventsCount() }}</div>
+      </div>
+      <div class="kpi-footer-row">
+        <span class="kpi-footer-text">Authentication Logs</span>
+        <span class="kpi-footer-pill pill-emerald">Secure Access</span>
+      </div>
+    </div>
+
+    <div class="kpi-card card-mutations">
+      <div class="kpi-top-row">
+        <div class="kpi-squircle-icon icon-amber">
+          <span class="material-symbols-outlined">history_toggle_off</span>
+        </div>
+        <div class="kpi-pill-badge pill-amber">Monitored</div>
+      </div>
+      <div class="kpi-body">
+        <span class="kpi-title">DATA & STATUS MUTATIONS</span>
+        <div class="kpi-value">{{ securityEditsCount() }}</div>
+      </div>
+      <div class="kpi-footer-row">
+        <span class="kpi-footer-text">State Changes</span>
+        <span class="kpi-footer-pill pill-amber">Integrity Checked</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Filter & Search Toolbar Card -->
+  <div class="toolbar-card">
+    <div class="search-box">
+      <span class="material-symbols-outlined search-icon">search</span>
+      <input
+        type="text"
+        placeholder="Filter logs by actor email, action event, entity type or ID..."
+        [value]="searchQuery()"
+        (input)="onSearch($event)"
+      />
+    </div>
+
+    <div class="filter-pills-bar">
+      <button
+        class="filter-pill-btn"
+        [class.active]="actionFilter() === 'ALL'"
+        (click)="onFilterAction('ALL')"
+      >
+        All Events ({{ logs().length }})
+      </button>
+      <button
+        class="filter-pill-btn"
+        [class.active]="actionFilter() === 'LOGIN_SUCCESS'"
+        (click)="onFilterAction('LOGIN_SUCCESS')"
+      >
+        <span class="pill-dot emerald-dot"></span> Logins
+      </button>
+      <button
+        class="filter-pill-btn"
+        [class.active]="actionFilter() === 'USER_CREATED'"
+        (click)="onFilterAction('USER_CREATED')"
+      >
+        <span class="pill-dot indigo-dot"></span> User Registrations
+      </button>
+      <button
+        class="filter-pill-btn"
+        [class.active]="actionFilter() === 'STATUS_CHANGED'"
+        (click)="onFilterAction('STATUS_CHANGED')"
+      >
+        <span class="pill-dot amber-dot"></span> Status Edits
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  @if (isLoading()) {
+    <div class="loading-state-card">
+      <div class="luxury-spinner"></div>
+      <h4>Loading Security Audit Trail...</h4>
+      <p>Retrieving cryptographic and tamper-evident event records</p>
+    </div>
+  }
+
+  <!-- Audit Table Card -->
+  @if (!isLoading()) {
+    <div class="table-card card-audit-perf">
+      <div class="card-title-bar">
+        <div class="title-with-badge">
+          <div class="title-icon-squircle">
+            <span class="material-symbols-outlined">verified_user</span>
+          </div>
+          <div>
+            <h3>System Event Ledger</h3>
+            <span class="table-sub-meta"
+              >{{ filteredLogs().length }} audit logs match current criteria</span
+            >
+          </div>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Actor / Account</th>
+              <th>Action Event</th>
+              <th>Target Entity</th>
+              <th>IP & Device</th>
+              <th>State Diff</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (log of filteredLogs(); track log) {
+              <tr>
+                <td class="timestamp-cell">
+                  <span class="date-str">{{ log.createdAt | date: 'mediumDate' }}</span>
+                  <span class="time-str">{{ log.createdAt | date: 'shortTime' }}</span>
+                </td>
+                <td>
+                  <div class="actor-card-mini">
+                    <div class="actor-avatar-circle">
+                      {{ (log.actorEmail || 'SY').slice(0, 2).toUpperCase() }}
+                    </div>
+                    <div class="actor-info">
+                      <span class="actor-email">{{ log.actorEmail || 'System Process' }}</span>
+                      @if (log.actorId) {
+                        <span class="actor-id-sub">ID: {{ log.actorId }}</span>
+                      }
+                    </div>
+                  </div>
+                </td>
+                <td>
+                  <span class="audit-badge" [ngClass]="getActionBadgeClass(log.action)">
+                    {{ log.action }}
+                  </span>
+                </td>
+                <td>
+                  <div class="entity-pill">
+                    <span class="entity-type">{{ log.entityType }}</span>
+                    <span class="entity-id-hash">{{ log.entityId }}</span>
+                  </div>
+                </td>
+                <td class="ip-device-cell">
+                  <span class="ip-tag">{{ log.ipAddress || '127.0.0.1' }}</span>
+                  @if (log.userAgent) {
+                    <span class="user-agent-str">{{ log.userAgent | slice: 0 : 28 }}...</span>
+                  }
+                </td>
+                <td class="diff-cell">
+                  @if (log.previousState) {
+                    <div class="diff-row diff-prev">
+                      <span class="diff-tag">PREV</span>
+                      <span class="diff-content">{{ formatState(log.previousState) }}</span>
+                    </div>
+                  }
+                  @if (log.newState) {
+                    <div class="diff-row diff-new">
+                      <span class="diff-tag">NEW</span>
+                      <span class="diff-content">{{ formatState(log.newState) }}</span>
+                    </div>
+                  }
+                  @if (!log.previousState && !log.newState) {
+                    <span class="text-muted-dash">-</span>
+                  }
+                </td>
+              </tr>
+            }
+            @if (filteredLogs().length === 0) {
+              <tr>
+                <td colspan="6" class="empty-state-cell">
+                  <div class="empty-state-box">
+                    <div class="empty-icon-squircle">
+                      <span class="material-symbols-outlined">shield_moon</span>
+                    </div>
+                    <h4 class="empty-title">No audit records found</h4>
+                    <p class="empty-subtitle">
+                      There are no audit events matching the selected action filter or search
+                      keyword.
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</div>

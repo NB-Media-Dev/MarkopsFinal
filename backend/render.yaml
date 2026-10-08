@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: markops-backend
+    env: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install && npx prisma generate --schema=prisma/schema.prisma
+    startCommand: node server/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false

@@ -1,0 +1,208 @@
+<!-- CREATE / EDIT AD METRIC MODAL -->
+@if (isOpen) {
+  <div class="modal-backdrop" (click)="onClose()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+      
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-squircle-icon">
+            <span class="material-symbols-outlined">{{
+              isEditing ? 'edit_note' : 'add_chart'
+            }}</span>
+          </div>
+          <div>
+            <h2>{{ isEditing ? 'Edit Ad Metric' : 'Create Ad Metric Record' }}</h2>
+            <p class="modal-sub">Link approved designs and configure performance metrics</p>
+          </div>
+        </div>
+        <button class="btn-close-modal" (click)="onClose()" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        
+    
+        @if (allApprovedDesigns.length > 0) {
+          <div class="approved-designs-strip-box">
+            <div class="strip-header">
+              <div class="strip-header-left">
+                <span class="material-symbols-outlined icon-verified">verified</span>
+                <span class="strip-title">Approved Designs</span>
+                <span class="strip-count">{{ allApprovedDesigns.length }}</span>
+              </div>
+              @if (selectedDesignId) {
+                <button type="button" class="btn-clear-link" (click)="clearSelectedDesign()">
+                  <span class="material-symbols-outlined">close</span>
+                  <span>Clear Selection</span>
+                </button>
+              }
+            </div>
+
+            <!-- Compact Horizontal Scrollable Design Cards -->
+            <div class="designs-strip-list">
+              @for (design of allApprovedDesigns; track design.id) {
+                <div
+                  class="compact-design-card"
+                  [class.selected]="selectedDesignId === design.id"
+                  (click)="selectDesign(design)"
+                >
+                  <div class="card-thumb-frame">
+                    @if (design.imageUrl) {
+                      <img [src]="design.imageUrl" [alt]="design.title" loading="lazy" />
+                    } @else {
+                      <div class="no-img-icon">
+                        <span class="material-symbols-outlined">palette</span>
+                      </div>
+                    }
+                    @if (selectedDesignId === design.id) {
+                      <div class="thumb-check">
+                        <span class="material-symbols-outlined">check</span>
+                      </div>
+                    }
+                  </div>
+
+                  <div class="card-info">
+                    <span class="card-title" [title]="design.title">{{ design.title }}</span>
+                    <div class="card-tags">
+                      <span class="tag-pkg">{{ design.packageName }}</span>
+                      <span
+                        class="tag-role"
+                        [ngClass]="{
+                          'tag-role-bdm': design.approverRole === 'BDM',
+                          'tag-role-admin': design.approverRole === 'ADMIN'
+                        }"
+                      >
+                        <span class="material-symbols-outlined">verified</span>
+                        {{ design.approverRole === 'BDM' ? 'BDM' : 'Admin' }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- SECTION 2: AD ATTRIBUTION & CONFIGURATION -->
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label class="form-label">
+              Ad Name <span class="required">*</span>
+              @if (selectedDesignId) {
+                <span class="linked-tag">✓ Design Linked</span>
+              }
+            </label>
+            <div class="input-with-icon">
+              <span class="material-symbols-outlined input-prefix-ico">brush</span>
+              <input
+                type="text"
+                [(ngModel)]="formModel.name"
+                placeholder="e.g. Meta - Carousel Promo"
+                class="form-input with-icon"
+              />
+            </div>
+          </div>
+
+          <div class="form-group flex-1">
+            <label class="form-label">Platform</label>
+            <select [(ngModel)]="formModel.platform" class="form-input">
+              <option value="Meta">Meta</option>
+              <option value="Google Ads">Google Ads</option>
+              <option value="Instagram">Instagram</option>
+              <option value="LinkedIn">LinkedIn</option>
+              <option value="YouTube">YouTube</option>
+            </select>
+          </div>
+
+          <div class="form-group flex-1">
+            <label class="form-label">Status</label>
+            <select [(ngModel)]="formModel.status" class="form-input">
+              <option value="ACTIVE">Active</option>
+              <option value="PAUSED">Paused</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="DRAFT">Draft</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-2">
+            <label class="form-label">Campaign Association</label>
+            <select
+              [ngModel]="formModel.campaignId"
+              (ngModelChange)="onCampaignChange($event)"
+              class="form-input"
+            >
+              <option value="">-- Select Campaign --</option>
+              @for (cmp of campaigns; track cmp.id) {
+                <option [value]="cmp.id">
+                  {{ cmp.name }}
+                </option>
+              }
+            </select>
+          </div>
+
+          <div class="form-group flex-1">
+            <label class="form-label">Platform Ad ID</label>
+            <input
+              type="text"
+              [(ngModel)]="formModel.platformAdId"
+              placeholder="e.g. ad_ext_492019"
+              class="form-input"
+            />
+          </div>
+        </div>
+
+        <!-- SECTION 3: SPEND & ENGAGEMENT METRICS -->
+        <div class="section-divider">
+          <span>Spend & Engagement</span>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label class="form-label">Spend (₹)</label>
+            <input type="number" [(ngModel)]="formModel.spend" min="0" class="form-input" />
+          </div>
+          <div class="form-group flex-1">
+            <label class="form-label">Leads</label>
+            <input type="number" [(ngModel)]="formModel.leadsCount" min="0" class="form-input" />
+          </div>
+          <div class="form-group flex-1">
+            <label class="form-label">Impressions</label>
+            <input type="number" [(ngModel)]="formModel.impressions" min="0" class="form-input" />
+          </div>
+          <div class="form-group flex-1">
+            <label class="form-label">Clicks</label>
+            <input type="number" [(ngModel)]="formModel.clicks" min="0" class="form-input" />
+          </div>
+        </div>
+
+        <!-- Auto Computed Metrics Badges -->
+        <div class="live-calc-panel">
+          <div class="calc-item calc-item-emerald">
+            <span class="calc-label">Auto CPL</span>
+            <span class="calc-val">₹{{ computedModalCpl }}</span>
+            <span class="calc-formula">(Spend / Leads)</span>
+          </div>
+          <div class="calc-item calc-item-purple">
+            <span class="calc-label">Auto CTR</span>
+            <span class="calc-val">{{ computedModalCtr }}%</span>
+            <span class="calc-formula">(Clicks / Impressions * 100)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer">
+        <button class="btn-action-secondary" (click)="onClose()">Cancel</button>
+        <button class="btn-action-primary" (click)="onSave()">
+          <span class="material-symbols-outlined icon-glow">save</span>
+          <span>{{ isEditing ? 'Update Ad' : 'Save Ad' }}</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+}

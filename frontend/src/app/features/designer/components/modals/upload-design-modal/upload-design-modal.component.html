@@ -1,0 +1,195 @@
+@if (isOpen) {
+  <div class="modal-backdrop upload-modal-backdrop" (click)="onClose()">
+    <div class="modal-box upload-modal-box" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="modal-header upload-modal-header">
+        <div class="modal-title-group">
+          <div class="modal-icon-badge upload-icon-badge">
+            <span class="material-symbols-outlined">upload_file</span>
+          </div>
+          <div>
+            <div class="d-flex align-items-center gap-2">
+              <h2 class="modal-title-text">Upload Design</h2>
+            </div>
+            <span class="modal-subtitle-text">
+              Task: <strong>{{ task?.title || 'Design Task' }}</strong>
+            </span>
+          </div>
+        </div>
+        <button type="button" class="close-btn" (click)="onClose()" title="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <form [formGroup]="uploadForm" (ngSubmit)="onSubmit()">
+        <div class="modal-body upload-modal-body">
+          <!-- Step 1: Interactive File Dropzone / Selected File Preview -->
+          <div class="form-group mb-2">
+            <!-- When NO file is selected: Dropzone -->
+            @if (!selectedFileObject()) {
+              <div class="creative-upload-dropzone" (click)="triggerFileInput()">
+                <div class="cloud-icon-circle">
+                  <span class="material-symbols-outlined">cloud_upload</span>
+                </div>
+                <div class="dropzone-text-group">
+                  <span class="primary-prompt"
+                    ><strong>Click to browse</strong> or drag & drop design files</span
+                  >
+                  <span class="secondary-hint"
+                    >PNG, JPG, WEBP, PDF, SVG, PSD, AI, MP4 (max 50MB)</span
+                  >
+                </div>
+              </div>
+            }
+            <!-- When a file IS selected: Compact Preview Card -->
+            @if (selectedFileObject()) {
+              <div class="selected-asset-preview-card">
+                <div class="asset-icon-box">
+                  <span class="material-symbols-outlined file-ico">
+                    {{
+                      isPdf(uploadForm.get('fileName')?.value || '') ? 'picture_as_pdf' : 'image'
+                    }}
+                  </span>
+                </div>
+                <div class="asset-info-col">
+                  <div class="asset-name-row">
+                    <span class="asset-filename">{{
+                      uploadForm.get('fileName')?.value || selectedFileObject()?.name
+                    }}</span>
+                    <span class="asset-ready-badge">
+                      <span class="material-symbols-outlined icon-2xs">check_circle</span>
+                      Ready
+                    </span>
+                  </div>
+                  <div class="asset-meta-row">
+                    <span class="asset-size-pill"
+                      >{{ uploadForm.get('fileSizeMb')?.value }} MB</span
+                    >
+                    @if (selectedFileObject()?.type) {
+                      <span class="asset-type-pill">{{ selectedFileObject()?.type }}</span>
+                    }
+                  </div>
+                </div>
+                <div class="asset-actions-col">
+                  <button
+                    type="button"
+                    class="btn-change-file"
+                    (click)="triggerFileInput()"
+                    title="Replace file"
+                  >
+                    <span class="material-symbols-outlined icon-xs">refresh</span>
+                    <span>Change</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-remove-file"
+                    (click)="clearSelectedFile()"
+                    title="Remove file"
+                  >
+                    <span class="material-symbols-outlined icon-xs">close</span>
+                  </button>
+                </div>
+              </div>
+            }
+            <input
+              id="designerCreativeFileInput"
+              type="file"
+              (change)="onFileSelected($event)"
+              accept="image/*,video/*,.pdf,.psd,.ai,.svg"
+              class="hidden-file-input"
+              style="display: none"
+            />
+          </div>
+          <!-- Step 2: Version File Label & Output Label -->
+          <div class="form-group mb-2">
+            <label class="form-label-bold" for="upFileName"
+              >Version File Label <span class="required-star">*</span></label
+            >
+            <div class="input-with-icon-wrapper">
+              <span class="material-symbols-outlined input-prefix-icon">description</span>
+              <input
+                id="upFileName"
+                type="text"
+                formControlName="fileName"
+                placeholder="e.g. creative_design_v1.png"
+                class="form-control-modern"
+              />
+            </div>
+          </div>
+          <!-- Step 3: Changelog & Quick Feedback Tags -->
+          <div class="form-group mb-2">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label class="form-label-bold" for="upChangelog"
+                >Hint Message <span class="required-star">*</span></label
+              >
+              <span class="char-hint text-subtle fs-11"
+                >Click snippets below to add bullet points</span
+              >
+            </div>
+            <textarea
+              id="upChangelog"
+              formControlName="changelog"
+              rows="3"
+              (keydown)="onChangelogKeyDown($event)"
+              class="form-control-modern textarea-modern bullet-textarea"
+              placeholder="• Initial Draft&#10;• Adjusted Spacing & Alignment"
+            ></textarea>
+          </div>
+          <!-- Quick Preset Snippet Chips -->
+          <div class="quick-preset-chips-box mb-1">
+            <span class="chips-label">Quick Snippets:</span>
+            <div class="chips-scroll">
+              <button
+                type="button"
+                class="quick-chip-btn"
+                (click)="appendChangelog('Initial Complete Deliverable')"
+              >
+                + Initial Draft
+              </button>
+              <button
+                type="button"
+                class="quick-chip-btn"
+                (click)="appendChangelog('Adjusted Spacing & Alignment')"
+              >
+                + Spacing & Alignment
+              </button>
+              <button
+                type="button"
+                class="quick-chip-btn"
+                (click)="appendChangelog('Color Palette & Brand Font Fixed')"
+              >
+                + Color & Fonts
+              </button>
+              <button
+                type="button"
+                class="quick-chip-btn"
+                (click)="appendChangelog('High-Res Export (Print & Web Ready)')"
+              >
+                + High-Res Export
+              </button>
+            </div>
+          </div>
+        </div>
+        <!-- Modal Footer -->
+        <div class="modal-footer upload-modal-footer">
+          <div class="footer-btn-group">
+            <button
+              type="button"
+              class="btn btn-ghost-modern"
+              (click)="onClose()"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="btn btn-primary-gradient"
+              [disabled]="uploadForm.invalid"
+            >
+              <span class="material-symbols-outlined icon-xs">cloud_upload</span>
+              <span>Submit Version v{{ (task?.versions?.length || 0) + 1 }}.0</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+}

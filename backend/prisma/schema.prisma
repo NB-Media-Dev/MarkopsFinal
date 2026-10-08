@@ -1,0 +1,643 @@
+// ============================================================================
+// MARKOPS PRISMA SCHEMA
+// Generator: Prisma Client JS
+// Datasource: MySQL 8.0+
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ----------------------------------------------------------------------------
+// ENUMS
+// ----------------------------------------------------------------------------
+
+enum CampaignStatus {
+  PLANNING
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum MetaConnectionStatus {
+  CONNECTED
+  EXPIRED
+  ERROR
+  DISCONNECTED
+}
+
+enum MetaSyncType {
+  MANUAL
+  SCHEDULED
+  WEBHOOK
+}
+
+enum MetaSyncStatus {
+  SUCCESS
+  FAILED
+  PARTIAL
+}
+
+enum AdStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum TaskStatus {
+  DRAFT
+  ASSIGNED
+  ACCEPTED
+  IN_PROGRESS
+  SUBMITTED
+  UNDER_REVIEW
+  REVISION_REQUIRED
+  RESUBMITTED
+  APPROVED
+  PUBLISHED
+  COMPLETED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum LeadStatus {
+  NEW
+  ASSIGNED
+  CONTACTED
+  INTERESTED
+  NOT_INTERESTED
+  QUALIFIED
+  CONVERTED
+  LOST
+}
+
+enum CallOutcome {
+  CONNECTED
+  NO_ANSWER
+  BUSY
+  WRONG_NUMBER
+  INTERESTED
+  NOT_INTERESTED
+  QUALIFIED
+}
+
+enum FollowUpStatus {
+  PENDING
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ALERT
+}
+
+// ----------------------------------------------------------------------------
+// MODELS
+// ----------------------------------------------------------------------------
+
+model Role {
+  id          Int              @id @default(autoincrement())
+  name        String           @db.VarChar(50)
+  code        String           @unique @db.VarChar(50)
+  description String?          @db.VarChar(255)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  permissions RolePermission[]
+  users       User[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          Int              @id @default(autoincrement())
+  name        String           @db.VarChar(100)
+  code        String           @unique @db.VarChar(100)
+  module      String           @db.VarChar(50)
+  description String?          @db.VarChar(255)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       Int        @map("role_id")
+  permissionId Int        @map("permission_id")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model Team {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(255)
+  managerId   Int?     @map("manager_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  users       User[]
+
+  @@map("teams")
+}
+
+model User {
+  id               Int            @id @default(autoincrement())
+  email            String         @unique @db.VarChar(191)
+  passwordHash     String         @map("password_hash") @db.VarChar(255)
+  fullName         String         @map("full_name") @db.VarChar(100)
+  roleId           Int            @map("role_id")
+  teamId           Int?           @map("team_id")
+  department       String?        @db.VarChar(100)
+  isActive         Boolean        @default(true) @map("is_active")
+  lastLoginAt      DateTime?      @map("last_login_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  auditLogs        AuditLog[]
+  callActivities   CallActivity[]
+  conversions      Conversion[]
+  createdCampaigns Campaign[]     @relation("CampaignOwner")
+  followUps        FollowUp[]
+  assignedLeads    Lead[]         @relation("LeadAssignee")
+  telecallerAssignedLeads Lead[]  @relation("AssignedTelecaller")
+  notifications    Notification[]
+  assignedTasks    Task[]         @relation("TaskAssignee")
+  createdTasks     Task[]         @relation("TaskCreator")
+  transactions     Transaction[]
+  role             Role           @relation(fields: [roleId], references: [id])
+  team             Team?          @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  @@index([roleId])
+  @@index([teamId])
+  @@map("users")
+}
+
+model Campaign {
+  id                  Int            @id @default(autoincrement())
+  name                String         @db.VarChar(150)
+  objective           String         @db.VarChar(100)
+  status              CampaignStatus @default(PLANNING)
+  startDate           DateTime       @map("start_date") @db.Date
+  endDate             DateTime?      @map("end_date") @db.Date
+  budget              Decimal        @default(0.00) @db.Decimal(12, 2)
+  spend               Decimal        @default(0.00) @db.Decimal(12, 2)
+  leadsCount          Int            @default(0) @map("leads_count")
+  targetLeads         Int            @default(0) @map("target_leads")
+  targetCpl           Decimal        @default(0.00) @map("target_cpl") @db.Decimal(10, 2)
+  targetQualifiedPct  Decimal        @default(0.00) @map("target_qualified_pct") @db.Decimal(5, 2)
+  targetConversionPct Decimal        @default(0.00) @map("target_conversion_pct") @db.Decimal(5, 2)
+  ownerId             Int            @map("owner_id")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+  ads                 Ad[]
+  metaLeads           Lead[]         @relation("MetaCampaignLeads")
+  metaCampaignId      String?        @unique @map("meta_campaign_id") @db.VarChar(100)
+  clicks              Int            @default(0)
+  impressions         Int            @default(0)
+  owner               User           @relation("CampaignOwner", fields: [ownerId], references: [id])
+  conversions         Conversion[]
+  leads               Lead[]
+  tasks               Task[]
+
+  @@index([status])
+  @@index([ownerId])
+  @@map("campaigns")
+}
+
+model MetaConnection {
+  id                   Int                  @id @default(autoincrement())
+  accountName          String               @map("account_name") @db.VarChar(100)
+  adAccountId          String               @unique @map("ad_account_id") @db.VarChar(100)
+  businessId           String?              @map("business_id") @db.VarChar(100)
+  accessTokenEncrypted String               @map("access_token_encrypted") @db.Text
+  tokenExpiresAt       DateTime?            @map("token_expires_at")
+  status               MetaConnectionStatus @default(CONNECTED)
+  lastSyncedAt         DateTime?            @map("last_synced_at")
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+  ads                  Ad[]
+  syncLogs             MetaSyncLog[]
+
+  @@map("meta_connections")
+}
+
+model MetaSyncLog {
+  id               Int            @id @default(autoincrement())
+  metaConnectionId Int            @map("meta_connection_id")
+  syncType         MetaSyncType   @default(SCHEDULED) @map("sync_type")
+  status           MetaSyncStatus
+  recordsProcessed Int            @default(0) @map("records_processed")
+  startedAt        DateTime       @map("started_at")
+  completedAt      DateTime?      @map("completed_at")
+  errorDetails     String?        @map("error_details") @db.Text
+  metaConnection   MetaConnection @relation(fields: [metaConnectionId], references: [id], onDelete: Cascade)
+
+  @@index([metaConnectionId])
+  @@map("meta_sync_logs")
+}
+
+model MetaWebhookEvent {
+  metaLeadId    String   @id @map("meta_lead_id") @db.VarChar(100)
+  formId        String?  @map("form_id") @db.VarChar(100)
+  pageId        String?  @map("page_id") @db.VarChar(100)
+  adId          String?  @map("ad_id") @db.VarChar(100)
+  campaignId    String?  @map("campaign_id") @db.VarChar(100)
+  status        String   @default("PENDING") @db.VarChar(20)
+  attempts      Int      @default(0)
+  lastError     String?  @map("last_error") @db.Text
+  nextAttemptAt DateTime @default(now()) @map("next_attempt_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([status, nextAttemptAt])
+  @@map("meta_webhook_events")
+}
+
+model Ad {
+  id                 Int             @id @default(autoincrement())
+  campaignId         Int             @map("campaign_id")
+  metaConnectionId   Int?            @map("meta_connection_id")
+  platformAdId       String?         @map("platform_ad_id") @db.VarChar(100)
+  platformAdsetId    String?         @map("platform_adset_id") @db.VarChar(100)
+  platformCampaignId String?         @map("platform_campaign_id") @db.VarChar(100)
+  name               String          @db.VarChar(150)
+  platform           String?         @db.VarChar(50)
+  spend              Decimal         @default(0.00) @db.Decimal(12, 2)
+  impressions        Int             @default(0)
+  clicks             Int             @default(0)
+  leadsCount         Int             @default(0) @map("leads_count")
+  status             AdStatus        @default(ACTIVE)
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+  adMetrics          AdMetric[]
+  campaign           Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  metaConnection     MetaConnection? @relation(fields: [metaConnectionId], references: [id], onDelete: SetNull)
+  leads              Lead[]
+  metaLeads          Lead[]          @relation("MetaAdLeads")
+
+  @@index([campaignId])
+  @@index([metaConnectionId])
+  @@index([platformCampaignId])
+  @@unique([platformAdId])
+  @@map("ads")
+}
+
+model AdMetric {
+  id           Int      @id @default(autoincrement())
+  adId         Int      @map("ad_id")
+  spend        Decimal  @default(0.00) @db.Decimal(12, 2)
+  impressions  BigInt   @default(0)
+  reach        BigInt   @default(0)
+  clicks       Int      @default(0)
+  ctr          Decimal  @default(0.00) @db.Decimal(5, 2)
+  cpc          Decimal  @default(0.00) @db.Decimal(10, 2)
+  leadsCount   Int      @default(0) @map("leads_count")
+  cpl          Decimal  @default(0.00) @db.Decimal(10, 2)
+  snapshotDate DateTime @map("snapshot_date") @db.Date
+  recordedAt   DateTime @default(now()) @map("recorded_at")
+  ad           Ad       @relation(fields: [adId], references: [id], onDelete: Cascade)
+
+  @@index([adId])
+  @@index([snapshotDate])
+  @@map("ad_metrics")
+}
+
+model Task {
+  id              Int                   @id @default(autoincrement())
+  campaignId      Int?                  @map("campaign_id")
+  title           String                @db.VarChar(150)
+  description     String?               @db.Text
+  status          TaskStatus            @default(DRAFT)
+  priority        TaskPriority          @default(MEDIUM)
+  createdBy       Int                   @map("created_by")
+  assignedTo      Int?                  @map("assigned_to")
+  dueDate         DateTime?             @map("due_date") @db.Date
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+  assignee        User?                 @relation("TaskAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
+  campaign        Campaign?             @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  creator         User                  @relation("TaskCreator", fields: [createdBy], references: [id])
+  assignments     TaskAssignment[]
+  attachments     TaskAttachment[]
+  comments        TaskComment[]
+  progressHistory TaskProgressHistory[]
+  statusHistory   TaskStatusHistory[]
+  versions        TaskVersion[]
+
+  @@index([campaignId])
+  @@index([assignedTo])
+  @@index([status])
+  @@map("tasks")
+}
+
+model TaskAssignment {
+  id           Int       @id @default(autoincrement())
+  taskId       Int       @map("task_id")
+  assignedBy   Int       @map("assigned_by")
+  assignedTo   Int       @map("assigned_to")
+  assignedAt   DateTime  @default(now()) @map("assigned_at")
+  unassignedAt DateTime? @map("unassigned_at")
+  task         Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_assignments")
+}
+
+model TaskStatusHistory {
+  id             Int      @id @default(autoincrement())
+  taskId         Int      @map("task_id")
+  actorId        Int      @map("actor_id")
+  previousStatus String?  @map("previous_status") @db.VarChar(50)
+  newStatus      String   @map("new_status") @db.VarChar(50)
+  remark         String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+  task           Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_status_history")
+}
+
+model TaskProgressHistory {
+  id              Int      @id @default(autoincrement())
+  taskId          Int      @map("task_id")
+  actorId         Int      @map("actor_id")
+  progressPercent Int      @default(0) @map("progress_percent")
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+  task            Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_progress_history")
+}
+
+model TaskVersion {
+  id            Int      @id @default(autoincrement())
+  taskId        Int      @map("task_id")
+  versionNumber Int      @default(1) @map("version_number")
+  submittedBy   Int      @map("submitted_by")
+  fileName      String   @map("file_name") @db.VarChar(255)
+  filePath      String   @map("file_path") @db.VarChar(500)
+  storageKey    String   @map("storage_key") @db.VarChar(255)
+  fileSize      BigInt   @map("file_size")
+  mimeType      String   @map("mime_type") @db.VarChar(100)
+  changelog     String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+  task          Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_versions")
+}
+
+model TaskComment {
+  id        Int      @id @default(autoincrement())
+  taskId    Int      @map("task_id")
+  userId    Int      @map("user_id")
+  comment   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_comments")
+}
+
+model TaskAttachment {
+  id         Int      @id @default(autoincrement())
+  taskId     Int      @map("task_id")
+  fileName   String   @map("file_name") @db.VarChar(255)
+  filePath   String   @map("file_path") @db.VarChar(500)
+  fileSize   BigInt   @map("file_size")
+  uploadedBy Int      @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@map("task_attachments")
+}
+
+model Lead {
+  id             Int                 @id @default(autoincrement())
+  firstName      String              @map("first_name") @db.VarChar(100)
+  lastName       String?             @map("last_name") @db.VarChar(100)
+  email          String?             @db.VarChar(191)
+  phone          String              @db.VarChar(30)
+  source         String              @default("META_ADS") @db.VarChar(100)
+  campaignId     Int?                @map("campaign_id")
+  adId           Int?                @map("ad_id")
+  metaLeadId     String?             @unique @map("meta_lead_id") @db.VarChar(100)
+  metaCampaignId String?             @map("meta_campaign_id") @db.VarChar(100)
+  metaAdId       String?             @map("meta_ad_id") @db.VarChar(100)
+  assignmentStatus String             @default("UNASSIGNED") @map("assignment_status") @db.VarChar(30)
+  callDisposition String?             @map("call_disposition") @db.VarChar(100)
+  status         LeadStatus          @default(NEW)
+  assignedTo     Int?                @map("assigned_to")
+  assignedTelecallerId Int?          @map("assigned_telecaller_id")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+  callActivities CallActivity[]
+  conversion     Conversion?
+  followUps      FollowUp[]
+  assignments    LeadAssignment[]
+  statusHistory  LeadStatusHistory[]
+  ad             Ad?                 @relation(fields: [adId], references: [id], onDelete: SetNull)
+  assignee       User?               @relation("LeadAssignee", fields: [assignedTo], references: [id], onDelete: SetNull)
+  assignedTelecaller User?           @relation("AssignedTelecaller", fields: [assignedTelecallerId], references: [id], onDelete: SetNull)
+  campaign       Campaign?           @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  metaCampaign   Campaign?           @relation("MetaCampaignLeads", fields: [metaCampaignId], references: [metaCampaignId], onDelete: SetNull)
+  metaAd         Ad?                 @relation("MetaAdLeads", fields: [metaAdId], references: [platformAdId], onDelete: SetNull)
+  transactions   Transaction[]
+
+  @@index([phone])
+  @@index([email])
+  @@index([status])
+  @@index([assignedTo])
+  @@index([assignedTelecallerId])
+  @@index([campaignId])
+  @@index([metaCampaignId])
+  @@index([metaAdId])
+  @@map("leads")
+}
+
+model LeadAssignment {
+  id         Int      @id @default(autoincrement())
+  leadId     Int      @map("lead_id")
+  assignedBy Int      @map("assigned_by")
+  assignedTo Int      @map("assigned_to")
+  assignedAt DateTime @default(now()) @map("assigned_at")
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@map("lead_assignments")
+}
+
+model LeadStatusHistory {
+  id             Int      @id @default(autoincrement())
+  leadId         Int      @map("lead_id")
+  actorId        Int      @map("actor_id")
+  previousStatus String?  @map("previous_status") @db.VarChar(50)
+  newStatus      String   @map("new_status") @db.VarChar(50)
+  reason         String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+  lead           Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId])
+  @@map("lead_status_history")
+}
+
+model CallActivity {
+  id              Int         @id @default(autoincrement())
+  leadId          Int         @map("lead_id")
+  telecallerId    Int         @map("telecaller_id")
+  outcome         CallOutcome
+  durationSeconds Int         @default(0) @map("duration_seconds")
+  remarks         String?     @db.Text
+  nextAction      String?     @map("next_action") @db.VarChar(255)
+  calledAt        DateTime    @default(now()) @map("called_at")
+  lead            Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  telecaller      User        @relation(fields: [telecallerId], references: [id])
+
+  @@index([leadId])
+  @@index([telecallerId])
+  @@map("call_activities")
+}
+
+model FollowUp {
+  id           Int            @id @default(autoincrement())
+  leadId       Int            @map("lead_id")
+  telecallerId Int            @map("telecaller_id")
+  dueDate      DateTime       @map("due_date")
+  status       FollowUpStatus @default(PENDING)
+  notes        String?        @db.Text
+  completedAt  DateTime?      @map("completed_at")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  lead         Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  telecaller   User           @relation(fields: [telecallerId], references: [id])
+
+  @@index([leadId])
+  @@index([telecallerId])
+  @@index([dueDate, status])
+  @@map("follow_ups")
+}
+
+model Conversion {
+  id             Int           @id @default(autoincrement())
+  leadId         Int           @unique @map("lead_id")
+  campaignId     Int?          @map("campaign_id")
+  confirmedBy    Int           @map("confirmed_by")
+  convertedValue Decimal       @default(0.00) @map("converted_value") @db.Decimal(12, 2)
+  notes          String?       @db.Text
+  convertedAt    DateTime      @default(now()) @map("converted_at")
+  campaign       Campaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  confirmer      User          @relation(fields: [confirmedBy], references: [id])
+  lead           Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  transactions   Transaction[]
+
+  @@index([campaignId])
+  @@map("conversions")
+}
+
+model Transaction {
+  id              Int           @id @default(autoincrement())
+  conversionId    Int           @map("conversion_id")
+  leadId          Int           @map("lead_id")
+  amount          Decimal       @default(0.00) @db.Decimal(12, 2)
+  paymentStatus   PaymentStatus @default(COMPLETED) @map("payment_status")
+  paymentMethod   String        @default("CREDIT_CARD") @map("payment_method") @db.VarChar(50)
+  transactionRef  String        @unique @map("transaction_ref") @db.VarChar(100)
+  recordedBy      Int           @map("recorded_by")
+  transactionDate DateTime      @default(now()) @map("transaction_date")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  conversion      Conversion    @relation(fields: [conversionId], references: [id], onDelete: Cascade)
+  lead            Lead          @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  recorder        User          @relation(fields: [recordedBy], references: [id])
+
+  @@index([conversionId])
+  @@index([leadId])
+  @@map("transactions")
+}
+
+model Notification {
+  id        Int              @id @default(autoincrement())
+  userId    Int              @map("user_id")
+  title     String           @db.VarChar(150)
+  message   String           @db.Text
+  type      NotificationType @default(INFO)
+  isRead    Boolean          @default(false) @map("is_read")
+  readAt    DateTime?        @map("read_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id            Int      @id @default(autoincrement())
+  actorId       Int?     @map("actor_id")
+  action        String   @db.VarChar(100)
+  entityType    String   @map("entity_type") @db.VarChar(100)
+  entityId      String   @map("entity_id") @db.VarChar(100)
+  previousState Json?    @map("previous_state")
+  newState      Json?    @map("new_state")
+  ipAddress     String?  @map("ip_address") @db.VarChar(45)
+  userAgent     String?  @map("user_agent") @db.VarChar(255)
+  createdAt     DateTime @default(now()) @map("created_at")
+  actor         User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+model DailyPerformance {
+  id             Int      @id @default(autoincrement())
+  metricDate     DateTime @unique @map("metric_date") @db.Date
+  totalSpend     Decimal  @default(0.00) @map("total_spend") @db.Decimal(12, 2)
+  totalLeads     Int      @default(0) @map("total_leads")
+  qualifiedLeads Int      @default(0) @map("qualified_leads")
+  conversions    Int      @default(0)
+  totalRevenue   Decimal  @default(0.00) @map("total_revenue") @db.Decimal(12, 2)
+  avgCpl         Decimal  @default(0.00) @map("avg_cpl") @db.Decimal(10, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([metricDate])
+  @@map("daily_performance")
+}
+
+model Package {
+  id          Int      @id @default(autoincrement())
+  productId   String   @map("product_id") @db.VarChar(100)
+  name        String   @db.VarChar(255)
+  imageUrl    String?  @map("image_url") @db.LongText
+  price       Decimal? @db.Decimal(10, 2)
+  description String?  @db.Text
+  status      String   @default("ACTIVE") @db.VarChar(50)
+  createdBy   Int?     @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([productId])
+  @@map("packages")
+}

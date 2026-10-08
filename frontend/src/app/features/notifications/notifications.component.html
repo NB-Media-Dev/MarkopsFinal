@@ -1,0 +1,247 @@
+<div class="notifications-page">
+  <!-- Sleek Page Header -->
+  <header class="page-header">
+    <div class="header-left">
+      <div class="header-title-row">
+        <a (click)="goBack()" class="title-back-btn" title="Back to Previous Page">
+          <span class="arrow-char">←</span>
+        </a>
+        <h1>Notifications</h1>
+        <span class="live-dot-pulse" title="Live updates active"></span>
+        @if (stats().unread > 0) {
+          <span class="unread-count-badge"> {{ stats().unread }} unread </span>
+        }
+      </div>
+    </div>
+    <div class="header-right">
+      @if (notifService.unreadCount() > 0) {
+        <button
+          class="btn-mark-all"
+          (click)="notifService.markAllAsRead()"
+          title="Mark all notifications as read"
+        >
+          <span class="material-symbols-outlined fs-16">done_all</span>
+          Mark all as read
+        </button>
+      }
+    </div>
+  </header>
+
+  <!-- Unified Compact Filter & Control Bar -->
+  <div class="compact-controls-bar">
+    <!-- Category Tabs / Filter Chips -->
+    <div class="category-tabs">
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="selectedStatusFilter() === 'ALL'"
+        (click)="setStatusFilter('ALL')"
+      >
+        All <span class="tab-count">{{ stats().total }}</span>
+      </button>
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="selectedStatusFilter() === 'UNREAD'"
+        [class.has-unread]="stats().unread > 0"
+        (click)="setStatusFilter('UNREAD')"
+      >
+        Unread
+        @if (stats().unread > 0) {
+          <span class="tab-count unread-pill">{{ stats().unread }}</span>
+        }
+      </button>
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="selectedStatusFilter() === 'TASKS'"
+        (click)="setStatusFilter('TASKS')"
+      >
+        Tasks <span class="tab-count">{{ stats().tasks }}</span>
+      </button>
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="selectedStatusFilter() === 'REDESIGN'"
+        (click)="setStatusFilter('REDESIGN')"
+      >
+        Redesigns <span class="tab-count">{{ stats().redesigns }}</span>
+      </button>
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="selectedStatusFilter() === 'APPROVED'"
+        (click)="setStatusFilter('APPROVED')"
+      >
+        Approved <span class="tab-count">{{ stats().approved }}</span>
+      </button>
+      <button
+        type="button"
+        class="tab-btn"
+        [class.active]="selectedStatusFilter() === 'LEADS'"
+        (click)="setStatusFilter('LEADS')"
+      >
+        Leads & Outreach <span class="tab-count">{{ stats().leads }}</span>
+      </button>
+    </div>
+
+    <!-- Secondary Controls: Date Filter & Search -->
+    <div class="controls-right">
+      <!-- Date Quick Filter Pills -->
+      <div class="date-filter-group">
+        <button
+          type="button"
+          class="date-mini-btn"
+          [class.active]="selectedDateFilter() === 'ALL'"
+          (click)="setDateFilter('ALL')"
+        >
+          All
+        </button>
+        <button
+          type="button"
+          class="date-mini-btn"
+          [class.active]="selectedDateFilter() === 'TODAY'"
+          (click)="setDateFilter('TODAY')"
+        >
+          Today
+        </button>
+        <button
+          type="button"
+          class="date-mini-btn"
+          [class.active]="selectedDateFilter() === 'WEEK'"
+          (click)="setDateFilter('WEEK')"
+        >
+          7d
+        </button>
+
+        <!-- Compact Date Picker -->
+        <div
+          class="mini-date-picker"
+          [class.active]="selectedDateFilter() === 'CUSTOM'"
+          title="Filter by specific date"
+        >
+          <span class="material-symbols-outlined fs-14 text-muted">event</span>
+          <input
+            type="date"
+            class="mini-date-input"
+            [value]="customDate()"
+            (change)="onCustomDateChange($event)"
+          />
+        </div>
+      </div>
+
+      <!-- Compact Search Box -->
+      <div class="mini-search-box">
+        <span class="material-symbols-outlined fs-16 search-icon">search</span>
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Filter..."
+          [value]="searchQuery()"
+          (input)="onSearchChange($event)"
+        />
+        @if (searchQuery()) {
+          <button class="btn-clear-search" (click)="searchQuery.set('')" title="Clear search">
+            <span class="material-symbols-outlined fs-14">close</span>
+          </button>
+        }
+      </div>
+
+      <!-- Clear All Active Filters -->
+      @if (searchQuery() || selectedDateFilter() !== 'ALL' || selectedStatusFilter() !== 'ALL') {
+        <button class="btn-reset-filters" (click)="clearFilters()" title="Reset all filters">
+          <span class="material-symbols-outlined fs-14">filter_alt_off</span>
+          Reset
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Notification Grouped Streamlined Listing -->
+  @if (groupedNotifications().length > 0) {
+    <div class="notifications-container">
+      @for (group of groupedNotifications(); track group) {
+        <div class="date-group">
+          <!-- Date Divider Header -->
+          <div class="date-group-divider">
+            <div class="divider-left">
+              <span class="material-symbols-outlined fs-14 group-icon">{{ group.icon }}</span>
+              <span class="group-label">{{ group.label }}</span>
+            </div>
+            <span class="group-badge">{{ group.count }}</span>
+          </div>
+          <!-- Compact Notification Rows -->
+          <div class="date-group-rows">
+            @for (item of group.items; track item) {
+              <div
+                class="notif-row"
+                [class.unread]="!item.isRead"
+                [class]="getNotificationTypeClass(item)"
+                (click)="onNotificationClick(item)"
+                title="Click to open related page"
+              >
+                <!-- Unread Dot Indicator -->
+                <div class="status-indicator">
+                  @if (!item.isRead) {
+                    <span class="unread-dot"></span>
+                  }
+                </div>
+                <!-- Type Icon Pill -->
+                <div class="type-icon-pill" [ngClass]="getNotificationTypeClass(item)">
+                  <span class="material-symbols-outlined fs-18">{{
+                    getNotificationIcon(item)
+                  }}</span>
+                </div>
+                <!-- Notification Main Content Area -->
+                <div class="notif-body-area">
+                  <div class="notif-header-line">
+                    <div class="notif-title-wrap">
+                      <span class="notif-title">{{ cleanTitle(item.title) }}</span>
+                      @if (!item.isRead) {
+                        <span class="badge-new">NEW</span>
+                      }
+                    </div>
+                    <span class="notif-timestamp">{{
+                      formatNotificationTime(item.createdAt)
+                    }}</span>
+                  </div>
+                  <!-- Single-line / Two-line Message summary -->
+                  <p class="notif-message-preview" [title]="item.message">
+                    {{ item.message }}
+                  </p>
+                </div>
+                <!-- Right Action Zone -->
+                <div class="notif-action-zone">
+                  <!-- Mark as Read Button (shown when unread) -->
+                  @if (!item.isRead) {
+                    <button
+                      class="btn-quick-read"
+                      (click)="toggleRead($event, item)"
+                      title="Mark as read"
+                    >
+                      <span class="material-symbols-outlined fs-16">done</span>
+                    </button>
+                  }
+                  <!-- Navigation Chevron -->
+                  <span class="material-symbols-outlined fs-18 nav-arrow">arrow_forward</span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Sleek Empty State -->
+  @if (groupedNotifications().length === 0) {
+    <div class="empty-state">
+      <div class="empty-icon-box">
+        <span class="material-symbols-outlined fs-28">notifications_off</span>
+      </div>
+      <h3>No notifications found</h3>
+      <p>There are no alerts matching your current filter criteria.</p>
+      <button class="btn-reset-empty" (click)="clearFilters()">Reset filters</button>
+    </div>
+  }
+</div>

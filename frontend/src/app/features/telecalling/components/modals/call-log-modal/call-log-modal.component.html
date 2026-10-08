@@ -1,0 +1,220 @@
+@if (lead) {
+  <div class="modal-backdrop" (click)="onClose()">
+    <div class="modal-card modal-compact-card" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-squircle-icon">
+            <span class="material-symbols-outlined">phone_in_talk</span>
+          </div>
+          <div>
+            <h2>Log Call Activity</h2>
+            <p class="modal-sub">
+              Calling
+              <strong>{{ lead.firstName }} {{ lead.lastName }}</strong>
+              ({{ lead.phone }})
+            </p>
+          </div>
+        </div>
+        <button class="btn-close-modal" (click)="onClose()" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <!-- 1. Outcome & Duration Row -->
+        <div class="form-row outcome-duration-row">
+          <div class="form-group flex-1">
+            <label class="form-label">Call Outcome <span class="required">*</span></label>
+            <select
+              [(ngModel)]="callOutcome"
+              (change)="onCallOutcomeChange()"
+              class="form-input form-select-compact"
+            >
+              <option value="BUSY">Line Busy</option>
+              <option value="NO_ANSWER">No Answer</option>
+              <option value="WRONG_NUMBER">Wrong Number</option>
+              <option value="FOLLOW_UP">Follow Up</option>
+              <option value="INTERESTED">Interested</option>
+              <option value="NOT_INTERESTED">Not Interested</option>
+              <option value="QUALIFIED">Paid</option>
+            </select>
+          </div>
+          <!-- Duration (shown side by side when applicable) -->
+          @if (shouldShowDuration()) {
+            <div class="form-group flex-1">
+              <label class="form-label">Duration (Seconds)</label>
+              <div class="duration-input-compact">
+                <input
+                  type="number"
+                  [ngModel]="callDuration"
+                  (ngModelChange)="onDurationChange($event)"
+                  class="form-input duration-num"
+                />
+                <div class="duration-mini-pills">
+                  <button type="button" class="mini-pill" (click)="setDurationPreset(30)">
+                    30s
+                  </button>
+                  <button type="button" class="mini-pill" (click)="setDurationPreset(60)">
+                    1m
+                  </button>
+                  <button type="button" class="mini-pill" (click)="setDurationPreset(120)">
+                    2m
+                  </button>
+                  <button type="button" class="mini-pill" (click)="setDurationPreset(300)">
+                    5m
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+        <!-- 2. Reminder Option Toggle Button / Bar -->
+        <div
+          class="reminder-option-bar"
+          (click)="toggleReminder()"
+          [class.active-reminder]="enableReminder"
+        >
+          <div class="reminder-left">
+            <div class="reminder-icon-bubble">
+              <span class="material-symbols-outlined">{{
+                enableReminder ? 'alarm_on' : 'add_alarm'
+              }}</span>
+            </div>
+            <div class="reminder-text">
+              <div class="reminder-title">
+                <span>Set Follow-up Reminder</span>
+                @if (enableReminder) {
+                  <span class="reminder-badge">Active</span>
+                }
+              </div>
+              <div class="reminder-desc">Trigger shake alert at scheduled time</div>
+            </div>
+          </div>
+          <div class="reminder-switch-wrap">
+            <div class="toggle-pill" [class.on]="enableReminder">
+              <span class="toggle-handle"></span>
+            </div>
+          </div>
+        </div>
+        <!-- 3. Schedule Follow-up Date & Time Picker -->
+        @if (enableReminder) {
+          <div
+            class="form-group follow-up-scheduler-box animated-expand"
+            [class.highlighted-box]="
+              callOutcome === 'FOLLOW_UP' ||
+              callOutcome === 'NO_ANSWER' ||
+              callOutcome === 'BUSY' ||
+              callOutcome === 'INTERESTED'
+            "
+          >
+            <div class="scheduler-label-row">
+              <label class="form-label">
+                <span class="material-symbols-outlined fs-13 align-middle icon-timer-sub"
+                  >alarm</span
+                >
+                Schedule Date & Time
+              </label>
+              <span class="scheduler-hint-pill">Shakes at this time</span>
+            </div>
+            <div class="form-row datetime-input-row">
+              <div class="form-group flex-1">
+                <label class="field-sub-label">Date</label>
+                <input
+                  type="date"
+                  [ngModel]="followUpDate"
+                  (ngModelChange)="onDateChange($event)"
+                  [min]="todayDate"
+                  class="form-input form-input-sm"
+                />
+              </div>
+              <div class="form-group flex-1">
+                <label class="field-sub-label">Time</label>
+                <input
+                  type="time"
+                  [ngModel]="followUpTime"
+                  (ngModelChange)="onTimeChange($event)"
+                  class="form-input form-input-sm"
+                />
+              </div>
+            </div>
+            <div class="quick-timer-presets">
+              <button
+                type="button"
+                class="preset-pill-btn"
+                (click)="setFollowUpPresetMinutes(30)"
+              >
+                +30m
+              </button>
+              <button
+                type="button"
+                class="preset-pill-btn"
+                (click)="setFollowUpPresetMinutes(60)"
+              >
+                +1h
+              </button>
+              <button
+                type="button"
+                class="preset-pill-btn"
+                (click)="setFollowUpPresetMinutes(120)"
+              >
+                +2h
+              </button>
+              <button
+                type="button"
+                class="preset-pill-btn"
+                (click)="setFollowUpPresetTomorrow(10)"
+              >
+                Tmr 10am
+              </button>
+              <button
+                type="button"
+                class="preset-pill-btn"
+                (click)="setFollowUpPresetTomorrow(15)"
+              >
+                Tmr 3pm
+              </button>
+            </div>
+          </div>
+        }
+        <!-- 4. Remarks with Hints -->
+        <div class="form-group remarks-form-group">
+          <div class="remarks-label-row">
+            <label class="form-label">
+              <span class="material-symbols-outlined fs-13 align-middle icon-notes">notes</span>
+              Call Remarks
+            </label>
+            <span class="remarks-hint-tag">{{ callOutcome.replace('_', ' ') }}</span>
+          </div>
+          <textarea
+            rows="2"
+            [ngModel]="callRemarks"
+            (ngModelChange)="onRemarksChange($event)"
+            [placeholder]="getRemarksPlaceholder()"
+            class="form-input remarks-textarea"
+          >
+          </textarea>
+          <!-- Quick Suggestion / Hint Chips matching this status -->
+          <div class="quick-remarks-chips-row">
+            <span class="quick-chip-label">Hints:</span>
+            @for (hint of getRemarksQuickTemplates(); track hint) {
+              <button
+                type="button"
+                class="quick-remark-chip"
+                (click)="insertQuickRemark(hint)"
+                title="Click to insert into remarks"
+              >
+                + {{ hint }}
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-action-secondary" (click)="onClose()">Cancel</button>
+        <button class="btn-action-primary" (click)="onSubmit()">
+          <span class="material-symbols-outlined icon-glow">save</span>
+          <span>Save Call Log</span>
+        </button>
+      </div>
+    </div>
+  </div>
+}

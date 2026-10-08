@@ -1,0 +1,104 @@
+<div class="table-card designers-table-card">
+  <div class="card-title-bar card-search-only-bar">
+    <div class="table-search-wrapper">
+      <span class="material-symbols-outlined search-icon">search</span>
+      <input
+        type="text"
+        class="designer-search-input"
+        placeholder="Search designers by name, email, or department..."
+        [ngModel]="searchQuery"
+        (input)="onSearch($event)"
+      />
+      @if (searchQuery) {
+        <button
+          type="button"
+          class="btn-clear-search"
+          (click)="clearSearch()"
+          title="Clear search"
+        >
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      }
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>DESIGNER</th>
+          <th class="text-center">COMPLETED TASKS</th>
+          <th class="text-center">PENDING TASKS</th>
+          <th class="text-center">TOTAL TASKS</th>
+          <th class="text-right">ACTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (designer of designers; track designer.id) {
+          <tr class="clickable-row" (click)="onSelect(designer.id)">
+            <!-- Designer Profile -->
+            <td class="col-designer-profile">
+              <div class="designer-user-cell">
+                <div
+                  class="designer-avatar-circle"
+                  [style.backgroundColor]="designer.avatarColor || '#7C3AED'"
+                >
+                  {{ getInitials(designer.name) }}
+                </div>
+                <div class="designer-text-meta">
+                  <span class="designer-name-strong">{{ designer.name }}</span>
+                  <span class="designer-email-sub">{{ designer.email }}</span>
+                </div>
+              </div>
+            </td>
+            <!-- Completed Task Count -->
+            <td class="text-center col-count">
+              <span class="stat-pill pill-completed" title="Completed Tasks">
+                {{ designer.completedCount }}
+              </span>
+            </td>
+            <!-- Pending Task Count -->
+            <td class="text-center col-count">
+              <span class="stat-pill pill-pending" title="Pending Tasks">
+                {{ designer.pendingCount }}
+              </span>
+            </td>
+            <!-- Total Task Count -->
+            <td class="text-center col-count">
+              <span class="stat-pill pill-total" title="Total Assigned Tasks">
+                {{ designer.totalCount }}
+              </span>
+            </td>
+            <!-- Action Buttons: View Tasks -->
+            <td class="text-right col-actions" (click)="$event.stopPropagation()">
+              <div class="action-btn-group">
+                <button
+                  class="btn-action-view"
+                  (click)="onSelect(designer.id)"
+                  title="View all tasks for {{ designer.name }}"
+                >
+                  <span class="material-symbols-outlined icon-xs">visibility</span>
+                  <span>View</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        }
+        @if (designers.length === 0) {
+          <tr>
+            <td colspan="5" class="empty-state-cell">
+              <div class="empty-state-box">
+                <div class="empty-icon-squircle">
+                  <span class="material-symbols-outlined">person_search</span>
+                </div>
+                <h4 class="empty-title">No Designers Found</h4>
+                <p class="empty-subtitle">
+                  No designers match your search query "{{ searchQuery }}".
+                </p>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,379 @@
+.dept-nav-tabs-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+
+  .subtab-pill-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.45rem 1rem;
+    border-radius: 9px;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #475569;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+
+    .subtab-icon {
+      font-size: 1.15rem;
+      color: #64748B;
+      transition: color 0.18s ease;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .subtab-text {
+      line-height: 1.2;
+    }
+
+    &:hover:not(.active) {
+      background: #F1F5F9;
+      border-color: #CBD5E1;
+      color: #0F172A;
+      transform: translateY(-1px);
+
+      .subtab-icon {
+        color: #2563EB;
+      }
+    }
+
+    &.active {
+      background: #0F172A;
+      border-color: #0F172A;
+      color: #FFFFFF;
+      box-shadow: 0 3px 10px rgba(15, 23, 42, 0.2);
+
+      .subtab-icon {
+        color: #F59E0B;
+      }
+
+      .subtab-text {
+        color: #FFFFFF;
+      }
+    }
+  }
+}
+
+.works-content-wrapper {
+  background-color: transparent;
+  border-radius: 20px;
+}
+
+.embedded-tab-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.table-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+
+  .card-title-bar {
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid #F1F5F9;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+
+    .title-with-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+
+      .title-icon-squircle {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        background: #EEF2FF;
+        color: #4F46E5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        .material-symbols-outlined {
+          font-size: 20px;
+        }
+      }
+
+      h3 {
+        font-family: var(--mo-font-sans);
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: #0F172A;
+        margin: 0;
+      }
+
+      .table-sub-meta {
+        font-size: 0.75rem;
+        color: #64748B;
+      }
+    }
+
+    .card-actions {
+      .stat-badge-pill {
+        font-size: 0.75rem;
+        font-weight: 700;
+        background: #F1F5F9;
+        padding: 0.25rem 0.65rem;
+        border-radius: 999px;
+        color: #475569;
+      }
+    }
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+
+    th {
+      background: #F8FAFC;
+      padding: 0.75rem 1rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #475569;
+      text-transform: uppercase;
+      border-bottom: 1px solid #E2E8F0;
+      text-align: left;
+    }
+
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #F1F5F9;
+      font-size: 0.8125rem;
+      color: #1E293B;
+      vertical-align: middle;
+    }
+  }
+}
+
+.empty-state-cell {
+  padding: 3rem 1.5rem !important;
+  text-align: center;
+
+  .empty-state-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+
+    .empty-icon-squircle {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #F1F5F9;
+      color: #94A3B8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 0.35rem;
+
+      .material-symbols-outlined {
+        font-size: 22px;
+      }
+    }
+
+    .empty-title {
+      margin: 0;
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: #1E293B;
+    }
+
+    .empty-subtitle {
+      margin: 0;
+      font-size: 0.78125rem;
+      color: #64748B;
+    }
+  }
+}
+
+.kpi-grid-reports {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+
+  @media (max-width: 1024px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+
+  .kpi-card {
+    background: #FFFFFF;
+    border-radius: 14px;
+    padding: 1rem 1.15rem;
+    border: 1.5px solid #E2E8F0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+
+    .kpi-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      .kpi-title-cluster {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+
+        .kpi-squircle-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #FFFFFF;
+          font-weight: 800;
+
+          .material-symbols-outlined {
+            font-size: 17px;
+          }
+        }
+
+        .kpi-title {
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: #475569;
+          text-transform: uppercase;
+        }
+      }
+
+      .kpi-pill-badge {
+        font-size: 0.625rem;
+        font-weight: 800;
+        padding: 0.12rem 0.45rem;
+        border-radius: 999px;
+      }
+    }
+
+    .kpi-body-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+
+      .kpi-value {
+        font-family: var(--mo-font-sans);
+        font-size: 1.45rem;
+        font-weight: 800;
+        color: #0F172A;
+      }
+
+      .kpi-sub-target {
+        font-size: 0.6875rem;
+        color: #94A3B8;
+        font-weight: 600;
+      }
+    }
+
+    &.card-revenue {
+      border-color: #FDE68A;
+      .icon-amber { background: #F59E0B; }
+      .pill-amber { background: #FEF3C7; color: #92400E; }
+    }
+
+    &.card-pkg-works {
+      border-color: #C7D2FE;
+      .icon-indigo { background: #4F46E5; }
+      .pill-indigo { background: #EEF2FF; color: #4338CA; }
+    }
+
+    &.card-leads {
+      border-color: #DDD6FE;
+      .icon-purple { background: #8B5CF6; }
+      .pill-purple { background: #EDE9FE; color: #6D28D9; }
+    }
+
+    &.card-conversion {
+      border-color: #A7F3D0;
+      .icon-emerald { background: #10B981; }
+      .pill-emerald { background: #D1FAE5; color: #065F46; }
+    }
+
+    &.card-blue {
+      border-color: #BAE6FD;
+      .icon-blue { background: #0284C7; }
+      .pill-blue { background: #E0F2FE; color: #0369A1; }
+    }
+
+    &.card-teal {
+      border-color: #99F6E4;
+      .icon-teal { background: #0D9488; }
+      .pill-teal { background: #CCFBF1; color: #0F766E; }
+    }
+  }
+}
+
+.task-audit-link-cell {
+  .btn-task-audit-link {
+    all: unset;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: #4F46E5;
+    font-size: 0.8125rem;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+.btn-view-audit-detail {
+  padding: 0.25rem 0.65rem;
+  border-radius: 7px;
+  border: 1px solid #CBD5E1;
+  background: #FFFFFF;
+  color: #475569;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+
+  &:hover {
+    background: #F1F5F9;
+    color: #0F172A;
+  }
+}
+
+.actor-avatar-circle-sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #1E293B;
+  color: #FFFFFF;
+  font-size: 0.72rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

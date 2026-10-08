@@ -1,0 +1,74 @@
+<!-- 4 TOP KPI SUMMARY CARDS (Medium-Sized Luxury Design) -->
+<section class="kpi-grid">
+  <!-- Card 1: Total Ad Spend (Amber Theme) -->
+  <div class="kpi-card card-revenue">
+    <div class="kpi-top-row">
+      <div class="kpi-squircle-icon icon-amber">
+        <span class="currency-symbol">₹</span>
+      </div>
+      <div class="kpi-pill-badge pill-amber">Live Spend</div>
+    </div>
+    <div class="kpi-body">
+      <span class="kpi-title">TOTAL AD SPEND</span>
+      <div class="kpi-value">₹{{ totalSpend | number: '1.2-2' }}</div>
+    </div>
+    <div class="kpi-footer-row">
+      <span class="kpi-footer-text">{{ filteredAdsCount }} Active Ad Sets</span>
+      <span class="kpi-footer-pill pill-amber">Tracked</span>
+    </div>
+  </div>
+
+  <!-- Card 2: Total Leads (Purple Theme) -->
+  <div class="kpi-card card-leads">
+    <div class="kpi-top-row">
+      <div class="kpi-squircle-icon icon-purple">
+        <span class="material-symbols-outlined">contacts</span>
+      </div>
+      <div class="kpi-pill-badge pill-purple">Captured</div>
+    </div>
+    <div class="kpi-body">
+      <span class="kpi-title">TOTAL LEADS</span>
+      <div class="kpi-value">{{ totalLeads | number }}</div>
+    </div>
+    <div class="kpi-footer-row">
+      <span class="kpi-footer-text">Direct Conversions</span>
+      <span class="kpi-footer-pill pill-purple">Attributed</span>
+    </div>
+  </div>
+
+  <!-- Card 3: Average CPL (Emerald Theme) -->
+  <div class="kpi-card card-conversion">
+    <div class="kpi-top-row">
+      <div class="kpi-squircle-icon icon-emerald">
+        <span class="material-symbols-outlined">price_check</span>
+      </div>
+      <div class="kpi-pill-badge pill-emerald">Optimal</div>
+    </div>
+    <div class="kpi-body">
+      <span class="kpi-title">AVERAGE CPL</span>
+      <div class="kpi-value">₹{{ averageCpl }}</div>
+    </div>
+    <div class="kpi-footer-row">
+      <span class="kpi-footer-text">Cost Efficiency</span>
+      <span class="kpi-footer-pill pill-emerald">Per Lead</span>
+    </div>
+  </div>
+
+  <!-- Card 4: Average CTR (Rose Theme) -->
+  <div class="kpi-card card-tasks">
+    <div class="kpi-top-row">
+      <div class="kpi-squircle-icon icon-rose">
+        <span class="material-symbols-outlined">touch_app</span>
+      </div>
+      <div class="kpi-pill-badge pill-rose">Engagement</div>
+    </div>
+    <div class="kpi-body">
+      <span class="kpi-title">AVERAGE CTR</span>
+      <div class="kpi-value">{{ averageCtr }}%</div>
+    </div>
+    <div class="kpi-footer-row">
+      <span class="kpi-footer-text">Click-Through Rate</span>
+      <span class="kpi-footer-pill pill-rose">High Intent</span>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,176 @@
+<div class="reports-page">
+  <header class="page-header">
+    <div class="header-titles-group">
+      <div class="page-meta-track">EXECUTIVE & OPERATIONAL INTELLIGENCE</div>
+      <h1 class="page-heading">
+        <a routerLink="/dashboard" class="title-back-btn" title="Back to Dashboard">
+          <span class="arrow-char">←</span>
+        </a>
+        <span>Analytics & Performance Reports</span>
+      </h1>
+      <p class="page-sub">
+        Comprehensive analysis of campaign ROI, CPL trends, conversion funnel, and operational
+        efficiency
+      </p>
+    </div>
+  </header>
+
+  <!-- 4 TOP KPI SUMMARY CARDS (Medium-Sized Luxury Design) -->
+  @if (report(); as r) {
+    <section class="kpi-grid">
+      <div class="kpi-card card-revenue">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-amber">
+            <span class="currency-symbol">₹</span>
+          </div>
+          <div class="kpi-pill-badge pill-amber">+22.4% vs Target</div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">TOTAL GENERATED REVENUE</span>
+          <div class="kpi-value">₹{{ r.totalRevenue | number: '1.0-0' }}</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text">Gross Inflow Benchmark</span>
+          <span class="kpi-footer-pill pill-amber">Top Performer</span>
+        </div>
+      </div>
+      <div class="kpi-card card-conversion">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-indigo">
+            <span class="material-symbols-outlined">trending_up</span>
+          </div>
+          <div class="kpi-pill-badge pill-indigo">High Efficiency</div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">OVERALL CAMPAIGN ROI</span>
+          <div class="kpi-value">{{ r.overallRoi }}</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text">Marketing Return Ratio</span>
+          <span class="kpi-footer-pill pill-indigo">3.2x Scaled</span>
+        </div>
+      </div>
+      <div class="kpi-card card-adspend">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-emerald">
+            <span class="material-symbols-outlined">price_check</span>
+          </div>
+          <div class="kpi-pill-badge pill-emerald">-3.8% Budget</div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">AVG COST PER LEAD (CPL)</span>
+          <div class="kpi-value">₹{{ r.avgCpl }}</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text">Lead Cost Optimality</span>
+          <span class="kpi-footer-pill pill-emerald">Under Budget</span>
+        </div>
+      </div>
+      <div class="kpi-card card-pkg-works">
+        <div class="kpi-top-row">
+          <div class="kpi-squircle-icon icon-blue">
+            <span class="material-symbols-outlined">verified</span>
+          </div>
+          <div class="kpi-pill-badge pill-blue">Telecalling</div>
+        </div>
+        <div class="kpi-body">
+          <span class="kpi-title">QUALIFICATION RATIO</span>
+          <div class="kpi-value">{{ r.qualificationRate }}</div>
+        </div>
+        <div class="kpi-footer-row">
+          <span class="kpi-footer-text">Funnel Verification</span>
+          <span class="kpi-footer-pill pill-blue">High Quality</span>
+        </div>
+      </div>
+    </section>
+  }
+
+  <!-- Reports Section Card -->
+  <div class="table-card card-reports-perf">
+    <div class="card-title-bar">
+      <div class="title-with-badge">
+        <div class="title-icon-squircle">
+          <span class="material-symbols-outlined">stacked_bar_chart</span>
+        </div>
+        <div>
+          <h3>End-to-End Operational Lifecycle Ratios</h3>
+          <span class="table-sub-meta"
+            >Conversion funnel milestones across acquisition and telecalling pipelines</span
+          >
+        </div>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Lifecycle Stage</th>
+            <th>Volume</th>
+            <th>Stage Ratio</th>
+            <th>Benchmark Target</th>
+            <th>Performance Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="stage-cell">
+                <span class="stage-bullet bullet-indigo"></span>
+                <span class="font-bold text-dark">Total Captured Leads</span>
+              </div>
+            </td>
+            <td>
+              <span class="volume-badge">{{ report()?.totalLeads || 0 | number }} Leads</span>
+            </td>
+            <td>
+              <div class="ratio-progress-wrap">
+                <span class="ratio-val">100.0%</span>
+                <div class="mini-prog-track">
+                  <div class="mini-prog-fill fill-indigo" style="width: 100%"></div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="benchmark-text">1,000 leads target</span>
+            </td>
+            <td>
+              <span class="status-pill status-pill-active">
+                <span class="pill-glow-dot">●</span> ON TRACK
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="stage-cell">
+                <span class="stage-bullet bullet-emerald"></span>
+                <span class="font-bold text-dark">PAID Leads (Telecalling)</span>
+              </div>
+            </td>
+            <td>
+              <span class="volume-badge"
+                >{{ (report()?.totalLeads || 0) * 0.642 | number: '1.0-0' }} Leads</span
+              >
+            </td>
+            <td>
+              <div class="ratio-progress-wrap">
+                <span class="ratio-val">64.2%</span>
+                <div class="mini-prog-track">
+                  <div class="mini-prog-fill fill-emerald" style="width: 64.2%"></div>
+                </div>
+              </div>
+            </td>
+            <td>
+              <span class="benchmark-text">60.0% minimum ratio</span>
+            </td>
+            <td>
+              <span class="status-pill status-pill-active">
+                <span class="pill-glow-dot">●</span> EXCEEDING
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

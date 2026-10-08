@@ -1,0 +1,86 @@
+<div class="campaigns-page" [class.embedded-view]="embedded">
+  @if (!embedded) {
+    <header class="page-header">
+      <div class="header-titles-group">
+        <div class="page-meta-track">CAMPAIGN OPERATIONS & PERFORMANCE</div>
+        <h1 class="page-heading">
+          <a routerLink="/dashboard" class="title-back-btn" title="Back to Dashboard">
+            <span class="arrow-char">←</span>
+          </a>
+          <span>Digital Marketing Campaigns</span>
+        </h1>
+      </div>
+      <div class="header-actions"></div>
+    </header>
+  }
+
+  @if (successMessage()) {
+    <div class="alert-banner alert-success">
+      <div class="alert-icon-wrap">
+        <span class="material-symbols-outlined">check_circle</span>
+      </div>
+      <span class="alert-text">{{ successMessage() }}</span>
+    </div>
+  }
+
+  @if (errorMessage()) {
+    <div class="alert-banner alert-danger">
+      <div class="alert-icon-wrap">
+        <span class="material-symbols-outlined">error</span>
+      </div>
+      <span class="alert-text">{{ errorMessage() }}</span>
+    </div>
+  }
+
+  <!-- 1. Top KPI Summary Cards -->
+  <app-campaign-kpis
+    [totalSpend]="totalSpend()"
+    [totalBudget]="totalBudget()"
+    [budgetUsedPercent]="budgetUsedPercent()"
+    [totalLeads]="totalLeads()"
+    [totalQualifiedLeads]="totalQualifiedLeads()"
+    [averageCpl]="averageCpl()"
+    [totalConversions]="totalConversions()"
+    [overallConvRate]="overallConvRate()"
+  ></app-campaign-kpis>
+
+  <!-- 2. Search Box & Segmented Status Filter Tabs -->
+  <app-campaign-toolbar
+    [searchQuery]="searchQuery()"
+    [filterStatus]="filterStatus()"
+    [totalCampaignsCount]="campaignService.campaigns().length"
+    [activeCount]="activeCampaignsCount()"
+    [planningCount]="planningCampaignsCount()"
+    [pausedCount]="pausedCampaignsCount()"
+    [completedCount]="completedCampaignsCount()"
+    (searchChange)="searchQuery.set($event)"
+    (filterChange)="setFilterStatus($event)"
+  ></app-campaign-toolbar>
+
+  <!-- 3. Primary Campaigns Table -->
+  <app-campaigns-table
+    [campaigns]="filteredCampaigns"
+    [totalCampaignsCount]="campaignService.campaigns().length"
+    [canManageCampaigns]="canManageCampaigns()"
+    (create)="openCreateModal()"
+    (edit)="openEditModal($event)"
+    (delete)="confirmDelete($event)"
+  ></app-campaigns-table>
+
+  <!-- 4. Create / Edit Campaign Modal -->
+  <app-campaign-form-modal
+    [isOpen]="showModal()"
+    [isEditing]="isEditing()"
+    [formModel]="formModel"
+    [todayDate]="todayDate"
+    (closeModal)="closeModal()"
+    (save)="saveCampaign()"
+  ></app-campaign-form-modal>
+
+  <!-- 5. Delete Confirmation Modal -->
+  <app-campaign-delete-modal
+    [target]="deleteConfirmTarget()"
+    (cancel)="cancelDelete()"
+    (confirm)="executeDelete()"
+  ></app-campaign-delete-modal>
+</div>

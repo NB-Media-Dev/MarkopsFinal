@@ -1,0 +1,137 @@
+<!-- LEAD DETAILS & TELECALLING HISTORY MODAL -->
+@if (lead) {
+  <div class="modal-backdrop" (click)="onClose()">
+    <div class="modal-card lead-history-modal modal-lg" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-squircle-icon icon-indigo">
+            <span class="material-symbols-outlined">person_pin</span>
+          </div>
+          <div>
+            <div class="modal-title-row">
+              <h2>{{ lead.firstName }} {{ lead.lastName || '' }}</h2>
+              <span class="history-count-badge">
+                {{ historyCalls.length }} Calls Logged
+              </span>
+            </div>
+            <p class="modal-sub">
+              <a [href]="'tel:' + lead.phone" class="phone-link-sub">
+                <span class="material-symbols-outlined fs-13">call</span>
+                <span>{{ lead.phone }}</span>
+              </a>
+              @if (lead.email) {
+                <span class="sub-dot">&bull;</span>
+                <span>{{ lead.email }}</span>
+              }
+              <span class="sub-dot">&bull;</span>
+              <span class="status-mini-pill" [ngClass]="getStatusBadgeClass(lead.status)">
+                {{ (lead.status || '').replace('_', ' ') }}
+              </span>
+            </p>
+          </div>
+        </div>
+        <button class="btn-close-modal" (click)="onClose()" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <!-- Modal Body: Overview Summary Grid + Call Timeline -->
+      <div class="modal-body history-modal-body">
+        <!-- Lead Metadata Summary Card -->
+        <div class="lead-detail-summary-grid">
+          <div class="detail-summary-item">
+            <span class="d-label">Campaign</span>
+            <strong class="d-val text-primary">{{ lead.campaignName || 'General Intake' }}</strong>
+          </div>
+          <div class="detail-summary-item">
+            <span class="d-label">Lead Source</span>
+            <span class="d-val source-tag">{{ lead.source || 'Digital' }}</span>
+          </div>
+          <div class="detail-summary-item">
+            <span class="d-label">Assigned Telecaller</span>
+            <strong class="d-val text-dark">{{ lead.assigneeName || 'Unassigned' }}</strong>
+          </div>
+          <div class="detail-summary-item">
+            <span class="d-label">Created By</span>
+            <span class="d-val text-subtle">{{ lead.creatorName || 'Administrator' }}</span>
+          </div>
+          <div class="detail-summary-item">
+            <span class="d-label">Created Date</span>
+            <span class="d-val">{{ lead.createdAt | date: 'mediumDate' }}</span>
+          </div>
+          <div class="detail-summary-item">
+            <span class="d-label">Total Interactions</span>
+            <strong class="d-val text-indigo">{{ historyCalls.length }} Calls</strong>
+          </div>
+        </div>
+
+        <div class="history-timeline-section-header">
+          <div class="sec-title-wrap">
+            <span class="material-symbols-outlined fs-18 text-primary">history</span>
+            <span class="sec-title-txt">Telecalling Call History & Interaction Logs</span>
+          </div>
+        </div>
+
+        <!-- Chronological Call Activities Feed -->
+        @if (historyCalls.length > 0) {
+          <div class="timeline-feed-list custom-scroll">
+            @for (call of historyCalls; track call) {
+              <div class="timeline-card-item">
+                <div class="timeline-card-top">
+                  <div class="caller-profile">
+                    <div class="caller-avatar-squircle">
+                      {{ call.telecallerName?.[0] || 'T' | uppercase }}
+                    </div>
+                    <div class="caller-meta">
+                      <span class="caller-name">{{ call.telecallerName || 'Telecaller' }}</span>
+                      <span class="call-time-txt">
+                        {{ call.calledAt | date: 'mediumDate' }} &bull;
+                        {{ call.calledAt | date: 'shortTime' }}
+                      </span>
+                    </div>
+                  </div>
+                  <span class="status-pill" [ngClass]="getStatusBadgeClass(call.outcome)">
+                    <span class="pill-glow-dot">●</span>
+                    <span class="pill-label">{{ (call.outcome || '').replace('_', ' ') }}</span>
+                  </span>
+                </div>
+                @if (call.remarks) {
+                  <p class="remarks-content">{{ call.remarks }}</p>
+                }
+                <div class="timeline-meta-footer">
+                  @if (call.durationSeconds) {
+                    <span class="meta-tag duration-tag">
+                      <span class="material-symbols-outlined fs-12">timer</span>
+                      <span>{{ call.durationSeconds }}s</span>
+                    </span>
+                  }
+                  @if (call.followUpDate) {
+                    <span class="meta-tag followup-tag">
+                      <span class="material-symbols-outlined fs-12">alarm</span>
+                      <span>Reminder: {{ call.followUpDate | date: 'mediumDate' }} {{ call.followUpTime || '' }}</span>
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        @if (historyCalls.length === 0) {
+          <div class="empty-timeline-box">
+            <div class="empty-icon-circle">
+              <span class="material-symbols-outlined">phone_missed</span>
+            </div>
+            <h4>No Call Logs Found</h4>
+            <p>No telecalling activities or call interaction history logged for this lead yet.</p>
+          </div>
+        }
+      </div>
+
+      <div class="modal-footer history-modal-footer">
+        <button class="btn-action-secondary btn-sm" (click)="onClose()">Close</button>
+      </div>
+    </div>
+  </div>
+}

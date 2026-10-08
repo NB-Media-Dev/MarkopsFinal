@@ -1,0 +1,50 @@
+<div class="downloads-page">
+  <header class="page-header">
+    <div>
+      <h1>Generated Operational Exports & Downloads</h1>
+      <p class="subtitle">Download Excel/CSV reports for campaigns, leads, sales transactions, and audit logs</p>
+    </div>
+  </header>
+
+  <div class="downloads-grid">
+    <div class="dl-card">
+      <span class="material-symbols-outlined dl-icon">table_chart</span>
+      <h3>Leads & Qualification Dataset</h3>
+      <p>Full record of captured leads, sources, telecaller call outcomes, and qualification statuses.</p>
+      <button class="btn btn-primary" (click)="downloadReport('leads')">
+        <span class="material-symbols-outlined">download</span>
+        Export Leads CSV
+      </button>
+    </div>
+
+    <div class="dl-card">
+      <span class="material-symbols-outlined dl-icon">payments</span>
+      <h3>Transactions & Revenue Ledger</h3>
+      <p>Financial ledger of payment statuses and transaction references.</p>
+      <button class="btn btn-primary" (click)="downloadReport('transactions')">
+        <span class="material-symbols-outlined">download</span>
+        Export Revenue CSV
+      </button>
+    </div>
+
+    <div class="dl-card">
+      <span class="material-symbols-outlined dl-icon">campaign</span>
+      <h3>Campaign Performance Report</h3>
+      <p>Campaign target metrics, budgets, ad spend, and CPL trends.</p>
+      <button class="btn btn-primary" (click)="downloadReport('campaigns')">
+        <span class="material-symbols-outlined">download</span>
+        Export Campaigns CSV
+      </button>
+    </div>
+
+    <div class="dl-card">
+      <span class="material-symbols-outlined dl-icon">security</span>
+      <h3>Security Audit Logs</h3>
+      <p>Traceable history of logins, role changes, task status transitions, and user actions.</p>
+      <button class="btn btn-primary" (click)="downloadReport('audit-logs')">
+        <span class="material-symbols-outlined">download</span>
+        Export Audit Logs CSV
+      </button>
+    </div>
+  </div>
+</div>

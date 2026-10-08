@@ -1,0 +1,104 @@
+@if (lead) {
+  <div class="modal-backdrop" (click)="onClose()">
+    <div class="modal-card lead-history-modal" (click)="$event.stopPropagation()">
+      <!-- Modal Header -->
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <div class="modal-squircle-icon icon-indigo">
+            <span class="material-symbols-outlined">call_log</span>
+          </div>
+          <div>
+            <div class="modal-title-row">
+              <h2>{{ lead.firstName }} {{ lead.lastName }}</h2>
+              <span class="history-count-badge"
+                >{{ leadHistoryCalls.length }} Calls</span
+              >
+            </div>
+            <p class="modal-sub">
+              <a [href]="'tel:' + lead.phone" class="phone-link-sub">
+                <span class="material-symbols-outlined fs-13">call</span>
+                <span>{{ lead.phone }}</span>
+              </a>
+              <span class="sub-dot">&bull;</span>
+              <span class="status-mini-pill" [ngClass]="getStatusBadgeClassFn(lead.status)">
+                {{ (lead.status || '').replace('_', ' ') }}
+              </span>
+            </p>
+          </div>
+        </div>
+        <button class="btn-close-modal" (click)="onClose()" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="modal-body history-modal-body">
+        @if (leadHistoryCalls.length > 0) {
+          <div class="timeline-feed-list custom-scroll">
+            @for (call of leadHistoryCalls; track call.id || call) {
+              <div class="timeline-card-item">
+                <div class="timeline-card-top">
+                  <div class="caller-profile">
+                    <div class="caller-avatar-squircle">
+                      {{ call.telecallerName?.[0] || 'T' | uppercase }}
+                    </div>
+                    <div class="caller-meta">
+                      <span class="caller-name">{{ call.telecallerName || 'Telecaller' }}</span>
+                      <span class="call-time-txt"
+                        >{{ call.calledAt | date: 'mediumDate' }} &bull;
+                        {{ call.calledAt | date: 'shortTime' }}</span
+                      >
+                    </div>
+                  </div>
+                  <span class="status-pill" [ngClass]="getStatusBadgeClassFn(call.outcome)">
+                    <span class="pill-glow-dot">●</span>
+                    <span class="pill-label">{{ (call.outcome || '').replace('_', ' ') }}</span>
+                  </span>
+                </div>
+                @if (call.remarks) {
+                  <p class="remarks-content">{{ call.remarks }}</p>
+                }
+                <div class="timeline-meta-footer">
+                  @if (call.durationSeconds) {
+                    <span class="meta-tag duration-tag">
+                      <span class="material-symbols-outlined fs-12">timer</span>
+                      <span>{{ call.durationSeconds }}s</span>
+                    </span>
+                  }
+                  @if (call.followUpDate) {
+                    <span class="meta-tag followup-tag">
+                      <span class="material-symbols-outlined fs-12">alarm</span>
+                      <span
+                        >Reminder: {{ call.followUpDate | date: 'mediumDate' }}
+                        {{ call.followUpTime || '' }}</span
+                      >
+                    </span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+        @if (leadHistoryCalls.length === 0) {
+          <div class="empty-timeline-box">
+            <div class="empty-icon-circle">
+              <span class="material-symbols-outlined">phone_missed</span>
+            </div>
+            <h4>No call logs found</h4>
+            <p>No call history recorded for this lead yet.</p>
+          </div>
+        }
+      </div>
+      <div class="modal-footer history-modal-footer">
+        <button class="btn-action-secondary btn-sm" (click)="onClose()">Close</button>
+        @if (canLogCalls) {
+          <button
+            class="btn-action-primary btn-sm"
+            (click)="onLogCall()"
+          >
+            <span class="material-symbols-outlined fs-15 icon-glow">call</span>
+            <span>Log Call</span>
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+}

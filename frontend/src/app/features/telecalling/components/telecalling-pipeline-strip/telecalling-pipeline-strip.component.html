@@ -1,0 +1,148 @@
+@if (
+  viewMode === 'ALL' ||
+  viewMode === 'MEMBERS' ||
+  viewMode === 'OVERVIEW' ||
+  viewMode === 'ASSIGNED'
+) {
+  <div class="pipeline-strip-container">
+    <!-- Top Date Filter Toolbar (All Data, Today, Yesterday + Calendar) & Campaign Filter -->
+    <div class="pipeline-top-filter-bar">
+      <!-- Date & Calendar Filter Group -->
+      <div class="filter-cluster date-cluster">
+        <div class="cluster-label">
+          <span class="material-symbols-outlined icon-lead-filter">calendar_month</span>
+          <span>Date:</span>
+        </div>
+        <div class="date-filter-pills-group">
+          <button
+            type="button"
+            class="date-filter-btn"
+            [class.active]="dateFilter === 'ALL'"
+            (click)="setDateFilter('ALL')"
+          >
+            <span>All Data</span>
+          </button>
+          <button
+            type="button"
+            class="date-filter-btn"
+            [class.active]="dateFilter === 'TODAY'"
+            (click)="setDateFilter('TODAY')"
+          >
+            <span>Today</span>
+          </button>
+          <button
+            type="button"
+            class="date-filter-btn"
+            [class.active]="dateFilter === 'YESTERDAY'"
+            (click)="setDateFilter('YESTERDAY')"
+          >
+            <span>Yesterday</span>
+          </button>
+          <!-- Calendar Custom Date Picker -->
+          <label
+            class="calendar-picker-pill"
+            [class.active]="dateFilter === 'CUSTOM'"
+            title="Select custom date from calendar"
+          >
+            <span class="material-symbols-outlined cal-icon">event</span>
+            @if (dateFilter !== 'CUSTOM' || !customDate) {
+              <span class="cal-text">Calendar</span>
+            }
+            @if (dateFilter === 'CUSTOM' && customDate) {
+              <span class="cal-text cal-active-date">{{ customDate }}</span>
+            }
+            <input
+              type="date"
+              class="hidden-native-date-input"
+              [max]="todayDate"
+              [ngModel]="customDate"
+              (ngModelChange)="setCustomDate($event)"
+            />
+          </label>
+        </div>
+      </div>
+      <!-- Campaign Filter Dropdown -->
+      <div class="filter-cluster campaign-cluster">
+        <div class="cluster-label">
+          <span class="material-symbols-outlined icon-lead-filter text-amber">campaign</span>
+          <span>Campaign:</span>
+        </div>
+        <div class="campaign-select-wrap">
+          <select
+            class="campaign-styled-select"
+            [ngModel]="selectedCampaign"
+            (ngModelChange)="selectCampaign($event)"
+            title="Filter by campaign"
+          >
+            <option value="ALL">All Campaigns ({{ assignedLeadsCount }})</option>
+            @for (cmp of availableCampaigns; track cmp.name) {
+              <option [value]="cmp.name">{{ cmp.name }} ({{ cmp.count }})</option>
+            }
+          </select>
+          <span class="material-symbols-outlined select-chevron">expand_more</span>
+        </div>
+      </div>
+    </div>
+    <!-- Active Filter Tags Strip (Shown when a filter is engaged) -->
+    @if (selectedCampaign !== 'ALL' || dateFilter !== 'ALL') {
+      <div class="active-filter-tags-strip">
+        <div class="active-tags-list">
+          <span class="tags-prefix">Filtered By:</span>
+          @if (selectedCampaign !== 'ALL') {
+            <span class="filter-active-tag tag-campaign">
+              <span class="material-symbols-outlined fs-12">campaign</span>
+              <span
+                >Campaign: <strong>{{ selectedCampaign }}</strong></span
+              >
+              <button
+                type="button"
+                class="btn-tag-x"
+                (click)="selectCampaign('ALL')"
+                title="Clear campaign filter"
+              >
+                ✕
+              </button>
+            </span>
+          }
+          @if (dateFilter === 'CUSTOM') {
+            <span class="filter-active-tag tag-date">
+              <span class="material-symbols-outlined fs-12">event</span>
+              <span
+                >Date: <strong>{{ customDate }}</strong></span
+              >
+              <button
+                type="button"
+                class="btn-tag-x"
+                (click)="setDateFilter('ALL')"
+                title="Clear date filter"
+              >
+                ✕
+              </button>
+            </span>
+          }
+          @if (dateFilter === 'TODAY' || dateFilter === 'YESTERDAY') {
+            <span class="filter-active-tag tag-date">
+              <span class="material-symbols-outlined fs-12">calendar_today</span>
+              <span
+                >Date:
+                <strong>{{ dateFilter === 'TODAY' ? 'Today' : 'Yesterday' }}</strong></span
+              >
+              <button
+                type="button"
+                class="btn-tag-x"
+                (click)="setDateFilter('ALL')"
+                title="Clear date filter"
+              >
+                ✕
+              </button>
+            </span>
+          }
+        </div>
+        <button type="button" class="btn-reset-filters-link" (click)="onResetFilters()">
+          <span class="material-symbols-outlined fs-14">restart_alt</span>
+          <span>Reset Filters</span>
+        </button>
+      </div>
+    }
+  </div>
+}

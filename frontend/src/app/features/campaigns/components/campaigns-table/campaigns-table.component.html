@@ -1,0 +1,174 @@
+<div class="table-card card-campaign-perf">
+  <div class="card-title-bar">
+    <div class="title-with-badge">
+      <div class="title-icon-squircle">
+        <span class="material-symbols-outlined">analytics</span>
+      </div>
+      <div>
+        <h3>Campaigns Portfolio</h3>
+        <span class="table-sub-meta"
+          >{{ campaigns.length }} of {{ totalCampaignsCount }} total campaigns</span
+        >
+      </div>
+    </div>
+
+    @if (canManageCampaigns) {
+      <div class="table-actions">
+        <button class="btn-action-primary btn-sm" (click)="onCreate()">
+          <span class="material-symbols-outlined fs-16 icon-glow">add</span>
+          <span>New Campaign</span>
+        </button>
+      </div>
+    }
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Campaign Name</th>
+          <th>Status</th>
+          <th>Ad Spend</th>
+          <th>Leads</th>
+          <th>Avg CPL</th>
+          <th>PAID</th>
+          <th>Conversions</th>
+          <th>Conv. Rate</th>
+          @if (canManageCampaigns) {
+            <th class="text-right">Actions</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (cmp of campaigns; track cmp.id) {
+          <tr class="campaign-row">
+            <!-- Campaign Name & Package / Objective -->
+            <td>
+              <div class="cmp-title-cell">
+                <span
+                  class="cmp-color-dot"
+                  [ngClass]="{
+                    'dot-careermate': cmp.name.toLowerCase().includes('career'),
+                    'dot-classmate': cmp.name.toLowerCase().includes('class'),
+                    'dot-jesus': cmp.name.toLowerCase().includes('jesus'),
+                  }"
+                >
+                </span>
+                <div class="cmp-text-stack">
+                  <span class="cmp-name-text">{{ cmp.name }}</span>
+                  <span class="cmp-sub-text">
+                    <span class="objective-badge">{{ cmp.objective | titlecase }}</span>
+                    <span class="dot-sep">&bull;</span>
+                    <span>Started {{ cmp.startDate }}</span>
+                  </span>
+                </div>
+              </div>
+            </td>
+            <!-- Status -->
+            <td>
+              @if (cmp.status === 'ACTIVE') {
+                <span class="status-pill status-pill-active">
+                  <span class="pill-glow-dot">●</span> ACTIVE
+                </span>
+              }
+              @if (cmp.status === 'PLANNING') {
+                <span class="status-pill status-pill-planning">
+                  <span class="pill-glow-dot">●</span> PLANNING
+                </span>
+              }
+              @if (cmp.status === 'PAUSED') {
+                <span class="status-pill status-pill-paused">
+                  <span class="pill-glow-dot">●</span> PAUSED
+                </span>
+              }
+              @if (cmp.status === 'COMPLETED') {
+                <span class="status-pill status-pill-completed">
+                  <span class="pill-glow-dot">●</span> COMPLETED
+                </span>
+              }
+            </td>
+            <!-- Spend -->
+            <td>
+              <span class="metric-spend-text">₹{{ cmp.spend | number: '1.2-2' }}</span>
+            </td>
+            <!-- Leads -->
+            <td>
+              <span class="metric-leads-badge">{{ cmp.leadsCount | number }}</span>
+            </td>
+            <!-- CPL -->
+            <td>
+              <span class="metric-cpl-badge">₹{{ cmp.cpl | number: '1.2-2' }}</span>
+            </td>
+            <!-- Qualified Leads -->
+            <td>
+              <span class="metric-qualified-text">{{ cmp.qualifiedLeads | number }}</span>
+            </td>
+            <!-- Conversions -->
+            <td>
+              <span class="metric-conv-val font-bold">{{ cmp.conversions | number }}</span>
+            </td>
+            <!-- Conv. Rate -->
+            <td>
+              <div class="conv-rate-wrap">
+                <div class="conv-rate-header">
+                  <span class="rate-val font-bold">{{ cmp.convRate }}%</span>
+                </div>
+                <div class="rate-bar-bg">
+                  <div
+                    class="rate-bar-fill"
+                    [style.width.%]="cmp.convRate > 100 ? 100 : cmp.convRate"
+                  ></div>
+                </div>
+              </div>
+            </td>
+            <!-- Actions -->
+            @if (canManageCampaigns) {
+              <td class="text-right actions-col">
+                <div class="action-buttons-group">
+                  <button
+                    class="btn-icon-action btn-edit"
+                    (click)="onEdit(cmp)"
+                    title="Edit Campaign"
+                  >
+                    <span class="material-symbols-outlined">edit</span>
+                  </button>
+                  <button
+                    class="btn-icon-action btn-delete"
+                    (click)="onDelete(cmp)"
+                    title="Delete Campaign"
+                  >
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
+                </div>
+              </td>
+            }
+          </tr>
+        }
+
+        <!-- Empty State -->
+        @if (campaigns.length === 0) {
+          <tr>
+            <td [attr.colspan]="canManageCampaigns ? 9 : 8" class="empty-state-cell">
+              <div class="empty-state-box">
+                <div class="empty-icon-squircle">
+                  <span class="material-symbols-outlined">campaign</span>
+                </div>
+                <h4 class="empty-title">No campaigns found</h4>
+                <p class="empty-subtitle">
+                  Create a new digital marketing campaign or adjust your active search/filter
+                  criteria.
+                </p>
+                @if (canManageCampaigns) {
+                  <button class="btn-action-primary btn-sm" (click)="onCreate()">
+                    <span class="material-symbols-outlined icon-glow">add</span>
+                    <span>Create Campaign</span>
+                  </button>
+                }
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>

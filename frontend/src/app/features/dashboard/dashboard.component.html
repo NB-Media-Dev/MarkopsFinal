@@ -1,0 +1,108 @@
+<div class="dashboard-page-wrapper">
+  <!-- Top Background Ambient Elements & Waves -->
+  
+
+  <!-- Dashboard Main Content Container -->
+  <div class="dashboard-content-container">
+    <!-- Header Area: Welcome Text + Slogan -->
+    <header class="dashboard-hero-header">
+      <div class="header-left">
+        <h1 class="hero-main-title">Our Products</h1>
+      </div>
+
+      
+    </header>
+
+    <!-- Products 3-Card Grid Section -->
+    <section class="products-grid-section" aria-label="MarkOps Products">
+      <div class="products-grid">
+        @for (pkg of fixedPackages(); track pkg.id) {
+          <article
+            class="product-card"
+            [ngClass]="'theme-' + pkg.cardTheme"
+            (click)="openPackage(pkg.shortName || pkg.name)"
+            [attr.aria-label]="'Explore ' + pkg.name"
+          >
+            <!-- Card Visual Banner (Top Wave + Photo + Badge + Handwritten script) -->
+            <div class="card-visual-banner">
+              <!-- Ambient Warm Glow Reveal -->
+              <div class="banner-glow-reveal"></div>
+
+              <!-- Background Scene Image with Soft Feathered Fade -->
+              <div
+                class="banner-photo-bg"
+                [style.background-image]="'url(' + pkg.bgImage + ')'"
+              ></div>
+
+              <!-- Organic Soft Wave Layer -->
+              <svg class="banner-wave-mask" viewBox="0 0 400 140" preserveAspectRatio="none" fill="none">
+                <path
+                  d="M0,80 C110,130 220,50 400,100 L400,140 L0,140 Z"
+                  fill="#FFE8C2"
+                  opacity="0.45"
+                />
+                <path
+                  d="M0,95 C120,135 230,70 400,110 L400,140 L0,140 Z"
+                  fill="#FFFFFF"
+                />
+              </svg>
+
+              <!-- Logo Emblem Badge with Double Golden Rings -->
+              <div class="product-emblem-badge">
+                <div class="emblem-outer-ring">
+                  <div class="emblem-inner-circle">
+                    <img [src]="pkg.image" [alt]="pkg.name + ' Logo'" class="emblem-logo-img" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- Top-Right Handwritten Script Tag -->
+             
+            </div>
+
+            <!-- Card Body Content -->
+            <div class="card-body-content">
+              <h2 class="card-product-title">{{ pkg.name }}</h2>
+              <span class="card-product-tagline">{{ pkg.tagline }}</span>
+         
+            </div>
+
+            <!-- Card Bottom Footer -->
+            <footer class="card-footer-row">
+              <div class="package-inventory-stat">
+                <!-- Package Box SVG Icon -->
+                <svg
+                  class="inventory-box-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#F59E0B"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                  <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                </svg>
+                <div class="inventory-text-block">
+                  <span class="inventory-count-bold">{{ pkg.packageCount }} Packages</span>
+                  <span class="inventory-status-subtle">Available</span>
+                </div>
+              </div>
+
+              <a
+                [routerLink]="['/package-works']"
+                [queryParams]="{ package: pkg.shortName || pkg.name }"
+                (click)="$event.stopPropagation()"
+                class="explore-pill-btn"
+              >
+                <span>Explore</span>
+                <span class="btn-arrow-icon">&rarr;</span>
+              </a>
+            </footer>
+          </article>
+        }
+      </div>
+    </section>
+  </div>
+</div>

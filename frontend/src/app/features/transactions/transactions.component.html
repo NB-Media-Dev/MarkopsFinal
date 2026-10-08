@@ -1,0 +1,147 @@
+<div class="transactions-page">
+  <header class="page-header">
+    <div class="header-titles-group">
+      <div class="page-meta-track">REVENUE & FINANCIAL ACCOUNTING</div>
+      <h1 class="page-heading">
+        <a routerLink="/dashboard" class="title-back-btn" title="Back to Dashboard">
+          <span class="arrow-char">←</span>
+        </a>
+        <span>Payments & Transactions Ledger</span>
+      </h1>
+      <p class="page-sub">
+        Complete history of financial payments, transaction references, and revenue ledger
+      </p>
+    </div>
+  </header>
+
+  <!-- 3 TOP KPI SUMMARY CARDS (Medium-Sized Luxury Design) -->
+  <section class="kpi-grid">
+    <div class="kpi-card card-revenue">
+      <div class="kpi-top-row">
+        <div class="kpi-squircle-icon icon-amber">
+          <span class="currency-symbol">₹</span>
+        </div>
+        <div class="kpi-pill-badge pill-amber">Settled</div>
+      </div>
+      <div class="kpi-body">
+        <span class="kpi-title">TOTAL REVENUE RECORDED</span>
+        <div class="kpi-value">₹{{ totalRevenue | number: '1.2-2' }}</div>
+      </div>
+      <div class="kpi-footer-row">
+        <span class="kpi-footer-text">Gross Inflow</span>
+        <span class="kpi-footer-pill pill-amber">Ledger Balance</span>
+      </div>
+    </div>
+
+    <div class="kpi-card card-conversion">
+      <div class="kpi-top-row">
+        <div class="kpi-squircle-icon icon-emerald">
+          <span class="material-symbols-outlined">receipt_long</span>
+        </div>
+        <div class="kpi-pill-badge pill-emerald">Processed</div>
+      </div>
+      <div class="kpi-body">
+        <span class="kpi-title">SUCCESSFUL TRANSACTIONS</span>
+        <div class="kpi-value">{{ txnService.transactions().length }}</div>
+      </div>
+      <div class="kpi-footer-row">
+        <span class="kpi-footer-text">All Customer Payments</span>
+        <span class="kpi-footer-pill pill-emerald">100% Success</span>
+      </div>
+    </div>
+
+    <div class="kpi-card card-pkg-works">
+      <div class="kpi-top-row">
+        <div class="kpi-squircle-icon icon-indigo">
+          <span class="material-symbols-outlined">verified</span>
+        </div>
+        <div class="kpi-pill-badge pill-indigo">Optimal</div>
+      </div>
+      <div class="kpi-body">
+        <span class="kpi-title">PAYMENT SUCCESS RATE</span>
+        <div class="kpi-value">100.0%</div>
+      </div>
+      <div class="kpi-footer-row">
+        <span class="kpi-footer-text">Gateway Health</span>
+        <span class="kpi-footer-pill pill-indigo">0% Failures</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Transactions Table Card -->
+  <div class="table-card card-txn-perf">
+    <div class="card-title-bar">
+      <div class="title-with-badge">
+        <div class="title-icon-squircle">
+          <span class="material-symbols-outlined">payments</span>
+        </div>
+        <div>
+          <h3>Transaction Records & Receipts</h3>
+          <span class="table-sub-meta"
+            >{{ txnService.transactions().length }} payment transactions registered</span
+          >
+        </div>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Transaction Reference</th>
+            <th>Customer Name</th>
+            <th>Amount</th>
+            <th>Payment Method</th>
+            <th>Status</th>
+            <th>Recorded By</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (txn of txnService.transactions(); track txn) {
+            <tr class="txn-row">
+              <td>
+                <span class="ref-badge">{{ txn.transactionRef || 'TXN-' + txn.id }}</span>
+              </td>
+              <td>
+                <span class="font-bold text-dark">{{ txn.customerName || 'Customer' }}</span>
+              </td>
+              <td>
+                <span class="font-bold text-emerald">₹{{ txn.amount | number: '1.2-2' }}</span>
+              </td>
+              <td>
+                <span class="method-tag-chip">{{ txn.paymentMethod || 'Online Gateway' }}</span>
+              </td>
+              <td>
+                <span class="status-pill status-pill-active">
+                  <span class="pill-glow-dot">●</span> {{ txn.paymentStatus || 'COMPLETED' }}
+                </span>
+              </td>
+              <td>
+                <span class="recorder-name-str">{{ txn.recorderName || 'System Admin' }}</span>
+              </td>
+              <td>
+                <span class="date-str">{{ txn.transactionDate | date: 'mediumDate' }}</span>
+              </td>
+            </tr>
+          }
+          @if (txnService.transactions().length === 0) {
+            <tr>
+              <td colspan="7" class="empty-state-cell">
+                <div class="empty-state-box">
+                  <div class="empty-icon-squircle">
+                    <span class="material-symbols-outlined">payments</span>
+                  </div>
+                  <h4 class="empty-title">No transactions recorded</h4>
+                  <p class="empty-subtitle">
+                    Customer package conversions and payment ledger records will appear here.
+                  </p>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

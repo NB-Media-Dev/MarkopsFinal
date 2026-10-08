@@ -1,0 +1,375 @@
+<!-- Queue Filter Tabs for Manager -->
+@if (!isTelecaller) {
+  <div class="toolbar-card">
+    <div class="segmented-tabs">
+      <button
+        type="button"
+        class="tab-pill-btn"
+        [class.active]="queueFilter === 'ALL_LEADS'"
+        (click)="setQueueFilter('ALL_LEADS')"
+      >
+        <span class="material-symbols-outlined tab-icon">groups</span>
+        <span>All Team Queue ({{ totalLeadsCount }})</span>
+      </button>
+      <button
+        type="button"
+        class="tab-pill-btn"
+        [class.active]="queueFilter === 'MY_LEADS'"
+        (click)="setQueueFilter('MY_LEADS')"
+      >
+        <span class="material-symbols-outlined tab-icon">person</span>
+        <span>My Assigned Leads ({{ myLeadsCount }})</span>
+      </button>
+    </div>
+  </div>
+}
+
+<!-- Full-Width Unified Call Queue & Lead Performance Table -->
+<div class="table-card card-full-queue">
+  <div class="card-title-bar">
+    <div class="title-with-badge">
+      <div class="title-icon-squircle icon-indigo">
+        <span class="material-symbols-outlined">phone_in_talk</span>
+      </div>
+      <div class="title-meta-group">
+        <h3>
+          {{
+            isTelecaller
+              ? 'My Assigned Leads Queue'
+              : queueFilter === 'ALL_LEADS'
+                ? 'All Team Leads Queue'
+                : 'My Assigned Leads Queue'
+          }}
+        </h3>
+        <div class="table-sub-meta-wrap">
+          <span class="table-sub-meta"
+            >{{ filteredAssignedLeads.length }} contacts ready to call</span
+          >
+          @if (pipelineStatusFilter !== 'ALL') {
+            <span class="active-filter-indicator">
+              • Filter: <strong>{{ pipelineFilterLabel }}</strong>
+              <button
+                type="button"
+                class="btn-clear-inline"
+                (click)="setPipelineFilter('ALL')"
+                title="Reset filter"
+              >
+                ✕
+              </button>
+            </span>
+          }
+          @if (searchQuery) {
+            <span class="active-filter-indicator">
+              • Search: <strong>"{{ searchQuery }}"</strong>
+              <button
+                type="button"
+                class="btn-clear-inline"
+                (click)="setSearchQuery('')"
+                title="Clear search"
+              >
+                ✕
+              </button>
+            </span>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="card-action-meta">
+      <!-- Live Search Field for Telecaller Name, Lead, Phone -->
+      <div class="queue-search-field-wrap">
+        <span class="material-symbols-outlined search-icon">search</span>
+        <input
+          type="text"
+          class="queue-search-input"
+          [placeholder]="
+            isTelecaller
+              ? 'Search by lead name, phone...'
+              : 'Search by telecaller name, lead, phone...'
+          "
+          [ngModel]="searchQuery"
+          (ngModelChange)="setSearchQuery($event)"
+        />
+        @if (searchQuery) {
+          <button
+            type="button"
+            class="btn-clear-search"
+            (click)="setSearchQuery('')"
+            title="Clear search"
+          >
+            ✕
+          </button>
+        }
+      </div>
+
+      <span class="queue-count-badge">
+        <span class="pulse-indicator"></span>
+        <span>{{ filteredAssignedLeads.length }} In Queue</span>
+      </span>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table unified-queue-table">
+      <colgroup>
+        <col style="width: 20%" />
+        <col style="width: 14%" />
+        <col style="width: 11%" />
+        <col style="width: 12%" />
+        <col style="width: 12%" />
+        <col style="width: 6%" />
+        <col style="width: 7%" />
+        <col style="width: 6%" />
+        <col style="width: 12%" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="col-lead">Lead Name</th>
+          <th class="col-phone">Phone Number</th>
+          <th class="col-status">Current Status</th>
+          <th class="col-creator">Created By</th>
+          <th class="col-assignee">Assigned To</th>
+          <th class="col-calls text-center">Calls Logged</th>
+          <th class="col-attended text-center">Attended / Missed</th>
+          <th class="col-duration text-center">Avg Duration</th>
+          <th class="col-action text-right">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (lead of paginatedLeads; track lead.id) {
+          <tr class="queue-row">
+            <!-- 1. Lead Name & Source -->
+            <td class="col-lead">
+              <div class="lead-profile-cell">
+                <div class="lead-avatar-squircle">
+                  {{ (lead.firstName?.[0] || 'L') + (lead.lastName?.[0] || '') | uppercase }}
+                </div>
+                <div class="lead-identity">
+                  <span class="lead-fullname">{{ lead.firstName }} {{ lead.lastName }}</span>
+                  @if (lead.source) {
+                    <span class="lead-source-chip">{{ lead.source }}</span>
+                  }
+                </div>
+              </div>
+            </td>
+            <!-- 2. Phone Number -->
+            <td class="col-phone">
+              <a [href]="'tel:' + lead.phone" class="phone-chip" title="Click to dial">
+                <span
+                  class="material-symbols-outlined fs-14 phone-icon"
+                  [class.phone-icon-shake]="isFollowUpDueFn(lead)"
+                  >call</span
+                >
+                <span class="phone-num-txt">{{ lead.phone }}</span>
+              </a>
+            </td>
+            <!-- 3. Current Status -->
+            <td class="col-status">
+              <span
+                class="status-pill"
+                [ngClass]="getStatusBadgeClassFn(getLeadCurrentStatusFn(lead))"
+              >
+                @if (getLeadCurrentStatusFn(lead) === 'QUALIFIED') {
+                  <span class="material-symbols-outlined success-check-icon">verified</span>
+                }
+                @if (getLeadCurrentStatusFn(lead) !== 'QUALIFIED') {
+                  <span class="pill-glow-dot">●</span>
+                }
+                <span class="pill-label">{{ getLeadCurrentStatusFn(lead).replace('_', ' ') }}</span>
+              </span>
+              <!-- Scheduled Callback Reminder Chip -->
+              @if (hasScheduledCallbackFn(lead) && getFollowUpTimeLabelFn(lead); as fTime) {
+                <div class="scheduled-callback-chip">
+                  <span
+                    class="material-symbols-outlined fs-12 chip-alarm-icon"
+                    [class.icon-ringing-shake]="isFollowUpDueFn(lead)"
+                    >alarm</span
+                  >
+                  <span class="chip-time-txt">{{ fTime }}</span>
+                </div>
+              }
+            </td>
+            <!-- 4. Created By -->
+            <td class="col-creator">
+              <div class="assignee-badge-chip creator-badge-chip">
+                <div class="assignee-mini-avatar avatar-creator-mini">
+                  {{ getLeadCreatorNameFn(lead)[0] | uppercase }}
+                </div>
+                <span class="assignee-name-txt">{{ getLeadCreatorNameFn(lead) }}</span>
+              </div>
+            </td>
+            <!-- 5. Assigned To -->
+            <td class="col-assignee">
+              @if (lead.assigneeName) {
+                <div class="assignee-badge-chip">
+                  <div class="assignee-mini-avatar">{{ lead.assigneeName[0] | uppercase }}</div>
+                  <span class="assignee-name-txt">{{ lead.assigneeName }}</span>
+                </div>
+              }
+              @if (!lead.assigneeName) {
+                <span class="unassigned-pill">Unassigned</span>
+              }
+            </td>
+            <!-- 5. Calls Logged -->
+            <td class="col-calls text-center">
+              <span
+                class="calls-count-badge"
+                [class.badge-has-calls]="getLeadMetricsFn(lead).callsCount > 0"
+              >
+                <span class="material-symbols-outlined fs-14">call_log</span>
+                <strong>{{ getLeadMetricsFn(lead).callsCount }}</strong>
+              </span>
+            </td>
+            <!-- 6. Attended / Missed -->
+            <td class="col-attended text-center">
+              <div class="ratio-chips-group">
+                <span class="tag-attended" title="Attended / Connected Calls">
+                  <span class="material-symbols-outlined fs-12">check_circle</span>
+                  <span>{{ getLeadMetricsFn(lead).attended }}</span>
+                </span>
+                <span class="tag-sep">/</span>
+                <span class="tag-missed" title="Missed / Busy / No Answer">
+                  <span class="material-symbols-outlined fs-12">phone_missed</span>
+                  <span>{{ getLeadMetricsFn(lead).missed }}</span>
+                </span>
+              </div>
+            </td>
+            <!-- 7. Avg Duration -->
+            <td class="col-duration text-center">
+              <span class="avg-duration-pill">
+                <span class="material-symbols-outlined fs-14">timer</span>
+                <span>{{ getLeadMetricsFn(lead).avgDuration }}s</span>
+              </span>
+            </td>
+            <!-- 8. Action Buttons -->
+            <td class="col-action text-right">
+              <div class="action-buttons-wrap">
+                @if (canLogCalls) {
+                  <button
+                    class="btn-action-primary btn-sm"
+                    [class.call-btn-shake]="isFollowUpDueFn(lead)"
+                    (click)="onOpenCallDrawer(lead)"
+                    [title]="
+                      isFollowUpDueFn(lead)
+                        ? 'Scheduled Call Reminder Alert!'
+                        : 'Log new call activity'
+                    "
+                  >
+                    <span
+                      class="material-symbols-outlined fs-14 icon-glow"
+                      [class.phone-icon-shake]="isFollowUpDueFn(lead)"
+                      >call</span
+                    >
+                    <span>Call</span>
+                  </button>
+                }
+                <button
+                  class="btn-action-detail btn-sm"
+                  (click)="onOpenLeadHistory(lead)"
+                  title="View complete interaction history"
+                >
+                  <span class="material-symbols-outlined fs-14">visibility</span>
+                  <span>Detail</span>
+                </button>
+              </div>
+            </td>
+          </tr>
+        }
+
+        @if (filteredAssignedLeads.length === 0) {
+          <tr>
+            <td colspan="9" class="empty-state-cell">
+              <div class="empty-queue-box">
+                <div class="empty-icon-circle">
+                  <span class="material-symbols-outlined">assignment_turned_in</span>
+                </div>
+                <h4>No leads found</h4>
+                @if (searchQuery) {
+                  <p>No contacts match telecaller name or keyword "{{ searchQuery }}".</p>
+                }
+                @if (!searchQuery) {
+                  <p>
+                    There are no assigned contacts in this queue matching your current filters.
+                  </p>
+                }
+                <div
+                  style="margin-top: 0.75rem; display: flex; gap: 0.5rem; justify-content: center"
+                >
+                  @if (searchQuery) {
+                    <button
+                      type="button"
+                      class="btn-clear-search-pill"
+                      (click)="setSearchQuery('')"
+                    >
+                      Clear Search
+                    </button>
+                  }
+                  @if (
+                    selectedCampaign !== 'ALL' ||
+                    dateFilter !== 'ALL' ||
+                    pipelineStatusFilter !== 'ALL'
+                  ) {
+                    <button
+                      type="button"
+                      class="btn-reset-filters-link"
+                      (click)="onResetAllFilters()"
+                    >
+                      Reset All Filters
+                    </button>
+                  }
+                </div>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination Footer Bar (Active when filtered leads exist) -->
+  @if (filteredAssignedLeads.length > 0) {
+    <div class="table-pagination-bar">
+      <div class="pagination-info">
+        <span
+          >Showing <strong>{{ (currentPage - 1) * pageSize + 1 }}</strong> -
+          <strong>{{
+            mathMin(currentPage * pageSize, filteredAssignedLeads.length)
+          }}</strong>
+          of <strong>{{ filteredAssignedLeads.length }}</strong> leads</span
+        >
+      </div>
+      @if (totalPages > 1) {
+        <div class="pagination-controls">
+          <button
+            type="button"
+            class="btn-page-nav"
+            [disabled]="currentPage === 1"
+            (click)="onPrevPage()"
+            title="Previous Page"
+          >
+            <span class="material-symbols-outlined fs-16">chevron_left</span>
+          </button>
+          @for (p of pageNumbers; track p) {
+            <button
+              type="button"
+              class="btn-page-num"
+              [class.active-page]="p === currentPage"
+              (click)="setPage(p)"
+            >
+              {{ p }}
+            </button>
+          }
+          <button
+            type="button"
+            class="btn-page-nav"
+            [disabled]="currentPage === totalPages"
+            (click)="onNextPage()"
+            title="Next Page"
+          >
+            <span class="material-symbols-outlined fs-16">chevron_right</span>
+          </button>
+        </div>
+      }
+    </div>
+  }
+</div>

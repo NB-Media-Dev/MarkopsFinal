@@ -1,0 +1,137 @@
+.toolbar-card {
+  background: #FFFFFF;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 18px;
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+  flex-wrap: wrap;
+
+  @media (max-width: 900px) {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1rem;
+  }
+
+  .search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 280px;
+    flex: 1;
+
+    @media (max-width: 900px) {
+      width: 100%;
+      min-width: unset;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      color: #94A3B8;
+      font-size: 20px;
+      pointer-events: none;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.55rem 2.25rem 0.55rem 2.5rem;
+      border-radius: 999px;
+      border: 1.5px solid #E2E8F0;
+      background-color: #F8FAFC;
+      font-size: 0.8125rem;
+      color: #0F172A;
+      font-weight: 500;
+      transition: all 0.2s ease;
+
+      &::placeholder {
+        color: #94A3B8;
+      }
+
+      &:focus {
+        background-color: #FFFFFF;
+        border-color: #4F46E5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+        outline: none;
+      }
+    }
+
+    .clear-search-btn {
+      position: absolute;
+      right: 12px;
+      background: none;
+      border: none;
+      color: #94A3B8;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      padding: 0;
+
+      .material-symbols-outlined {
+        font-size: 16px;
+      }
+
+      &:hover {
+        color: #0F172A;
+      }
+    }
+  }
+
+  .segmented-tabs {
+    display: flex;
+    align-items: center;
+    background: #F1F5F9;
+    padding: 0.25rem;
+    border-radius: 999px;
+    gap: 0.2rem;
+    overflow-x: auto;
+
+    @media (max-width: 900px) {
+      width: 100%;
+      justify-content: flex-start;
+      scrollbar-width: none;
+      &::-webkit-scrollbar { display: none; }
+    }
+
+    .tab-pill-btn {
+      background: transparent;
+      border: none;
+      padding: 0.4rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.78125rem;
+      font-weight: 600;
+      color: #64748B;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      white-space: nowrap;
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+
+      .tab-indicator-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+
+        &.dot-active { background-color: #10B981; }
+        &.dot-planning { background-color: #6366F1; }
+        &.dot-paused { background-color: #F59E0B; }
+        &.dot-completed { background-color: #64748B; }
+      }
+
+      &:hover {
+        color: #0F172A;
+      }
+
+      &.active {
+        background: #121826;
+        color: #F8FAFC;
+        font-weight: 700;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+      }
+    }
+  }
+}
