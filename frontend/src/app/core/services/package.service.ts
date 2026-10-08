@@ -42,7 +42,7 @@ export class PackageService {
       tap({
         next: (data) => {
           if (productId) {
-           
+
             this.packages.update((current) => {
               const other = current.filter((p) => p.productId !== productId);
               return [...data, ...other];

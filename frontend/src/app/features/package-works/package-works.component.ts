@@ -1366,7 +1366,10 @@ export class PackageWorksComponent implements OnInit {
         },
         error: (err) => {
           console.error('Failed to update product hero banner:', err);
-          this.heroBannerError.set(err.error?.error || 'Failed to save the banner. Please try again.');
+          this.heroBannerError.set(
+            err.error?.error ||
+              `Failed to save the banner${err.status ? ` (HTTP ${err.status})` : ''}. Please try again.`
+          );
           this.isSavingHeroBanner.set(false);
         },
       });

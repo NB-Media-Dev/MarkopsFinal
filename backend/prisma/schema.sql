@@ -1183,13 +1183,6 @@ CREATE TABLE `packages` (
   KEY `idx_packages_product` (`product_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `product_hero_banners` (
-  `product_id` VARCHAR(100) NOT NULL,
-  `image_url` LONGTEXT NOT NULL,
-  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`product_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 -- Re-enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 1;
 

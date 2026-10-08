@@ -1,14 +1,9 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { dbPool, dbProductHeroBannersStore } = require('../db');
+const { dbPool } = require('../db');
 
 const router = express.Router();
-const PRODUCT_IDS = new Set([
-  'pkg_careermate',
-  'pkg_classmate',
-  'pkg_jesus_messanger',
-]);
 const MIME_EXTENSIONS = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -45,7 +40,7 @@ function saveBannerImage(dataUrl, fileName) {
     .replace(/[^a-zA-Z0-9_-]/g, '_')
     .slice(0, 80);
   const uniqueName = `hero_${Date.now()}_${safeName || 'banner'}.${MIME_EXTENSIONS[match[1]]}`;
-  const targetDir = path.resolve('uploads/product-banners');
+  const targetDir = path.resolve(__dirname, '../../uploads/product-banners');
   fs.mkdirSync(targetDir, { recursive: true });
   fs.writeFileSync(path.join(targetDir, uniqueName), imageBuffer);
   return `/uploads/product-banners/${uniqueName}`;
@@ -53,21 +48,22 @@ function saveBannerImage(dataUrl, fileName) {
 
 router.get('/product-banners/:productId', async (req, res) => {
   const productId = getProductId(req.params.productId);
-  if (!PRODUCT_IDS.has(productId)) {
-    return res.status(400).json({ error: 'Unknown product.' });
-  }
 
   try {
-    if (dbPool.isConnected()) {
-      const [rows] = await dbPool.queryStrict(
-        'SELECT product_id, image_url FROM product_hero_banners WHERE product_id = ?',
-        [productId]
-      );
-      if (rows.length === 0) return res.json(null);
-      return res.json({ productId: rows[0].product_id, imageUrl: rows[0].image_url });
+    if (!dbPool.isConnected()) {
+      return res.status(503).json({ error: 'Product catalog database is unavailable.' });
     }
-
-    return res.json(dbProductHeroBannersStore.get(productId) || null);
+    const [rows] = await dbPool.queryStrict(
+      'SELECT id AS product_id, hero_image_url FROM product_catalog WHERE id = ?',
+      [productId]
+    );
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Product not found.' });
+    }
+    return res.json({
+      productId: rows[0].product_id,
+      imageUrl: rows[0].hero_image_url,
+    });
   } catch (error) {
     console.error('[Product Hero Banner GET Error]:', error);
     return res.status(500).json({ error: 'Failed to load product hero banner.' });
@@ -81,11 +77,25 @@ router.put('/product-banners/:productId', async (req, res) => {
   }
 
   const productId = getProductId(req.params.productId);
-  if (!PRODUCT_IDS.has(productId)) {
-    return res.status(400).json({ error: 'Unknown product.' });
-  }
   if (typeof req.body?.image !== 'string') {
     return res.status(400).json({ error: 'A banner image is required.' });
+  }
+
+  if (!dbPool.isConnected()) {
+    return res.status(503).json({ error: 'Product catalog database is unavailable.' });
+  }
+
+  try {
+    const [products] = await dbPool.queryStrict(
+      'SELECT id FROM product_catalog WHERE id = ?',
+      [productId]
+    );
+    if (products.length === 0) {
+      return res.status(404).json({ error: 'Product not found.' });
+    }
+  } catch (error) {
+    console.error('[Product Hero Banner Product Lookup Error]:', error);
+    return res.status(500).json({ error: 'Failed to verify product before saving banner.' });
   }
 
   let imageUrl;
@@ -95,20 +105,15 @@ router.put('/product-banners/:productId', async (req, res) => {
     return res.status(400).json({ error: error.message });
   }
 
-  const banner = { productId, imageUrl };
   try {
-    if (dbPool.isConnected()) {
-      await dbPool.queryStrict(
-        `INSERT INTO product_hero_banners (product_id, image_url)
-         VALUES (?, ?)
-         ON DUPLICATE KEY UPDATE image_url = VALUES(image_url), updated_at = CURRENT_TIMESTAMP`,
-        [productId, imageUrl]
-      );
-    } else {
-      dbProductHeroBannersStore.set(productId, banner);
+    const [result] = await dbPool.queryStrict(
+      'UPDATE product_catalog SET hero_image_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [imageUrl, productId]
+    );
+    if (result.affectedRows !== 1) {
+      return res.status(404).json({ error: 'Product not found or banner was not updated.' });
     }
-
-    return res.json(banner);
+    return res.json({ productId, imageUrl });
   } catch (error) {
     console.error('[Product Hero Banner PUT Error]:', error);
     return res.status(500).json({ error: 'Failed to save product hero banner.' });

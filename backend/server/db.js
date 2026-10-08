@@ -94,7 +94,6 @@ const dbFollowUpsStore = [];
 const dbTransactionsStore = [];
 const dbNotificationsStore = [];
 const dbPackagesStore = [];
-const dbProductHeroBannersStore = new Map();
 const dbCommonTargetStore = {
   dailyCallsTarget: 30,
   dailyInterestedTarget: 5,
@@ -118,7 +117,6 @@ module.exports = {
   dbTransactionsStore,
   dbNotificationsStore,
   dbPackagesStore,
-  dbProductHeroBannersStore,
   dbCommonTargetStore,
   dbTelecallerTargetsStore,
 };
