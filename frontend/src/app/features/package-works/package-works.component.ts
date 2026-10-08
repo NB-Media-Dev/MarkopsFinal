@@ -74,6 +74,13 @@ export class PackageWorksComponent implements OnInit {
   readonly availablePackages = FIXED_PACKAGES;
   readonly activePackageName = signal<string>('Careermate');
   readonly packageSearchQuery = signal<string>('');
+  readonly productHeroBanners = signal<Record<string, string>>({});
+  readonly isSavingHeroBanner = signal<boolean>(false);
+  readonly heroBannerError = signal<string | null>(null);
+  readonly activeHeroBanner = computed(() => {
+    const productId = this.activePackageMeta().id;
+    return this.productHeroBanners()[productId] || this.productVisual().banner;
+  });
   readonly productVisual = computed(() => {
     switch (this.activePackageMeta().id) {
       case 'pkg_classmate':
@@ -102,7 +109,7 @@ export class PackageWorksComponent implements OnInit {
   readonly activeWorkspacePackage = signal<ProductPackage | null>(null);
   readonly activeOperationTab = signal<string>('PACKAGES');
 
- 
+
   readonly isCreateProductPackageModalOpen = signal<boolean>(false);
   readonly isPackageDetailModalOpen = signal<boolean>(false);
   readonly selectedProductPackage = signal<ProductPackage | null>(null);
@@ -140,7 +147,7 @@ export class PackageWorksComponent implements OnInit {
   readonly activeDetailTab = signal<'BRIEF' | 'VERSIONS' | 'TIMELINE' | 'COMMENTS'>('BRIEF');
   readonly newCommentText = signal<string>('');
 
- 
+
   readonly isUploadModalOpen = signal<boolean>(false);
   readonly selectedUploadFile = signal<File | null>(null);
   readonly selectedUploadDataUrl = signal<string>('');
@@ -149,13 +156,13 @@ export class PackageWorksComponent implements OnInit {
 
   readonly isRevisionModalOpen = signal<boolean>(false);
 
- 
+
   readonly createdBriefFile = signal<File | null>(null);
   readonly createdBriefFileName = signal<string>('');
   readonly createdBriefDataUrl = signal<string>('');
   readonly createdBriefContent = signal<string>('');
 
- 
+
   readonly isDocViewerOpen = signal<boolean>(false);
   readonly activeDocName = signal<string>('');
   readonly activeDocUrl = signal<string>('');
@@ -394,7 +401,7 @@ export class PackageWorksComponent implements OnInit {
 
     const depts: OperationDepartment[] = [];
 
-  
+
     if (role === 'ADMINISTRATOR' || role === 'MARKETING_MANAGER' || role === 'DESIGNER' || role === 'BDM') {
       depts.push({
         id: 'DESIGNER',
@@ -608,7 +615,7 @@ export class PackageWorksComponent implements OnInit {
         if (!isLeadAssignedToUser(l, user)) return false;
       }
 
-  
+
       if (ws) {
         const wsName = (ws.name || '').toLowerCase().trim();
         const wsId = String(ws.id || '').toLowerCase().trim();
@@ -621,7 +628,7 @@ export class PackageWorksComponent implements OnInit {
         return false;
       }
 
-      
+
       const src = (l.source || '').toLowerCase();
       const cmp = (l.campaignName || '').toLowerCase();
       if (activeProd.includes('career')) {
@@ -757,7 +764,7 @@ export class PackageWorksComponent implements OnInit {
       (t) => ws ? isTaskForPackage(t, targetFilter, this.packageService.packages()) : isTaskForPackage(t, pkgName, this.packageService.packages())
     );
 
-  
+
     const taskRows = packageTasks.map((t) => {
       const taskIdStr = String(t.id).trim();
       const taskTitleLower = (t.title || '').toLowerCase().trim();
@@ -1001,6 +1008,7 @@ export class PackageWorksComponent implements OnInit {
       this.latestQueryParams = params;
       this.applyRouteQueryParams(params);
     });
+    this.loadProductHeroBanner(this.activePackageMeta().id);
 
     const ops = this.roleOperations();
     if (ops.length > 0 && !this.activeOperationTab()) {
@@ -1301,6 +1309,12 @@ export class PackageWorksComponent implements OnInit {
 
   selectPackage(pkgName: string): void {
     this.activePackageName.set(pkgName);
+    const selectedProduct = this.availablePackages.find(
+      (product) => product.name.toLowerCase() === pkgName.toLowerCase()
+    );
+    if (selectedProduct) {
+      this.loadProductHeroBanner(selectedProduct.id);
+    }
     this.activeWorkspacePackage.set(null);
     this.activeOperationTab.set('PACKAGES');
     this.router.navigate([], {
@@ -1311,6 +1325,69 @@ export class PackageWorksComponent implements OnInit {
     this.fetchAuditLogs();
     this.taskService.loadTasks();
     this.packageService.loadAllPackages().subscribe();
+  }
+
+  onHeroBannerSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    input.value = '';
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      this.heroBannerError.set('Choose a JPG, PNG, or WebP image.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      this.heroBannerError.set('The banner image must be 10 MB or smaller.');
+      return;
+    }
+
+    this.heroBannerError.set(null);
+    const productId = this.activePackageMeta().id;
+    const reader = new FileReader();
+    reader.onerror = () => {
+      this.heroBannerError.set('The selected banner image could not be read.');
+    };
+    reader.onload = () => {
+      const image = typeof reader.result === 'string' ? reader.result : '';
+      if (!image) {
+        this.heroBannerError.set('The selected banner image could not be read.');
+        return;
+      }
+
+      this.isSavingHeroBanner.set(true);
+      this.packageService.updateProductHeroBanner(productId, image, file.name).subscribe({
+        next: (banner) => {
+          this.productHeroBanners.update((banners) => ({
+            ...banners,
+            [banner.productId]: this.formatAssetUrl(banner.imageUrl),
+          }));
+          this.isSavingHeroBanner.set(false);
+        },
+        error: (err) => {
+          console.error('Failed to update product hero banner:', err);
+          this.heroBannerError.set(err.error?.error || 'Failed to save the banner. Please try again.');
+          this.isSavingHeroBanner.set(false);
+        },
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  private loadProductHeroBanner(productId: string): void {
+    this.packageService.loadProductHeroBanner(productId).subscribe({
+      next: (banner) => {
+        if (banner?.imageUrl) {
+          this.productHeroBanners.update((banners) => ({
+            ...banners,
+            [productId]: this.formatAssetUrl(banner.imageUrl),
+          }));
+        }
+      },
+      error: (err) => {
+        console.error(`Failed to load hero banner for ${productId}:`, err);
+      },
+    });
   }
 
   onPackageSelectChange(event: Event): void {
@@ -1440,7 +1517,7 @@ export class PackageWorksComponent implements OnInit {
     if (log.taskTitle) return log.taskTitle;
     if (log.targetTask?.title) return log.targetTask.title;
 
-  
+
     const allTasks = this.taskService.tasks();
     const candidateId = String(log.taskId || log.entityId || '').trim();
     const foundTask = allTasks.find(
@@ -1450,7 +1527,7 @@ export class PackageWorksComponent implements OnInit {
     );
     if (foundTask?.title) return foundTask.title;
 
-  
+
     let state = log.newState;
     if (typeof state === 'string') {
       try {
@@ -1686,7 +1763,7 @@ export class PackageWorksComponent implements OnInit {
       (h) => h.newStatus === 'ASSIGNED' && (!h.previousStatus || h.previousStatus === 'ASSIGNED')
     );
 
-   
+
     steps.push({
       stepNumber: 1,
       stage: 'Task Creation & Assignment',
@@ -1698,10 +1775,10 @@ export class PackageWorksComponent implements OnInit {
       remarks: initialAssignment?.remark || `Task created for package "${task.packageName || this.activePackageName()}" and assigned to ${designerName}.`,
     });
 
-  
+
     const validHistoryTransitions = history.filter((h) => {
       if (h === initialAssignment) return false;
- 
+
       if (h.newStatus === 'ASSIGNED' && (!h.previousStatus || h.previousStatus === 'ASSIGNED')) {
         return false;
       }
@@ -1712,7 +1789,7 @@ export class PackageWorksComponent implements OnInit {
       return true;
     });
 
-   
+
     validHistoryTransitions.sort((a, b) => {
       const timeA = new Date(a.createdAt || 0).getTime();
       const timeB = new Date(b.createdAt || 0).getTime();
@@ -1747,7 +1824,7 @@ export class PackageWorksComponent implements OnInit {
         });
       });
     } else {
-   
+
       const status = task.status;
       if (status !== 'ASSIGNED' && status !== 'DRAFT') {
         if (status === 'IN_PROGRESS' || status === 'SUBMITTED' || status === 'APPROVED' || status === 'REDESIGN_REQUIRED' || status === 'COMPLETED') {

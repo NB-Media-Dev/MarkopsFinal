@@ -17,6 +17,7 @@ const leadsRoutes = require('./routes/leads.routes');
 const conversionsRoutes = require('./routes/conversions.routes');
 const reportsRoutes = require('./routes/reports.routes');
 const packagesRoutes = require('./routes/packages.routes');
+const productBannersRoutes = require('./routes/product-banners.routes');
 const metaWebhookRoutes = require('./routes/meta-webhook.routes');
 
 const app = express();
@@ -183,6 +184,7 @@ app.use('/api', authenticateJwt(dbPool), leadsRoutes);
 app.use('/api', authenticateJwt(dbPool), conversionsRoutes);
 app.use('/api', authenticateJwt(dbPool), reportsRoutes);
 app.use('/api', authenticateJwt(dbPool), packagesRoutes);
+app.use('/api', authenticateJwt(dbPool), productBannersRoutes);
 
 
 app.use((err, req, res, next) => {

@@ -4,6 +4,11 @@ import { tap } from 'rxjs/operators';
 import { ProductPackage, PackageSummary } from '../models/package.model';
 import { getApiUrl } from '../utils/api-url.utils';
 
+export interface ProductHeroBanner {
+  productId: string;
+  imageUrl: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -14,6 +19,19 @@ export class PackageService {
   readonly summary = signal<PackageSummary | null>(null);
   readonly loading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
+
+  loadProductHeroBanner(productId: string) {
+    return this.http.get<ProductHeroBanner | null>(
+      getApiUrl(`/api/product-banners/${encodeURIComponent(productId)}`)
+    );
+  }
+
+  updateProductHeroBanner(productId: string, image: string, fileName: string) {
+    return this.http.put<ProductHeroBanner>(
+      getApiUrl(`/api/product-banners/${encodeURIComponent(productId)}`),
+      { image, fileName }
+    );
+  }
 
   loadPackages(productId?: string) {
     this.loading.set(true);
