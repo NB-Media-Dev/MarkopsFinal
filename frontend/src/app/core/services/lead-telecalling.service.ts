@@ -84,6 +84,16 @@ export interface TelecallingSummary {
   telecallerMetrics: TelecallerMetric[];
 }
 
+export interface LeadBatchImportResponse {
+  success: boolean;
+  message: string;
+  totalUploaded: number;
+  telecallersCount: number;
+  leadsPerTelecaller: number;
+  allocationSummary: Array<{ id: string; fullName: string; email: string; count: number }>;
+  leads: LeadItem[];
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -188,6 +198,26 @@ export class LeadTelecallingService {
         error: (err) => {
           this.error.set(err.message || 'Failed to create lead.');
           this.loading.set(false);
+        },
+      })
+    );
+  }
+
+  importLeadBatch(payload: {
+    leads: Partial<LeadItem>[];
+    campaignId: string;
+    campaignName: string;
+    source: string;
+    creatorId: string;
+    creatorEmail: string;
+    creatorName: string;
+    uploaderRole: string;
+  }) {
+    return this.http.post<LeadBatchImportResponse>('/api/leads/batch-import', payload).pipe(
+      tap({
+        next: (response) => {
+          this.loadLeads().subscribe();
+          this.loadSummary().subscribe();
         },
       })
     );

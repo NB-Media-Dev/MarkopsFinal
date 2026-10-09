@@ -244,6 +244,11 @@
   cursor: pointer;
   transition: all 0.15s ease;
 
+  &:disabled {
+    cursor: wait;
+    opacity: 0.65;
+  }
+
   &.btn-sm {
     padding: 0.45rem 0.9rem;
     font-size: 0.78125rem;
@@ -254,4 +259,27 @@
     color: #0F172A;
     border-color: #CBD5E1;
   }
+}
+
+.lead-upload-feedback {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid #BBF7D0;
+  border-radius: 12px;
+  background: #F0FDF4;
+  color: #166534;
+  font-size: 0.8125rem;
+  font-weight: 600;
+
+  &.error {
+    border-color: #FECACA;
+    background: #FEF2F2;
+    color: #B91C1C;
+  }
+}
+
+.lead-upload-hint {
+  margin: -0.5rem 0 0;
+  color: #64748B;
+  font-size: 0.75rem;
 }

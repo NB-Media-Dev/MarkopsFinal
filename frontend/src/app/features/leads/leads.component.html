@@ -1,4 +1,11 @@
 <div class="leads-page" [class.embedded-view]="embedded">
+  <input
+    #leadFileInput
+    type="file"
+    accept=".xlsx,.xls,.csv"
+    hidden
+    (change)="onLeadsFileSelected($event)"
+  />
   @if (!embedded) {
     <header class="page-header">
       <div class="header-titles-group">
@@ -13,6 +20,17 @@
         }
       </div>
       <div class="header-actions">
+        @if (canCreateLeads()) {
+          <button
+            class="btn-action-secondary"
+            type="button"
+            [disabled]="isUploadingLeads()"
+            (click)="leadFileInput.click()"
+          >
+            <span class="material-symbols-outlined fs-18">upload_file</span>
+            <span>{{ isUploadingLeads() ? 'Uploading...' : 'Upload Excel' }}</span>
+          </button>
+        }
         @if (canCreateLeads()) {
           <button class="btn-action-secondary" (click)="openModal()">
             <span class="material-symbols-outlined fs-18">person_add</span>
@@ -35,6 +53,17 @@
      
       <div class="header-actions">
         @if (canCreateLeads()) {
+          <button
+            class="btn-action-secondary btn-sm"
+            type="button"
+            [disabled]="isUploadingLeads()"
+            (click)="leadFileInput.click()"
+          >
+            <span class="material-symbols-outlined fs-16">upload_file</span>
+            <span>{{ isUploadingLeads() ? 'Uploading...' : 'Upload Excel' }}</span>
+          </button>
+        }
+        @if (canCreateLeads()) {
           <button class="btn-action-secondary btn-sm" (click)="openModal()">
             <span class="material-symbols-outlined fs-16">person_add</span>
             <span>Add Lead</span>
@@ -48,6 +77,16 @@
         }
       </div>
     </div>
+  }
+
+  @if (leadUploadStatus()) {
+    <p class="lead-upload-feedback success" role="status">{{ leadUploadStatus() }}</p>
+  }
+  @if (leadUploadError()) {
+    <p class="lead-upload-feedback error" role="alert">{{ leadUploadError() }}</p>
+  }
+  @if (canCreateLeads()) {
+    <p class="lead-upload-hint">Use columns: First Name, Last Name, Email, Phone, and Source. Campaign, status, and telecaller assignment are set automatically.</p>
   }
 
   <!-- TAB 1: ALL LEADS LIST VIEW -->
