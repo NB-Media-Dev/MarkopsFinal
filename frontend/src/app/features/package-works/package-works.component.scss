@@ -11,6 +11,32 @@
   display: none;
 }
 
+.product-identity-header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+
+  img {
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    padding: 5px;
+    border: 1px solid #E2E8F0;
+    border-radius: 50%;
+    background: #fff;
+    object-fit: contain;
+    box-sizing: border-box;
+  }
+
+  h1 {
+    margin: 0;
+    color: #0F172A;
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1.25;
+  }
+}
+
 .product-hero-banner {
   position: relative;
   display: flex;

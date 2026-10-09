@@ -124,30 +124,10 @@
   </header>
 
   @if (!activeWorkspacePackage()) {
-    <section class="product-hero-banner" [style.background-image]="'url(' + activeHeroBanner() + ')'">
-      @if (canCreatePackage()) {
-        <label class="hero-banner-edit-btn" [class.is-uploading]="isSavingHeroBanner()">
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            (change)="onHeroBannerSelected($event)"
-            [disabled]="isSavingHeroBanner()"
-          />
-          <span class="material-symbols-outlined">{{ isSavingHeroBanner() ? 'progress_activity' : 'photo_camera' }}</span>
-          <span>{{ isSavingHeroBanner() ? 'Saving...' : 'Edit Banner' }}</span>
-        </label>
-      }
-      <div class="product-hero-content">
-        <img [src]="productVisual().logo" [alt]="productVisual().title + ' logo'" class="product-hero-logo" />
-        <div class="product-hero-copy">
-          <h1>{{ productVisual().title }}</h1>
-
-        </div>
-      </div>
-    </section>
-    @if (heroBannerError()) {
-      <p class="hero-banner-error" role="alert">{{ heroBannerError() }}</p>
-    }
+    <div class="product-identity-header">
+      <img [src]="productVisual().logo" [alt]="productVisual().title + ' logo'" />
+      <h1>{{ productVisual().title }}</h1>
+    </div>
     <section class="catalog-toolbar" aria-label="Package catalog controls">
       <div class="catalog-toolbar-header">
 
