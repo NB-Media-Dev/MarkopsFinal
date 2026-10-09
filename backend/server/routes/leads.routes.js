@@ -222,10 +222,17 @@ router.post('/leads', async (req, res) => {
       if (campaigns && campaigns.length > 0) {
         mysqlCampaignId = campaigns[0].id;
       } else {
-
-        const [firstCmp] = await dbPool.query(`SELECT id FROM campaigns LIMIT 1`);
-        if (firstCmp && firstCmp.length > 0) {
-          mysqlCampaignId = firstCmp[0].id;
+        const requestedCampaignId = Number(campId);
+        if (Number.isInteger(requestedCampaignId) && requestedCampaignId > 0) {
+          const [requestedCampaigns] = await dbPool.query(
+            `SELECT id FROM campaigns WHERE id = ? LIMIT 1`,
+            [requestedCampaignId]
+          );
+          mysqlCampaignId = requestedCampaigns?.[0]?.id || null;
+        }
+        if (!mysqlCampaignId) {
+          const [firstCmp] = await dbPool.query(`SELECT id FROM campaigns LIMIT 1`);
+          mysqlCampaignId = firstCmp?.[0]?.id || null;
         }
       }
     } catch (dbErr) {
@@ -233,12 +240,6 @@ router.post('/leads', async (req, res) => {
     }
   }
 
-
-  if (!mysqlCampaignId) {
-    mysqlCampaignId = parseInt(campId.replace(/\D/g, ''), 10) || 1;
-  }
-
-  
   const numericCreatorId = parseInt(String(effectiveUserId || '1').replace(/\D/g, ''), 10) || 1;
   const numericAssignedTo = targetAssignedTo ? (parseInt(targetAssignedTo.replace(/\D/g, ''), 10) || null) : null;
 
@@ -1192,11 +1193,12 @@ router.get('/followups', (req, res) => {
 
 async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
   const { leads, selectedTelecallerIds, campaignId, campaignName, source, uploaderId, uploaderEmail, uploaderRole } = req.body;
-  const effectiveRole = String(uploaderRole || req.headers['x-user-role'] || '').toUpperCase();
+  const effectiveRole = String(req.user?.role || req.headers['x-user-role'] || uploaderRole || '').toUpperCase();
+  const uploadRoles = ['ADMINISTRATOR', 'MARKETING_MANAGER', 'DIGITAL_MARKETING'];
 
-  if (!metaWebhook && effectiveRole === 'TELECALLER') {
+  if (!metaWebhook && !uploadRoles.includes(effectiveRole)) {
     return res.status(403).json({
-      error: 'Access Denied: Telecallers are not authorized to upload lead files. Upload is strictly restricted to Digital Marketing role.',
+      error: 'Access Denied: Lead file uploads are restricted to Digital Marketing, Marketing Manager, and Administrator roles.',
     });
   }
 
@@ -1207,21 +1209,24 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
 
   for (let i = 0; i < leads.length; i++) {
     const raw = leads[i];
-    const fName = String(raw.firstName || raw['First Name'] || raw['first_name'] || '').trim();
-    const lName = String(raw.lastName || raw['Last Name'] || raw['last_name'] || '').trim();
-    const em = String(raw.email || raw['Email'] || raw['email_address'] || '').trim();
-    const ph = String(raw.phone || raw['Phone'] || raw['Mobile'] || '').trim();
-    const src = String(raw.source || raw['Source'] || source || '').trim();
+    const fullName = String(raw.fullName || raw.leadName || raw['Full Name'] || raw['Lead Name'] || raw['Name'] || '').trim();
+    const fName = String(raw.firstName || raw['First Name'] || raw['first_name'] || fullName.split(/\s+/)[0] || '').trim();
+    const contactInfo = String(raw.contactInfo || raw['Contact Info'] || '').trim();
+    const contactEmail = contactInfo.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || '';
+    const contactPhone = contactInfo
+      .replace(contactEmail, '')
+      .replace(/(?:phone|mobile|tel)\s*[:=-]?\s*/i, '')
+      .trim();
+    const ph = String(raw.phone || raw['Phone'] || raw['Phone Number'] || raw['Mobile'] || raw['Mobile Number'] || raw['Contact Number'] || raw['Contact'] || contactPhone).trim();
 
-    if (!fName || (!metaWebhook && (!lName || !em)) || !ph || !src) {
+    if (!fName || !ph) {
       return res.status(400).json({
-        error: `Validation Error on row #${i + 1}: All 5 fields (First Name, Last Name, Email, Phone, Source) are strictly required. Missing values detected.`,
+        error: `Validation Error on row #${i + 1}: A lead name and phone number are required.`,
       });
     }
   }
 
-
-  let telecallers = dbUsersStore.filter((u) => u.role === 'TELECALLER' && u.isActive !== false);
+  let telecallers = [];
 
   if (metaWebhook && dbPool) {
     const [telecallerRows] = await dbPool.queryStrict(
@@ -1239,10 +1244,28 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
       role: 'TELECALLER',
       isActive: true,
     }));
+  } else if (!metaWebhook && dbPool?.isConnected()) {
+    const [telecallerRows] = await dbPool.queryStrict(
+      `SELECT u.id, u.full_name AS fullName, u.email
+       FROM users u
+       INNER JOIN roles r ON r.id = u.role_id
+       WHERE r.code = 'TELECALLER' AND u.is_active = 1
+       ORDER BY u.id ASC`
+    );
+    telecallers = telecallerRows.map((user) => ({
+      ...user,
+      id: String(user.id),
+      role: 'TELECALLER',
+      isActive: true,
+    }));
+  } else if (!metaWebhook) {
+    telecallers = dbUsersStore.filter(
+      (user) => String(user.role).toUpperCase() === 'TELECALLER' && user.isActive !== false
+    );
   }
 
 
-  if (Array.isArray(req.body.telecallersList) && req.body.telecallersList.length > 0) {
+  if (metaWebhook && Array.isArray(req.body.telecallersList) && req.body.telecallersList.length > 0) {
     req.body.telecallersList.forEach((reqTc) => {
       if (!telecallers.some((t) => t.id === reqTc.id)) {
         const syncedTc = {
@@ -1260,7 +1283,7 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
     });
   }
 
-  if (Array.isArray(selectedTelecallerIds) && selectedTelecallerIds.length > 0) {
+  if (metaWebhook && Array.isArray(selectedTelecallerIds) && selectedTelecallerIds.length > 0) {
     const selectedSet = new Set(selectedTelecallerIds);
     const filteredSelected = telecallers.filter((u) => selectedSet.has(u.id));
     if (filteredSelected.length > 0) {
@@ -1268,13 +1291,14 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
     }
   }
 
- 
-  if (telecallers.length === 0) {
-    telecallers = [];
+  if (!metaWebhook && telecallers.length === 0) {
+    return res.status(409).json({
+      error: 'No active telecallers are available. Activate at least one telecaller before uploading leads.',
+    });
   }
 
 
-  let mysqlCampaignId = 1;
+  let mysqlCampaignId = null;
   const targetCampName = campaignName || 'Digital Ad Campaign';
   if (dbPool) {
     try {
@@ -1283,12 +1307,10 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
         ? await dbPool.queryStrict(`SELECT id FROM campaigns WHERE meta_campaign_id = ? LIMIT 1`, [metaCampaignId])
         : await dbPool.query(`SELECT id FROM campaigns WHERE name = ? LIMIT 1`, [targetCampName]);
       if (campaignRows && campaignRows.length > 0) {
-        mysqlCampaignId = campaignRows[0].id; // Extract numerical key
+        mysqlCampaignId = campaignRows[0].id;
       } else {
         const [firstCmp] = await dbPool.query(`SELECT id FROM campaigns LIMIT 1`);
-        if (firstCmp && firstCmp.length > 0) {
-          mysqlCampaignId = firstCmp[0].id;
-        }
+        mysqlCampaignId = firstCmp?.[0]?.id || null;
       }
     } catch (dbErr) {
       if (metaWebhook) throw dbErr;
@@ -1307,10 +1329,21 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
     const raw = leads[i];
     const assignedTelecaller = telecallers.length > 0 ? telecallers[i % telecallers.length] : null;
 
-    const firstName = String(raw.firstName || raw['First Name'] || raw['first_name'] || raw['Name'] || `Lead ${i + 1}`).trim();
-    const lastName = String(raw.lastName || raw['Last Name'] || raw['last_name'] || '').trim();
+    const fullName = String(raw.fullName || raw.leadName || raw['Full Name'] || raw['Lead Name'] || raw['Name'] || '').trim();
+    const fullNameParts = fullName.split(/\s+/).filter(Boolean);
+    const firstName = String(raw.firstName || raw['First Name'] || raw['first_name'] || fullNameParts.shift() || `Lead ${i + 1}`).trim();
+    const lastName = String(raw.lastName || raw['Last Name'] || raw['last_name'] || fullNameParts.join(' ')).trim();
     const email = String(raw.email || raw['Email'] || raw['email_address'] || '').trim();
-    const phone = String(raw.phone || raw['Phone'] || raw['Mobile'] || raw['Contact'] || `+91 ${9000000000 + i}`).trim();
+    const contactInfo = String(raw.contactInfo || raw['Contact Info'] || '').trim();
+    const contactEmail = contactInfo.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || '';
+    const contactPhone = contactInfo
+      .replace(contactEmail, '')
+      .replace(/(?:phone|mobile|tel)\s*[:=-]?\s*/i, '')
+      .trim();
+    const phone = String(raw.phone || raw['Phone'] || raw['Phone Number'] || raw['Mobile'] || raw['Mobile Number'] || raw['Contact Number'] || raw['Contact'] || contactPhone).trim();
+    const emailAddress = email || contactEmail;
+    const rowCampaignName = String(raw.campaignName || raw['Campaign'] || targetCampName).trim();
+    const rowCampaignId = raw.campaignId || campaignId || 'cmp_default';
 
     const uploaderUid = req.body.creatorId || req.body.uploaderId || req.headers['x-user-id'];
     let uploaderNameResolved = req.body.creatorName || req.headers['x-user-name'];
@@ -1334,11 +1367,11 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
       id: `lead_${Math.random().toString(36).substring(2, 10)}`,
       firstName,
       lastName,
-      email,
+      email: emailAddress,
       phone,
-      source: String(raw.source || raw['Source'] || raw['source'] || raw['Lead Source'] || source || (metaWebhook ? 'META_ADS' : 'MANUAL')).trim(),
-      campaignId: metaWebhook ? String(mysqlCampaignId) : (campaignId || raw.campaignId || 'cmp_default'),
-      campaignName: targetCampName,
+      source: String(raw.source || raw['Source'] || raw['source'] || raw['Lead Source'] || source || (metaWebhook ? 'META_ADS' : 'EXCEL_UPLOAD')).trim(),
+      campaignId: metaWebhook && mysqlCampaignId != null ? String(mysqlCampaignId) : rowCampaignId,
+      campaignName: metaWebhook ? targetCampName : rowCampaignName,
       adId: raw.adId || '',
       metaLeadId: metaWebhook ? String(raw.metaLeadId) : undefined,
       metaCampaignId: metaWebhook ? String(raw.metaCampaignId || '') : undefined,
@@ -1355,7 +1388,9 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
   
-      _mysqlCampaignId: mysqlCampaignId,
+      _mysqlCampaignId: metaWebhook
+        ? mysqlCampaignId
+        : (parseInt(String(rowCampaignId), 10) || mysqlCampaignId),
       _mysqlAdId: null,
       _mysqlAssignedTo: cleanAssignedToId,
       _mysqlCreatorId: cleanCreatorId
@@ -1369,7 +1404,8 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
     createdLeads.push(newLead);
   }
 
-  if (dbPool) {
+  if (dbPool && (metaWebhook || dbPool.isConnected())) {
+    let importConnection = null;
     try {
       if (metaWebhook && createdLeads[0].metaAdId) {
         const [adRows] = await dbPool.queryStrict(
@@ -1377,6 +1413,11 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
           [createdLeads[0].metaAdId]
         );
         createdLeads[0]._mysqlAdId = adRows[0]?.id || null;
+      }
+
+      if (!metaWebhook) {
+        importConnection = await dbPool.getConnection();
+        await importConnection.beginTransaction();
       }
 
       for (const l of createdLeads) {
@@ -1394,7 +1435,7 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
             ]
           );
         } else {
-          await dbPool.query(
+          await importConnection.query(
             `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, assigned_telecaller_id, assignment_status, creator_id, creator_name, creator_email, campaign_id, campaign_name, created_at, updated_at)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
             [
@@ -1404,7 +1445,18 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
           );
         }
       }
+
+      if (importConnection) {
+        await importConnection.commit();
+      }
     } catch (e) {
+      if (importConnection) {
+        try {
+          await importConnection.rollback();
+        } catch (rollbackError) {
+          console.error('[MySQL DB Error] Failed to roll back lead batch import:', rollbackError?.message || rollbackError);
+        }
+      }
       if (metaWebhook) {
         const storedIndex = dbLeadsStore.indexOf(createdLeads[0]);
         if (storedIndex !== -1) dbLeadsStore.splice(storedIndex, 1);
@@ -1413,7 +1465,13 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
         }
         throw e;
       }
-      console.log('[MySQL Notice] Batch save leads to database failed:', e?.message || e);
+      createdLeads.forEach((lead) => {
+        const storedIndex = dbLeadsStore.indexOf(lead);
+        if (storedIndex !== -1) dbLeadsStore.splice(storedIndex, 1);
+      });
+      throw e;
+    } finally {
+      if (importConnection) importConnection.release();
     }
   } else if (metaWebhook) {
     const duplicate = dbLeadsStore.some((lead) => lead.metaLeadId === createdLeads[0].metaLeadId);
@@ -1466,6 +1524,10 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
 }
 
 router.handleBatchImport = handleBatchImport;
+
+router.post('/leads/batch-import', async (req, res) => {
+  return handleBatchImport(req, res);
+});
 
 router.get('/leads/telecalling-summary', async (req, res) => {
   const currentRole = String(req.user?.role || req.headers['x-user-role'] || '').toUpperCase();

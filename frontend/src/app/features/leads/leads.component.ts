@@ -1,11 +1,14 @@
 import { Component, inject, OnInit, signal, computed, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { LeadTelecallingService, LeadItem, CallActivityItem } from '../../core/services/lead-telecalling.service';
 import { UserManagementService } from '../../core/services/user-management.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CampaignService } from '../../core/services/campaign.service';
+import * as XLSX from '@e965/xlsx';
+import { firstValueFrom } from 'rxjs';
 import { isLeadAssignedToUser } from '../telecalling/telecalling.component';
 import { FIXED_PACKAGES } from '../../core/models/package.model';
 import { LeadsToolbarComponent } from './components/leads-toolbar/leads-toolbar.component';
@@ -52,6 +55,9 @@ export class LeadsComponent implements OnInit {
 
   readonly activeTab = signal<'LEADS_LIST' | 'TELECALLING_MONITOR'>('LEADS_LIST');
   readonly showModal = signal<boolean>(false);
+  readonly isUploadingLeads = signal<boolean>(false);
+  readonly leadUploadStatus = signal<string | null>(null);
+  readonly leadUploadError = signal<string | null>(null);
   readonly filterStatus = signal<string>('ALL');
   readonly searchQuery = signal<string>('');
   readonly filterTelecaller = signal<string>('ALL');
@@ -214,6 +220,128 @@ export class LeadsComponent implements OnInit {
     this.leadService.loadSummary().subscribe();
     this.campaignService.loadCampaigns().subscribe();
 
+  }
+
+  async onLeadsFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    this.leadUploadStatus.set(null);
+    this.leadUploadError.set(null);
+    if (!file) return;
+
+    if (!this.canCreateLeads()) {
+      this.leadUploadError.set('Only Digital Marketing and Admin roles can upload leads.');
+      return;
+    }
+
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    if (!extension || !['xlsx', 'xls', 'csv'].includes(extension)) {
+      this.leadUploadError.set('Choose an Excel (.xlsx or .xls) or CSV file.');
+      return;
+    }
+
+    this.isUploadingLeads.set(true);
+    try {
+      const inputData = extension === 'csv' ? await file.text() : await file.arrayBuffer();
+      const workbook = XLSX.read(inputData, { type: extension === 'csv' ? 'string' : 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      if (!firstSheet) throw new Error('The selected file has no worksheets or data.');
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, {
+        defval: '',
+        raw: false,
+      });
+      const leads: Partial<LeadItem>[] = rows
+        .filter((row) => Object.values(row).some((value) => String(value ?? '').trim() !== ''))
+        .map((row, index) => {
+          const fields = new Map<string, string>(
+            Object.entries(row).map(([header, value]) => [
+              header.trim().toLowerCase().replace(/[\s_-]+/g, ''),
+              String(value ?? '').trim(),
+            ])
+          );
+          const get = (...names: string[]): string => {
+            for (const name of names) {
+              const value = fields.get(name);
+              if (value) return value;
+            }
+            return '';
+          };
+          const fullName = get('leadname', 'fullname', 'name');
+          const splitName = fullName.split(/\s+/).filter(Boolean);
+          const firstName = get('firstname') || splitName.shift() || '';
+          const lastName = get('lastname') || splitName.join(' ');
+          const contactInfo = get('contactinfo', 'contact');
+          const contactEmail = contactInfo.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || '';
+          const contactPhone = contactInfo
+            .replace(contactEmail, '')
+            .replace(/(?:phone|mobile|tel)\s*[:=-]?\s*/i, '')
+            .trim();
+          const phone = get('phone', 'phonenumber', 'mobile', 'mobilenumber', 'contactnumber') || contactPhone;
+          const email = get('email', 'emailaddress') || contactEmail;
+
+          if (!firstName || !phone) {
+            throw new Error(`Row ${index + 2}: name and phone number are required.`);
+          }
+
+          return {
+            firstName,
+            lastName,
+            email,
+            phone,
+            source: get('source', 'leadsource') || 'Excel Upload',
+            campaignName: get('campaign', 'campaignname') || undefined,
+          };
+        });
+
+      if (leads.length === 0) {
+        throw new Error('The spreadsheet contains no lead rows. Include a name and phone number for each lead.');
+      }
+
+      const user = this.authService.currentUser();
+      if (!user) throw new Error('Your user session could not be verified. Please sign in again.');
+      const campaigns = this.availableCampaigns();
+      const campaign = campaigns[0];
+      const campaignName = this.packageFilterSignal()?.trim() || campaign?.name || 'Excel Lead Upload';
+      for (const lead of leads) {
+        const rowCampaignName = lead.campaignName?.trim();
+        if (rowCampaignName) {
+          const matchedCampaign = campaigns.find(
+            (available) => available.name.toLowerCase() === rowCampaignName.toLowerCase()
+          );
+          if (matchedCampaign) lead.campaignId = matchedCampaign.id;
+        } else {
+          lead.campaignName = campaignName;
+          lead.campaignId = campaign?.id || 'cmp_default';
+        }
+      }
+      const response = await firstValueFrom(this.leadService.importLeadBatch({
+        leads,
+        campaignId: campaign?.id || 'cmp_default',
+        campaignName,
+        source: 'Excel Upload',
+        creatorId: user.id,
+        creatorEmail: user.email,
+        creatorName: user.fullName,
+        uploaderRole: user.role,
+      }));
+
+      this.resetFilters();
+      const distribution = response.allocationSummary
+        .filter((item) => item.count > 0)
+        .map((item) => `${item.fullName}: ${item.count}`)
+        .join(', ');
+      this.leadUploadStatus.set(
+        `Uploaded ${response.totalUploaded} leads and assigned them across ${response.telecallersCount} active telecallers${distribution ? ` (${distribution})` : ''}.`
+      );
+    } catch (error) {
+      const message = error instanceof HttpErrorResponse
+        ? error.error?.error || error.message
+        : error instanceof Error ? error.message : 'Unable to upload leads.';
+      this.leadUploadError.set(message);
+    } finally {
+      this.isUploadingLeads.set(false);
+    }
   }
 
   openModal() {

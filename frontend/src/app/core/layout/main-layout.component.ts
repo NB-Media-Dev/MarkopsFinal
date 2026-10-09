@@ -1,9 +1,11 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, DestroyRef, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { UserRole } from '../models/auth.model';
 import { SYSTEM_ROLES_METADATA } from '../models/user-management.model';
+import { filter } from 'rxjs';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
 export interface NavMenuItem {
   label: string;
@@ -83,9 +85,12 @@ import { NotificationService } from '../services/notification.service';
   styleUrl: './main-layout.component.scss',
 })
 export class MainLayoutComponent {
+  @ViewChild('mainContent') private mainContent?: ElementRef<HTMLElement>;
+
   readonly authService = inject(AuthService);
   readonly notifService = inject(NotificationService);
   private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly isNotificationFlyoutOpen = signal<boolean>(false);
 
@@ -133,6 +138,28 @@ export class MainLayoutComponent {
   });
 
   readonly searchQuery = signal<string>('');
+
+  constructor() {
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            this.scrollPageToTop();
+          });
+        });
+      });
+  }
+
+  private scrollPageToTop(): void {
+    if (this.mainContent) {
+      this.mainContent.nativeElement.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    }
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }
 
   onSearch(event: Event): void {
     const query = (event.target as HTMLInputElement).value;

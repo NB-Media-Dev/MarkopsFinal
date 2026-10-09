@@ -526,11 +526,13 @@ export class PackageWorksComponent implements OnInit {
     if (dept && dept.tabs.length > 0) {
       this.selectOperationTab(dept.tabs[0].id);
     }
+    this.scrollToPageTop();
   }
 
   backToPackageHub(): void {
     this.activeDepartment.set(null);
     this.activeOperationTab.set('');
+    this.scrollToPageTop();
   }
 
   getDepartmentIcon(deptId: string | null): string {
@@ -1263,6 +1265,7 @@ export class PackageWorksComponent implements OnInit {
     this.activeWorkspacePackage.set(pkg);
     this.activeDepartment.set(null);
     this.activeOperationTab.set('');
+    this.scrollToPageTop();
     this.fetchAuditLogs();
     this.taskService.loadTasks();
   }
@@ -1271,6 +1274,7 @@ export class PackageWorksComponent implements OnInit {
     this.activeWorkspacePackage.set(null);
     this.activeDepartment.set(null);
     this.activeOperationTab.set('PACKAGES');
+    this.scrollToPageTop();
   }
 
   onBreadcrumbBack(): void {
@@ -1352,6 +1356,7 @@ export class PackageWorksComponent implements OnInit {
     }
     this.activeWorkspacePackage.set(null);
     this.activeOperationTab.set('PACKAGES');
+    this.scrollToPageTop();
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { package: pkgName },
@@ -1360,6 +1365,22 @@ export class PackageWorksComponent implements OnInit {
     this.fetchAuditLogs();
     this.taskService.loadTasks();
     this.packageService.loadAllPackages().subscribe();
+  }
+
+  private scrollToPageTop(): void {
+    if (typeof window === 'undefined') return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        document.querySelector<HTMLElement>('.mo-main-content')?.scrollTo({
+          top: 0,
+          left: 0,
+          behavior: 'auto',
+        });
+      });
+    });
   }
 
   onHeroBannerSelected(event: Event): void {
