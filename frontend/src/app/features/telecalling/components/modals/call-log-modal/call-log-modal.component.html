@@ -20,7 +20,7 @@
         </button>
       </div>
       <div class="modal-body">
-        <!-- 1. Outcome & Duration Row -->
+
         <div class="form-row outcome-duration-row">
           <div class="form-group flex-1">
             <label class="form-label">Call Outcome <span class="required">*</span></label>
@@ -38,7 +38,7 @@
               <option value="QUALIFIED">Paid</option>
             </select>
           </div>
-          <!-- Duration (shown side by side when applicable) -->
+
           @if (shouldShowDuration()) {
             <div class="form-group flex-1">
               <label class="form-label">Duration (Seconds)</label>
@@ -67,7 +67,7 @@
             </div>
           }
         </div>
-        <!-- 2. Reminder Option Toggle Button / Bar -->
+
         <div
           class="reminder-option-bar"
           (click)="toggleReminder()"
@@ -95,7 +95,7 @@
             </div>
           </div>
         </div>
-        <!-- 3. Schedule Follow-up Date & Time Picker -->
+
         @if (enableReminder) {
           <div
             class="form-group follow-up-scheduler-box animated-expand"
@@ -175,7 +175,7 @@
             </div>
           </div>
         }
-        <!-- 4. Remarks with Hints -->
+
         <div class="form-group remarks-form-group">
           <div class="remarks-label-row">
             <label class="form-label">
@@ -192,7 +192,7 @@
             class="form-input remarks-textarea"
           >
           </textarea>
-          <!-- Quick Suggestion / Hint Chips matching this status -->
+
           <div class="quick-remarks-chips-row">
             <span class="quick-chip-label">Hints:</span>
             @for (hint of getRemarksQuickTemplates(); track hint) {

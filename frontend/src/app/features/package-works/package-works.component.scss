@@ -460,7 +460,6 @@
   }
 }
 
-
 .page-header {
   display: flex;
   align-items: flex-end;
@@ -860,7 +859,6 @@
   }
 }
 
-
 .package-pill-switcher {
   background-color: #FFFFFF;
   border: 1.5px solid #E2E8F0;
@@ -965,7 +963,6 @@
   }
 }
 
-
 .kpi-grid,
 .kpi-grid-reports,
 .catalog-top-kpi-grid,
@@ -1013,7 +1010,6 @@
   }
 }
 
-
 .kpi-card {
   border-radius: 12px;
   padding: 0.55rem 0.85rem;
@@ -1030,7 +1026,6 @@
   &:hover {
     transform: translateY(-2px);
   }
-
 
   .kpi-squircle-icon {
     width: 36px;
@@ -1081,7 +1076,6 @@
       font-family: var(--mo-font-sans);
     }
   }
-
 
   .kpi-header-row {
     display: flex;
@@ -1139,7 +1133,6 @@
       text-align: right;
     }
   }
-
 
   .kpi-top-row {
     display: flex;
@@ -1266,7 +1259,6 @@
     }
   }
 
-
   .kpi-pill-badge,
   .kpi-footer-pill {
     &.pill-amber {
@@ -1312,7 +1304,6 @@
     }
   }
 
-
   &.card-revenue,
   &.card-amber {
     background: linear-gradient(145deg, #FFFDF5 0%, #FEF3C7 100%);
@@ -1348,7 +1339,6 @@
     }
   }
 
- 
   &.card-leads,
   &.card-purple {
     background: linear-gradient(145deg, #FAF8FF 0%, #EDE9FE 100%);
@@ -1383,7 +1373,6 @@
       color: #6D28D9;
     }
   }
-
 
   &.card-conversion,
   &.card-emerald {
@@ -1420,7 +1409,6 @@
     }
   }
 
-  
   &.card-tasks,
   &.card-rose {
     background: linear-gradient(145deg, #FFF5F7 0%, #FFE4E6 100%);
@@ -1455,7 +1443,6 @@
       color: #BE123C;
     }
   }
-
 
   &.card-pkg-works,
   &.card-indigo {
@@ -1492,7 +1479,6 @@
     }
   }
 
-  
   &.card-blue,
   &.card-roi {
     background: linear-gradient(145deg, #F0F9FF 0%, #E0F2FE 100%);
@@ -1528,7 +1514,6 @@
     }
   }
 
- 
   &.card-teal,
   &.card-speed {
     background: linear-gradient(145deg, #F0FDFA 0%, #CCFBF1 100%);
@@ -1564,7 +1549,6 @@
     }
   }
 }
-
 
 .package-hub-kpi-grid {
   display: grid !important;
@@ -1674,7 +1658,6 @@
   }
 }
 
-
 .hub-section-header {
   display: flex;
   align-items: center;
@@ -1753,7 +1736,6 @@
     }
   }
 }
-
 
 .hub-departments-grid {
   display: grid;
@@ -1901,7 +1883,6 @@
       }
     }
 
-    
     &.dept-card-designer {
       background: linear-gradient(145deg, #FFF1F2 0%, #FFE4E6 50%, #FECDD3 100%);
       border-color: #FDA4AF;
@@ -1950,7 +1931,6 @@
       }
     }
 
-   
     &.dept-card-digital_marketing {
       background: linear-gradient(145deg, #FFFBEB 0%, #FEF3C7 50%, #FDE68A 100%);
       border-color: #FCD34D;
@@ -1999,7 +1979,6 @@
       }
     }
 
-    
     &.dept-card-telecalling {
       background: linear-gradient(145deg, #F5F3FF 0%, #EDE9FE 50%, #DDD6FE 100%);
       border-color: #C4B5FD;
@@ -2098,7 +2077,6 @@
   }
 }
 
-
 .hub-workspace-footer-card {
   background: #FFFFFF;
   border: 1.5px solid #E2E8F0;
@@ -2177,7 +2155,6 @@
   }
 }
 
-
 .executive-hub-card {
   background: #FFFFFF;
   border: 1.5px solid #E2E8F0;
@@ -2191,7 +2168,6 @@
   width: 100%;
   position: relative;
 
- 
   .hub-departments-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -2285,7 +2261,6 @@
         }
       }
 
-   
       &.active {
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
 
@@ -2293,7 +2268,6 @@
           color: #FFFFFF;
         }
 
-    
         &.dept-designer {
           background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%);
           border-color: #FDA4AF;
@@ -2312,7 +2286,6 @@
           }
         }
 
- 
         &.dept-digital_marketing {
           background: linear-gradient(135deg, #FFFDF5 0%, #FEF3C7 100%);
           border-color: #FCD34D;
@@ -2331,7 +2304,6 @@
           }
         }
 
-    
         &.dept-telecalling {
           background: linear-gradient(135deg, #FAF8FF 0%, #EDE9FE 100%);
           border-color: #C4B5FD;
@@ -2350,7 +2322,6 @@
           }
         }
 
-   
         &.dept-analytics {
           background: linear-gradient(135deg, #F4FDF8 0%, #D1FAE5 100%);
           border-color: #6EE7B7;
@@ -2371,7 +2342,6 @@
       }
     }
   }
-
 
   .hub-divider {
     display: flex;
@@ -2460,7 +2430,6 @@
     }
   }
 }
-
 
 .dept-dedicated-header {
   display: flex;
@@ -2611,7 +2580,6 @@
   }
 }
 
-
 .dept-nav-tabs-bar {
   display: inline-flex;
   align-items: center;
@@ -2737,12 +2705,10 @@
   }
 }
 
-
 .works-content-wrapper {
   background-color: transparent;
   border-radius: 20px;
 }
-
 
 .works-container-card {
   background: #ffffff;
@@ -2799,8 +2765,6 @@
         background: #f1f5f9;
         border-color: #94a3b8;
       }
-
-
 
       &.active {
         background: #EA580C;
@@ -2901,7 +2865,6 @@
     margin: 0;
   }
 }
-
 
 .modal-backdrop {
   position: fixed;
@@ -3117,7 +3080,6 @@
   }
 }
 
-
 .file-upload-zone {
   border: 2px dashed #cbd5e1;
   border-radius: 12px;
@@ -3220,7 +3182,6 @@
   }
 }
 
-
 .task-row-clickable {
   cursor: pointer;
   transition: background-color 0.15s ease;
@@ -3263,7 +3224,6 @@
   }
 }
 
-
 .task-detail-modal-box {
   max-width: 800px;
   width: 95%;
@@ -3280,7 +3240,6 @@
     margin-top: 0.5rem;
   }
 }
-
 
 .task-detail-tabs {
   display: flex;
@@ -3317,7 +3276,6 @@
   }
 }
 
-
 .iframe-preview-container {
   border: 1px solid #cbd5e1;
   border-radius: 12px;
@@ -3342,7 +3300,6 @@
   }
 }
 
-
 .version-card {
   transition: border-color 0.15s ease;
 
@@ -3350,7 +3307,6 @@
     border-color: #38bdf8 !important;
   }
 }
-
 
 .timeline-container {
   position: relative;
@@ -3388,7 +3344,6 @@
   background-color: #fffbeb !important;
   border-color: #fde68a !important;
 }
-
 
 .package-reports-panel,
 .package-audits-panel {
@@ -3711,7 +3666,6 @@
   }
 }
 
-
 .audit-master-table {
   width: 100%;
 
@@ -3759,7 +3713,6 @@
     transform: translateY(-1px);
   }
 }
-
 
 .task-audit-link-cell {
   display: inline-flex;
@@ -3829,7 +3782,6 @@
     transform: translateY(0);
   }
 }
-
 
 .doc-viewer-backdrop {
   z-index: 2200 !important;
@@ -3942,7 +3894,6 @@
   overflow: hidden;
 }
 
-
 .task-audit-header {
   padding: 1rem 1.25rem;
   background: #ffffff;
@@ -4015,7 +3966,6 @@
     }
   }
 }
-
 
 .task-audit-body {
   padding: 1.15rem 1.25rem;
@@ -4144,7 +4094,6 @@
   }
 }
 
-
 .audit-spec-box {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -4172,7 +4121,6 @@
   }
 }
 
-
 .audit-section {
   background: #ffffff;
   border: 1px solid #e2e8f0;
@@ -4196,7 +4144,6 @@
     }
   }
 }
-
 
 .journey-stepper-wrap {
   display: flex;
@@ -4271,7 +4218,6 @@
   }
 }
 
-
 .audit-journey-table-container {
   overflow-x: auto;
   border: 1px solid #e2e8f0;
@@ -4322,7 +4268,6 @@
     }
   }
 }
-
 
 .deliverables-list {
   display: flex;
@@ -4465,7 +4410,6 @@
     }
   }
 }
-
 
 .upload-modal-backdrop,
 .redesign-modal-backdrop {
@@ -4708,7 +4652,6 @@
     }
   }
 
-
   .creative-upload-dropzone {
     border: 2px dashed #818CF8;
     background: #F8FAFC;
@@ -4779,7 +4722,6 @@
     }
   }
 
-  
   .selected-asset-preview-card {
     display: flex;
     align-items: center;
@@ -4910,7 +4852,6 @@
     }
   }
 
-
   .quick-preset-chips-box {
     margin-top: 0.25rem;
 
@@ -4950,7 +4891,6 @@
     }
   }
 
- 
   .designer-compact-bar {
     display: inline-flex;
     align-items: center;
@@ -5034,7 +4974,6 @@
     }
   }
 
- 
   .redesign-chips-wrap {
     display: flex;
     flex-wrap: wrap;
@@ -5068,7 +5007,6 @@
       }
     }
   }
-
 
   .modal-footer {
     padding: 0.75rem 1.25rem;
@@ -5134,7 +5072,6 @@
     transform: translateY(0);
   }
 }
-
 
 .packages-catalog-container {
   display: flex;
@@ -5241,7 +5178,6 @@
   }
 }
 
-
 .custom-packages-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
@@ -5266,7 +5202,7 @@
     box-shadow: 0 16px 36px rgba(37, 99, 235, 0.14), 0 4px 12px rgba(15, 23, 42, 0.04);
     border-color: #3B82F6;
   }
- 
+
   .package-display-banner {
     position: relative;
     width: 100%;
@@ -5395,7 +5331,6 @@
     }
   }
 
- 
   .package-display-info {
     padding-top: 14px;
     display: flex;
@@ -5584,7 +5519,6 @@
     }
   }
 }
-
 
 .custom-modal-overlay {
   position: fixed;
@@ -5801,7 +5735,6 @@
       }
     }
 
-  
     .pkg-active-image-preview {
       .preview-img-container {
         position: relative;
@@ -5984,7 +5917,6 @@
   from { opacity: 0; transform: translateY(16px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
-
 
 @media (min-width: 2560px) {
   .header-breadcrumb {

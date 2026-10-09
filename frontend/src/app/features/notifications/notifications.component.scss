@@ -9,7 +9,6 @@
   box-sizing: border-box;
 }
 
-
 .page-header {
   display: flex;
   align-items: center;
@@ -142,7 +141,6 @@
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.4; transform: scale(1.3); }
 }
-
 
 .compact-controls-bar {
   background: #FFFFFF;
@@ -354,7 +352,6 @@
   }
 }
 
-
 .notifications-container {
   display: flex;
   flex-direction: column;
@@ -406,7 +403,6 @@
     gap: 0.35rem;
   }
 }
-
 
 .notif-row {
   background: #FFFFFF;
@@ -582,7 +578,6 @@
   }
 }
 
-
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -639,5 +634,3 @@
     }
   }
 }
-
-

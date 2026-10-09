@@ -1,5 +1,5 @@
 <div class="designer-dashboard" [class.embedded-mode]="embedded">
-  <!-- Clean Breadcrumb Bar in standalone mode -->
+
   @if (!embedded) {
     <header class="page-header mb-3">
       <div class="header-titles-group">
@@ -19,10 +19,9 @@
     </header>
   }
 
-  <!-- Top Navigation Toolbar matching user design: Tabs on Left, Date Filters & Assign Task on Right -->
   @if (!isDesigner()) {
     <div class="pkg-top-subtabs-nav">
-      <!-- Left: Subtabs Group -->
+
       <div class="pkg-subtabs-group">
         <button
           type="button"
@@ -61,7 +60,7 @@
           }
         </button>
       </div>
-      <!-- Right Cluster: Calendar Date Picker + Quick Date Pills + Assign Task Button -->
+
       <div class="pkg-subtabs-right-cluster">
         <div class="pkg-subtabs-date-filter">
           <div class="calendar-input-wrapper">
@@ -115,7 +114,6 @@
     </div>
   }
 
-  <!-- VIEW 1: DESIGNERS LIST IN TABLE FORMAT (when showDesignersDirectory() && !isDesigner()) -->
   @if (showDesignersDirectory() && !isDesigner()) {
     <app-designer-kpis
       [totalDesigners]="totalAllDesigners()"
@@ -132,9 +130,8 @@
     ></app-designers-table>
   }
 
-  <!-- VIEW 2: DEDICATED TASKS BOARD (when !showDesignersDirectory() || isDesigner()) -->
   @if (!showDesignersDirectory() || isDesigner()) {
-    <!-- Top Navigation & Profile Banner when viewing tasks -->
+
     @if (!isDesigner()) {
       <div class="designer-view-header">
         <div class="back-nav-bar"></div>
@@ -142,7 +139,6 @@
       </div>
     }
 
-    <!-- Content Split: Task Board -->
     <div class="dashboard-split" [class.panel-open]="!!taskService.selectedTask()">
       <main class="main-board">
         @if (isDesigner()) {
@@ -177,7 +173,7 @@
                   </button>
                 }
               </div>
-              <!-- Priority Filter Dropdown -->
+
               <div class="filter-dropdown-wrapper priority-filter-wrapper">
                 <span class="material-symbols-outlined filter-icon">flag</span>
                 <select
@@ -193,7 +189,7 @@
                 </select>
                 <span class="material-symbols-outlined arrow-icon">expand_more</span>
               </div>
-              <!-- Status Filter Dropdown -->
+
               <div class="filter-dropdown-wrapper">
                 <span class="material-symbols-outlined filter-icon">filter_list</span>
                 <select
@@ -214,7 +210,6 @@
           </div>
         }
 
-        <!-- Task List Cards Container -->
         <div class="task-list">
           @if (taskService.isLoading()) {
             <div class="loading-state-container">
@@ -292,7 +287,6 @@
     </div>
   }
 
-  <!-- Modals -->
   <app-upload-design-modal
     [isOpen]="isUploadModalOpen()"
     [task]="getActiveUploadTask()"

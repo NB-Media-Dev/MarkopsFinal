@@ -1,6 +1,5 @@
-<!-- Main Content Container for Active Department -->
 <div class="works-content-wrapper dept-active-content">
-  <!-- Tasks / Works View (Embedded Designer Tasks Dashboard) -->
+
   @if (
     currentDept === 'DESIGNER' ||
     activeOperationTab === 'TASKS' ||
@@ -18,32 +17,178 @@
     </div>
   }
 
-  <!-- Digital Marketing Overview (Initial 3 Feature Cards) -->
   @if (
     currentDept === 'DIGITAL_MARKETING' &&
     (!activeOperationTab || activeOperationTab === 'MARKETING_OVERVIEW' || activeOperationTab === 'OVERVIEW')
   ) {
-    <div class="marketing-overview-container">
-      <app-campaign-kpis
-        [totalSpend]="totalSpend()"
-        [totalBudget]="totalBudget()"
-        [totalLeads]="totalLeads()"
-        [totalQualifiedLeads]="totalQualifiedLeads()"
-        [averageCpl]="averageCpl()"
-        [totalConversions]="totalConversions()"
-        [overallConvRate]="overallConvRate()"
-        [totalCampaignsCount]="totalCampaignsCount()"
-        [activeCampaignsCount]="activeCampaignsCount()"
-        [completedCampaignsCount]="completedCampaignsCount()"
-        [totalClicks]="totalClicks()"
-        (createCampaign)="selectOperationTab('CAMPAIGNS')"
-        (viewAnalytics)="selectOperationTab('ADS')"
-        (viewLeads)="selectOperationTab('LEADS')"
-      ></app-campaign-kpis>
+    <div class="marketing-hub-section">
+
+      <div class="marketing-showcase-grid">
+
+        <div class="marketing-card card-campaigns" (click)="selectOperationTab('CAMPAIGNS')">
+          <div class="card-top-header">
+            <div class="card-icon-pill icon-orange">
+              <span class="material-symbols-outlined">campaign</span>
+            </div>
+            <div class="card-title-group">
+              <h3 class="card-title">Campaigns</h3>
+              <p class="card-desc">Multi-channel ad sets & launch controls</p>
+            </div>
+          </div>
+
+          <div class="card-graphic-area graphic-bg-orange">
+            <div class="graphic-canvas graphic-campaigns-art">
+              <svg viewBox="0 0 200 120" fill="none" class="feature-art-svg">
+                <defs>
+                  <radialGradient id="dmCampGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#FED7AA" stop-opacity="0.7"/>
+                    <stop offset="100%" stop-color="#FFF7ED" stop-opacity="0"/>
+                  </radialGradient>
+                  <linearGradient id="dmSpeakerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#F59E0B"/>
+                    <stop offset="100%" stop-color="#EA580C"/>
+                  </linearGradient>
+                </defs>
+                <circle cx="100" cy="65" r="50" fill="url(#dmCampGlow)"/>
+
+                <path d="M50 78L85 68L85 42L50 32C45 30 40 34 40 40L40 70C40 76 45 80 50 78Z" fill="url(#dmSpeakerGrad)"/>
+                <path d="M85 42L115 28C118 26 122 29 122 33L122 77C122 81 118 84 115 82L85 68Z" fill="#F97316"/>
+
+                <ellipse cx="122" cy="55" rx="8" ry="27" fill="#EA580C"/>
+                <ellipse cx="122" cy="55" rx="4" ry="18" fill="#FDE047"/>
+
+                <path d="M55 76L62 98C63 101 60 104 57 104L52 104C49 104 47 101 48 98L53 76Z" fill="#D97706"/>
+
+                <circle cx="145" cy="40" r="14" fill="#FEE2E2" stroke="#EF4444" stroke-width="2"/>
+                <circle cx="145" cy="40" r="8" fill="#EF4444"/>
+                <circle cx="145" cy="40" r="3" fill="#FFFFFF"/>
+
+                <rect x="135" y="65" width="28" height="22" rx="4" fill="#FFFFFF" stroke="#FED7AA" stroke-width="1.5"/>
+                <circle cx="143" cy="72" r="2.5" fill="#F59E0B"/>
+                <path d="M138 83L146 76L158 84" stroke="#FB923C" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="card-action-wrap">
+            <button type="button" class="btn-primary-card btn-orange-solid" (click)="selectOperationTab('CAMPAIGNS'); $event.stopPropagation()">
+              <span>Open</span>
+              <span class="material-symbols-outlined icon-arrow">arrow_forward</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="marketing-card card-ads" (click)="selectOperationTab('ADS')">
+          <div class="card-top-header">
+            <div class="card-icon-pill icon-blue">
+              <span class="material-symbols-outlined">analytics</span>
+            </div>
+            <div class="card-title-group">
+              <h3 class="card-title">Ads Metrics</h3>
+              <p class="card-desc">Realtime impressions, CTR & performance</p>
+            </div>
+          </div>
+
+          <div class="card-graphic-area graphic-bg-blue">
+            <div class="graphic-canvas graphic-ads-art">
+              <svg viewBox="0 0 200 120" fill="none" class="feature-art-svg">
+                <defs>
+                  <radialGradient id="dmAdsGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#BFDBFE" stop-opacity="0.7"/>
+                    <stop offset="100%" stop-color="#EFF6FF" stop-opacity="0"/>
+                  </radialGradient>
+                </defs>
+                <circle cx="100" cy="65" r="50" fill="url(#dmAdsGlow)"/>
+
+                <rect x="45" y="25" width="105" height="68" rx="7" fill="#FFFFFF" stroke="#3B82F6" stroke-width="2"/>
+                <path d="M45 38H150" stroke="#DBEAFE" stroke-width="1.5"/>
+
+                <path d="M88 93H107L112 103H83L88 93Z" fill="#93C5FD"/>
+
+                <rect x="120" y="29" width="24" height="13" rx="3" fill="#2563EB"/>
+                <text x="124" y="39" fill="#FFFFFF" font-size="8" font-weight="900" font-family="sans-serif">AD</text>
+
+                <rect x="60" y="65" width="8" height="20" rx="2" fill="#93C5FD"/>
+                <rect x="73" y="52" width="8" height="33" rx="2" fill="#60A5FA"/>
+                <rect x="86" y="44" width="8" height="41" rx="2" fill="#3B82F6"/>
+                <rect x="99" y="36" width="8" height="49" rx="2" fill="#1D4ED8"/>
+
+                <path d="M58 70L74 54L88 47L102 38" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/>
+
+                <path d="M135 68L150 78L143 81L147 90L142 92L138 83L131 87L135 68Z" fill="#1E40AF" stroke="#FFFFFF" stroke-width="1.5"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="card-action-wrap">
+            <button type="button" class="btn-primary-card btn-blue-solid" (click)="selectOperationTab('ADS'); $event.stopPropagation()">
+              <span>Open</span>
+              <span class="material-symbols-outlined icon-arrow">arrow_forward</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="marketing-card card-leads" (click)="selectOperationTab('LEADS')">
+          <div class="card-top-header">
+            <div class="card-icon-pill icon-green">
+              <span class="material-symbols-outlined">groups</span>
+            </div>
+            <div class="card-title-group">
+              <h3 class="card-title">Leads</h3>
+              <p class="card-desc">Incoming leads pipeline & conversions</p>
+            </div>
+          </div>
+
+          <div class="card-graphic-area graphic-bg-green">
+            <div class="graphic-canvas graphic-leads-art">
+              <svg viewBox="0 0 200 120" fill="none" class="feature-art-svg">
+                <defs>
+                  <radialGradient id="dmLeadGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#A7F3D0" stop-opacity="0.7"/>
+                    <stop offset="100%" stop-color="#ECFDF5" stop-opacity="0"/>
+                  </radialGradient>
+                  <linearGradient id="dmFunnelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#34D399"/>
+                    <stop offset="100%" stop-color="#059669"/>
+                  </linearGradient>
+                </defs>
+                <circle cx="100" cy="65" r="50" fill="url(#dmLeadGlow)"/>
+
+                <circle cx="70" cy="30" r="7" fill="#6EE7B7"/>
+                <circle cx="70" cy="27" r="3" fill="#047857"/>
+                <path d="M65 35C65 32 67 31 70 31C73 31 75 32 75 35" stroke="#047857" stroke-width="1.5" stroke-linecap="round"/>
+
+                <circle cx="100" cy="22" r="8" fill="#10B981"/>
+                <circle cx="100" cy="19" r="3.5" fill="#FFFFFF"/>
+                <path d="M94 28C94 25 97 24 100 24C103 24 106 25 106 28" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round"/>
+
+                <circle cx="130" cy="30" r="7" fill="#6EE7B7"/>
+                <circle cx="130" cy="27" r="3" fill="#047857"/>
+                <path d="M125 35C125 32 127 31 130 31C133 31 135 32 135 35" stroke="#047857" stroke-width="1.5" stroke-linecap="round"/>
+
+                <path d="M60 42H140L115 78V92H85V78L60 42Z" fill="url(#dmFunnelGrad)"/>
+                <ellipse cx="100" cy="42" rx="40" ry="6" fill="#10B981"/>
+
+                <ellipse cx="94" cy="98" rx="8" ry="4" fill="#FBBF24" stroke="#D97706" stroke-width="1"/>
+                <ellipse cx="94" cy="95" rx="8" ry="4" fill="#FDE047" stroke="#D97706" stroke-width="1"/>
+                <ellipse cx="106" cy="99" rx="8" ry="4" fill="#F59E0B" stroke="#B45309" stroke-width="1"/>
+                <ellipse cx="106" cy="96" rx="8" ry="8" fill="#FBBF24" stroke="#D97706" stroke-width="1"/>
+                <text x="103" y="99" fill="#B45309" font-size="7" font-weight="900" font-family="sans-serif">₹</text>
+              </svg>
+            </div>
+          </div>
+
+          <div class="card-action-wrap">
+            <button type="button" class="btn-primary-card btn-green-solid" (click)="selectOperationTab('LEADS'); $event.stopPropagation()">
+              <span>Open</span>
+              <span class="material-symbols-outlined icon-arrow">arrow_forward</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   }
 
-  <!-- Campaigns View (Digital Marketing) -->
   @if (currentDept === 'DIGITAL_MARKETING' && activeOperationTab === 'CAMPAIGNS') {
     <div>
       <app-campaigns
@@ -55,7 +200,7 @@
       ></app-campaigns>
     </div>
   }
-  <!-- Ads Metrics View (Digital Marketing) -->
+
   @if (currentDept === 'DIGITAL_MARKETING' && activeOperationTab === 'ADS') {
     <div>
       <app-ads
@@ -65,7 +210,7 @@
       ></app-ads>
     </div>
   }
-  <!-- Leads View (Digital Marketing) -->
+
   @if (currentDept === 'DIGITAL_MARKETING' && activeOperationTab === 'LEADS') {
     <div>
       <app-leads
@@ -75,7 +220,7 @@
       ></app-leads>
     </div>
   }
-  <!-- View Telecalling (Digital Marketing) -->
+
   @if (currentDept === 'DIGITAL_MARKETING' && activeOperationTab === 'TELECALLING_VIEW') {
     <div>
       <app-telecalling
@@ -86,18 +231,13 @@
       ></app-telecalling>
     </div>
   }
-  <!-- Telecalling Content -->
+
   @if (
     currentDept === 'TELECALLING' &&
     (activeOperationTab === 'TELECALLER_MEMBERS' || activeOperationTab === 'TELECALLING')
   ) {
     <div>
-      <app-telecalling
-        [embedded]="true"
-        [viewMode]="'ALL'"
-        [packageFilter]="currentFilterTarget"
-        [productFilter]="activePackageName"
-      ></app-telecalling>
+      <app-telecalling [embedded]="true" [viewMode]="'ALL'" [packageFilter]="currentFilterTarget"></app-telecalling>
     </div>
   }
   @if (currentDept === 'TELECALLING' && activeOperationTab === 'TARGETS') {
@@ -106,458 +246,1011 @@
     </div>
   }
 
-  <!-- ========================================================================= -->
-  <!-- ANALYTICS & MANAGEMENT DEPARTMENT                                         -->
-  <!-- ========================================================================= -->
-  @if (currentDept === 'ANALYTICS') {
-    
-    <!-- LEVEL 1: INITIAL 3 FEATURE CARDS OVERVIEW -->
-    @if (!activeOperationTab || activeOperationTab === 'ANALYTICS_OVERVIEW' || activeOperationTab === 'OVERVIEW' || activeOperationTab === 'MANAGEMENT') {
-      <div class="analytics-hub-section">
-        <div class="analytics-showcase-grid">
-          
-          <!-- CARD 1: TRANSACTIONS -->
-          <div class="analytics-card card-transactions" (click)="selectOperationTab('TRANSACTIONS')">
-            <div class="card-top-header">
-              <div class="card-icon-pill icon-orange">
-                <span class="material-symbols-outlined">payments</span>
-              </div>
-              <div class="card-title-group">
-                <h3 class="card-title">Transactions</h3>
-                <p class="card-desc">Conversion ledger, revenue & cashflow</p>
-              </div>
-            </div>
+  @if (
+    currentDept === 'ANALYTICS' &&
+    (!activeOperationTab || activeOperationTab === 'ANALYTICS_OVERVIEW' || activeOperationTab === 'OVERVIEW' || activeOperationTab === 'MANAGEMENT')
+  ) {
+    <div class="analytics-hub-section">
+      <div class="analytics-showcase-grid">
 
-            <!-- Graphic Visual Illustration -->
-            <div class="card-graphic-area graphic-bg-orange">
-              <div class="graphic-canvas">
-                <svg viewBox="0 0 200 120" fill="none" class="feature-art-svg">
-                  <defs>
-                    <radialGradient id="txGlow" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stop-color="#FED7AA" stop-opacity="0.8"/>
-                      <stop offset="100%" stop-color="#FFF7ED" stop-opacity="0"/>
-                    </radialGradient>
-                    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stop-color="#F59E0B"/>
-                      <stop offset="100%" stop-color="#EA580C"/>
-                    </linearGradient>
-                  </defs>
-                  <circle cx="100" cy="65" r="50" fill="url(#txGlow)"/>
-                  <!-- Ledger / Card Base -->
-                  <rect x="42" y="32" width="116" height="66" rx="10" fill="url(#cardGrad)" filter="drop-shadow(0 6px 12px rgba(234,88,12,0.25))"/>
-                  <rect x="52" y="44" width="34" height="20" rx="4" fill="#FEF3C7" opacity="0.9"/>
-                  <circle cx="134" cy="52" r="12" fill="#FDE047" opacity="0.6"/>
-                  <circle cx="144" cy="52" r="12" fill="#FEF08A" opacity="0.6"/>
-                  <!-- Chip & lines -->
-                  <rect x="55" y="47" width="12" height="10" rx="2" fill="#D97706"/>
-                  <rect x="52" y="78" width="60" height="6" rx="3" fill="#FFFFFF" opacity="0.8"/>
-                  <rect x="52" y="87" width="38" height="4" rx="2" fill="#FFFFFF" opacity="0.5"/>
-                  <!-- Floating Rupee Coin -->
-                  <circle cx="150" cy="30" r="16" fill="#F59E0B" stroke="#FFFFFF" stroke-width="2.5"/>
-                  <text x="144" y="36" fill="#FFFFFF" font-size="16" font-weight="900" font-family="sans-serif">₹</text>
-                </svg>
-              </div>
+        <div class="analytics-card card-transactions" (click)="selectOperationTab('TRANSACTIONS')">
+          <div class="card-top-header">
+            <div class="card-icon-pill icon-orange">
+              <span class="material-symbols-outlined">payments</span>
             </div>
-
-            <!-- Action Button -->
-            <div class="card-action-wrap">
-              <button type="button" class="btn-primary-card btn-orange-solid" (click)="selectOperationTab('TRANSACTIONS'); $event.stopPropagation()">
-                <span>Open</span>
-                <span class="material-symbols-outlined icon-arrow">arrow_forward</span>
-              </button>
+            <div class="card-title-group">
+              <h3 class="card-title">Transactions</h3>
+              <p class="card-desc">Conversion ledger, revenue & cashflow</p>
             </div>
           </div>
 
-          <!-- CARD 2: REPORTS -->
-          <div class="analytics-card card-reports" (click)="selectOperationTab('REPORTS')">
-            <div class="card-top-header">
-              <div class="card-icon-pill icon-blue">
-                <span class="material-symbols-outlined">bar_chart</span>
-              </div>
-              <div class="card-title-group">
-                <h3 class="card-title">Reports</h3>
-                <p class="card-desc">Performance metrics, CPL & ROI analytics</p>
-              </div>
-            </div>
+          <div class="card-graphic-area graphic-bg-orange">
+            <div class="graphic-canvas">
+              <svg viewBox="0 0 200 120" fill="none" class="feature-art-svg">
+                <defs>
+                  <radialGradient id="txGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#FED7AA" stop-opacity="0.8"/>
+                    <stop offset="100%" stop-color="#FFF7ED" stop-opacity="0"/>
+                  </radialGradient>
+                  <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#F59E0B"/>
+                    <stop offset="100%" stop-color="#EA580C"/>
+                  </linearGradient>
+                </defs>
+                <circle cx="100" cy="65" r="50" fill="url(#txGlow)"/>
 
-            <!-- Graphic Visual Illustration -->
-            <div class="card-graphic-area graphic-bg-blue">
-              <div class="graphic-canvas">
-                <svg viewBox="0 0 200 120" fill="none" class="feature-art-svg">
-                  <defs>
-                    <radialGradient id="repGlow" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stop-color="#BFDBFE" stop-opacity="0.8"/>
-                      <stop offset="100%" stop-color="#EFF6FF" stop-opacity="0"/>
-                    </radialGradient>
-                  </defs>
-                  <circle cx="100" cy="65" r="50" fill="url(#repGlow)"/>
-                  <!-- Analytics Board -->
-                  <rect x="44" y="24" width="112" height="72" rx="10" fill="#FFFFFF" stroke="#3B82F6" stroke-width="2" filter="drop-shadow(0 6px 12px rgba(59,130,246,0.15))"/>
-                  <!-- Header bar -->
-                  <path d="M44 40H156" stroke="#E2E8F0" stroke-width="1.5"/>
-                  <circle cx="56" cy="32" r="3" fill="#EF4444"/>
-                  <circle cx="66" cy="32" r="3" fill="#F59E0B"/>
-                  <circle cx="76" cy="32" r="3" fill="#10B981"/>
-                  <!-- Bar Chart Bars -->
-                  <rect x="58" y="70" width="14" height="20" rx="3" fill="#93C5FD"/>
-                  <rect x="78" y="58" width="14" height="32" rx="3" fill="#60A5FA"/>
-                  <rect x="98" y="48" width="14" height="42" rx="3" fill="#3B82F6"/>
-                  <rect x="118" y="62" width="14" height="28" rx="3" fill="#2563EB"/>
-                  <rect x="138" y="44" width="14" height="46" rx="3" fill="#1D4ED8"/>
-                  <!-- Trend line -->
-                  <path d="M64 68L85 54L105 44L125 58L145 40" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"/>
-                  <circle cx="145" cy="40" r="4" fill="#EA580C" stroke="#FFFFFF" stroke-width="1.5"/>
-                </svg>
-              </div>
-            </div>
+                <rect x="42" y="32" width="116" height="66" rx="10" fill="url(#cardGrad)" filter="drop-shadow(0 6px 12px rgba(234,88,12,0.25))"/>
+                <rect x="52" y="44" width="34" height="20" rx="4" fill="#FEF3C7" opacity="0.9"/>
+                <circle cx="134" cy="52" r="12" fill="#FDE047" opacity="0.6"/>
+                <circle cx="144" cy="52" r="12" fill="#FEF08A" opacity="0.6"/>
 
-            <!-- Action Button -->
-            <div class="card-action-wrap">
-              <button type="button" class="btn-primary-card btn-blue-solid" (click)="selectOperationTab('REPORTS'); $event.stopPropagation()">
-                <span>Open</span>
-                <span class="material-symbols-outlined icon-arrow">arrow_forward</span>
-              </button>
+                <rect x="55" y="47" width="12" height="10" rx="2" fill="#D97706"/>
+                <rect x="52" y="78" width="60" height="6" rx="3" fill="#FFFFFF" opacity="0.8"/>
+                <rect x="52" y="87" width="38" height="4" rx="2" fill="#FFFFFF" opacity="0.5"/>
+
+                <circle cx="150" cy="30" r="16" fill="#F59E0B" stroke="#FFFFFF" stroke-width="2.5"/>
+                <text x="144" y="36" fill="#FFFFFF" font-size="16" font-weight="900" font-family="sans-serif">₹</text>
+              </svg>
             </div>
           </div>
 
-          <!-- CARD 3: AUDIT LOGS -->
-          <div class="analytics-card card-audits" (click)="selectOperationTab('AUDITS')">
-            <div class="card-top-header">
-              <div class="card-icon-pill icon-purple">
-                <span class="material-symbols-outlined">shield</span>
-              </div>
-              <div class="card-title-group">
-                <h3 class="card-title">Audit Logs</h3>
-                <p class="card-desc">Activity timeline, workflow & history</p>
-              </div>
-            </div>
+          <div class="card-action-wrap">
+            <button type="button" class="btn-primary-card btn-orange-solid" (click)="selectOperationTab('TRANSACTIONS'); $event.stopPropagation()">
+              <span>Open</span>
+              <span class="material-symbols-outlined icon-arrow">arrow_forward</span>
+            </button>
+          </div>
+        </div>
 
-            <!-- Graphic Visual Illustration -->
-            <div class="card-graphic-area graphic-bg-purple">
-              <div class="graphic-canvas">
-                <svg viewBox="0 0 200 120" fill="none" class="feature-art-svg">
-                  <defs>
-                    <radialGradient id="audGlow" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stop-color="#E9D5FF" stop-opacity="0.8"/>
-                      <stop offset="100%" stop-color="#FAF5FF" stop-opacity="0"/>
-                    </radialGradient>
-                    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stop-color="#A855F7"/>
-                      <stop offset="100%" stop-color="#6B21A8"/>
-                    </linearGradient>
-                  </defs>
-                  <circle cx="100" cy="65" r="50" fill="url(#audGlow)"/>
-                  <!-- Shield Illustration -->
-                  <path d="M100 24L142 40V68C142 92 100 106 100 106C100 106 58 92 58 68V40L100 24Z" fill="url(#shieldGrad)" filter="drop-shadow(0 6px 14px rgba(147,51,234,0.3))"/>
-                  <path d="M100 30L135 44V68C135 88 100 99 100 99V30Z" fill="#C084FC" opacity="0.3"/>
-                  <!-- Checkmark in Shield -->
-                  <circle cx="100" cy="64" r="18" fill="#FFFFFF"/>
-                  <path d="M91 64L97 70L110 56" stroke="#7E22CE" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
-                  <!-- Floating Verified Dots -->
-                  <circle cx="152" cy="40" r="6" fill="#10B981" stroke="#FFFFFF" stroke-width="1.5"/>
-                  <circle cx="48" cy="74" r="5" fill="#3B82F6" stroke="#FFFFFF" stroke-width="1.5"/>
-                </svg>
-              </div>
+        <div class="analytics-card card-reports" (click)="selectOperationTab('REPORTS')">
+          <div class="card-top-header">
+            <div class="card-icon-pill icon-blue">
+              <span class="material-symbols-outlined">bar_chart</span>
             </div>
-
-            <!-- Action Button -->
-            <div class="card-action-wrap">
-              <button type="button" class="btn-primary-card btn-purple-solid" (click)="selectOperationTab('AUDITS'); $event.stopPropagation()">
-                <span>Open</span>
-                <span class="material-symbols-outlined icon-arrow">arrow_forward</span>
-              </button>
+            <div class="card-title-group">
+              <h3 class="card-title">Reports</h3>
+              <p class="card-desc">Performance metrics, team matrix & oversight</p>
             </div>
           </div>
 
+          <div class="card-graphic-area graphic-bg-blue">
+            <div class="graphic-canvas">
+              <svg viewBox="0 0 200 120" fill="none" class="feature-art-svg">
+                <defs>
+                  <radialGradient id="repGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#BFDBFE" stop-opacity="0.8"/>
+                    <stop offset="100%" stop-color="#EFF6FF" stop-opacity="0"/>
+                  </radialGradient>
+                </defs>
+                <circle cx="100" cy="65" r="50" fill="url(#repGlow)"/>
+
+                <rect x="44" y="24" width="112" height="72" rx="10" fill="#FFFFFF" stroke="#3B82F6" stroke-width="2" filter="drop-shadow(0 6px 12px rgba(59,130,246,0.15))"/>
+
+                <path d="M44 40H156" stroke="#E2E8F0" stroke-width="1.5"/>
+                <circle cx="56" cy="32" r="3" fill="#EF4444"/>
+                <circle cx="66" cy="32" r="3" fill="#F59E0B"/>
+                <circle cx="76" cy="32" r="3" fill="#10B981"/>
+
+                <rect x="58" y="68" width="12" height="20" rx="3" fill="#93C5FD"/>
+                <rect x="76" y="56" width="12" height="32" rx="3" fill="#60A5FA"/>
+                <rect x="94" y="48" width="12" height="40" rx="3" fill="#3B82F6"/>
+                <rect x="112" y="42" width="12" height="46" rx="3" fill="#2563EB"/>
+                <rect x="130" y="50" width="12" height="38" rx="3" fill="#1D4ED8"/>
+
+                <path d="M64 66L82 54L100 46L118 40L136 48" stroke="#10B981" stroke-width="2.5" stroke-linecap="round"/>
+                <circle cx="118" cy="40" r="3.5" fill="#10B981" stroke="#FFFFFF" stroke-width="1.5"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="card-action-wrap">
+            <button type="button" class="btn-primary-card btn-blue-solid" (click)="selectOperationTab('REPORTS'); $event.stopPropagation()">
+              <span>Open</span>
+              <span class="material-symbols-outlined icon-arrow">arrow_forward</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="analytics-card card-audits" (click)="selectOperationTab('AUDITS')">
+          <div class="card-top-header">
+            <div class="card-icon-pill icon-purple">
+              <span class="material-symbols-outlined">shield</span>
+            </div>
+            <div class="card-title-group">
+              <h3 class="card-title">Audit Logs</h3>
+              <p class="card-desc">System activity, status history & audit trail</p>
+            </div>
+          </div>
+
+          <div class="card-graphic-area graphic-bg-purple">
+            <div class="graphic-canvas">
+              <svg viewBox="0 0 200 120" fill="none" class="feature-art-svg">
+                <defs>
+                  <radialGradient id="auditGlow" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#E9D5FF" stop-opacity="0.8"/>
+                    <stop offset="100%" stop-color="#FAF5FF" stop-opacity="0"/>
+                  </radialGradient>
+                  <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#8B5CF6"/>
+                    <stop offset="100%" stop-color="#6D28D9"/>
+                  </linearGradient>
+                </defs>
+                <circle cx="100" cy="65" r="50" fill="url(#auditGlow)"/>
+
+                <path d="M100 24L140 38V68C140 92 100 106 100 106C100 106 60 92 60 68V38L100 24Z" fill="url(#shieldGrad)" filter="drop-shadow(0 6px 12px rgba(109,40,217,0.25))"/>
+                <path d="M100 29L134 41V67C134 87 100 99 100 99C100 99 66 87 66 67V41L100 29Z" fill="#7C3AED" opacity="0.6"/>
+
+                <circle cx="100" cy="64" r="18" fill="#FFFFFF"/>
+                <path d="M92 64L97 69L108 58" stroke="#7C3AED" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+                <circle cx="150" cy="42" r="5" fill="#C084FC" opacity="0.8"/>
+                <circle cx="50" cy="52" r="4" fill="#A855F7" opacity="0.8"/>
+              </svg>
+            </div>
+          </div>
+
+          <div class="card-action-wrap">
+            <button type="button" class="btn-primary-card btn-purple-solid" (click)="selectOperationTab('AUDITS'); $event.stopPropagation()">
+              <span>Open</span>
+              <span class="material-symbols-outlined icon-arrow">arrow_forward</span>
+            </button>
+          </div>
         </div>
       </div>
-    } @else {
+    </div>
+  }
 
-      <!-- LEVEL 2: EMBEDDED SUB-PAGES WITH TOP NAVIGATION PILL TOOLBAR (IMAGE 2) -->
-      <div class="embedded-tab-section">
-        
-  
-
-        <!-- 1. TRANSACTIONS TABLE VIEW -->
-        @if (activeOperationTab === 'TRANSACTIONS') {
-          <div class="table-card card-transactions-perf">
-            <div class="card-title-bar">
-              <div class="title-with-badge">
-                <div class="title-icon-squircle">
-                  <span class="material-symbols-outlined">payments</span>
-                </div>
-                <div>
-                  <h3>{{ activePackageMeta?.name }} Conversion Ledger</h3>
-                  <span class="table-sub-meta"
-                    >{{ filteredTransactions.length }} conversion transactions logged</span
-                  >
-                </div>
-              </div>
-              <div class="card-actions">
-                <span class="stat-badge-pill">
-                  <strong class="text-emerald">{{ filteredTransactions.length }}</strong>
-                  Transactions
-                </span>
-              </div>
+  @if (activeOperationTab === 'TRANSACTIONS') {
+    <div class="embedded-tab-section">
+      <div class="table-card card-transactions-perf">
+        <div class="card-title-bar">
+          <div class="title-with-badge">
+            <div class="title-icon-squircle">
+              <span class="material-symbols-outlined">payments</span>
             </div>
-            <div class="table-responsive">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Transaction Reference</th>
-                    <th>Customer / Lead</th>
-                    <th>Package</th>
-                    <th>Amount</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (txn of filteredTransactions; track txn.id || txn) {
-                    <tr>
-                      <td class="font-bold text-slate-800">{{ txn.id }}</td>
-                      <td>{{ txn.customerName || 'Customer' }}</td>
-                      <td>
-                        <span class="source-tag">{{ activePackageMeta?.name }}</span>
-                      </td>
-                      <td class="font-bold text-emerald">₹{{ txn.amount | number }}</td>
-                      <td class="text-slate-600">{{ txn.transactionDate | date: 'short' }}</td>
-                    </tr>
-                  }
-                  @if (filteredTransactions.length === 0) {
-                    <tr>
-                      <td colspan="5" class="empty-state-cell">
-                        <div class="empty-state-box">
-                          <div class="empty-icon-squircle">
-                            <span class="material-symbols-outlined">payments</span>
-                          </div>
-                          <h4 class="empty-title">No transactions recorded</h4>
-                          <p class="empty-subtitle">
-                            Revenue and payment conversions for
-                            {{ activePackageMeta?.name }} will appear here.
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
+            <div>
+              <h3>{{ activePackageMeta?.name }} Conversion Ledger</h3>
+              <span class="table-sub-meta"
+                >{{ filteredTransactions.length }} conversion transactions logged</span
+              >
             </div>
           </div>
-        }
-
-        <!-- 2. REPORTS KPI GRID VIEW -->
-        @if (activeOperationTab === 'REPORTS') {
-          @if (packageReportSummary) {
-            <div class="kpi-grid-reports">
-              <div class="kpi-card card-revenue">
-                <div class="kpi-header-row">
-                  <div class="kpi-title-cluster">
-                    <div class="kpi-squircle-icon icon-amber">
-                      <span class="currency-symbol">₹</span>
-                    </div>
-                    <span class="kpi-title">Package Revenue</span>
-                  </div>
-                  <div class="kpi-pill-badge pill-amber">Conversions</div>
-                </div>
-                <div class="kpi-body-row">
-                  <div class="kpi-value">₹{{ packageReportSummary.totalRevenue | number: '1.0-0' }}</div>
-                  <div class="kpi-sub-target">Gross Inflow</div>
-                </div>
-              </div>
-              <div class="kpi-card card-pkg-works">
-                <div class="kpi-header-row">
-                  <div class="kpi-title-cluster">
-                    <div class="kpi-squircle-icon icon-indigo">
-                      <span class="material-symbols-outlined">campaign</span>
-                    </div>
-                    <span class="kpi-title">Campaign Spend</span>
-                  </div>
-                  <div class="kpi-pill-badge pill-indigo">Ad Spend</div>
-                </div>
-                <div class="kpi-body-row">
-                  <div class="kpi-value">₹{{ packageReportSummary.totalSpend | number: '1.0-0' }}</div>
-                  <div class="kpi-sub-target">Active Budget</div>
-                </div>
-              </div>
-              <div class="kpi-card card-leads">
-                <div class="kpi-header-row">
-                  <div class="kpi-title-cluster">
-                    <div class="kpi-squircle-icon icon-purple">
-                      <span class="material-symbols-outlined">adjust</span>
-                    </div>
-                    <span class="kpi-title">Qualification Rate</span>
-                  </div>
-                  <div class="kpi-pill-badge pill-purple">Quality Index</div>
-                </div>
-                <div class="kpi-body-row">
-                  <div class="kpi-value">{{ packageReportSummary.qualificationRate }}</div>
-                  <div class="kpi-sub-target">Lead Quality</div>
-                </div>
-              </div>
-              <div class="kpi-card card-conversion">
-                <div class="kpi-header-row">
-                  <div class="kpi-title-cluster">
-                    <div class="kpi-squircle-icon icon-emerald">
-                      <span class="material-symbols-outlined">price_check</span>
-                    </div>
-                    <span class="kpi-title">Average CPL</span>
-                  </div>
-                  <div class="kpi-pill-badge pill-emerald">Optimized</div>
-                </div>
-                <div class="kpi-body-row">
-                  <div class="kpi-value">{{ packageReportSummary.avgCpl }}</div>
-                  <div class="kpi-sub-target">Cost Per Lead</div>
-                </div>
-              </div>
-              <div class="kpi-card card-blue">
-                <div class="kpi-header-row">
-                  <div class="kpi-title-cluster">
-                    <div class="kpi-squircle-icon icon-blue">
-                      <span class="material-symbols-outlined">trending_up</span>
-                    </div>
-                    <span class="kpi-title">Estimated ROI</span>
-                  </div>
-                  <div class="kpi-pill-badge pill-blue">Return</div>
-                </div>
-                <div class="kpi-body-row">
-                  <div class="kpi-value">{{ packageReportSummary.roi }}</div>
-                  <div class="kpi-sub-target">Marketing Yield</div>
-                </div>
-              </div>
-              <div class="kpi-card card-teal">
-                <div class="kpi-header-row">
-                  <div class="kpi-title-cluster">
-                    <div class="kpi-squircle-icon icon-teal">
-                      <span class="material-symbols-outlined">verified</span>
-                    </div>
-                    <span class="kpi-title">Work Delivery Speed</span>
-                  </div>
-                  <div class="kpi-pill-badge pill-teal">Deliveries</div>
-                </div>
-                <div class="kpi-body-row">
-                  <div class="kpi-value">{{ packageReportSummary.completedTasksPct }}%</div>
-                  <div class="kpi-sub-target">Approved Works</div>
-                </div>
-              </div>
-            </div>
-          }
-        }
-
-        <!-- 3. AUDIT LOGS TABLE VIEW -->
-        @if (activeOperationTab === 'AUDITS') {
-          <div class="table-card card-audits-perf">
-            <div class="card-title-bar">
-              <div class="card-actions">
-                <span class="stat-badge-pill">
-                  <strong class="text-indigo">{{ filteredAuditLogs.length }}</strong> Entries
-                </span>
-              </div>
-            </div>
-            <div class="table-responsive">
-              <table class="data-table audit-master-table">
-                <thead>
-                  <tr>
-                    <th style="width: 170px">Date</th>
-                    <th>Creator</th>
-                    <th>Assigned Designer</th>
-                    <th>Task Name</th>
-                    <th class="text-right" style="width: 150px">View Detail</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (log of filteredAuditLogs; track log.id || log) {
-                    <tr class="audit-log-row">
-                      <!-- 1. Date -->
-                      <td class="timestamp-cell">
-                        <div class="d-flex align-items-center gap-1">
-                          <span class="material-symbols-outlined fs-15 text-muted">event</span>
-                          <span class="font-medium text-slate-700 whitespace-nowrap">{{
-                            log.createdAt | date: 'short'
-                          }}</span>
-                        </div>
-                      </td>
-                      <!-- 2. Creator -->
-                      <td>
-                        <div class="actor-cell-wrap">
-                          <div class="d-flex align-items-center gap-2">
-                            <div class="actor-avatar-circle-sm">
-                              {{ getAuditLogCreator(log).name.charAt(0).toUpperCase() }}
-                            </div>
-                            <div>
-                              <div class="font-bold log-actor-txt">
-                                {{ getAuditLogCreator(log).name }}
-                              </div>
-                              <span class="creator-sub-role text-subtle fs-11">{{
-                                getAuditLogCreator(log).role
-                              }}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <!-- 3. Assigned Designer -->
-                      <td>
-                        <div class="d-flex align-items-center gap-2">
-                          <span class="material-symbols-outlined fs-16 text-purple">palette</span>
-                          <span class="font-semibold text-slate-800">{{
-                            getAuditLogAssignee(log)
-                          }}</span>
-                        </div>
-                      </td>
-                      <!-- 4. Task Name -->
-                      <td class="taskname-cell">
-                        <div class="task-audit-link-cell">
-                          <button
-                            type="button"
-                            class="btn-task-audit-link"
-                            (click)="onOpenTaskAuditModal(log, $event)"
-                            title="Click to view comprehensive Task Audit, Lifecycle Journey & Shared Files"
-                          >
-                            <span class="material-symbols-outlined fs-15 task-link-icon"
-                              >assignment</span
-                            >
-                            <span class="task-title-clamp font-bold">{{
-                              getAuditLogTaskTitle(log)
-                            }}</span>
-                          </button>
-                        </div>
-                      </td>
-                      <!-- 5. View Detail -->
-                      <td class="text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          class="btn btn-sm btn-outline-primary btn-view-audit-detail"
-                          (click)="onOpenTaskAuditModal(log, $event)"
-                          title="View Comprehensive Task Details"
-                        >
-                          <span class="material-symbols-outlined fs-15">visibility</span>
-                          <span>View Detail</span>
-                        </button>
-                      </td>
-                    </tr>
-                  }
-                  @if (filteredAuditLogs.length === 0) {
-                    <tr>
-                      <td colspan="5" class="empty-state-cell">
-                        <div class="empty-state-box">
-                          <div class="empty-icon-squircle">
-                            <span class="material-symbols-outlined">shield</span>
-                          </div>
-                          <h4 class="empty-title">No audit records found</h4>
-                          <p class="empty-subtitle">
-                            Audit entries for {{ activePackageDisplayName() }} operations will be
-                            recorded here.
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
+          <div class="card-actions">
+            <span class="stat-badge-pill">
+              <strong class="text-emerald">{{ filteredTransactions.length }}</strong>
+              Transactions
+            </span>
           </div>
-        }
-
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Transaction Reference</th>
+                <th>Customer / Lead</th>
+                <th>Package</th>
+                <th>Amount</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (txn of filteredTransactions; track txn.id || txn) {
+                <tr>
+                  <td class="font-bold text-slate-800">{{ txn.id }}</td>
+                  <td>{{ txn.customerName || 'Customer' }}</td>
+                  <td>
+                    <span class="source-tag">{{ activePackageMeta?.name }}</span>
+                  </td>
+                  <td class="font-bold text-emerald">₹{{ txn.amount | number }}</td>
+                  <td class="text-slate-600">{{ txn.transactionDate | date: 'short' }}</td>
+                </tr>
+              }
+              @if (filteredTransactions.length === 0) {
+                <tr>
+                  <td colspan="5" class="empty-state-cell">
+                    <div class="empty-state-box">
+                      <div class="empty-icon-squircle">
+                        <span class="material-symbols-outlined">payments</span>
+                      </div>
+                      <h4 class="empty-title">No transactions recorded</h4>
+                      <p class="empty-subtitle">
+                        Revenue and payment conversions for
+                        {{ activePackageMeta?.name }} will appear here.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
       </div>
-    }
+    </div>
+  }
+
+  @if (activeOperationTab === 'REPORTS') {
+    <div class="embedded-tab-section">
+
+      @if (!selectedPerformanceUser) {
+        <div class="team-perf-matrix-wrapper mt-4">
+
+          <div class="team-matrix-toolbar">
+            <div class="search-input-wrap">
+              <span class="material-symbols-outlined search-icon">search</span>
+              <input
+                type="text"
+                class="team-search-input"
+                [(ngModel)]="teamSearchQuery"
+                placeholder="Search user by name, role or email..."
+              />
+              @if (teamSearchQuery) {
+                <button type="button" class="btn-clear-search" (click)="teamSearchQuery = ''">
+                  <span class="material-symbols-outlined fs-14">close</span>
+                </button>
+              }
+            </div>
+
+            <div class="role-pills-bar">
+              <button
+                type="button"
+                class="btn-role-chip"
+                [class.chip-active]="selectedRoleFilter === 'ALL'"
+                (click)="setRoleFilter('ALL')"
+              >
+                All Roles <span class="chip-count">{{ getRoleCount('ALL') }}</span>
+              </button>
+              <button
+                type="button"
+                class="btn-role-chip"
+                [class.chip-active]="selectedRoleFilter === 'DIGITAL'"
+                (click)="setRoleFilter('DIGITAL')"
+              >
+                Digital Marketing <span class="chip-count">{{ getRoleCount('DIGITAL') }}</span>
+              </button>
+              <button
+                type="button"
+                class="btn-role-chip"
+                [class.chip-active]="selectedRoleFilter === 'BDM'"
+                (click)="setRoleFilter('BDM')"
+              >
+                BDM <span class="chip-count">{{ getRoleCount('BDM') }}</span>
+              </button>
+              <button
+                type="button"
+                class="btn-role-chip"
+                [class.chip-active]="selectedRoleFilter === 'DESIGNER'"
+                (click)="setRoleFilter('DESIGNER')"
+              >
+                Designer <span class="chip-count">{{ getRoleCount('DESIGNER') }}</span>
+              </button>
+              <button
+                type="button"
+                class="btn-role-chip"
+                [class.chip-active]="selectedRoleFilter === 'TELECALLER'"
+                (click)="setRoleFilter('TELECALLER')"
+              >
+                Telecaller <span class="chip-count">{{ getRoleCount('TELECALLER') }}</span>
+              </button>
+            </div>
+
+            <div class="matrix-date-range-cluster">
+              <span class="matrix-date-label">
+                <span class="material-symbols-outlined fs-14 text-indigo">calendar_month</span>
+                DATE:
+              </span>
+              <button
+                type="button"
+                class="btn-date-filter-pill"
+                [class.active]="modalDateFilter === 'ALL' && !filterStartDate && !filterEndDate"
+                (click)="setModalDateFilter('ALL')"
+              >
+                All
+              </button>
+              <button
+                type="button"
+                class="btn-date-filter-pill"
+                [class.active]="modalDateFilter === 'WEEK'"
+                (click)="setModalDateFilter('WEEK')"
+              >
+                1 Week
+              </button>
+              <div class="date-range-inputs-cluster">
+                <div class="date-input-field-wrap" [class.field-active]="!!filterStartDate">
+                  <label class="date-input-label">START</label>
+                  <input
+                    type="date"
+                    class="range-date-input"
+                    [max]="todayDateString"
+                    [ngModel]="filterStartDate"
+                    (ngModelChange)="onStartDateChange($event)"
+                    title="Start Date"
+                  />
+                </div>
+                <span class="date-sep-dash">—</span>
+                <div class="date-input-field-wrap" [class.field-active]="!!filterEndDate">
+                  <label class="date-input-label">END</label>
+                  <input
+                    type="date"
+                    class="range-date-input"
+                    [max]="todayDateString"
+                    [min]="filterStartDate"
+                    [ngModel]="filterEndDate"
+                    (ngModelChange)="onEndDateChange($event)"
+                    title="End Date"
+                  />
+                </div>
+              </div>
+              @if (modalDateFilter !== 'ALL' || filterStartDate || filterEndDate) {
+                <button
+                  type="button"
+                  class="btn-date-clear-pill"
+                  (click)="clearDateRange()"
+                  title="Reset to all dates"
+                >
+                  <span class="material-symbols-outlined fs-12">close</span>
+                  Clear
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="profile-cards-section-header">
+            <div>
+              <h3 class="profile-cards-main-title">Team Member Reports</h3>
+            </div>
+            <div class="showing-count-pill">
+              Showing {{ filteredTeamMembers.length }} of {{ reportEligibleMembers.length }} Members
+            </div>
+          </div>
+
+          <div class="user-profile-cards-grid">
+            @for (u of filteredTeamMembers; track u.userId || u.email) {
+              <div class="user-profile-card">
+                <div class="user-profile-card-top">
+                  <div class="profile-avatar-circle" [ngClass]="u.avatarColor">
+                    {{ u.name.charAt(0).toUpperCase() }}
+                  </div>
+                  <div class="profile-meta-content">
+                    <h4 class="profile-user-name" [title]="u.name">{{ u.name }}</h4>
+                    <div class="profile-user-role-wrap">
+                      <span class="role-text-label">Role:</span>
+                      <span class="role-badge-text" [ngClass]="u.roleBadgeClass">{{ u.roleLabel }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="user-profile-card-footer">
+                  <button
+                    type="button"
+                    class="btn-profile-card-view"
+                    (click)="openUserDetailModal(u)"
+                    [title]="'View detailed records for ' + u.name"
+                  >
+                    <span class="material-symbols-outlined fs-16">visibility</span>
+                    <span>View</span>
+                  </button>
+                </div>
+              </div>
+            }
+
+            @if (filteredTeamMembers.length === 0) {
+              <div class="profile-cards-empty-state">
+                <span class="material-symbols-outlined fs-28 text-muted mb-1">person_off</span>
+                <h4 class="empty-title fs-14">No users found</h4>
+                <p class="empty-subtitle fs-12 text-muted">No database users match the selected role or search filter.</p>
+              </div>
+            }
+          </div>
+        </div>
+      } @else {
+
+        <div class="user-detail-page-container mt-2">
+
+          <div class="detail-top-nav-bar">
+            <div class="detail-top-nav-left">
+              <div class="date-filter-group">
+                <span class="filter-group-label">
+                  <span class="material-symbols-outlined fs-14 text-purple">calendar_month</span>
+                  DATE:
+                </span>
+                <div class="date-chips-cluster">
+                  <button
+                    type="button"
+                    class="btn-date-filter-pill"
+                    [class.active]="modalDateFilter === 'ALL' && !filterStartDate && !filterEndDate"
+                    (click)="setModalDateFilter('ALL')"
+                  >
+                    All Date
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-date-filter-pill"
+                    [class.active]="modalDateFilter === 'TODAY'"
+                    (click)="setModalDateFilter('TODAY')"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-date-filter-pill"
+                    [class.active]="modalDateFilter === 'YESTERDAY'"
+                    (click)="setModalDateFilter('YESTERDAY')"
+                  >
+                    Yesterday
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-date-filter-pill"
+                    [class.active]="modalDateFilter === 'WEEK'"
+                    (click)="setModalDateFilter('WEEK')"
+                  >
+                    1 Week
+                  </button>
+                  <div class="date-range-inputs-cluster">
+                    <div class="date-input-field-wrap" [class.field-active]="!!filterStartDate">
+                      <label class="date-input-label">START</label>
+                      <input
+                        type="date"
+                        class="range-date-input"
+                        [max]="todayDateString"
+                        [ngModel]="filterStartDate"
+                        (ngModelChange)="onStartDateChange($event)"
+                        title="Start Date"
+                      />
+                    </div>
+                    <span class="date-sep-dash">—</span>
+                    <div class="date-input-field-wrap" [class.field-active]="!!filterEndDate">
+                      <label class="date-input-label">END</label>
+                      <input
+                        type="date"
+                        class="range-date-input"
+                        [max]="todayDateString"
+                        [min]="filterStartDate"
+                        [ngModel]="filterEndDate"
+                        (ngModelChange)="onEndDateChange($event)"
+                        title="End Date"
+                      />
+                    </div>
+                  </div>
+                  @if (modalDateFilter !== 'ALL' || filterStartDate || filterEndDate) {
+                    <button
+                      type="button"
+                      class="btn-date-clear-pill"
+                      (click)="clearDateRange()"
+                      title="Reset to all dates"
+                    >
+                      <span class="material-symbols-outlined fs-12">close</span>
+                      Clear
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <div class="active-pkg-badge-pill">
+                <span class="material-symbols-outlined fs-14 text-amber">campaign</span>
+                <span class="text-muted fs-12 font-bold">PACKAGE:</span>
+                <span class="pkg-name-text">{{ activePackageDisplayName() }}</span>
+              </div>
+            </div>
+
+            <div class="top-nav-right-cluster">
+              <button
+                type="button"
+                class="btn-back-to-team"
+                (click)="closeUserDetailModal()"
+                title="Return to Team Members Directory"
+              >
+                <span class="material-symbols-outlined fs-16">arrow_back</span>
+                <span>Back to Team</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="detail-queue-card">
+
+            <div class="queue-card-header">
+              <div class="queue-header-left">
+                <div class="queue-squircle-icon" [ngClass]="selectedPerformanceUser.avatarColor">
+                  <span class="material-symbols-outlined">person</span>
+                </div>
+                <div class="queue-header-titles">
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <h3 class="queue-user-name">{{ selectedPerformanceUser.name }}</h3>
+                    <span class="badge" [ngClass]="selectedPerformanceUser.roleBadgeClass">{{ selectedPerformanceUser.roleLabel }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="queue-header-right">
+                <div class="queue-search-wrap">
+                  <span class="material-symbols-outlined search-icon">search</span>
+                  <input
+                    type="text"
+                    class="queue-search-input"
+                    [(ngModel)]="taskSearchQuery"
+                    [placeholder]="selectedPerformanceUser.role === 'TELECALLER' ? 'Search by lead name, phone, source...' : (selectedPerformanceUser.role === 'DIGITAL_MARKETING' ? 'Search by ad name, campaign, platform...' : 'Search by task title, product...')"
+                  />
+                  @if (taskSearchQuery) {
+                    <button type="button" class="btn-clear-search" (click)="taskSearchQuery = ''">
+                      <span class="material-symbols-outlined fs-14">close</span>
+                    </button>
+                  }
+                </div>
+                <div class="queue-count-pill">
+                  <span class="queue-dot"></span>
+                  <span>{{ modalTasksInProgressCount }} {{ selectedPerformanceUser.role === 'TELECALLER' ? 'Pending Calls' : (selectedPerformanceUser.role === 'DIGITAL_MARKETING' ? 'Active Ads' : 'In Queue') }}</span>
+                </div>
+                <button
+                  type="button"
+                  class="btn-download-sheet"
+                  (click)="downloadUserReport(selectedPerformanceUser)"
+                  title="Download complete record sheet (Excel/CSV)"
+                >
+                  <span class="material-symbols-outlined fs-16">download</span>
+                  <span>Report Download</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="table-responsive detail-tasks-table-wrap">
+              @if (selectedPerformanceUser.role === 'TELECALLER') {
+                <table class="data-table detail-tasks-table telecaller-record-table">
+                  <thead>
+                    <tr>
+                      <th class="col-sno text-center">S.NO</th>
+                      <th class="col-lead text-left">LEAD NAME</th>
+                      <th class="col-phone text-left">PHONE</th>
+                      <th class="col-ad text-center">ADS</th>
+                      <th class="col-source text-center">SOURCE</th>
+                      <th class="col-product text-center">PRODUCT</th>
+                      <th class="col-assigned text-center">ASSIGNED</th>
+                      <th class="col-call-date text-center">CALLED AT</th>
+                      <th class="col-duration text-center">DURATION</th>
+                      <th class="col-outcome text-center">STATUS</th>
+                      <th class="col-attempts text-center">ATTEMPTS</th>
+                      <th class="col-followup text-center">FOLLOW-UP</th>
+                      <th class="col-remarks text-left">REMARKS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (t of paginatedTasks; track t.id || t.leadId || t.title; let idx = $index) {
+                      <tr>
+                        <td class="col-sno text-center text-muted font-bold fs-12">{{ (currentPage - 1) * pageSize + idx + 1 }}</td>
+                        <td class="col-lead text-left">
+                          <div class="lead-name-text font-bold text-slate-900 fs-13">{{ t.leadName || t.title }}</div>
+                          <div class="lead-campaign-text text-indigo-600 fs-11 mt-0.5 font-semibold" [title]="'Campaign: ' + (t.campaignName || 'General Campaign')">
+                            {{ t.campaignName || 'General Campaign' }}
+                          </div>
+                        </td>
+                        <td class="col-phone text-left whitespace-nowrap">
+                          @if (t.leadPhone && t.leadPhone !== '—' && !t.leadPhone.includes('@')) {
+                            <a [href]="'tel:' + t.leadPhone" class="lead-phone-link text-slate-800 font-semibold fs-12" title="Click to call">
+                              {{ t.leadPhone }}
+                            </a>
+                          } @else {
+                            <span class="text-subtle fs-12">—</span>
+                          }
+                        </td>
+                        <td class="col-ad text-center whitespace-nowrap">
+                          @if (t.adName && t.adName !== '—') {
+                            <span class="badge-ad-pill" [title]="'Ad: ' + t.adName">
+                              {{ t.adName }}
+                            </span>
+                          } @else {
+                            <span class="text-subtle fs-12">—</span>
+                          }
+                        </td>
+                        <td class="col-source text-center">
+                          @if (t.source) {
+                            <span class="badge-source-pill" [title]="t.source">
+                              {{ t.source }}
+                            </span>
+                          } @else {
+                            <span class="text-subtle fs-12">—</span>
+                          }
+                        </td>
+                        <td class="col-product text-center whitespace-nowrap">
+                          <span class="badge-mini-product" [title]="formatProductName(t.productName, t)">{{ formatProductName(t.productName, t) }}</span>
+                        </td>
+                        <td class="col-assigned text-center fs-12 text-slate-600 whitespace-nowrap">
+                          {{ t.createdAt ? (t.createdAt | date: 'dd MMM yyyy') : '—' }}
+                        </td>
+                        <td class="col-call-date text-center whitespace-nowrap">
+                          @if (t.calledAt) {
+                            <div class="call-datetime-stack">
+                              <span class="call-date-text">{{ t.calledAt | date: 'dd MMM yyyy' }}</span>
+                              <span class="call-time-text">{{ t.calledAt | date: 'hh:mm a' }}</span>
+                            </div>
+                          } @else {
+                            <span class="text-subtle fs-12">—</span>
+                          }
+                        </td>
+                        <td class="col-duration text-center whitespace-nowrap">
+                          @if (t.callDurationText && t.callDurationText !== '—') {
+                            <span class="badge-duration-pill" [title]="'Call Duration: ' + t.callDurationText">
+                              <span class="material-symbols-outlined fs-13">timer</span>
+                              <span class="leading-none">{{ t.callDurationText.replace('00m ', '') }}</span>
+                            </span>
+                          } @else {
+                            <span class="text-subtle fs-12">—</span>
+                          }
+                        </td>
+                        <td class="col-outcome text-center whitespace-nowrap">
+                          @if (t.callOutcome || t.status) {
+                            <span class="badge" [ngClass]="getLeadStatusBadgeClass(t.callOutcome || t.status)">
+                              {{ t.callOutcome || t.status }}
+                            </span>
+                          } @else {
+                            <span class="text-subtle fs-12">—</span>
+                          }
+                        </td>
+                        <td class="col-attempts text-center whitespace-nowrap">
+                          <span class="badge-attempts-pill">
+                            {{ t.callAttemptsText || '0 Attempts' }}
+                          </span>
+                        </td>
+                        <td class="col-followup text-center fs-12 text-slate-600 whitespace-nowrap">
+                          @if (t.followUpDate) {
+                            <span class="text-indigo-600 font-semibold">{{ t.followUpDate | date: 'dd MMM yyyy' }}</span>
+                          } @else {
+                            <span class="text-muted">—</span>
+                          }
+                        </td>
+                        <td class="col-remarks text-left telecaller-notes-cell">
+                          <div class="telecaller-remark-text" [title]="(t.remarks && t.remarks !== '—') ? t.remarks : ((t.notes && t.notes !== '—') ? t.notes : '—')">
+                            {{ (t.remarks && t.remarks !== '—') ? t.remarks : ((t.notes && t.notes !== '—') ? t.notes : '—') }}
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                    @if (filteredModalTasks.length === 0) {
+                      <tr>
+                        <td colspan="13" class="p-5 text-center text-muted fs-13">
+                          <div class="empty-state-cell-content">
+                            <span class="material-symbols-outlined empty-state-icon">inventory_2</span>
+                            <div class="empty-state-title">
+                              @if (modalDateFilter !== 'ALL' || taskSearchQuery) {
+                                No telecaller lead records match the active date or search criteria.
+                              } @else {
+                                No leads currently assigned to this telecaller in this package.
+                              }
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              } @else if (selectedPerformanceUser.role === 'DIGITAL_MARKETING') {
+
+                <table class="data-table detail-tasks-table dm-record-table">
+                  <thead>
+                    <tr>
+                      <th class="col-sno text-center">S.NO</th>
+                      <th class="col-ad-name text-left">AD NAME</th>
+                      <th class="col-campaign text-left">CAMPAIGN</th>
+                      <th class="col-product-pkg text-center">PRODUCT</th>
+                      <th class="col-platform text-center">PLATFORM</th>
+                      <th class="col-date text-center">DATE</th>
+                      <th class="col-leads-count text-center">LEADS GENERATED</th>
+                      <th class="col-status text-center">STATUS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (t of paginatedTasks; track t.id || t.adId || t.title; let idx = $index) {
+                      <tr>
+                        <td class="col-sno text-center text-muted font-bold fs-12">{{ (currentPage - 1) * pageSize + idx + 1 }}</td>
+                        <td class="col-ad-name text-left">
+                          <div class="ad-name-title font-bold text-slate-900 fs-13 line-clamp-2" [title]="t.adName || t.title">
+                            {{ t.adName || t.title }}
+                          </div>
+                        </td>
+                        <td class="col-campaign text-left">
+                          <span class="badge-campaign-pill font-semibold fs-11" [title]="t.campaignName || 'General Campaign'">
+                            {{ t.campaignName || 'General Campaign' }}
+                          </span>
+                        </td>
+                        <td class="col-product-pkg text-center">
+                          <div class="d-flex align-items-center justify-content-center gap-1.5 flex-wrap">
+                            <span class="badge-mini-product" [title]="formatProductName(t.productName, t)">{{ formatProductName(t.productName, t) }}</span>
+
+                          </div>
+                        </td>
+                        <td class="col-platform text-center whitespace-nowrap">
+                          <span class="badge-platform-pill" [ngClass]="getPlatformBadgeClass(t.platform)">
+                            {{ t.platform || 'Meta Ads' }}
+                          </span>
+                        </td>
+                        <td class="col-date text-center whitespace-nowrap fs-12 text-slate-600 font-semibold">
+                          {{ (t.launchDate || t.createdAt) ? ((t.launchDate || t.createdAt) | date: 'dd MMM yyyy') : '—' }}
+                        </td>
+                        <td class="col-leads-count text-center whitespace-nowrap">
+                          <span class="badge-leads-pill font-bold fs-12">
+                            <span class="material-symbols-outlined fs-13 text-indigo">groups</span>
+                            <span>{{ t.leadsCount !== undefined ? t.leadsCount : 0 }} Leads</span>
+                          </span>
+                        </td>
+                        <td class="col-status text-center whitespace-nowrap">
+                          <span class="badge" [ngClass]="getAdStatusBadgeClass(t.status)">{{ t.status || 'ACTIVE' }}</span>
+                        </td>
+                      </tr>
+                    }
+                    @if (filteredModalTasks.length === 0) {
+                      <tr>
+                        <td colspan="8" class="p-5 text-center text-muted fs-13">
+                          <div class="empty-state-cell-content">
+                            <span class="material-symbols-outlined empty-state-icon">campaign</span>
+                            <div class="empty-state-title">
+                              @if (modalDateFilter !== 'ALL' || taskSearchQuery) {
+                                No digital marketing ads match the active date or search criteria.
+                              } @else {
+                                No ads or campaigns currently recorded for this digital marketer in this package.
+                              }
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              } @else {
+                <table class="data-table detail-tasks-table">
+                  <thead>
+                    <tr>
+                      <th class="col-sno text-center">S.NO</th>
+                      <th class="col-task text-left">TASK</th>
+                      <th class="col-assigned-by text-center">ASSIGNED BY</th>
+                      <th class="col-priority text-center">PRIORITY</th>
+                      <th class="col-assigned-date text-center">ASSIGNED DATE</th>
+                      <th class="col-due-date text-center">DUE DATE</th>
+                      <th class="col-submission-date text-center">SUBMISSION DATE</th>
+                      <th class="col-status text-center">CURRENT STATUS</th>
+                      <th class="col-progress text-center">PROGRESS STATUS</th>
+                      <th class="col-duration text-center">TIME DURATION</th>
+                      <th class="col-revisions text-center">REVISIONS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (t of paginatedTasks; track t.id || t.title; let idx = $index) {
+                      <tr>
+                        <td class="col-sno text-center text-muted font-medium fs-12">{{ (currentPage - 1) * pageSize + idx + 1 }}</td>
+                        <td class="col-task text-left">
+                          <div class="font-bold text-slate-900 fs-13 line-clamp-2" [title]="t.title">{{ t.title }}</div>
+                          <div class="d-flex align-items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span class="badge-mini-product" [title]="formatProductName(t.productName, t)">{{ formatProductName(t.productName, t) }}</span>
+                            @if (formatPackageName(t.packageName, t) !== 'Package') {
+                              <span class="badge-mini-package text-muted fs-11" [title]="formatPackageName(t.packageName, t)">{{ formatPackageName(t.packageName, t) }}</span>
+                            }
+                          </div>
+                        </td>
+                        <td class="col-assigned-by text-center">
+                          <span class="badge badge-assigned-by">
+                            <span class="material-symbols-outlined fs-12 mr-1">shield_person</span>
+                            {{ formatAssignedByRole(t.creatorRole) }}
+                          </span>
+                        </td>
+                        <td class="col-priority text-center">
+                          <span class="badge badge-priority" [ngClass]="'priority-' + (t.priority || 'MEDIUM').toLowerCase()">
+                            {{ t.priority || 'MEDIUM' }}
+                          </span>
+                        </td>
+                        <td class="col-assigned-date text-center fs-12 text-slate-600 whitespace-nowrap">
+                          {{ t.createdAt ? (t.createdAt | date: 'dd MMM yyyy') : '—' }}
+                        </td>
+                        <td class="col-due-date text-center fs-12 text-slate-600 whitespace-nowrap">
+                          {{ t.dueDate ? (t.dueDate | date: 'dd MMM yyyy') : (t.dueDate || 'Ongoing') }}
+                        </td>
+                        <td class="col-submission-date text-center fs-12 text-slate-600 whitespace-nowrap">
+                          {{ getSubmissionDateText(t) }}
+                        </td>
+                        <td class="col-status text-center">
+                          <span class="badge" [ngClass]="getTaskStatusBadgeClass(t.status)">{{ t.status }}</span>
+                        </td>
+                        <td class="col-progress text-center">
+                          <span class="badge-progress-pill font-semibold fs-11">
+                            {{ getProgressStatusText(t) }}
+                          </span>
+                        </td>
+                        <td class="col-duration text-center whitespace-nowrap">
+                          <span class="badge-duration-pill" [title]="'Creative Turnaround Duration: ' + getTaskDuration(t)">
+                            <span class="material-symbols-outlined fs-13">schedule</span>
+                            <span>{{ getTaskDuration(t) }}</span>
+                          </span>
+                        </td>
+                        <td class="col-revisions text-center font-medium fs-12 text-slate-700">
+                          {{ getTaskRevisionCount(t) }}
+                        </td>
+                      </tr>
+                    }
+                    @if (filteredModalTasks.length === 0) {
+                      <tr>
+                        <td colspan="11" class="p-5 text-center text-muted fs-13">
+                          <div class="empty-state-cell-content">
+                            <span class="material-symbols-outlined empty-state-icon">task_alt</span>
+                            <div class="empty-state-title">
+                              @if (modalDateFilter !== 'ALL' || taskSearchQuery || taskStatusSubFilter !== 'ALL') {
+                                No tasks match the active filters or search criteria.
+                              } @else {
+                                No direct tasks currently assigned to this user in this package.
+                              }
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              }
+            </div>
+
+            <div class="queue-card-footer">
+              <span class="fs-12 text-muted font-medium">
+                Showing {{ paginationStartIndex }} - {{ paginationEndIndex }} of {{ totalTaskCount }} {{ selectedPerformanceUser.role === 'TELECALLER' ? 'leads' : 'tasks' }}
+              </span>
+
+              @if (totalPages > 1) {
+                <div class="pagination-controls-wrap">
+                  <button
+                    type="button"
+                    class="btn-pagination-nav"
+                    [disabled]="currentPage === 1"
+                    (click)="prevPage()"
+                    title="Previous Page"
+                  >
+                    <span class="material-symbols-outlined fs-15">chevron_left</span>
+                    <span>Prev</span>
+                  </button>
+
+                  <div class="pagination-pages-list">
+                    @for (p of pageNumbers; track p) {
+                      <button
+                        type="button"
+                        class="btn-page-number"
+                        [class.active]="currentPage === p"
+                        (click)="goToPage(p)"
+                      >
+                        {{ p }}
+                      </button>
+                    }
+                  </div>
+
+                  <button
+                    type="button"
+                    class="btn-pagination-nav"
+                    [disabled]="currentPage === totalPages"
+                    (click)="nextPage()"
+                    title="Next Page"
+                  >
+                    <span>Next</span>
+                    <span class="material-symbols-outlined fs-15">chevron_right</span>
+                  </button>
+                </div>
+              }
+
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  @if (activeOperationTab === 'AUDITS') {
+    <div class="embedded-tab-section">
+      <div class="table-card card-audits-perf">
+        <div class="card-title-bar">
+          <div class="card-actions">
+            <span class="stat-badge-pill">
+              <strong class="text-indigo">{{ filteredAuditLogs.length }}</strong> Entries
+            </span>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table audit-master-table">
+            <thead>
+              <tr>
+                <th style="width: 170px">Date</th>
+                <th>Creator</th>
+                <th>Assigned Designer</th>
+                <th>Task Name</th>
+                <th class="text-right" style="width: 150px">View Detail</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (log of filteredAuditLogs; track log.id || log) {
+                <tr class="audit-log-row">
+
+                  <td class="timestamp-cell">
+                    <div class="d-flex align-items-center gap-1">
+                      <span class="material-symbols-outlined fs-15 text-muted">event</span>
+                      <span class="font-medium text-slate-700 whitespace-nowrap">{{
+                        log.createdAt | date: 'short'
+                      }}</span>
+                    </div>
+                  </td>
+
+                  <td>
+                    <div class="actor-cell-wrap">
+                      <div class="d-flex align-items-center gap-2">
+                        <div class="actor-avatar-circle-sm">
+                          {{ getAuditLogCreator(log).name.charAt(0).toUpperCase() }}
+                        </div>
+                        <div>
+                          <div class="font-bold log-actor-txt">
+                            {{ getAuditLogCreator(log).name }}
+                          </div>
+                          <span class="creator-sub-role text-subtle fs-11">{{
+                            getAuditLogCreator(log).role
+                          }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="material-symbols-outlined fs-16 text-purple">palette</span>
+                      <span class="font-semibold text-slate-800">{{
+                        getAuditLogAssignee(log)
+                      }}</span>
+                    </div>
+                  </td>
+
+                  <td class="taskname-cell">
+                    <div class="task-audit-link-cell">
+                      <button
+                        type="button"
+                        class="btn-task-audit-link"
+                        (click)="onOpenTaskFile(log, $event)"
+                        [title]="getAuditLogTaskFile(log)?.hasFile ? 'Click to open ' + getAuditLogTaskFile(log)?.fileName : 'Click to view task details'"
+                      >
+                        <span class="material-symbols-outlined fs-15 task-link-icon">assignment</span
+                        >
+                        <span class="task-title-clamp font-bold">{{
+                          getAuditLogTaskTitle(log)
+                        }}</span>
+                      </button>
+
+                      @if (getAuditLogTaskFile(log); as taskFile) {
+                        @if (taskFile.hasFile) {
+
+                        }
+                      }
+                    </div>
+                  </td>
+
+                  <td class="text-right whitespace-nowrap">
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-outline-primary btn-view-audit-detail"
+                      (click)="onOpenTaskAuditModal(log, $event)"
+                      title="View Comprehensive Task Details"
+                    >
+                      <span class="material-symbols-outlined fs-15">visibility</span>
+                      <span>View Detail</span>
+                    </button>
+                  </td>
+                </tr>
+              }
+              @if (filteredAuditLogs.length === 0) {
+                <tr>
+                  <td colspan="5" class="empty-state-cell">
+                    <div class="empty-state-box">
+                      <div class="empty-icon-squircle">
+                        <span class="material-symbols-outlined">shield</span>
+                      </div>
+                      <h4 class="empty-title">No audit records found</h4>
+                      <p class="empty-subtitle">
+                        Audit entries for {{ activePackageDisplayName() }} operations will be
+                        recorded here.
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   }
 </div>

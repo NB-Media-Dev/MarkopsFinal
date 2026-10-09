@@ -86,7 +86,7 @@ test('serves Meta verification and signed webhook responses with expected status
   try {
     await new Promise((resolve) => server.once('listening', resolve));
     const address = server.address();
-    const baseUrl = `http://127.0.0.1:${address.port}/api/v1/meta-webhook`;
+    const baseUrl = `http:
 
     const verification = await fetch(`${baseUrl}?${new URLSearchParams({
       'hub.mode': 'subscribe',

@@ -1,7 +1,7 @@
 @if (isOpen) {
   <div class="modal-backdrop redesign-modal-backdrop" (click)="onClose()">
     <div class="modal-box redesign-modal-box" (click)="$event.stopPropagation()">
-      <!-- Modal Header -->
+
       <div class="modal-header redesign-modal-header">
         <div class="modal-title-group">
           <div class="modal-icon-badge redesign-icon-badge">
@@ -22,13 +22,13 @@
         </button>
       </div>
       <div class="modal-body redesign-modal-body">
-        <!-- Compact Designer Bar -->
+
         <div class="designer-compact-bar mb-2">
           <span class="material-symbols-outlined designer-compact-icon">brush</span>
           <span class="designer-compact-label">Assigned Designer:</span>
           <strong class="designer-compact-name">{{ getAssigneeName(task) }}</strong>
         </div>
-        <!-- Quick Feedback Presets (One-click add) -->
+
         <div class="form-group mb-2">
           <label class="form-label-bold mb-1">Quick Suggestions (Click to Add):</label>
           <div class="redesign-chips-wrap">
@@ -78,7 +78,7 @@
             </button>
           </div>
         </div>
-        <!-- Redesign Reason Textarea -->
+
         <div class="form-group mb-1">
           <div class="d-flex justify-content-between align-items-center mb-1">
             <label class="form-label-bold mb-0" for="redesignInstructions">
@@ -97,7 +97,7 @@
           ></textarea>
         </div>
       </div>
-      <!-- Modal Footer -->
+
       <div class="modal-footer redesign-modal-footer">
         <div class="footer-left-note text-danger-subtle">
           <span class="material-symbols-outlined icon-2xs">info</span>

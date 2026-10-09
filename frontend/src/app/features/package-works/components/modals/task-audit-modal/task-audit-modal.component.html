@@ -1,7 +1,7 @@
 @if (isOpen && auditTask) {
   <div class="modal-backdrop task-audit-modal-backdrop" (click)="onClose()">
     <div class="modal-box task-audit-modal-box" (click)="$event.stopPropagation()">
-      <!-- Modal Header -->
+
       <div class="modal-header task-audit-header">
         <div class="header-left-group">
           <div class="audit-badge-row">
@@ -35,9 +35,9 @@
           </button>
         </div>
       </div>
-      <!-- Modal Body -->
+
       <div class="modal-body task-audit-body">
-        <!-- Description Box -->
+
         @if (auditTask.description) {
           <div class="audit-spec-box mb-3">
             <div class="spec-box-header">
@@ -47,14 +47,14 @@
             <div class="spec-box-content">{{ auditTask.description }}</div>
           </div>
         }
-        <!-- Section 2: Lifecycle Journey Stepper & Table -->
+
         <div class="audit-section mb-3">
           <div class="audit-section-header">
             <div class="d-flex align-items-center gap-2">
               <h3 class="section-title">Status History</h3>
             </div>
           </div>
-          <!-- Status Journey Stepper -->
+
           <div class="journey-stepper-wrap mb-3">
             <div class="stepper-item" [class.step-active]="auditTask.status === 'ASSIGNED'">
               <span class="step-dot">1</span>
@@ -107,7 +107,7 @@
               }}</span>
             </div>
           </div>
-          <!-- Status History Table -->
+
           <div class="table-responsive audit-journey-table-container">
             <table class="data-table audit-journey-table">
               <thead>
@@ -156,7 +156,7 @@
             </table>
           </div>
         </div>
-        <!-- Section 3: Attachments & Deliverables -->
+
         <div class="audit-section mb-2">
           <div class="audit-section-header">
             <div class="d-flex align-items-center gap-2">
@@ -170,7 +170,7 @@
               </span>
             }
           </div>
-          <!-- Creator Brief File Attachment -->
+
           @if (auditTask.attachmentName || auditTask.attachmentUrl) {
             <div class="deliverable-item-card mb-2">
               <div class="file-item-main">
@@ -221,7 +221,7 @@
               </div>
             </div>
           }
-          <!-- Designer Deliverable Versions List -->
+
           @if (auditTask.versions && auditTask.versions.length > 0) {
             <div class="deliverables-list">
               @for (ver of auditTask.versions; track ver.id || ver.versionNumber) {
@@ -301,7 +301,7 @@
           }
         </div>
       </div>
-      <!-- Modal Footer -->
+
       <div class="modal-footer d-flex justify-content-end align-items-center">
         <button type="button" class="btn btn-secondary btn-sm" (click)="onClose()">
           Close

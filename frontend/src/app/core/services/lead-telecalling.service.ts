@@ -15,6 +15,9 @@ export interface LeadItem {
   campaignId: string;
   campaignName: string;
   adId?: string;
+  adName?: string;
+  remarks?: string;
+  notes?: string;
   status: 'NEW' | 'ASSIGNED' | 'CONTACTED' | 'FOLLOW_UP' | 'INTERESTED' | 'NOT_INTERESTED' | 'QUALIFIED' | 'CONVERTED' | 'LOST' | 'WRONG_NUMBER' | 'BUSY' | 'NO_ANSWER' | 'LINE_BUSY' | string;
   assignedTo?: string | null;
   assigneeName?: string;
@@ -23,6 +26,10 @@ export interface LeadItem {
   creatorName?: string;
   uploaderId?: string;
   uploaderEmail?: string;
+  productId?: string;
+  productName?: string;
+  packageName?: string;
+  package?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -314,6 +321,8 @@ export class LeadTelecallingService {
                   assignedTo: res.lead?.assignedTo || item.assignedTo,
                   assigneeName: res.lead?.assigneeName || item.assigneeName,
                   status: finalStatus as any,
+                  remarks: payload.remarks || (res.lead as any)?.remarks || (item as any)?.remarks || '',
+                  notes: payload.remarks || (res.lead as any)?.notes || (item as any)?.notes || '',
                   updatedAt: new Date().toISOString(),
                 };
                 return updatedLead;

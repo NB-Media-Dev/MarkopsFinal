@@ -1,5 +1,5 @@
 <div class="task-detail-page">
-  <!-- Top Navigation & Breadcrumbs Bar -->
+
   <div class="top-nav-bar">
     <div class="nav-left">
       <button type="button" class="btn-back" (click)="goBack()" title="Back">
@@ -27,7 +27,7 @@
           <span class="material-symbols-outlined">refresh</span>
           <span>Sync</span>
         </button>
-        <!-- Contextual Action Buttons -->
+
         @if (canStartWork(t)) {
           <button
             type="button"
@@ -97,7 +97,6 @@
     }
   </div>
 
-  <!-- Loading State -->
   @if (isLoading()) {
     <div class="loading-state-box">
       <div class="spinner"></div>
@@ -105,7 +104,6 @@
     </div>
   }
 
-  <!-- Error State -->
   @if (!isLoading() && error()) {
     <div class="error-state-box">
       <span class="material-symbols-outlined error-icon">error</span>
@@ -117,10 +115,9 @@
     </div>
   }
 
-  <!-- Main Task Content -->
   @if (!isLoading() && task(); as t) {
     <div class="task-content-wrapper">
-      <!-- Hero Header Card -->
+
       <div class="hero-header-card">
         <div class="hero-left">
           <div class="hero-squircle-badge" [ngClass]="'badge-status-' + (t.status | lowercase)">
@@ -147,7 +144,7 @@
           </div>
         </div>
         <div class="hero-right">
-          <!-- Progress Metric -->
+
           <div class="hero-metric-card">
             <div class="metric-top">
               <span class="metric-label">Completion</span>
@@ -157,7 +154,7 @@
               <div class="metric-progress-fill" [style.width.%]="getTaskProgress(t)"></div>
             </div>
           </div>
-          <!-- Designer Assignee Pill -->
+
           <div class="hero-assignee-card">
             <div class="assignee-avatar">
               <span class="material-symbols-outlined">brush</span>
@@ -167,7 +164,7 @@
               <strong class="assignee-name">{{ getAssigneeName(t) }}</strong>
             </div>
           </div>
-          <!-- Due Date Pill -->
+
           @if (t.dueDate) {
             <div class="hero-date-card">
               <div class="date-icon-box">
@@ -181,7 +178,7 @@
           }
         </div>
       </div>
-      <!-- Workflow Stepper Pipeline -->
+
       <div class="workflow-stepper-card">
         <div class="stepper-title-row">
           <span class="material-symbols-outlined icon-sub">route</span>
@@ -204,7 +201,7 @@
           }
         </div>
       </div>
-      <!-- Revision Required Banner (If Applicable) -->
+
       @if (t.status === 'REVISION_REQUIRED' && t.reviewerFeedback) {
         <div class="revision-feedback-banner">
           <div class="banner-icon-squircle">
@@ -233,7 +230,7 @@
           }
         </div>
       }
-      <!-- Tab Navigation -->
+
       <div class="tab-nav-container">
         <button
           type="button"
@@ -269,13 +266,13 @@
           }
         </button>
       </div>
-      <!-- TAB 1: TASK BRIEF & SPECS -->
+
       @if (activeTab() === 'DETAIL') {
         <div class="tab-pane detail-pane">
           <div class="pane-grid">
-            <!-- Left Column: Description & Requirement Document -->
+
             <div class="pane-col-main">
-              <!-- Description Card (Only when custom description is provided) -->
+
               @if (hasCustomDescription(t)) {
                 <div class="content-card description-card">
                   <div class="card-header">
@@ -289,7 +286,7 @@
                   </div>
                 </div>
               }
-              <!-- Requirement Document Card -->
+
               <div class="content-card requirement-card">
                 <div class="card-header">
                   <span class="material-symbols-outlined card-header-icon">attachment</span>
@@ -352,7 +349,7 @@
                       </div>
                     </div>
                   }
-                  <!-- Inline Preview if image -->
+
                   @if (t.attachmentUrl && isImage(t.attachmentUrl)) {
                     <div class="image-preview-card">
                       <div
@@ -379,7 +376,7 @@
                 </div>
               </div>
             </div>
-            <!-- Right Column: Task Information (Non-repeated unique metadata) -->
+
             <div class="pane-col-side">
               <div class="content-card meta-card">
                 <div class="card-header">
@@ -387,7 +384,7 @@
                   <h3 class="card-title">Task Information</h3>
                 </div>
                 <div class="card-body meta-card-body">
-                  <!-- Creator Details -->
+
                   <div class="person-box">
                     <div class="person-avatar avatar-creator">
                       <span class="material-symbols-outlined">person</span>
@@ -399,7 +396,7 @@
                     </div>
                   </div>
                   <div class="meta-divider"></div>
-                  <!-- Timestamps -->
+
                   <div class="meta-list">
                     <div class="meta-row">
                       <span class="meta-key">Created:</span>
@@ -418,10 +415,10 @@
           </div>
         </div>
       }
-      <!-- TAB 2: CREATIVE VERSIONS -->
+
       @if (activeTab() === 'VERSIONS') {
         <div class="tab-pane versions-pane">
-          <!-- Upload New Version CTA if eligible -->
+
           @if (canSubmitWork(t)) {
             <div class="upload-version-cta-card">
               <div class="cta-left">
@@ -439,7 +436,7 @@
               </button>
             </div>
           }
-          <!-- Versions List -->
+
           @if (t.versions && t.versions.length > 0) {
             <div class="versions-feed">
               @for (ver of t.versions; track ver; let vIdx = $index) {
@@ -464,7 +461,7 @@
                     </div>
                   </div>
                   <div class="ver-body">
-                    <!-- Asset Preview Container -->
+
                     @if (getVersionAssetUrl(ver)) {
                       <div class="ver-asset-preview">
                         <div
@@ -479,7 +476,7 @@
                         </div>
                       </div>
                     }
-                    <!-- Asset Details & Changelog -->
+
                     <div class="ver-meta-section">
                       <div class="ver-file-info-row">
                         <div class="file-name-group">
@@ -510,7 +507,7 @@
                           </button>
                         </div>
                       </div>
-                      <!-- Changelog / Designer Notes -->
+
                       @if (ver.changelog) {
                         <div class="changelog-container">
                           <h5 class="changelog-heading">
@@ -530,7 +527,7 @@
               }
             </div>
           }
-          <!-- Empty Versions State -->
+
           @if (!t.versions || t.versions.length === 0) {
             <div class="empty-versions-state">
               <div class="empty-icon-circle">
@@ -551,14 +548,14 @@
           }
         </div>
       }
-      <!-- TAB 3: ACTIVITY & GIT HISTORY -->
+
       @if (activeTab() === 'HISTORY') {
         <div class="tab-pane history-pane">
           <div class="git-timeline-card">
             <div class="git-timeline-stream">
               @for (node of getGitCommitTimeline(t); track node) {
                 <div class="git-timeline-node" [ngClass]="node.nodeClass">
-                  <!-- Timeline Stem Point -->
+
                   <div class="timeline-point">
                     <span class="material-symbols-outlined point-icon">
                       {{
@@ -572,7 +569,7 @@
                       }}
                     </span>
                   </div>
-                  <!-- Content Card -->
+
                   <div class="timeline-card">
                     <div class="tl-card-top">
                       <div class="tl-author-line">
@@ -604,7 +601,7 @@
                         </ul>
                       }
                     </div>
-                    <!-- If version file attached -->
+
                     @if (node.fileName) {
                       <div
                         class="tl-file-chip"
@@ -626,9 +623,6 @@
   }
 </div>
 
-<!-- ========================================================================= -->
-<!-- MODAL 1: UPLOAD CREATIVE VERSION -->
-<!-- ========================================================================= -->
 @if (isUploadModalOpen()) {
   <div class="modal-backdrop" (click)="closeUploadModal()">
     <div class="modal-window upload-modal-window" (click)="$event.stopPropagation()">
@@ -646,7 +640,7 @@
       </div>
       <form [formGroup]="uploadForm" (ngSubmit)="onSubmitUpload()" class="modal-form">
         <div class="form-body">
-          <!-- Hidden file input -->
+
           <input
             type="file"
             id="taskDetailCreativeFileInput"
@@ -654,7 +648,7 @@
             accept="image/*,.pdf"
             (change)="onFileSelected($event)"
           />
-          <!-- Dropzone / Picker -->
+
           <div
             class="file-dropzone"
             (click)="triggerFileInput()"
@@ -676,13 +670,13 @@
               </div>
             }
           </div>
-          <!-- Live Preview if Image -->
+
           @if (selectedFileDataUrl()) {
             <div class="modal-preview-box">
               <img [src]="selectedFileDataUrl()" alt="Upload preview" />
             </div>
           }
-          <!-- Changelog Textarea with Bullet Enter Handling -->
+
           <div class="form-group">
             <label for="tdChangelog" class="form-label">
               <span>Changelog / Deliverable Notes</span>
@@ -718,9 +712,6 @@
   </div>
 }
 
-<!-- ========================================================================= -->
-<!-- MODAL 2: REQUEST REDESIGN MODAL -->
-<!-- ========================================================================= -->
 @if (isRedesignModalOpen()) {
   <div class="modal-backdrop" (click)="closeRedesignModal()">
     <div class="modal-window redesign-modal-window" (click)="$event.stopPropagation()">
@@ -781,9 +772,6 @@
   </div>
 }
 
-<!-- ========================================================================= -->
-<!-- MODAL 3: FULLSCREEN IMAGE VIEWER LIGHTBOX -->
-<!-- ========================================================================= -->
 @if (isImageViewerOpen()) {
   <div class="modal-backdrop lightbox-backdrop" (click)="closeImageViewer()">
     <div class="lightbox-container" (click)="$event.stopPropagation()">
@@ -810,9 +798,6 @@
   </div>
 }
 
-<!-- ========================================================================= -->
-<!-- MODAL 4: DOCUMENT VIEWER MODAL -->
-<!-- ========================================================================= -->
 @if (isDocViewerOpen()) {
   <div class="modal-backdrop" (click)="closeDocViewer()">
     <div class="modal-window doc-modal-window" (click)="$event.stopPropagation()">

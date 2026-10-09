@@ -1,7 +1,7 @@
 @if (isOpen) {
   <div class="modal-backdrop upload-modal-backdrop" (click)="onClose()">
     <div class="modal-box upload-modal-box" (click)="$event.stopPropagation()">
-      <!-- Modal Header -->
+
       <div class="modal-header upload-modal-header">
         <div class="modal-title-group">
           <div class="modal-icon-badge upload-icon-badge">
@@ -22,9 +22,9 @@
       </div>
       <form [formGroup]="uploadForm" (ngSubmit)="onSubmit()">
         <div class="modal-body upload-modal-body">
-          <!-- Step 1: Interactive File Dropzone / Selected File Preview -->
+
           <div class="form-group mb-2">
-            <!-- When NO file is selected: Dropzone -->
+
             @if (!selectedFileObject()) {
               <div class="creative-upload-dropzone" (click)="triggerFileInput()">
                 <div class="cloud-icon-circle">
@@ -40,7 +40,7 @@
                 </div>
               </div>
             }
-            <!-- When a file IS selected: Compact Preview Card -->
+
             @if (selectedFileObject()) {
               <div class="selected-asset-preview-card">
                 <div class="asset-icon-box">
@@ -99,7 +99,7 @@
               style="display: none"
             />
           </div>
-          <!-- Step 2: Version File Label & Output Label -->
+
           <div class="form-group mb-2">
             <label class="form-label-bold" for="upFileName"
               >Version File Label <span class="required-star">*</span></label
@@ -115,7 +115,7 @@
               />
             </div>
           </div>
-          <!-- Step 3: Changelog & Quick Feedback Tags -->
+
           <div class="form-group mb-2">
             <div class="d-flex justify-content-between align-items-center mb-1">
               <label class="form-label-bold" for="upChangelog"
@@ -134,7 +134,7 @@
               placeholder="• Initial Draft&#10;• Adjusted Spacing & Alignment"
             ></textarea>
           </div>
-          <!-- Quick Preset Snippet Chips -->
+
           <div class="quick-preset-chips-box mb-1">
             <span class="chips-label">Quick Snippets:</span>
             <div class="chips-scroll">
@@ -169,7 +169,7 @@
             </div>
           </div>
         </div>
-        <!-- Modal Footer -->
+
         <div class="modal-footer upload-modal-footer">
           <div class="footer-btn-group">
             <button

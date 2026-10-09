@@ -1,7 +1,7 @@
 @if (isOpen) {
   <div class="custom-modal-overlay" (click)="onClose()">
     <div class="custom-modal-container package-form-modal" (click)="$event.stopPropagation()">
-      <!-- Modal Header -->
+
       <div class="custom-modal-header">
         <div class="modal-title-with-badge">
           <div class="modal-header-icon-squircle icon-indigo">
@@ -21,10 +21,10 @@
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
-      <!-- Modal Form Body -->
+
       <form [formGroup]="form" (ngSubmit)="onSubmit()">
         <div class="custom-modal-body">
-          <!-- Package Name Field -->
+
           <div class="form-group-block mb-3">
             <label class="custom-form-label" for="pkg-input-name">
               Package Name <span class="required-star">*</span>
@@ -60,12 +60,12 @@
               }
             }
           </div>
-          <!-- Package Banner Image Upload & Live Preview -->
+
           <div class="form-group-block mb-3">
             <label class="custom-form-label">
               Package Banner Image <span class="optional-label">(Optional)</span>
             </label>
-            <!-- Upload Drop Area / Preview -->
+
             @if (!imagePreview && !form.get('imageUrl')?.value) {
               <div class="pkg-image-uploader-area">
                 <input
@@ -86,7 +86,7 @@
                 </label>
               </div>
             }
-            <!-- Active Image Thumbnail Preview -->
+
             @if (imagePreview || form.get('imageUrl')?.value) {
               <div class="pkg-active-image-preview">
                 <div class="preview-img-container">
@@ -109,7 +109,7 @@
             }
           </div>
         </div>
-        <!-- Modal Footer -->
+
         <div class="custom-modal-footer">
           <button
             type="button"

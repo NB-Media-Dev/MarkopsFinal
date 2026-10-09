@@ -1,7 +1,6 @@
-<!-- Filter & Toolbar Card -->
 <div class="toolbar-card leads-filter-toolbar">
   <div class="toolbar-main-row">
-    <!-- Search Input -->
+
     <div class="filter-search-box">
       <span class="material-symbols-outlined search-icon">search</span>
       <input
@@ -23,9 +22,8 @@
       }
     </div>
 
-    <!-- Filters Row -->
     <div class="filters-row-wrap">
-      <!-- Status Filter -->
+
       <div class="filter-group">
         <label class="filter-label">
           <span class="material-symbols-outlined filter-icon">flag</span>
@@ -52,7 +50,6 @@
         </select>
       </div>
 
-      <!-- Telecaller Assignment Filter (for Admin / Digital Marketing) -->
       @if (!isTelecaller) {
         <div class="filter-group">
           <label class="filter-label">
@@ -73,7 +70,6 @@
         </div>
       }
 
-      <!-- Campaign Filter -->
       @if (availableCampaigns.length > 0) {
         <div class="filter-group">
           <label class="filter-label">
@@ -94,7 +90,6 @@
       }
     </div>
 
-    <!-- Actions (Upload Excel & Add Lead) -->
     @if (canCreateLeads) {
       <div class="toolbar-actions-wrap">
         <button
@@ -121,7 +116,6 @@
     }
   </div>
 
-  <!-- Bottom Sub-Bar: Quick Stats + Reset Filters -->
   <div class="quick-stats-group">
     <div class="stats-pills-left">
       @if (hasActiveFilters) {
@@ -140,7 +134,6 @@
       }
     </div>
 
-    <!-- Reset Filters Button -->
     @if (hasActiveFilters) {
       <button
         type="button"

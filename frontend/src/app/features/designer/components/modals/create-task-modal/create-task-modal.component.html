@@ -1,7 +1,7 @@
 @if (isOpen) {
   <div class="modal-backdrop" (click)="onClose()">
     <div class="modal-box modern-create-task-modal" (click)="$event.stopPropagation()">
-      <!-- Main Header Bar -->
+
       <div class="modern-modal-header">
         <div class="header-left">
           <button type="button" class="back-nav-btn" (click)="onClose()" title="Close">
@@ -19,9 +19,7 @@
       <div class="modern-modal-layout">
         <div class="build-task-column">
           <form [formGroup]="createTaskForm" (ngSubmit)="onSubmit()" class="task-steps-form">
-            <!-- ========================================== -->
-            <!-- STEP 1: CHOOSE TASK TYPE                   -->
-            <!-- ========================================== -->
+
             <div class="step-card step-1-card">
               <div class="step-header">
                 <div class="step-num-circle step-num-orange">1</div>
@@ -54,9 +52,6 @@
               </div>
             </div>
 
-            <!-- ========================================== -->
-            <!-- STEP 2: ADD DETAILS / REQUIREMENTS        -->
-            <!-- ========================================== -->
             <div class="step-card step-2-card">
               <div class="step-header">
                 <div class="step-num-circle step-num-blue">2</div>
@@ -66,7 +61,7 @@
               </div>
 
               <div class="step-details-stack">
-                <!-- Task Name / Title Input -->
+
                 <div class="detail-inputs-wrapper">
                   <input
                     type="text"
@@ -76,9 +71,17 @@
                   />
                 </div>
 
-                <!-- 2-Column: Attachments & Package -->
+                <div class="detail-inputs-wrapper">
+                  <textarea
+                    formControlName="description"
+                    placeholder="Task Description (e.g. Dimensions, content guidelines, target audience or specific instructions...)"
+                    class="step-textarea-input task-desc-input"
+                    rows="2"
+                  ></textarea>
+                </div>
+
                 <div class="details-split-row">
-                  <!-- Attachments Item -->
+
                   <div class="detail-field-card compact-attachment-card">
                     <div class="step-dropzone" [class.has-file]="createdBriefFileName()">
                       <input
@@ -114,7 +117,6 @@
                     </div>
                   </div>
 
-                  <!-- Package Workspace Item -->
                   <div class="detail-field-card compact-package-card">
                     <div class="package-card-inner">
                       <div class="package-icon-title">
@@ -138,9 +140,6 @@
               </div>
             </div>
 
-            <!-- ========================================== -->
-            <!-- STEP 3: ASSIGN & SET PRIORITY             -->
-            <!-- ========================================== -->
             <div class="step-card step-3-card">
               <div class="step-header">
                 <div class="step-num-circle step-num-green">3</div>
@@ -150,7 +149,7 @@
               </div>
 
               <div class="assign-priority-widgets-row">
-                <!-- 1. Designer Widget -->
+
                 <div class="widget-box widget-designer">
                   <div class="widget-header">
                     <span class="material-symbols-outlined icon-green">person</span>
@@ -177,7 +176,6 @@
                   </div>
                 </div>
 
-                <!-- 2. Priority Widget -->
                 <div class="widget-box widget-priority">
                   <div class="widget-header">
                     <span class="material-symbols-outlined icon-orange">local_fire_department</span>
@@ -221,7 +219,6 @@
                   </div>
                 </div>
 
-                <!-- 3. Deadline Widget -->
                 <div class="widget-box widget-deadline">
                   <div class="widget-header">
                     <span class="material-symbols-outlined icon-red">event</span>
@@ -246,9 +243,7 @@
               </div>
             </div>
 
-            <!-- Modal Action Buttons Bar -->
             <div class="build-task-footer-bar">
-            
 
               <button
                 type="submit"

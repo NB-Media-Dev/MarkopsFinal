@@ -1,19 +1,14 @@
 <div class="dashboard-page-wrapper">
-  <!-- Top Background Ambient Elements & Waves -->
-  
 
-  <!-- Dashboard Main Content Container -->
   <div class="dashboard-content-container">
-    <!-- Header Area: Welcome Text + Slogan -->
+
     <header class="dashboard-hero-header">
       <div class="header-left">
         <h1 class="hero-main-title">Our Products</h1>
       </div>
 
-      
     </header>
 
-    <!-- Products 3-Card Grid Section -->
     <section class="products-grid-section" aria-label="MarkOps Products">
       <div class="products-grid">
         @for (pkg of fixedPackages(); track pkg.id) {
@@ -23,18 +18,16 @@
             (click)="openPackage(pkg.shortName || pkg.name)"
             [attr.aria-label]="'Explore ' + pkg.name"
           >
-            <!-- Card Visual Banner (Top Wave + Photo + Badge + Handwritten script) -->
+
             <div class="card-visual-banner">
-              <!-- Ambient Warm Glow Reveal -->
+
               <div class="banner-glow-reveal"></div>
 
-              <!-- Background Scene Image with Soft Feathered Fade -->
               <div
                 class="banner-photo-bg"
                 [style.background-image]="'url(' + pkg.bgImage + ')'"
               ></div>
 
-              <!-- Organic Soft Wave Layer -->
               <svg class="banner-wave-mask" viewBox="0 0 400 140" preserveAspectRatio="none" fill="none">
                 <path
                   d="M0,80 C110,130 220,50 400,100 L400,140 L0,140 Z"
@@ -47,7 +40,6 @@
                 />
               </svg>
 
-              <!-- Logo Emblem Badge with Double Golden Rings -->
               <div class="product-emblem-badge">
                 <div class="emblem-outer-ring">
                   <div class="emblem-inner-circle">
@@ -56,21 +48,17 @@
                 </div>
               </div>
 
-              <!-- Top-Right Handwritten Script Tag -->
-             
             </div>
 
-            <!-- Card Body Content -->
             <div class="card-body-content">
               <h2 class="card-product-title">{{ pkg.name }}</h2>
               <span class="card-product-tagline">{{ pkg.tagline }}</span>
-         
+
             </div>
 
-            <!-- Card Bottom Footer -->
             <footer class="card-footer-row">
               <div class="package-inventory-stat">
-                <!-- Package Box SVG Icon -->
+
                 <svg
                   class="inventory-box-icon"
                   viewBox="0 0 24 24"

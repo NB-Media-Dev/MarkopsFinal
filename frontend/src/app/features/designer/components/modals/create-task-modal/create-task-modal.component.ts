@@ -163,18 +163,18 @@ export class CreateTaskModalComponent implements OnChanges {
   if (!raw) return '';
   
   try {
-    // 1. Strip hours from the target date
+
     const target = new Date(raw);
     target.setHours(0, 0, 0, 0);
 
-    // 2. Strip hours from today's date
+
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
-    // 3. Calculate absolute calendar day difference using Math.round to avoid DST issues
+  
     const diffDays = Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-    // 4. Return matching labels
+  
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Tomorrow';
     if (diffDays > 1) return `In ${diffDays} days`;

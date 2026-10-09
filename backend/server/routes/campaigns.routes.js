@@ -1,5 +1,5 @@
 const express = require('express');
-const { dbPool, dbCampaignsStore, dbAdsStore } = require('../db');
+const { dbPool, dbCampaignsStore, dbAdsStore, dbTasksStore } = require('../db');
 const { recordAuditLog } = require('../services/audit.service');
 const { emitRealtimeEvent } = require('../events');
 
@@ -360,8 +360,8 @@ router.get('/ads', async (req, res) => {
           const cpc = numClicks > 0 ? Number((numSpend / numClicks).toFixed(2)) : 0;
           const cpl = numLeads > 0 ? Number((numSpend / numLeads).toFixed(2)) : 0;
 
-          const memAd = dbAdsStore.find((m) => String(m.id) === String(r.id) || String(m.platformAdId) === String(r.platform_ad_id) || m.name === r.name);
-          const taskMatch = dbTasksStore.find((t) => (t.title && r.name && t.title.toLowerCase().trim() === r.name.toLowerCase().trim()) || (t.id && memAd?.designId && String(t.id) === String(memAd.designId)));
+          const memAd = (dbAdsStore || []).find((m) => String(m.id) === String(r.id) || String(m.platformAdId) === String(r.platform_ad_id) || m.name === r.name);
+          const taskMatch = (dbTasksStore || []).find((t) => (t.title && r.name && t.title.toLowerCase().trim() === r.name.toLowerCase().trim()) || (t.id && memAd?.designId && String(t.id) === String(memAd.designId)));
           let resolvedImg = memAd?.designImageUrl || null;
           if (!resolvedImg && taskMatch) {
             if (taskMatch.versions && taskMatch.versions.length > 0) {

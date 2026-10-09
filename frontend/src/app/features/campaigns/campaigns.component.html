@@ -32,7 +32,6 @@
     </div>
   }
 
-  <!-- 1. Top Feature Showcase Cards -->
   @if (!hideKpis) {
     <app-campaign-kpis
       [totalSpend]="totalSpend()"
@@ -53,7 +52,6 @@
     ></app-campaign-kpis>
   }
 
-  <!-- 2. Search Box & Segmented Status Filter Tabs -->
   <app-campaign-toolbar
     [searchQuery]="searchQuery()"
     [filterStatus]="filterStatus()"
@@ -66,7 +64,6 @@
     (filterChange)="setFilterStatus($event)"
   ></app-campaign-toolbar>
 
-  <!-- 3. Primary Campaigns Table -->
   <app-campaigns-table
     [campaigns]="filteredCampaigns"
     [totalCampaignsCount]="filteredCampaigns.length"
@@ -76,7 +73,6 @@
     (delete)="confirmDelete($event)"
   ></app-campaigns-table>
 
-  <!-- 4. Create / Edit Campaign Modal -->
   <app-campaign-form-modal
     [isOpen]="showModal()"
     [isEditing]="isEditing()"
@@ -86,7 +82,6 @@
     (save)="saveCampaign()"
   ></app-campaign-form-modal>
 
-  <!-- 5. Delete Confirmation Modal -->
   <app-campaign-delete-modal
     [target]="deleteConfirmTarget()"
     (cancel)="cancelDelete()"

@@ -1,9 +1,8 @@
-
 :root {
 
   --mo-forest-950: #0C1E16;
   --mo-forest-900: #122B20;
-  --mo-forest-800: #1B4332; 
+  --mo-forest-800: #1B4332;
   --mo-forest-700: #245943;
   --mo-forest-600: #2D6A4F;
   --mo-forest-500: #40916C;
@@ -11,7 +10,6 @@
   --mo-forest-100: #D8EFE4;
   --mo-forest-50:  #EBF6F0;
 
-  
   --mo-primary-orange: #F59E0B;
   --mo-light-orange:   #FFE8C2;
   --mo-dark-text:      #172033;
@@ -19,11 +17,11 @@
   --mo-border-warm:    #F1D3A8;
   --mo-hover-warm:     #FFDDA8;
 
-  --mo-bg-body:    #FFF3E6; 
-  --mo-bg-card:    #FFFFFF; 
+  --mo-bg-body:    #FFF3E6;
+  --mo-bg-card:    #FFFFFF;
   --mo-sand-50:    #FFF9F2;
-  --mo-sand-100:   #FFE8C2; 
-  --mo-sand-200:   #F1D3A8; 
+  --mo-sand-100:   #FFE8C2;
+  --mo-sand-200:   #F1D3A8;
   --mo-sand-300:   #E8C490;
   --mo-sand-400:   #94A3B8;
   --mo-sand-500:   #64748B;
@@ -42,7 +40,6 @@
   --mo-font-handwriting: 'Caveat', cursive, sans-serif;
   --mo-font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
 
- 
   --mo-radius-sm: 6px;
   --mo-radius-md: 10px;
   --mo-radius-lg: 14px;
@@ -52,7 +49,6 @@
   --mo-border-color: #CBD5E1;
   --mo-border-light: #E2E8F0;
 
- 
   --mo-shadow-xs: 0 1px 3px rgba(15, 23, 42, 0.06);
   --mo-shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
   --mo-shadow-md: 0 4px 12px rgba(27, 67, 50, 0.06), 0 1px 3px rgba(0, 0, 0, 0.02);
@@ -101,7 +97,6 @@ html, body {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-
 
 .page-header, .mo-top-header {
   display: flex;
@@ -202,7 +197,6 @@ html, body {
   .bc-active { font-weight: 600; color: var(--mo-text-main); }
 }
 
-
 .btn, .btn-primary, .btn-secondary, .btn-outline {
   display: inline-flex;
   align-items: center;
@@ -283,7 +277,6 @@ html, body {
   border-radius: var(--mo-radius-pill);
 }
 
-
 .pill-tabs-nav, .works-tabs {
   display: flex;
   align-items: center;
@@ -318,7 +311,6 @@ html, body {
     }
   }
 }
-
 
 input[type="text"],
 input[type="email"],
@@ -385,7 +377,6 @@ label {
   gap: 1rem;
 }
 
-
 .card, .table-card, .mo-widget-card, .mo-toolbar-card, .status-card, .shortcuts-card, .perf-card, .dl-card, .notif-card, .settings-card, .works-container-card {
   background-color: #FFFFFF;
   border: 1px solid var(--mo-border-color);
@@ -393,7 +384,6 @@ label {
   box-shadow: var(--mo-shadow-sm);
   padding: 1.5rem;
 }
-
 
 .kpi-grid, .reference-kpi-grid, .designers-kpi-grid {
   display: grid;
@@ -513,7 +503,6 @@ label {
   }
 }
 
-
 .table-responsive, .table-responsive-wrapper {
   width: 100%;
   overflow-x: auto;
@@ -618,7 +607,6 @@ label {
   }
 }
 
-
 .user-avatar-circle, .avatar-circle, .designer-avatar-circle {
   width: 36px;
   height: 36px;
@@ -633,7 +621,6 @@ label {
   text-transform: uppercase;
   flex-shrink: 0;
 }
-
 
 .modal-backdrop {
   position: fixed;
@@ -727,7 +714,6 @@ label {
   }
 }
 
-
 .close-btn, .btn-close, .toast-close, .modal-close {
   display: inline-flex !important;
   align-items: center !important;
@@ -770,7 +756,6 @@ label {
   }
 }
 
-
 .filter-bar, .controls-bar, .mo-toolbar-card {
   background-color: #FFFFFF;
   border: 1px solid var(--mo-border-color);
@@ -808,7 +793,6 @@ label {
   }
 }
 
-
 .search-box, .search-input-box {
   position: relative;
   display: flex;
@@ -838,7 +822,6 @@ label {
   }
 }
 
-
 .alert, .mo-alert {
   display: flex;
   align-items: center;
@@ -861,7 +844,6 @@ label {
     border: 1px solid var(--mo-status-red-border);
   }
 }
-
 
 .global-realtime-toast, .realtime-toast {
   position: fixed;
@@ -959,7 +941,6 @@ label {
     opacity: 1;
   }
 }
-
 
 .table-card {
   background: #FFFFFF;
@@ -1250,7 +1231,6 @@ label {
   }
 }
 
-
 .page-heading {
   display: inline-flex;
   align-items: center;
@@ -1323,7 +1303,6 @@ html, body {
   }
 }
 
-
 .table-responsive {
   width: 100%;
   overflow-x: auto;
@@ -1358,7 +1337,6 @@ html, body {
     }
   }
 }
-
 
 .page-header,
 .mo-top-header {
@@ -1399,7 +1377,6 @@ html, body {
   }
 }
 
-
 .segmented-tabs-scroll,
 .package-pill-switcher,
 .quick-date-pills,
@@ -1426,7 +1403,6 @@ html, body {
   }
 }
 
-
 .card-title-bar {
   @media (max-width: 768px) {
     flex-direction: column;
@@ -1443,7 +1419,6 @@ html, body {
     }
   }
 }
-
 
 @media (max-width: 768px) {
   .modal-backdrop,
@@ -1513,7 +1488,6 @@ html, body {
     }
   }
 
-
   .form-row,
   .form-row-3col {
     flex-direction: column !important;
@@ -1530,7 +1504,6 @@ html, body {
     }
   }
 
-  /* Task Audit Journey Stepper */
   .journey-stepper-wrap {
     flex-wrap: wrap !important;
     gap: 0.5rem !important;
@@ -1549,7 +1522,6 @@ html, body {
   }
 }
 
-/* 7. Universal Page Root Layout & Container Reset */
 .users-roles-page,
 .transactions-page,
 .reports-page,
@@ -1574,7 +1546,6 @@ html, body {
   padding-right: 0 !important;
 }
 
-/* 8. Universal KPI Grid & Card System */
 .kpi-grid,
 .reference-kpi-grid,
 .designers-kpi-grid,
@@ -1604,7 +1575,6 @@ html, body {
   }
 }
 
-/* 9. Universal Touch-Scrollable Filter Bars & Tabs */
 .filter-pills-bar,
 .segmented-tabs,
 .segmented-tabs-scroll,
@@ -1637,7 +1607,6 @@ html, body {
   }
 }
 
-/* 10. Universal Toolbars on Mobile & Tablet */
 .toolbar-card,
 .mo-toolbar-card,
 .filter-bar,
@@ -1659,7 +1628,6 @@ html, body {
   }
 }
 
-/* 11. Extra Small Devices (Smartphones <= 480px, Pixel 9, iPhone 16, Galaxy A55) */
 @media (max-width: 480px) {
   .btn, button.btn, a.btn {
     font-size: 0.8125rem;
@@ -1700,7 +1668,6 @@ html, body {
   }
 }
 
-/* 12. Ultra-Narrow Foldable Devices (<= 360px) */
 @media (max-width: 360px) {
   .page-header .page-heading {
     font-size: 1.15rem !important;
@@ -1711,7 +1678,6 @@ html, body {
   }
 }
 
-/* 13. Universal Top Navbar Safety on Tablet & Mobile */
 @media (max-width: 768px) {
   .top-navbar {
     .header-user-pill {
@@ -1732,7 +1698,6 @@ html, body {
   }
 }
 
-/* Universal Bullet Point List Formatting */
 .node-bullet-list,
 .ver-bullet-list,
 .file-notes-bullets {
@@ -1765,11 +1730,6 @@ html, body {
   }
 }
 
-/* ==========================================================================
-   4K UHD & ULTRA-WIDE RESPONSIVE SYSTEM (2560px & 3840px+)
-   ========================================================================== */
-
-/* 2K / QHD (2560px - 3199px) */
 @media (min-width: 2560px) {
   html {
     font-size: 20px;
@@ -1796,7 +1756,6 @@ html, body {
   }
 }
 
-/* 3K / Ultra-Wide (3200px - 3839px) */
 @media (min-width: 3200px) {
   html {
     font-size: 23px;
@@ -1823,7 +1782,6 @@ html, body {
   }
 }
 
-/* 4K UHD Displays (3840px+) */
 @media (min-width: 3840px) {
   html {
     font-size: 26px;
@@ -1849,5 +1807,3 @@ html, body {
     min-width: 1250px;
   }
 }
-
-

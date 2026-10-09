@@ -85,7 +85,6 @@ export class AdFormModalComponent implements OnInit, OnChanges {
         }
       }
 
-      // If no design is currently selected or matching, auto-select the first approved design of current type
       const matching = this.filteredApprovedDesigns;
       if (matching.length > 0) {
         this.selectDesign(matching[0]);
@@ -97,7 +96,6 @@ export class AdFormModalComponent implements OnInit, OnChanges {
     const list: ApprovedDesignItem[] = [];
     const activePkg = this.packageFilter?.trim().toLowerCase();
 
-    // Extract approved tasks from task store
     if (this.tasks && this.tasks.length > 0) {
       for (const t of this.tasks) {
         const status = String(t.status || '').toUpperCase().trim();
@@ -110,13 +108,12 @@ export class AdFormModalComponent implements OnInit, OnChanges {
           creatorRole === 'MARKETING_MANAGER' ||
           !creatorRole;
 
-        // Check if there is an approval in status history
         const approvalHist = t.statusHistory?.find(
           (h) => String(h.newStatus || '').toUpperCase() === 'APPROVED'
         );
 
         if (isApprovedStatus || isBdmOrAdminCreator || approvalHist) {
-          // Filter out designs belonging to other packages if filter active
+
           if (activePkg && activePkg !== 'all') {
             if (!isTaskForPackage(t, this.packageFilter)) {
               continue;
@@ -227,7 +224,6 @@ export class AdFormModalComponent implements OnInit, OnChanges {
     this.formModel.designImageUrl = design.imageUrl;
     this.formModel.packageName = design.packageName;
 
-    // Auto match campaign association
     if (design.campaignId) {
       this.formModel.campaignId = design.campaignId;
       const cmp = this.campaigns.find((c) => String(c.id) === String(design.campaignId));

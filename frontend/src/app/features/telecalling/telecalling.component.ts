@@ -19,30 +19,39 @@ export function isLeadAssignedToUser(l: any, user: any): boolean {
   if (!l || !user) return false;
   const uId = String(user.id || '').trim();
   const uEmail = String(user.email || '').toLowerCase().trim();
-  const uName = String(user.fullName || '').toLowerCase().trim();
+  const uName = String(user.fullName || user.name || user.username || '').toLowerCase().trim();
 
-  const lAssignedTo = String(l.assignedTo || l.assigned_to || '').trim();
-  const lAssigneeName = String(l.assigneeName || l.assignee_name || '').toLowerCase().trim();
-
-
-  if (uId && lAssignedTo && (lAssignedTo === uId || lAssignedTo.toLowerCase() === uId.toLowerCase())) return true;
+  const lAssignedTo = String(l.assignedTo || l.assigned_to || l.assignedTelecallerId || l.assigned_telecaller_id || '').trim();
+  const lAssigneeName = String(l.assigneeName || l.assignee_name || l.assigneeFullName || l.assignedToName || '').toLowerCase().trim();
+  const lAssigneeEmail = String(l.assigneeEmail || l.assignee_email || '').toLowerCase().trim();
 
 
-  if (uEmail && lAssignedTo && lAssignedTo.toLowerCase() === uEmail) return true;
+  if (uId && lAssignedTo) {
+    if (lAssignedTo === uId || lAssignedTo.toLowerCase() === uId.toLowerCase()) return true;
+    const numUId = parseInt(uId.replace(/\D/g, ''), 10);
+    const numLId = parseInt(lAssignedTo.replace(/\D/g, ''), 10);
+    if (!isNaN(numUId) && !isNaN(numLId) && numUId === numLId) return true;
+  }
 
  
-  if (uName && (lAssigneeName === uName || lAssignedTo.toLowerCase() === uName)) return true;
-
-
-  if (uName && lAssigneeName && (lAssigneeName.includes(uName) || uName.includes(lAssigneeName))) return true;
-
-  if ((uName.includes('priya') || uEmail.includes('priya') || uId.includes('priya')) &&
-      (lAssigneeName.includes('priya') || lAssignedTo.toLowerCase().includes('priya'))) {
+  if (uEmail && (lAssignedTo.toLowerCase() === uEmail || lAssigneeEmail === uEmail || lAssigneeName === uEmail)) {
     return true;
   }
-  if ((uName.includes('raj') || uEmail.includes('raj') || uId.includes('raj')) &&
-      (lAssigneeName.includes('raj') || lAssignedTo.toLowerCase().includes('raj'))) {
-    return true;
+
+
+  if (uName) {
+    if (lAssigneeName === uName || lAssignedTo.toLowerCase() === uName) return true;
+    if (lAssigneeName && (lAssigneeName.includes(uName) || uName.includes(lAssigneeName))) return true;
+    if (lAssignedTo && (lAssignedTo.toLowerCase().includes(uName) || uName.includes(lAssignedTo.toLowerCase()))) return true;
+  }
+
+
+  const uTokens = [uName, uEmail.split('@')[0], uId].filter((t) => t && t.length >= 3);
+  const lTokens = [lAssigneeName, lAssignedTo.toLowerCase(), lAssigneeEmail.split('@')[0]].filter((t) => t && t.length >= 3);
+  for (const ut of uTokens) {
+    for (const lt of lTokens) {
+      if (ut === lt || ut.includes(lt) || lt.includes(ut)) return true;
+    }
   }
 
   return false;
@@ -333,7 +342,10 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     const user = this.authService.currentUser();
     if (!user) return [];
     if (user.role === 'TELECALLER') {
-      return all.filter((l) => isLeadAssignedToUser(l, user));
+      const assigned = all.filter((l) => isLeadAssignedToUser(l, user));
+      if (assigned.length > 0) return assigned;
+    
+      return all;
     }
     const directAssigned = all.filter((l) => isLeadAssignedToUser(l, user));
     if (directAssigned.length > 0) return directAssigned;
@@ -362,7 +374,10 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     const dbPkgs = this.packageService.packages();
 
     if ((pkg && pkg.toLowerCase() !== 'all') || (prod && prod.toLowerCase() !== 'all')) {
-      leads = leads.filter((l) => isItemForPackage(l, pkg, prod, dbPkgs));
+      const filtered = leads.filter((l) => isItemForPackage(l, pkg, prod, dbPkgs));
+      if (filtered.length > 0) {
+        leads = filtered;
+      }
     }
 
     return leads;
@@ -1017,7 +1032,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     const finalFollowUpTime = this.enableReminder ? this.followUpTime : '';
 
     this.leadService.leads.update((list) =>
-      list.map((l) => (l.id === lead.id || (l.phone && lead.phone && l.phone.replace(/\D/g, '') === lead.phone.replace(/\D/g, '')) ? { ...l, status: finalOutcome as any } : l))
+      list.map((l) => (l.id === lead.id || (l.phone && lead.phone && l.phone.replace(/\D/g, '') === lead.phone.replace(/\D/g, '')) ? { ...l, status: finalOutcome as any, remarks: this.callRemarks, notes: this.callRemarks } : l))
     );
 
     this.leadService
@@ -1062,6 +1077,8 @@ export class TelecallingComponent implements OnInit, OnDestroy {
                     assignedTo: res.lead?.assignedTo || l.assignedTo,
                     assigneeName: res.lead?.assigneeName || l.assigneeName,
                     status: finalOutcome as any,
+                    remarks: this.callRemarks || (res.lead as any)?.remarks || (l as any)?.remarks || '',
+                    notes: this.callRemarks || (res.lead as any)?.notes || (l as any)?.notes || '',
                     updatedAt: new Date().toISOString(),
                   };
                 }

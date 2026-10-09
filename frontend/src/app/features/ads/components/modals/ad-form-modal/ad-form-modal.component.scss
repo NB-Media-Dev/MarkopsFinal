@@ -25,7 +25,6 @@
   overflow: hidden;
   animation: scaleUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Modal Header Bar */
   .modal-header {
     padding: 1rem 1.5rem;
     display: flex;
@@ -98,7 +97,6 @@
     }
   }
 
-  /* 2-Column Split Grid Body */
   .modal-grid-layout {
     display: grid;
     grid-template-columns: 1.18fr 0.82fr;
@@ -112,7 +110,6 @@
     }
   }
 
-  /* LEFT COLUMN: Steps Form */
   .modal-form-column {
     display: flex;
     flex-direction: column;
@@ -170,7 +167,6 @@
         }
       }
 
-      /* Task Types Oneline Row (Exact Layout from Image 1) */
       .task-types-oneline-row {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -274,7 +270,6 @@
         }
       }
 
-      /* Dropdown Wrap */
       .design-dropdown-wrap {
         display: flex;
         flex-direction: column;
@@ -390,7 +385,6 @@
       }
     }
 
-    /* Standard Form Elements */
     .form-row {
       display: flex;
       gap: 0.75rem;
@@ -471,7 +465,6 @@
       }
     }
 
-    /* Live Calc Badges */
     .live-calc-panel {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -510,7 +503,6 @@
     }
   }
 
-  /* RIGHT COLUMN: Live Ad & Design Preview (Reference Image 2 Style) */
   .modal-preview-column {
     display: flex;
     flex-direction: column;
@@ -577,7 +569,6 @@
         gap: 0.8rem;
         height: 100%;
 
-        /* Media Frame */
         .preview-media-frame {
           position: relative;
           width: 100%;
@@ -709,7 +700,6 @@
           }
         }
 
-        /* Preview Info Body */
         .preview-info-body {
           display: flex;
           flex-direction: column;
@@ -735,7 +725,6 @@
             overflow: hidden;
           }
 
-          /* Specs Rows */
           .preview-meta-list {
             display: flex;
             flex-direction: column;
@@ -823,7 +812,6 @@
             }
           }
 
-          /* KPI Grid */
           .preview-kpi-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -858,7 +846,6 @@
             }
           }
 
-          /* Ready Callout */
           .preview-ready-callout {
             background: #FFFBEB;
             border: 1px solid #FDE68A;
@@ -902,7 +889,6 @@
     }
   }
 
-  /* Modal Footer */
   .modal-footer {
     padding: 0.85rem 1.5rem;
     display: flex;

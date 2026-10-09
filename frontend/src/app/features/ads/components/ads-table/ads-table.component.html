@@ -1,4 +1,3 @@
-<!-- Primary Ads Table Card -->
 <div class="table-card card-ads-perf">
   <div class="card-title-bar">
     <div class="title-with-badge">
@@ -41,7 +40,7 @@
       <tbody>
         @for (ad of ads; track ad) {
           <tr class="ad-row">
-            <!-- Ad Name & ID -->
+
             <td>
               <div class="ad-title-cell">
                 @if (getAdImage(ad)) {
@@ -67,11 +66,11 @@
                 </div>
               </div>
             </td>
-            <!-- Campaign -->
+
             <td>
               <span class="campaign-tag-pill">{{ ad.campaignName }}</span>
             </td>
-            <!-- Platform -->
+
             <td>
               <span
                 class="platform-tag"
@@ -86,7 +85,7 @@
                 {{ ad.platform }}
               </span>
             </td>
-            <!-- Status -->
+
             <td>
               @if (ad.status === 'ACTIVE') {
                 <span class="status-pill status-pill-active">
@@ -104,23 +103,23 @@
                 </span>
               }
             </td>
-            <!-- Spend -->
+
             <td>
               <span class="metric-spend-text font-bold">₹{{ ad.spend | number: '1.2-2' }}</span>
             </td>
-            <!-- Leads -->
+
             <td>
               <span class="metric-leads-badge">{{ ad.leadsCount | number }}</span>
             </td>
-            <!-- CPL -->
+
             <td>
               <span class="metric-cpl-badge">₹{{ ad.cpl | number: '1.2-2' }}</span>
             </td>
-            <!-- CTR -->
+
             <td>
               <span class="ctr-metric-pill font-bold">{{ ad.ctr }}%</span>
             </td>
-            <!-- Actions -->
+
             @if (canManageAds) {
               <td class="text-right actions-col">
                 <div class="action-buttons-group">
@@ -144,7 +143,6 @@
           </tr>
         }
 
-        <!-- Empty State -->
         @if (ads.length === 0) {
           <tr>
             <td [attr.colspan]="canManageAds ? 9 : 8" class="empty-state-cell">

@@ -1,8 +1,8 @@
 <div class="package-works-page">
-  <!-- Top Navigation & Header -->
+
   <header class="page-header">
     <div class="header-titles-group">
-      <!-- Navigation & Breadcrumbs Bar -->
+
       <nav class="clean-breadcrumbs" aria-label="Breadcrumb">
         <button type="button" class="btn-back" (click)="onBreadcrumbBack()" title="Go Back">
           <span class="material-symbols-outlined icon-back">arrow_back</span>
@@ -16,7 +16,6 @@
           </a>
           <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
 
-          <!-- When inside a workspace package -->
           @if (activeWorkspacePackage(); as selectedPkg) {
             <button
               type="button"
@@ -83,9 +82,8 @@
         </div>
       </nav>
 
-      <!-- Page Heading After Breadcrumbs -->
       <div class="page-title-block">
-        <!-- Root Packages Catalog Level -->
+
         @if (!activeWorkspacePackage()) {
           <div class="catalog-heading-row">
             <h1 class="page-main-heading">{{ activePackageMeta().name }} Product</h1>
@@ -95,7 +93,7 @@
     </div>
 
     <div class="header-actions-group">
-      <!-- When at Product level: Product Switcher Pills + Create Package Button -->
+
       @if (!activeWorkspacePackage()) {
         <div class="package-pill-switcher">
           @for (pkg of availablePackages; track pkg) {
@@ -114,10 +112,9 @@
             </button>
           }
         </div>
-       
+
       }
 
-      <!-- When inside a package workspace: Back button & product badge -->
       @if (activeWorkspacePackage(); as selectedPkg) {
         <div class="workspace-header-actions">
           <span class="workspace-product-badge">Product: {{ activePackageMeta().name }}</span>
@@ -126,7 +123,6 @@
     </div>
   </header>
 
- 
   @if (!activeWorkspacePackage()) {
     <section class="product-hero-banner" [style.background-image]="'url(' + activeHeroBanner() + ')'">
       @if (canCreatePackage()) {
@@ -145,7 +141,7 @@
         <img [src]="productVisual().logo" [alt]="productVisual().title + ' logo'" class="product-hero-logo" />
         <div class="product-hero-copy">
           <h1>{{ productVisual().title }}</h1>
-         
+
         </div>
       </div>
     </section>
@@ -154,7 +150,7 @@
     }
     <section class="catalog-toolbar" aria-label="Package catalog controls">
       <div class="catalog-toolbar-header">
-      
+
         <div class="catalog-title-group">
           <h2>Available Packages</h2>
 
@@ -171,8 +167,6 @@
             (ngModelChange)="packageSearchQuery.set($event)"
           />
         </label>
-
-     
 
         @if (canCreatePackage()) {
           <button
@@ -200,11 +194,8 @@
     ></app-package-catalog>
   }
 
-  <!-- ========================================================================= -->
-  <!-- LEVEL 2 & 3: PACKAGE HUB OVERVIEW & DEPARTMENT OPERATIONS WORKSPACE       -->
-  <!-- ========================================================================= -->
   @if (activeWorkspacePackage(); as selectedPkg) {
-    <!-- LEVEL 2: 4 Hub Cards Overview (When NO department is clicked) -->
+
     @if (!activeDepartment()) {
       @if (selectedPkg.imageUrl) {
         <section
@@ -229,12 +220,11 @@
             />
             <div class="product-hero-copy">
               <h1>{{ selectedPkg.name }}</h1>
-              
+
             </div>
           </div>
         </section>
       } @else {
-        <!-- Simple, clean empty hero banner when package has no image -->
         <section class="product-hero-banner hero-banner-blank">
           @if (canEditPackage()) {
             <button
@@ -254,7 +244,7 @@
             />
             <div class="blank-hero-copy">
               <h1>{{ selectedPkg.name }}</h1>
-      
+
             </div>
           </div>
         </section>
@@ -271,7 +261,6 @@
       ></app-package-hub-overview>
     }
 
-    <!-- LEVEL 3: Department Operations Workspace -->
     @if (activeDepartment(); as currentDept) {
       <app-package-department-view
         [currentDept]="currentDept"
@@ -286,14 +275,19 @@
         [getAuditLogCreatorFn]="getAuditLogCreator.bind(this)"
         [getAuditLogAssigneeFn]="getAuditLogAssignee.bind(this)"
         [getAuditLogTaskTitleFn]="getAuditLogTaskTitle.bind(this)"
+        [getAuditLogTaskFileFn]="getAuditLogTaskFile.bind(this)"
         [activePackageDisplayNameFn]="activePackageDisplayName.bind(this)"
+        [teamPerformanceList]="teamPerformanceList()"
+        [activeUsersCount]="activeUsersCount()"
+        [productPackages]="packageService.packages()"
         (operationTabSelect)="selectOperationTab($event)"
         (openTaskAudit)="openTaskAuditModal($event.log, $event.event)"
+        (openTaskFile)="openTaskFileFromAudit($event.log, $event.event)"
+        (previewTaskDoc)="onPreviewTaskDocFromMatrix($event)"
       ></app-package-department-view>
     }
   }
 
-  <!-- DOCUMENT VIEWER MODAL -->
   <app-doc-viewer-modal
     [isOpen]="isDocViewerOpen()"
     [activeDocName]="activeDocName()"
@@ -306,7 +300,6 @@
     (download)="downloadAsset($event.event, $event.url, $event.fileName)"
   ></app-doc-viewer-modal>
 
-  <!-- TASK DETAILS & STATUS HISTORY MODAL -->
   <app-task-audit-modal
     [isOpen]="isTaskAuditModalOpen()"
     [auditTask]="selectedAuditTask()"
@@ -317,9 +310,6 @@
   ></app-task-audit-modal>
 </div>
 
-<!-- ========================================================================= -->
-<!-- 9. CREATE PRODUCT PACKAGE MODAL -->
-<!-- ========================================================================= -->
 <app-create-package-modal
   [isOpen]="isCreateProductPackageModalOpen()"
   [activePackageMeta]="activePackageMeta()"
@@ -332,9 +322,6 @@
   (removeImage)="removePackageImageFile()"
 ></app-create-package-modal>
 
-<!-- ========================================================================= -->
-<!-- 10. EDIT PRODUCT PACKAGE MODAL -->
-<!-- ========================================================================= -->
 <app-edit-package-modal
   [isOpen]="isEditProductPackageModalOpen()"
   [activePackageMeta]="activePackageMeta()"
@@ -347,9 +334,6 @@
   (removeImage)="removeEditPackageImageFile()"
 ></app-edit-package-modal>
 
-<!-- ========================================================================= -->
-<!-- 11. PRODUCT PACKAGE DETAIL MODAL -->
-<!-- ========================================================================= -->
 <app-package-detail-modal
   [isOpen]="isPackageDetailModalOpen()"
   [pkg]="selectedProductPackage()"

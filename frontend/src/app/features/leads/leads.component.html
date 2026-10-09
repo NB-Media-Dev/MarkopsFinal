@@ -70,9 +70,8 @@
     </div>
   }
 
-  <!-- TAB 1: ALL LEADS LIST VIEW -->
   @if (activeTab() === 'LEADS_LIST') {
-    <!-- 1. Leads Toolbar & Filters -->
+
     <app-leads-toolbar
       [searchQuery]="searchQuery()"
       [filterStatus]="filterStatus()"
@@ -96,7 +95,6 @@
       (addLead)="openModal()"
     ></app-leads-toolbar>
 
-    <!-- 2. Leads Data Table Card -->
     <app-leads-table
       [isTelecaller]="isTelecaller()"
       [paginatedLeads]="paginatedLeads"
@@ -120,14 +118,12 @@
     ></app-leads-table>
   }
 
-  <!-- TAB 2: TELECALLING MONITORING DASHBOARD -->
   @if (activeTab() === 'TELECALLING_MONITOR') {
     <app-telecalling-monitor
       [summary]="leadService.summary()"
     ></app-telecalling-monitor>
   }
 
-  <!-- MODAL 1: SINGLE MANUAL LEAD MODAL -->
   <app-add-lead-modal
     [isOpen]="showModal()"
     [newFirstName]="newFirstName"
@@ -136,8 +132,10 @@
     [newPhone]="newPhone"
     [newSource]="newSource"
     [newCampaignId]="newCampaignId"
+    [newAdId]="newAdId"
     [newAssignedTelecallerId]="newAssignedTelecallerId"
     [availableCampaigns]="availableCampaigns()"
+    [availableAds]="availableAds()"
     [activeTelecallers]="activeTelecallers()"
     [isCreatingLead]="isCreatingLead()"
     (newFirstNameChange)="newFirstName = $event"
@@ -146,12 +144,12 @@
     (newPhoneChange)="newPhone = $event"
     (newSourceChange)="newSource = $event"
     (campaignChange)="onCampaignSelectChange($event)"
+    (adChange)="onAdSelectChange($event)"
     (telecallerChange)="onTelecallerSelectChange($event)"
     (closeModal)="closeModal()"
     (save)="createLead()"
   ></app-add-lead-modal>
 
-  <!-- MODAL 2: MANUAL ASSIGN MODAL -->
   <app-assign-lead-modal
     [lead]="selectedLeadForAssign"
     [selectedUserId]="selectedUserId"
@@ -161,7 +159,6 @@
     (confirm)="confirmAssign()"
   ></app-assign-lead-modal>
 
-  <!-- MODAL 3: EDIT LEAD MODAL (Creator Only) -->
   <app-edit-lead-modal
     [isOpen]="showEditModal()"
     [lead]="editingLead()"
@@ -188,7 +185,6 @@
     (save)="saveLeadEdit()"
   ></app-edit-lead-modal>
 
-  <!-- MODAL 4: LEAD DETAILS & TELECALLING HISTORY MODAL -->
   <app-lead-details-modal
     [lead]="selectedLeadForDetails()"
     [historyCalls]="getLeadHistoryCalls(selectedLeadForDetails())"

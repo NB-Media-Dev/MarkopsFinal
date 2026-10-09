@@ -79,7 +79,7 @@ async function fetchGraphAd(adId) {
   const token = process.env.META_SYSTEM_ACCESS_TOKEN;
   if (!token) throw new Error('META_SYSTEM_ACCESS_TOKEN is not configured');
 
-  const url = new URL(`https://graph.facebook.com/${META_API_VERSION}/${encodeURIComponent(adId)}`);
+  const url = new URL(`https:
   url.searchParams.set('fields', 'id,name,campaign_id');
   url.searchParams.set('access_token', token);
 

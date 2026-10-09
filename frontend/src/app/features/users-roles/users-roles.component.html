@@ -17,7 +17,6 @@
     </div>
   </header>
 
-  <!-- Success Notification Alert -->
   @if (userSuccessMsg()) {
     <div class="alert-banner alert-success">
       <div class="alert-icon-wrap">
@@ -30,7 +29,6 @@
     </div>
   }
 
-  <!-- Error Notification Alert -->
   @if (userErrorMsg()) {
     <div class="alert-banner alert-danger">
       <div class="alert-icon-wrap">
@@ -43,7 +41,6 @@
     </div>
   }
 
-  <!-- 3 TOP KPI SUMMARY CARDS (Medium-Sized Luxury Design) -->
   <section class="kpi-grid">
     <div class="kpi-card card-users">
       <div class="kpi-top-row">
@@ -91,7 +88,6 @@
     </div>
   </section>
 
-  <!-- Filter & Search Toolbar Card -->
   <div class="toolbar-card">
     <div class="search-box">
       <span class="material-symbols-outlined search-icon">search</span>
@@ -118,13 +114,7 @@
       >
         Admin
       </button>
-      <!-- <button
-        class="filter-pill-btn"
-        [class.active]="selectedRoleFilter() === 'MARKETING_MANAGER'"
-        (click)="onFilterRole('MARKETING_MANAGER')"
-      >
-        Marketing Mgr
-      </button> -->
+
       <button
         class="filter-pill-btn"
         [class.active]="selectedRoleFilter() === 'DIGITAL_MARKETING'"
@@ -156,7 +146,6 @@
     </div>
   </div>
 
-  <!-- Users Table Card -->
   <div class="table-card card-users-perf">
     <div class="table-responsive">
       <table class="data-table">
@@ -249,7 +238,6 @@
   </div>
 </div>
 
-<!-- CREATE USER MODAL -->
 @if (isCreateUserModalOpen()) {
   <div class="modal-backdrop" (click)="closeCreateUserModal()">
     <div class="modal-card modal-md" (click)="$event.stopPropagation()">
@@ -365,7 +353,6 @@
   </div>
 }
 
-<!-- EDIT USER MODAL -->
 @if (isEditUserModalOpen()) {
   <div class="modal-backdrop" (click)="closeEditUserModal()">
     <div class="modal-card modal-md" (click)="$event.stopPropagation()">

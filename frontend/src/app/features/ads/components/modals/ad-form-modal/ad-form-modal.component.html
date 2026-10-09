@@ -1,9 +1,7 @@
-<!-- CREATE / EDIT AD METRIC MODAL -->
 @if (isOpen) {
   <div class="modal-backdrop" (click)="onClose()">
     <div class="modal-card modern-ad-modal" (click)="$event.stopPropagation()">
-      
-      <!-- Modal Header Bar -->
+
       <div class="modal-header">
         <div class="modal-title-wrap">
           <div class="modal-squircle-icon">
@@ -13,7 +11,7 @@
           </div>
           <div>
             <h2>{{ isEditing ? 'Edit Ad Metric' : 'Create Ads Metric' }}</h2>
-           
+
           </div>
         </div>
         <button type="button" class="btn-close-modal" (click)="onClose()" aria-label="Close" title="Close">
@@ -21,13 +19,10 @@
         </button>
       </div>
 
-      <!-- 2-Column Split Body Layout -->
       <div class="modal-grid-layout">
-        
-        <!-- LEFT COLUMN: Form Steps & Configuration -->
+
         <div class="modal-form-column">
-          
-          <!-- SECTION 1: CHOOSE TASK TYPE (MATCHING IMAGE 1 EXACTLY) -->
+
           <div class="form-section-card design-link-section">
             <div class="section-card-header">
               <div class="sec-badge sec-badge-orange">1</div>
@@ -36,7 +31,6 @@
               </div>
             </div>
 
-            <!-- Task Types Oneline Row (Exact style from Reference Image 1) -->
             <div class="task-types-oneline-row">
               @for (type of designTypes; track type.id) {
                 <div
@@ -60,7 +54,6 @@
               }
             </div>
 
-            <!-- Approved Design Dropdown -->
             <div class="design-dropdown-wrap">
               <label class="form-label design-select-label">
                 <span>Approved Design Selection</span>
@@ -90,7 +83,6 @@
                 </select>
               </div>
 
-              <!-- Linked Indicator Pill -->
               @if (selectedDesign) {
                 <div class="selected-design-banner">
                   <div class="banner-left">
@@ -110,7 +102,6 @@
             </div>
           </div>
 
-          <!-- SECTION 2: AD ATTRIBUTION & CONFIGURATION -->
           <div class="form-section-card">
             <div class="section-card-header">
               <div class="sec-badge sec-badge-blue">2</div>
@@ -189,7 +180,6 @@
             </div>
           </div>
 
-          <!-- SECTION 3: SPEND & ENGAGEMENT METRICS -->
           <div class="form-section-card">
             <div class="section-card-header">
               <div class="sec-badge sec-badge-green">3</div>
@@ -217,7 +207,6 @@
               </div>
             </div>
 
-            <!-- Auto Computed Metrics Badges -->
             <div class="live-calc-panel">
               <div class="calc-item calc-item-emerald">
                 <span class="calc-label">AUTO CPL</span>
@@ -234,11 +223,9 @@
 
         </div>
 
-        <!-- RIGHT COLUMN: LIVE AD & DESIGN PREVIEW (REFERENCE IMAGE STYLE) -->
         <div class="modal-preview-column">
           <div class="preview-card-container">
-            
-            <!-- Preview Header -->
+
             <div class="preview-header">
               <div class="preview-header-left">
                 <span class="material-symbols-outlined eye-icon">visibility</span>
@@ -250,10 +237,8 @@
               </span>
             </div>
 
-            <!-- Main Preview Card Content -->
             <div class="preview-card-box">
-              
-              <!-- Design Media / Thumbnail Frame -->
+
               <div class="preview-media-frame">
                 @if (selectedDesign?.imageUrl) {
                   @if (selectedDesign?.isVideo) {
@@ -272,7 +257,7 @@
                     />
                   }
                 } @else {
-                  <!-- Elegant Placeholder Frame -->
+
                   <div class="preview-empty-state">
                     <div class="empty-icon-circle">
                       <span class="material-symbols-outlined">
@@ -286,7 +271,6 @@
                   </div>
                 }
 
-                <!-- Floating Tags on Media -->
                 <div class="media-floating-tags">
                   <span class="media-tag-type" [ngClass]="'tag-' + (selectedDesign?.designType || selectedDesignType || 'banner').toLowerCase()">
                     <span class="material-symbols-outlined fs-12">
@@ -300,7 +284,6 @@
                 </div>
               </div>
 
-              <!-- Preview Info Body -->
               <div class="preview-info-body">
                 <h4 class="preview-ad-title">
                   {{ formModel.name || selectedDesign?.title || 'New Ad Metric' }}
@@ -309,10 +292,8 @@
                   {{ selectedDesign?.description || 'Campaign creative configured for marketing attribution and multi-platform tracking.' }}
                 </p>
 
-                <!-- Key Attributes List -->
                 <div class="preview-meta-list">
-                  
-                  <!-- Approver -->
+
                   <div class="meta-row-item">
                     <div class="meta-icon-label">
                       <span class="material-symbols-outlined meta-ico icon-blue">verified_user</span>
@@ -325,7 +306,6 @@
                     </div>
                   </div>
 
-                  <!-- Platform -->
                   <div class="meta-row-item">
                     <div class="meta-icon-label">
                       <span class="material-symbols-outlined meta-ico icon-purple">
@@ -338,7 +318,6 @@
                     </div>
                   </div>
 
-                  <!-- Campaign -->
                   <div class="meta-row-item">
                     <div class="meta-icon-label">
                       <span class="material-symbols-outlined meta-ico icon-teal">inventory_2</span>
@@ -349,7 +328,6 @@
                     </div>
                   </div>
 
-                  <!-- Ad ID -->
                   <div class="meta-row-item">
                     <div class="meta-icon-label">
                       <span class="material-symbols-outlined meta-ico icon-orange">tag</span>
@@ -361,7 +339,6 @@
                   </div>
                 </div>
 
-                <!-- Live Metrics Summary Box -->
                 <div class="preview-kpi-grid">
                   <div class="kpi-mini-box">
                     <span class="kpi-mini-lbl">Spend</span>
@@ -381,9 +358,6 @@
                   </div>
                 </div>
 
-                <!-- Ready Status Prompt -->
-             
-
               </div>
 
             </div>
@@ -393,7 +367,6 @@
 
       </div>
 
-      <!-- Modal Footer -->
       <div class="modal-footer">
         <button type="button" class="btn-action-secondary" (click)="onClose()">Cancel</button>
         <button type="button" class="btn-action-primary" (click)="onSave()">

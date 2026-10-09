@@ -25,7 +25,6 @@
     </header>
   }
 
-  <!-- TOP ROLE-BASED KPI CARDS -->
   <app-telecalling-kpis
     [embedded]="embedded"
     [isTelecaller]="isTelecaller()"
@@ -33,7 +32,6 @@
     [teamSummaryKpis]="teamSummaryKpis()"
   ></app-telecalling-kpis>
 
-  <!-- Quick Action Calling Pipeline Strip (Interactive Filter Cards) -->
   <app-telecalling-pipeline-strip
     [viewMode]="viewMode"
     [dateFilter]="dateFilter()"
@@ -51,7 +49,6 @@
     (pipelineFilterChange)="setPipelineFilter($event)"
   ></app-telecalling-pipeline-strip>
 
-  <!-- Full-Width Unified Call Queue & Lead Performance Table -->
   <app-telecalling-queue-table
     [isTelecaller]="isTelecaller()"
     [queueFilter]="queueFilter()"
@@ -87,7 +84,6 @@
     (prevPage)="prevPage()"
   ></app-telecalling-queue-table>
 
-  <!-- LEAD CALL HISTORY & DETAILS MODAL -->
   <app-call-history-modal
     [lead]="selectedLeadForHistory()"
     [leadHistoryCalls]="getLeadHistoryCalls(selectedLeadForHistory())"
@@ -97,7 +93,6 @@
     (openCallDrawer)="openCallDrawer($event)"
   ></app-call-history-modal>
 
-  <!-- CALL LOGGING MODAL DRAWER -->
   <app-call-log-modal
     [lead]="selectedLeadForCall()"
     [(callOutcome)]="callOutcome"

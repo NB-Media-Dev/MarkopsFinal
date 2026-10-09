@@ -85,6 +85,8 @@ export class LeadsComponent implements OnInit {
   newSource = 'Digital Ads Lead Form';
   newCampaignId = '';
   newCampaignName = '';
+  newAdId = '';
+  newAdName = '';
   newAssignedTelecallerId = '';
   readonly isCreatingLead = signal<boolean>(false);
 
@@ -178,6 +180,38 @@ export class LeadsComponent implements OnInit {
     return list;
   });
 
+  readonly availableAds = computed(() => {
+    const allAds = this.campaignService.ads() || [];
+    const selCmpId = String(this.newCampaignId || '').trim().toLowerCase();
+    const selCmpName = String(this.newCampaignName || '').trim().toLowerCase();
+
+    if (!selCmpId && !selCmpName) {
+      return allAds.map((a) => ({
+        id: String(a.id),
+        name: a.name,
+        platform: a.platform,
+        campaignId: String(a.campaignId || ''),
+      }));
+    }
+
+    const filtered = allAds.filter((a) => {
+      const aCmpId = String(a.campaignId || '').trim().toLowerCase();
+      const aCmpName = String(a.campaignName || '').trim().toLowerCase();
+      return (
+        (selCmpId && (aCmpId === selCmpId || selCmpId.includes(aCmpId) || aCmpId.includes(selCmpId))) ||
+        (selCmpName && (aCmpName === selCmpName || selCmpName.includes(aCmpName) || aCmpName.includes(selCmpName)))
+      );
+    });
+
+    const finalAds = filtered.length > 0 ? filtered : allAds;
+    return finalAds.map((a) => ({
+      id: String(a.id),
+      name: a.name,
+      platform: a.platform,
+      campaignId: String(a.campaignId || ''),
+    }));
+  });
+
   isPhoneValid(phone: string): boolean {
     if (!phone || !phone.trim()) return false;
     const clean = phone.replace(/[\s\-\(\)\+]/g, '');
@@ -217,6 +251,31 @@ export class LeadsComponent implements OnInit {
     } else {
       this.newCampaignId = '';
       this.newCampaignName = selectedVal;
+    }
+
+    if (this.newAdId) {
+      const ad = this.campaignService.ads().find((a) => String(a.id) === String(this.newAdId));
+      if (ad && found && String(ad.campaignId) !== String(found.id)) {
+        this.newAdId = '';
+        this.newAdName = '';
+      }
+    }
+  }
+
+  onAdSelectChange(event: Event) {
+    const selectedVal = (event.target as HTMLSelectElement).value;
+    const found = this.campaignService.ads().find((a) => String(a.id) === String(selectedVal));
+    if (found) {
+      this.newAdId = String(found.id);
+      this.newAdName = found.name;
+   
+      if (!this.newCampaignId && found.campaignId) {
+        this.newCampaignId = String(found.campaignId);
+        this.newCampaignName = found.campaignName || '';
+      }
+    } else {
+      this.newAdId = '';
+      this.newAdName = '';
     }
   }
 
@@ -262,9 +321,9 @@ export class LeadsComponent implements OnInit {
         defval: '',
         raw: false,
       });
-      const leads: Partial<LeadItem>[] = rows
-        .filter((row) => Object.values(row).some((value) => String(value ?? '').trim() !== ''))
-        .map((row, index) => {
+      const leads: Partial<LeadItem>[] = (rows as Record<string, unknown>[])
+        .filter((row: Record<string, unknown>) => Object.values(row).some((value) => String(value ?? '').trim() !== ''))
+        .map((row: Record<string, unknown>, index: number) => {
           const fields = new Map<string, string>(
             Object.entries(row).map(([header, value]) => [
               header.trim().toLowerCase().replace(/[\s_-]+/g, ''),
@@ -391,6 +450,8 @@ export class LeadsComponent implements OnInit {
     this.newSource = 'Digital Ads Lead Form';
     this.newCampaignId = '';
     this.newCampaignName = '';
+    this.newAdId = '';
+    this.newAdName = '';
     this.newAssignedTelecallerId = '';
     this.firstNameTouched = false;
     this.lastNameTouched = false;
@@ -443,6 +504,8 @@ export class LeadsComponent implements OnInit {
       source: this.newSource.trim(),
       campaignId: this.newCampaignId || 'cmp_default',
       campaignName: this.newCampaignName || 'General Digital Ads Campaign',
+      adId: this.newAdId || '',
+      adName: this.newAdName || '',
       assignedTo: assignedTc ? assignedTc.id : null,
       assigneeName: assignedTc ? assignedTc.fullName : 'Unassigned',
       status: assignedTc ? 'ASSIGNED' : 'NEW',

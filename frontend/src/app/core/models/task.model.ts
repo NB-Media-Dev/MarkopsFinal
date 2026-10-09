@@ -67,6 +67,8 @@ export interface Task {
   title: string;
   taskType?: TaskType;
   packageName?: string;
+  productId?: string;
+  productName?: string;
   description?: string;
   content?: string;
   attachmentUrl?: string;
@@ -95,6 +97,8 @@ export interface CreateTaskRequest {
   title: string;
   taskType?: TaskType;
   packageName?: string;
+  productId?: string;
+  productName?: string;
   description?: string;
   content?: string;
   attachmentUrl?: string;

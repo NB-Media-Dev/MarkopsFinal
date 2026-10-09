@@ -5,7 +5,6 @@
   background-color: var(--mo-bg-body);
 }
 
-
 .mo-main-content {
   flex: 1;
   display: flex;
@@ -105,7 +104,6 @@
     @media (max-width: 480px) {
       gap: 0.45rem;
     }
-
 
     .brand-link {
       display: flex;
@@ -699,7 +697,6 @@
   }
 }
 
-
 .global-realtime-toast {
   position: fixed;
   top: 1.5rem;
@@ -782,7 +779,6 @@
   }
 }
 
-
 @keyframes bellShakeRing {
   0% { transform: rotate(0); }
   2% { transform: rotate(14deg); }
@@ -806,4 +802,3 @@
     box-shadow: 0 0 0 4px rgba(244, 63, 94, 0);
   }
 }
-

@@ -1,4 +1,3 @@
-
 export function getBackendBaseUrl(): string {
   if (typeof window !== 'undefined' && window.location) {
 
@@ -11,16 +10,13 @@ export function getBackendBaseUrl(): string {
       return `${protocol}//${hostname}:4000`;
     }
 
-
     return window.location.origin;
   }
-
 
   const port = (typeof process !== 'undefined' && process.env && (process.env['BACKEND_PORT'] || process.env['PORT'])) || '4000';
   const backendHost = (typeof process !== 'undefined' && process.env && process.env['BACKEND_URL']) || `http://localhost:${port}`;
   return backendHost.replace(/\/$/, '');
 }
-
 
 export function getApiUrl(url: string): string {
   if (!url) return url;
@@ -63,7 +59,6 @@ export function getAuthToken(): string | null {
   }
   return null;
 }
-
 
 export async function safeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const urlStr = typeof input === 'string' ? input : input.toString();

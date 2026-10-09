@@ -3,7 +3,7 @@
   [class.selected]="isSelected"
   (click)="onView($event)"
 >
-  <!-- Card Header Topbar: Left Squircle + Task Type Chip | Right Priority & Status -->
+
   <div class="task-card-header">
     <div class="task-header-left">
       <div
@@ -29,7 +29,6 @@
     </div>
   </div>
 
-  <!-- Task Title & Creator-Assignee Flow -->
   <div class="task-title-section">
     <h3 class="task-title" [title]="task.title">{{ task.title }}</h3>
     <div class="task-flow-line">
@@ -45,7 +44,6 @@
     </div>
   </div>
 
-  <!-- Requirement Attachment (Spacious & Clean Chip) -->
   @if (task.attachmentName || task.attachmentUrl || task.content) {
     <div
       class="requirement-chip"
@@ -60,7 +58,6 @@
     </div>
   }
 
-  <!-- Revision Feedback Alert if Redesign was requested -->
   @if (task.status === 'REVISION_REQUIRED' && task.reviewerFeedback) {
     <div class="revision-feedback-alert">
       <span class="material-symbols-outlined alert-icon">rate_review</span>
@@ -68,7 +65,6 @@
     </div>
   }
 
-  <!-- Progress Bar -->
   <div class="progress-container">
     <div class="progress-bar-bg">
       <div class="progress-fill" [style.width.%]="getTaskProgress()"></div>
@@ -76,7 +72,6 @@
     <span class="progress-pct">{{ getTaskProgress() }}%</span>
   </div>
 
-  <!-- Footer: Due Date & Actions -->
   <div class="task-card-footer">
     <div class="footer-meta-left">
       <span class="meta-due-date">
@@ -88,7 +83,7 @@
       }
     </div>
     <div class="task-card-actions" (click)="$event.stopPropagation()">
-      <!-- 1. Designer: Start Work (When ASSIGNED) -->
+
       @if (canStartWork()) {
         <button
           type="button"
@@ -100,7 +95,7 @@
           <span>Start Work</span>
         </button>
       }
-      <!-- 2. Designer: Upload Design (When IN_PROGRESS) -->
+
       @if (canUploadDesign()) {
         <button
           type="button"
@@ -112,7 +107,7 @@
           <span>Upload Design</span>
         </button>
       }
-      <!-- 3. Designer: Start Redesign (When REDESIGN_REQUIRED) -->
+
       @if (canStartRedesign()) {
         <button
           type="button"
@@ -124,7 +119,7 @@
           <span>Start Redesign</span>
         </button>
       }
-      <!-- 4. Creator / Manager: Approve & Redesign (When SUBMITTED) -->
+
       @if (canReview()) {
         <button
           type="button"
@@ -145,7 +140,7 @@
           <span>Redesign</span>
         </button>
       }
-      <!-- View Detail Button -->
+
       <button
         type="button"
         class="btn-card-action btn-card-view"
@@ -155,7 +150,7 @@
         <span class="material-symbols-outlined icon-xs">visibility</span>
         <span>View Detail</span>
       </button>
-      <!-- Delete (Only Task Creator) -->
+
       @if (canDeleteTask()) {
         <button
           type="button"

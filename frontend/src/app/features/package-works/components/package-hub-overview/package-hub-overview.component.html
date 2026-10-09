@@ -1,20 +1,19 @@
 <div class="dept-operations-container">
-  <!-- Hub Section Title Bar -->
+
   <div class="dept-operations-header">
     <h2 class="dept-operations-title">Department Operations</h2>
     <div class="dept-operations-accent-bar"></div>
   </div>
 
-  <!-- 4 Vibrant Department Navigation Cards Grid matching Image -->
   @if (operationDepartments.length > 0) {
     <div class="dept-operations-grid">
       @for (dept of operationDepartments; track dept.id) {
         <div
           class="dept-operation-card"
           [ngClass]="'dept-theme-' + dept.id.toLowerCase()"
-          
+
         >
-          <!-- Background Watermark Motif -->
+
           <div class="dept-card-watermark" aria-hidden="true">
             @if (dept.id === 'DESIGNER') {
               <svg viewBox="0 0 100 100" fill="none" class="watermark-svg">
@@ -47,7 +46,6 @@
             }
           </div>
 
-          <!-- Top Row: Squircle Icon & Badge Pill -->
           <div class="dept-card-top-row">
             <div class="dept-icon-squircle">
               <span class="material-symbols-outlined">{{ getDepartmentIcon(dept.id) }}</span>
@@ -55,22 +53,12 @@
             <span class="dept-badge-pill">{{ getDepartmentBadge(dept.id) }}</span>
           </div>
 
-          <!-- Body: Title & Description -->
           <div class="dept-card-content">
             <h3 class="dept-title">{{ dept.label }}</h3>
-           
+
           </div>
 
-          <!-- Footer: Metric Stats & Open Button -->
           <div class="dept-card-footer">
-            <!-- <div class="dept-metrics-meta">
-              <span class="metric-total">{{ getDepartmentMetricCount(dept.id) }}</span>
-              <span class="metric-divider">|</span>
-              <span class="metric-active">
-                <span class="active-dot"></span>
-                <span>{{ getDepartmentActiveCount(dept.id) }} Active</span>
-              </span>
-            </div> -->
 
             <button
               type="button"

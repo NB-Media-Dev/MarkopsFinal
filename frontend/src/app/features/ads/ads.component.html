@@ -1,5 +1,5 @@
 <div class="ads-page" [class.embedded-view]="embedded">
-  <!-- Standalone Page Header -->
+
   @if (!embedded) {
     <header class="page-header">
       <div class="header-titles-group">
@@ -29,7 +29,6 @@
     </header>
   }
 
-  <!-- Flash Messages -->
   @if (successMessage()) {
     <div class="alert-banner alert-success">
       <div class="alert-icon-wrap">
@@ -48,7 +47,6 @@
     </div>
   }
 
-  <!-- 1. Top KPI Summary Cards -->
   <app-ad-kpis
     [totalSpend]="totalSpend()"
     [filteredAdsCount]="filteredAds.length"
@@ -57,7 +55,6 @@
     [averageCtr]="averageCtr()"
   ></app-ad-kpis>
 
-  <!-- 2. Filter & Search Toolbar Card -->
   <app-ads-toolbar
     [searchQuery]="searchQuery()"
     [filterPlatform]="filterPlatform()"
@@ -65,7 +62,6 @@
     (filterChange)="filterPlatform.set($event)"
   ></app-ads-toolbar>
 
-  <!-- 3. Primary Ads Table Card -->
   <app-ads-table
     [ads]="filteredAds"
     [canManageAds]="canManageAds()"
@@ -74,7 +70,6 @@
     (delete)="confirmDelete($event)"
   ></app-ads-table>
 
-  <!-- 4. Create / Edit Modal -->
   <app-ad-form-modal
     [isOpen]="showModal()"
     [isEditing]="isEditing()"
@@ -89,7 +84,6 @@
     (save)="saveAd()"
   ></app-ad-form-modal>
 
-  <!-- 5. Delete Confirmation Modal -->
   <app-ad-delete-modal
     [target]="deleteConfirmTarget()"
     (cancel)="cancelDelete()"

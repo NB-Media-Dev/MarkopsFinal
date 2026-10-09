@@ -10,8 +10,9 @@ import { TelecallerTargetService } from '../../core/services/telecaller-target.s
 import { UserManagementService } from '../../core/services/user-management.service';
 import { AuthService } from '../../core/services/auth.service';
 import { PackageService } from '../../core/services/package.service';
-import { ProductPackage, FixedPackageMeta, RoleOperationTab, FIXED_PACKAGES, isTaskForPackage } from '../../core/models/package.model';
+import { ProductPackage, FixedPackageMeta, RoleOperationTab, FIXED_PACKAGES, isTaskForPackage, isItemForPackage, resolveTaskProductAndPackage } from '../../core/models/package.model';
 import { UserRole } from '../../core/models/auth.model';
+import { ManagedUser, UserPerformanceRecord } from '../../core/models/user-management.model';
 import { Task, TaskStatus, TaskVersion, computeTaskProgressPercent } from '../../core/models/task.model';
 import { safeFetch, getBackendBaseUrl } from '../../core/utils/api-url.utils';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
@@ -263,11 +264,14 @@ export class PackageWorksComponent implements OnInit {
   readonly activeIframeUrl = computed<SafeResourceUrl | null>(() => {
     let url = this.activeDocUrl();
     if (url) {
-      if (url.startsWith('/uploads/') || url.startsWith('uploads/')) {
-        url = this.formatAssetUrl(url);
-      }
-      if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
-        return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+      const resolvedUrl = this.formatAssetUrl(url);
+      if (
+        resolvedUrl.startsWith('data:') ||
+        resolvedUrl.startsWith('http://') ||
+        resolvedUrl.startsWith('https://') ||
+        resolvedUrl.startsWith('blob:')
+      ) {
+        return this.sanitizer.bypassSecurityTrustResourceUrl(resolvedUrl);
       }
     }
     return null;
@@ -602,6 +606,7 @@ export class PackageWorksComponent implements OnInit {
     const currentRole = currentUser?.role;
     const currentUserId = String(currentUser?.id || '').toLowerCase().trim();
     const currentUserEmail = (currentUser?.email || '').toLowerCase().trim();
+    const expectedProductId = ws ? ws.productId : this.activePackageMeta().id;
 
     return allTasks.filter((t) => {
       if (currentRole === 'DESIGNER') {
@@ -615,19 +620,20 @@ export class PackageWorksComponent implements OnInit {
       }
 
       if (ws) {
-        return isTaskForPackage(t, targetFilter, this.packageService.packages());
+        return isTaskForPackage(t, targetFilter, this.packageService.packages(), expectedProductId);
       }
-      return isTaskForPackage(t, this.activePackageName(), this.packageService.packages());
+      return isTaskForPackage(t, this.activePackageName(), this.packageService.packages(), expectedProductId);
     });
   });
 
   readonly filteredAllPackageTasks = computed<Task[]>(() => {
     const ws = this.activeWorkspacePackage();
     const targetFilter = this.currentFilterTarget();
+    const expectedProductId = ws ? ws.productId : this.activePackageMeta().id;
     if (ws) {
-      return this.taskService.tasks().filter((t) => isTaskForPackage(t, targetFilter, this.packageService.packages()));
+      return this.taskService.tasks().filter((t) => isTaskForPackage(t, targetFilter, this.packageService.packages(), expectedProductId));
     }
-    return this.taskService.tasks().filter((t) => isTaskForPackage(t, this.activePackageName(), this.packageService.packages()));
+    return this.taskService.tasks().filter((t) => isTaskForPackage(t, this.activePackageName(), this.packageService.packages(), expectedProductId));
   });
 
   readonly filteredMyPackageTasks = computed<Task[]>(() => {
@@ -637,11 +643,12 @@ export class PackageWorksComponent implements OnInit {
     const currentUserId = String(currentUser?.id || '').toLowerCase().trim();
     const currentUserEmail = (currentUser?.email || '').toLowerCase().trim();
     const currentRole = currentUser?.role;
+    const expectedProductId = ws ? ws.productId : this.activePackageMeta().id;
 
     return this.taskService.tasks().filter((t) => {
       const matches = ws
-        ? isTaskForPackage(t, targetFilter, this.packageService.packages())
-        : isTaskForPackage(t, this.activePackageName(), this.packageService.packages());
+        ? isTaskForPackage(t, targetFilter, this.packageService.packages(), expectedProductId)
+        : isTaskForPackage(t, this.activePackageName(), this.packageService.packages(), expectedProductId);
       if (!matches) return false;
 
       if (currentRole === 'DESIGNER') {
@@ -691,40 +698,20 @@ export class PackageWorksComponent implements OnInit {
     const ws = this.activeWorkspacePackage();
     const allLeads = this.leadService.leads();
     const user = this.authService.currentUser();
-    const activeProd = (this.activePackageName() || '').toLowerCase().trim();
+    const targetFilter = this.currentFilterTarget();
+    const pkgMeta = this.activePackageMeta();
+    const expectedProductId = ws ? ws.productId : pkgMeta.id;
+    const allPkgs = this.packageService.packages();
 
     return allLeads.filter((l) => {
-
       if (user && user.role === 'TELECALLER') {
         if (!isLeadAssignedToUser(l, user)) return false;
       }
 
-
       if (ws) {
-        const wsName = (ws.name || '').toLowerCase().trim();
-        const wsId = String(ws.id || '').toLowerCase().trim();
-        const src = (l.source || '').toLowerCase().trim();
-        const cmp = (l.campaignName || '').toLowerCase().trim();
-        const lPkg = ((l as any).packageName || (l as any).package || '').toLowerCase().trim();
-
-        if (lPkg && (lPkg === wsName || lPkg === wsId)) return true;
-        if (src.includes(wsName) || cmp.includes(wsName)) return true;
-        return false;
+        return isItemForPackage(l, targetFilter, expectedProductId, allPkgs);
       }
-
-
-      const src = (l.source || '').toLowerCase();
-      const cmp = (l.campaignName || '').toLowerCase();
-      if (activeProd.includes('career')) {
-        return src.includes('career') || cmp.includes('career') || cmp.includes('tn-schema') || src.includes('lead') || src.includes('excel') || src.includes('csv') || src.includes('upload') || src.includes('meta');
-      }
-      if (activeProd.includes('class')) {
-        return src.includes('class') || cmp.includes('class');
-      }
-      if (activeProd.includes('jesus') || activeProd.includes('messang')) {
-        return src.includes('jesus') || cmp.includes('jesus') || src.includes('messang') || cmp.includes('messang');
-      }
-      return false;
+      return isItemForPackage(l, this.activePackageName(), expectedProductId, allPkgs);
     });
   });
 
@@ -844,8 +831,11 @@ export class PackageWorksComponent implements OnInit {
     const pkgNameLower = (pkgName || '').toLowerCase().trim();
     const logs = this.auditLogs();
     const allTasks = this.taskService.tasks();
+    const expectedProductId = ws ? ws.productId : this.activePackageMeta().id;
     const packageTasks = allTasks.filter(
-      (t) => ws ? isTaskForPackage(t, targetFilter, this.packageService.packages()) : isTaskForPackage(t, pkgName, this.packageService.packages())
+      (t) => ws
+        ? isTaskForPackage(t, targetFilter, this.packageService.packages(), expectedProductId)
+        : isTaskForPackage(t, pkgName, this.packageService.packages(), expectedProductId)
     );
 
 
@@ -986,6 +976,472 @@ export class PackageWorksComponent implements OnInit {
     };
   });
 
+  readonly teamPerformanceList = computed<UserPerformanceRecord[]>(() => {
+    const rawUsers = this.userService.users();
+    const ws = this.activeWorkspacePackage();
+    const targetFilter = this.currentFilterTarget();
+    const pkgMeta = this.activePackageMeta();
+    const expectedProductId = ws ? ws.productId : pkgMeta.id;
+    const allPkgs = this.packageService.packages();
+    const scopedLeads = this.filteredLeads();
+    const allCalls = this.leadService.calls();
+    const allAds = this.campaignService.ads();
+
+   
+    const scopedTasks = this.taskService.tasks().filter((t) =>
+      isTaskForPackage(t, targetFilter, allPkgs, expectedProductId)
+    );
+
+    const enrichedTasks = scopedTasks.map((t) => {
+      const res = resolveTaskProductAndPackage(t, allPkgs);
+      return {
+        ...t,
+        productId: t.productId || res.productId,
+        productName: t.productName || res.productName,
+        packageName: t.packageName || res.packageName,
+      };
+    });
+
+    const getRoleInfo = (role: string) => {
+      switch (role) {
+        case 'ADMINISTRATOR':
+          return { label: 'Administrator', badgeClass: 'role-badge-admin', avatarClass: 'avatar-slate' };
+        case 'DIGITAL_MARKETING':
+          return { label: 'Digital Marketing', badgeClass: 'role-badge-digital', avatarClass: 'avatar-sky' };
+        case 'BDM':
+          return { label: 'BDM', badgeClass: 'role-badge-bdm', avatarClass: 'avatar-rose' };
+        case 'DESIGNER':
+          return { label: 'Designer', badgeClass: 'role-badge-designer', avatarClass: 'avatar-purple' };
+        case 'TELECALLER':
+          return { label: 'Telecaller', badgeClass: 'role-badge-telecaller', avatarClass: 'avatar-emerald' };
+        default:
+          return { label: role || 'Member', badgeClass: 'role-badge-default', avatarClass: 'avatar-indigo' };
+      }
+    };
+
+    return (rawUsers || []).map((u) => {
+      const roleInfo = getRoleInfo(u.role);
+      const nameLower = (u.fullName || '').toLowerCase().trim();
+      const userIdStr = String(u.id).trim();
+
+      if (u.role === 'TELECALLER') {
+        const userLeads = scopedLeads.filter((l) => {
+          const assignId = String(l.assignedTo || (l as any).assigned_to || '').trim().toLowerCase();
+          const assignName = (l.assigneeName || (l as any).assignee_name || '').toLowerCase().trim();
+          const userEmailLower = (u.email || '').toLowerCase().trim();
+          if (assignId === userIdStr.toLowerCase()) return true;
+          if (assignId && userEmailLower && assignId === userEmailLower) return true;
+          if (assignName && (assignName === nameLower || nameLower.includes(assignName) || assignName.includes(nameLower))) return true;
+          return false;
+        });
+
+        const prodName = ws ? (ws.productId?.includes('jesus') ? 'Jesus the messanger' : (ws.productId?.includes('class') ? 'Classmate' : 'Careermate')) : pkgMeta.name;
+        const pkgDisplayName = ws ? ws.name : pkgMeta.name;
+
+        const userLeadRecords = userLeads.map((l) => {
+          const lId = String(l.id).trim();
+          const lPhone = String(l.phone || '').replace(/\D/g, '');
+          const lNameLower = `${l.firstName || ''} ${l.lastName || ''}`.trim().toLowerCase();
+
+          const callsForLead = allCalls.filter((c) => {
+            const cLeadId = String(c.leadId || (c as any).lead_id || '').trim();
+            const cPhone = String(c.leadPhone || (c as any).lead_phone || (c as any).phone || '').replace(/\D/g, '');
+            const cLeadName = String(c.leadName || (c as any).lead_name || '').trim().toLowerCase();
+            return (cLeadId && lId && cLeadId === lId) ||
+                   (lPhone && cPhone && lPhone === cPhone) ||
+                   (cLeadName && lNameLower && (cLeadName === lNameLower || cLeadName.includes(lNameLower) || lNameLower.includes(cLeadName)));
+          });
+
+          const sortedCalls = [...callsForLead].sort(
+            (a, b) => new Date(b.calledAt || (b as any).callDate || (b as any).createdAt || 0).getTime() - new Date(a.calledAt || (a as any).callDate || (a as any).createdAt || 0).getTime()
+          );
+          const latestCall = sortedCalls[0] || null;
+
+          let durationText = '—';
+          if (latestCall && typeof latestCall.durationSeconds === 'number' && latestCall.durationSeconds > 0) {
+            const mins = Math.floor(latestCall.durationSeconds / 60);
+            const secs = latestCall.durationSeconds % 60;
+            durationText = `${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+          } else if (latestCall && (latestCall as any).duration) {
+            durationText = String((latestCall as any).duration);
+          }
+
+          const rawPhone = String(l.phone || (l as any).phoneNumber || (l as any).mobile || (l as any).contact || '').trim();
+          const cleanPhone = (rawPhone && !rawPhone.includes('@') && rawPhone !== '—')
+            ? rawPhone
+            : (String((l as any).mobile || '').trim() && !String((l as any).mobile).includes('@')
+                ? String((l as any).mobile).trim()
+                : '—');
+
+          const callAttempts = sortedCalls.length;
+          const callAttemptsText = callAttempts === 0 ? '0 Attempts' : (callAttempts === 1 ? '1st Call' : `${callAttempts} Calls`);
+          const rawFullName = `${l.firstName || ''} ${l.lastName || ''}`.trim();
+          const leadFullName = (rawFullName && !rawFullName.includes('@'))
+            ? rawFullName
+            : (cleanPhone !== '—' ? cleanPhone : 'Lead #' + String(l.id).slice(-4));
+
+          const resolvedLead = resolveTaskProductAndPackage({
+            packageName: (l as any).packageName || (l as any).package || '',
+            campaignName: l.campaignName || '',
+            title: l.campaignName || l.source || '',
+            productId: (l as any).productId || (l as any).product_id || '',
+            productName: (l as any).productName || (l as any).product || '',
+          }, allPkgs);
+
+          const finalProdName = resolvedLead.productName || (ws ? prodName : pkgMeta.name);
+          const finalPkgName = resolvedLead.packageName || (ws ? pkgDisplayName : pkgMeta.name);
+
+          const resolvedAdName = (() => {
+            const direct = (l as any).adName || (l as any).ad_name || (l as any).ad;
+            if (direct && direct !== '—' && String(direct).trim()) return String(direct).trim();
+            const adId = String((l as any).adId || (l as any).ad_id || '').trim().toLowerCase();
+            if (adId) {
+              const matchedAd = this.campaignService.ads().find((a) => String(a.id).toLowerCase() === adId || String(a.platformAdId || '').toLowerCase() === adId);
+              if (matchedAd && matchedAd.name) return matchedAd.name;
+            }
+            const cmpId = String(l.campaignId || (l as any).campaign_id || '').toLowerCase().trim();
+            if (cmpId) {
+              const foundByCmpId = this.campaignService.ads().find((a) => String(a.campaignId || '').toLowerCase().trim() === cmpId);
+              if (foundByCmpId && foundByCmpId.name) return foundByCmpId.name;
+            }
+            const cmpName = String(l.campaignName || '').toLowerCase().trim();
+            if (cmpName) {
+              const foundByCmp = this.campaignService.ads().find((a) => a.campaignName && (a.campaignName.toLowerCase().trim() === cmpName || cmpName.includes(a.campaignName.toLowerCase().trim()) || a.campaignName.toLowerCase().trim().includes(cmpName)));
+              if (foundByCmp && foundByCmp.name) return foundByCmp.name;
+            }
+            const allAds = this.campaignService.ads();
+            if (allAds.length > 0 && cmpName && cmpName !== '—') {
+              const matchByKeyword = allAds.find((a) => cmpName.split(' ').some((word) => word.length > 3 && a.name.toLowerCase().includes(word)));
+              if (matchByKeyword && matchByKeyword.name) return matchByKeyword.name;
+            }
+            if ((l as any).ad_title && String((l as any).ad_title).trim()) return String((l as any).ad_title).trim();
+            if ((l as any).adTitle && String((l as any).adTitle).trim()) return String((l as any).adTitle).trim();
+            return '—';
+          })();
+
+          const resolvedRemarks = (() => {
+            if (latestCall?.remarks && latestCall.remarks !== '—' && String(latestCall.remarks).trim()) {
+              return String(latestCall.remarks).trim();
+            }
+            if ((l as any).remarks && (l as any).remarks !== '—' && String((l as any).remarks).trim()) {
+              return String((l as any).remarks).trim();
+            }
+            if ((l as any).notes && (l as any).notes !== '—' && String((l as any).notes).trim()) {
+              return String((l as any).notes).trim();
+            }
+            for (const callItem of sortedCalls) {
+              if (callItem.remarks && callItem.remarks !== '—' && String(callItem.remarks).trim()) {
+                return String(callItem.remarks).trim();
+              }
+            }
+            if (latestCall?.nextAction && latestCall.nextAction !== '—' && String(latestCall.nextAction).trim()) {
+              return String(latestCall.nextAction).trim();
+            }
+            return '—';
+          })();
+
+          return {
+            id: l.id,
+            leadId: l.id,
+            title: leadFullName,
+            leadName: leadFullName,
+            leadPhone: cleanPhone,
+            source: l.source || l.campaignName || '—',
+            campaignName: l.campaignName || l.source || '—',
+            adName: resolvedAdName,
+            adId: (l as any).adId || (l as any).ad_id || '',
+            productName: finalProdName,
+            packageName: finalPkgName,
+            createdAt: l.createdAt,
+            assignedDate: l.createdAt,
+            calledAt: latestCall ? (latestCall.calledAt || (latestCall as any).callDate) : null,
+            callDurationText: durationText,
+            callDurationSeconds: latestCall?.durationSeconds || 0,
+            callOutcome: (latestCall?.outcome || l.status || 'NEW').toUpperCase(),
+            status: (latestCall?.outcome || l.status || 'NEW').toUpperCase(),
+            callAttempts,
+            callAttemptsText,
+            followUpDate: latestCall?.followUpDate || (l as any).followUpDate || null,
+            remarks: resolvedRemarks,
+            calls: sortedCalls,
+          };
+        });
+
+        const callsMade = userLeadRecords.filter((r) => r.calledAt || r.callAttempts > 0).length;
+        const interestedLeads = userLeadRecords.filter((r) => ['INTERESTED', 'QUALIFIED', 'CONVERTED', 'PAID', 'HOT'].includes(r.callOutcome)).length;
+        const conversionPct = userLeadRecords.length > 0 ? Math.round((callsMade / userLeadRecords.length) * 100) : 0;
+
+        return {
+          user: u,
+          userId: String(u.id),
+          name: u.fullName || u.email?.split('@')[0] || 'Telecaller',
+          email: u.email || '',
+          role: u.role,
+          roleLabel: roleInfo.label,
+          roleBadgeClass: roleInfo.badgeClass,
+          avatarColor: roleInfo.avatarClass,
+          department: u.department || 'Telecalling',
+          isActive: u.isActive !== false,
+          outputMain: `${callsMade} Calls Made`,
+          outputSub: `${userLeadRecords.length} Assigned Leads`,
+          efficiencyMain: userLeadRecords.length > 0 ? `${conversionPct}%` : '—',
+          efficiencySub: 'Called',
+          qualificationPct: conversionPct,
+          ratingScore: '—',
+          ratingBadge: 'Active Staff',
+          ratingBadgeClass: 'badge-target',
+          tasksAssignedCount: userLeadRecords.length,
+          tasksCompletedCount: callsMade,
+          tasksInProgressCount: userLeadRecords.length - callsMade,
+          tasksRevisionCount: 0,
+          taskCompletionPct: conversionPct,
+          tasks: userLeadRecords,
+          roleMetrics: [
+            { label: 'Assigned Leads', value: userLeadRecords.length },
+            { label: 'Calls Made', value: callsMade },
+            { label: 'Interested / Warm', value: interestedLeads },
+          ],
+        };
+      }
+
+      if (u.role === 'DIGITAL_MARKETING') {
+        const prodName = ws ? (ws.productId?.includes('jesus') ? 'Jesus the messanger' : (ws.productId?.includes('class') ? 'Classmate' : 'Careermate')) : pkgMeta.name;
+        const pkgDisplayName = ws ? ws.name : pkgMeta.name;
+        const userEmailLower = (u.email || '').toLowerCase().trim();
+        const matchingAds = (allAds || []).filter((a) => {
+          const adCreatorId = String((a as any).creatorId || (a as any).creator_id || (a as any).userId || (a as any).ownerId || (a as any).createdBy || '').trim().toLowerCase();
+          const adCreatorEmail = String((a as any).creatorEmail || (a as any).ownerEmail || '').trim().toLowerCase();
+          const adCreatorName = String((a as any).creatorName || (a as any).ownerName || '').trim().toLowerCase();
+
+          const matchingCmp = this.filteredCampaigns().find((c) => String(c.id) === String(a.campaignId) || c.name.toLowerCase() === (a.campaignName || '').toLowerCase().trim());
+          const cmpOwnerId = String(matchingCmp?.ownerId || (matchingCmp as any)?.owner_id || (matchingCmp as any)?.createdBy || '').trim().toLowerCase();
+          const cmpOwnerEmail = String((matchingCmp as any)?.ownerEmail || (matchingCmp as any)?.creatorEmail || '').trim().toLowerCase();
+          const cmpOwnerName = String(matchingCmp?.ownerName || '').trim().toLowerCase();
+
+          const belongsToUser =
+            (adCreatorId && (adCreatorId === userIdStr.toLowerCase() || adCreatorId === userEmailLower)) ||
+            (adCreatorEmail && adCreatorEmail === userEmailLower) ||
+            (adCreatorName && (adCreatorName === nameLower || nameLower.includes(adCreatorName) || adCreatorName.includes(nameLower))) ||
+            (cmpOwnerId && (cmpOwnerId === userIdStr.toLowerCase() || cmpOwnerId === userEmailLower)) ||
+            (cmpOwnerEmail && cmpOwnerEmail === userEmailLower) ||
+            (cmpOwnerName && (cmpOwnerName === nameLower || nameLower.includes(cmpOwnerName) || cmpOwnerName.includes(nameLower)));
+
+          if (!belongsToUser) {
+            return false;
+          }
+
+          if (ws) {
+            const wsName = (ws.name || '').toLowerCase().trim();
+            const wsId = String(ws.id || '').toLowerCase().trim();
+            const adPkg = ((a as any).packageName || (a as any).package || '').toLowerCase().trim();
+            const adPkgId = String((a as any).packageId || (a as any).package_id || '').toLowerCase().trim();
+            const adProd = (a.productId || (a as any).product_id || '').toLowerCase().trim();
+            const adCmpName = (a.campaignName || '').toLowerCase().trim();
+            const adName = (a.name || '').toLowerCase().trim();
+
+            if (adPkg && (adPkg === wsName || adPkg === wsId)) return true;
+            if (adPkgId && (adPkgId === wsId || adPkgId === wsName)) return true;
+            if (adProd && expectedProductId && adProd.includes(expectedProductId.toLowerCase())) return true;
+            if (adCmpName && (adCmpName.includes(wsName) || wsName.includes(adCmpName))) return true;
+            if (adName && (adName.includes(wsName) || wsName.includes(adName))) return true;
+
+            if (matchingCmp) return true;
+            return false;
+          }
+
+          const activeProd = this.activePackageName().toLowerCase().trim();
+          const adProd = (a.productId || (a as any).product_id || '').toLowerCase().trim();
+          if (adProd && (adProd.includes(activeProd) || activeProd.includes(adProd))) return true;
+          if (matchingCmp) return true;
+          return false;
+        });
+
+        const userAdRecords = matchingAds.map((ad) => {
+          const adLeads = scopedLeads.filter((l) => {
+            const lAdId = String((l as any).adId || (l as any).ad_id || '').toLowerCase().trim();
+            const lAdName = String((l as any).adName || (l as any).ad_name || '').toLowerCase().trim();
+            const lCmpId = String(l.campaignId || (l as any).campaign_id || '').toLowerCase().trim();
+            const lCmpName = String(l.campaignName || '').toLowerCase().trim();
+
+            if (lAdId && lAdId === String(ad.id).toLowerCase()) return true;
+            if (lAdName && lAdName === ad.name.toLowerCase().trim()) return true;
+            if (lCmpId && lCmpId === String(ad.campaignId).toLowerCase()) return true;
+            if (lCmpName && lCmpName === (ad.campaignName || '').toLowerCase().trim()) return true;
+            return false;
+          });
+
+          const totalLeads = adLeads.length > 0 ? adLeads.length : (ad.leadsCount || 0);
+          const resolved = resolveTaskProductAndPackage({
+            productId: ad.productId,
+            packageName: ad.packageName || ad.campaignName,
+            campaignName: ad.campaignName,
+            title: ad.name,
+          }, allPkgs);
+
+          const adDate = (ad as any).createdAt || ad.lastSyncedAt || (ws ? ws.createdAt : new Date().toISOString());
+
+          return {
+            id: ad.id,
+            adId: ad.id,
+            title: ad.name,
+            adName: ad.name,
+            campaignName: ad.campaignName || 'General Campaign',
+            campaignId: ad.campaignId,
+            platform: ad.platform || 'Meta Ads',
+            productName: resolved.productName || (ws ? prodName : pkgMeta.name),
+            packageName: resolved.packageName || (ws ? pkgDisplayName : pkgMeta.name),
+            productId: resolved.productId || expectedProductId,
+            packageId: (resolved as any).packageId || (ws ? ws.id : undefined),
+            createdAt: adDate,
+            launchDate: adDate,
+            leadsCount: totalLeads,
+            status: (ad.status || 'ACTIVE').toUpperCase(),
+            isAdRecord: true,
+          };
+        });
+
+        const userTasks = enrichedTasks.filter((t) => {
+          const assignId = String(t.assignedTo || (t as any).assigned_to || '').trim().toLowerCase();
+          const assignName = (t.assigneeName || (t as any).assignee_name || '').toLowerCase().trim();
+          const creatorId = String(t.createdBy || (t as any).created_by || '').trim().toLowerCase();
+          const creatorName = ((t as any).creatorName || (t as any).creator_name || '').toLowerCase().trim();
+          const userEmailLower = (u.email || '').toLowerCase().trim();
+
+          const isAssigned = Boolean(
+            (assignId && assignId !== '0' && assignId !== 'null' && assignId !== 'undefined') ||
+            (assignName && assignName !== 'unassigned')
+          );
+
+          if (isAssigned) {
+            if (assignId === userIdStr.toLowerCase()) return true;
+            if (assignId && userEmailLower && assignId === userEmailLower) return true;
+            if (assignName && (assignName === nameLower || nameLower.includes(assignName) || assignName.includes(nameLower))) return true;
+            return false;
+          }
+
+          if (creatorId === userIdStr.toLowerCase()) return true;
+          if (creatorId && userEmailLower && creatorId === userEmailLower) return true;
+          if (creatorName && (creatorName === nameLower || nameLower.includes(creatorName) || creatorName.includes(nameLower))) return true;
+          return false;
+        });
+
+        const taskRecords = userTasks.filter((t) => !userAdRecords.some((a) => a.id === t.id)).map((t) => ({
+          id: t.id,
+          adId: t.id,
+          title: t.title,
+          adName: t.title,
+          campaignName: t.campaignName || t.packageName || 'Marketing Deliverable',
+          campaignId: t.campaignId || '',
+          platform: (t as any).platform || 'Multi-Channel',
+          productName: t.productName || (ws ? prodName : pkgMeta.name),
+          packageName: t.packageName || (ws ? pkgDisplayName : pkgMeta.name),
+          productId: t.productId || expectedProductId,
+          createdAt: t.createdAt,
+          launchDate: t.createdAt,
+          leadsCount: 0,
+          status: t.status || 'ACTIVE',
+          isAdRecord: false,
+        }));
+
+        const allDmRecords = [...userAdRecords, ...taskRecords];
+        const totalLeadsGen = allDmRecords.reduce((acc, curr) => acc + (Number(curr.leadsCount) || 0), 0);
+        const activeAdsCount = allDmRecords.filter((r) => r.status === 'ACTIVE').length;
+        const pausedAdsCount = allDmRecords.filter((r) => r.status === 'PAUSED').length;
+
+        return {
+          user: u,
+          userId: String(u.id),
+          name: u.fullName || u.email?.split('@')[0] || 'Digital Marketer',
+          email: u.email || '',
+          role: u.role,
+          roleLabel: roleInfo.label,
+          roleBadgeClass: roleInfo.badgeClass,
+          avatarColor: roleInfo.avatarClass,
+          department: u.department || 'Digital Marketing',
+          isActive: u.isActive !== false,
+          outputMain: `${totalLeadsGen} Leads Generated`,
+          outputSub: `${allDmRecords.length} Ads Managed`,
+          efficiencyMain: `${activeAdsCount} Active`,
+          efficiencySub: 'Campaigns',
+          qualificationPct: allDmRecords.length > 0 ? Math.round((activeAdsCount / allDmRecords.length) * 100) : 0,
+          ratingScore: '—',
+          ratingBadge: 'Active Staff',
+          ratingBadgeClass: 'badge-target',
+          tasksAssignedCount: allDmRecords.length,
+          tasksCompletedCount: activeAdsCount,
+          tasksInProgressCount: pausedAdsCount,
+          tasksRevisionCount: 0,
+          taskCompletionPct: allDmRecords.length > 0 ? Math.round((activeAdsCount / allDmRecords.length) * 100) : 0,
+          tasks: allDmRecords,
+          roleMetrics: [
+            { label: 'Ads Managed', value: allDmRecords.length },
+            { label: 'Leads Generated', value: totalLeadsGen },
+            { label: 'Active Ads', value: activeAdsCount },
+          ],
+        };
+      }
+
+      const userTasks = enrichedTasks.filter((t) => {
+        const assignId = String(t.assignedTo || (t as any).assigned_to || '').trim().toLowerCase();
+        const assignName = (t.assigneeName || (t as any).assignee_name || '').toLowerCase().trim();
+        const creatorId = String(t.createdBy || (t as any).created_by || '').trim().toLowerCase();
+        const creatorName = ((t as any).creatorName || (t as any).creator_name || '').toLowerCase().trim();
+        const userEmailLower = (u.email || '').toLowerCase().trim();
+
+        if (assignId === userIdStr.toLowerCase()) return true;
+        if (assignId && userEmailLower && assignId === userEmailLower) return true;
+        if (assignName && (assignName === nameLower || nameLower.includes(assignName) || assignName.includes(nameLower))) return true;
+
+        if (u.role === 'BDM' || u.role === 'DIGITAL_MARKETING') {
+          if (creatorId === userIdStr.toLowerCase()) return true;
+          if (creatorId && userEmailLower && creatorId === userEmailLower) return true;
+          if (creatorName && (creatorName === nameLower || nameLower.includes(creatorName) || creatorName.includes(nameLower))) return true;
+        }
+
+        return false;
+      });
+
+      const tasksCompleted = userTasks.filter((t) => t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED').length;
+      const tasksInProgress = userTasks.filter((t) => t.status !== 'APPROVED' && t.status !== 'COMPLETED' && t.status !== 'PUBLISHED').length;
+      const tasksRevision = userTasks.filter((t) => t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED').length;
+      const completionPct = userTasks.length > 0 ? Math.round((tasksCompleted / userTasks.length) * 100) : 0;
+
+      return {
+        user: u,
+        userId: String(u.id),
+        name: u.fullName || u.email?.split('@')[0] || 'User',
+        email: u.email || '',
+        role: u.role,
+        roleLabel: roleInfo.label,
+        roleBadgeClass: roleInfo.badgeClass,
+        avatarColor: roleInfo.avatarClass,
+        department: u.department || 'Operations',
+        isActive: u.isActive !== false,
+        outputMain: `${tasksCompleted} Done`,
+        outputSub: `${userTasks.length} Assigned`,
+        efficiencyMain: userTasks.length > 0 ? `${completionPct}%` : '—',
+        efficiencySub: 'Completed',
+        qualificationPct: completionPct,
+        ratingScore: '—',
+        ratingBadge: 'Active Staff',
+        ratingBadgeClass: 'badge-target',
+        tasksAssignedCount: userTasks.length,
+        tasksCompletedCount: tasksCompleted,
+        tasksInProgressCount: tasksInProgress,
+        tasksRevisionCount: tasksRevision,
+        taskCompletionPct: completionPct,
+        tasks: userTasks,
+        roleMetrics: [
+          { label: 'Assigned Tasks', value: userTasks.length },
+          { label: 'Completed Deliverables', value: tasksCompleted },
+          { label: 'Active in Queue', value: tasksInProgress },
+        ],
+      };
+    });
+  });
+
+  readonly activeUsersCount = computed<number>(() => this.teamPerformanceList().filter((u) => u.isActive).length);
+
   private latestQueryParams: any = null;
 
   private applyRouteQueryParams(params: any): void {
@@ -1114,6 +1570,7 @@ export class PackageWorksComponent implements OnInit {
     this.packageService.loadSummary().subscribe();
     this.taskService.loadTasks();
     this.campaignService.loadCampaigns().subscribe();
+    this.campaignService.loadAds().subscribe();
     this.leadService.loadLeads().subscribe();
     this.leadService.loadCalls().subscribe();
     this.txnService.loadTransactions().subscribe();
@@ -1304,7 +1761,7 @@ export class PackageWorksComponent implements OnInit {
   }
 
   getTasksCountForPkg(pkg: ProductPackage): number {
-    return this.taskService.tasks().filter((t) => isTaskForPackage(t, pkg.name)).length;
+    return this.taskService.tasks().filter((t) => isTaskForPackage(t, pkg.name, this.packageService.packages(), pkg.productId)).length;
   }
 
   openPackageWorkspace(pkg: ProductPackage): void {
@@ -1789,19 +2246,12 @@ export class PackageWorksComponent implements OnInit {
     return log.isTask ? 'Assigned Designer' : '—';
   }
 
-  async openTaskAuditModal(log: any, event?: Event): Promise<void> {
-    if (event) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-    if (!this.canViewTaskAudit()) return;
-
+  getTaskFromLog(log: any): Task | null {
+    if (!log) return null;
     let targetTask: Task | null = log?.targetTask || log?.taskObj || null;
-
     if (!targetTask && log?.taskId) {
       targetTask = this.taskService.tasks().find((t) => String(t.id).trim() === String(log.taskId).trim()) || null;
     }
-
     if (!targetTask && log?.entityId) {
       targetTask =
         this.taskService.tasks().find(
@@ -1810,6 +2260,118 @@ export class PackageWorksComponent implements OnInit {
             t.title.toLowerCase().trim() === String(log.entityId).toLowerCase().trim()
         ) || null;
     }
+    return targetTask;
+  }
+
+  getTaskFileInfo(task: Task | null): { hasFile: boolean; fileName: string; fileUrl: string; fileContent?: string; isPdf?: boolean } | null {
+    if (!task) return null;
+
+    if (task.attachmentName || task.attachmentUrl) {
+      const fileName = task.attachmentName || (task.title ? `${task.title.toLowerCase()}-brief.pdf` : 'Requirement_Document.pdf');
+      const fileUrl = task.attachmentUrl || '';
+      const cleanLower = (fileName + ' ' + fileUrl).toLowerCase();
+      const isPdf = cleanLower.includes('.pdf') || fileUrl.startsWith('data:application/pdf');
+      return {
+        hasFile: true,
+        fileName,
+        fileUrl,
+        fileContent: task.content,
+        isPdf,
+      };
+    }
+
+    if (task.versions && task.versions.length > 0) {
+      const latestVer = task.versions[task.versions.length - 1];
+      const fileName = latestVer.fileName || 'Deliverable.pdf';
+      const fileUrl = latestVer.filePath || '';
+      const cleanLower = (fileName + ' ' + fileUrl).toLowerCase();
+      const isPdf = cleanLower.includes('.pdf') || fileUrl.startsWith('data:application/pdf');
+      return {
+        hasFile: true,
+        fileName,
+        fileUrl,
+        fileContent: latestVer.fileContent,
+        isPdf,
+      };
+    }
+
+    if (task.content) {
+      return {
+        hasFile: true,
+        fileName: `${task.title || 'Task'}_Brief.txt`,
+        fileUrl: '',
+        fileContent: task.content,
+        isPdf: false,
+      };
+    }
+
+    return null;
+  }
+
+  getAuditLogTaskFile(log: any): { hasFile: boolean; fileName: string; fileUrl: string; fileContent?: string; isPdf?: boolean } | null {
+    const task = this.getTaskFromLog(log);
+    return this.getTaskFileInfo(task);
+  }
+
+  async openTaskFileFromAudit(log: any, event?: Event): Promise<void> {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    let targetTask = this.getTaskFromLog(log);
+
+    if (!targetTask && log?.entityId) {
+      try {
+        const res = await safeFetch(`/api/tasks/${log.entityId}`);
+        if (res.ok) {
+          targetTask = await res.json();
+        }
+      } catch (e) {
+        console.warn('Error fetching task for file preview:', e);
+      }
+    }
+
+    if (targetTask) {
+      const fileInfo = this.getTaskFileInfo(targetTask);
+      if (fileInfo && (fileInfo.fileUrl || fileInfo.fileName || fileInfo.fileContent)) {
+        this.openDocViewer(
+          event || new Event('click'),
+          fileInfo.fileUrl,
+          fileInfo.fileName,
+          fileInfo.fileContent
+        );
+        return;
+      }
+    }
+
+    this.openTaskAuditModal(log, event);
+  }
+
+  onPreviewTaskDocFromMatrix(data: { task: any; event: MouseEvent }): void {
+    if (data.task) {
+      const fileInfo = this.getTaskFileInfo(data.task);
+      if (fileInfo && (fileInfo.fileUrl || fileInfo.fileName || fileInfo.fileContent)) {
+        this.openDocViewer(
+          data.event,
+          fileInfo.fileUrl,
+          fileInfo.fileName,
+          fileInfo.fileContent
+        );
+        return;
+      }
+      this.openTaskAuditModal(data.task, data.event);
+    }
+  }
+
+  async openTaskAuditModal(log: any, event?: Event): Promise<void> {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    if (!this.canViewTaskAudit()) return;
+
+    let targetTask: Task | null = this.getTaskFromLog(log);
 
     if (!targetTask && log?.entityId) {
       try {
@@ -2083,9 +2645,16 @@ export class PackageWorksComponent implements OnInit {
     const currentUserRole = currentUser?.role || 'ADMINISTRATOR';
     const currentUserEmail = currentUser?.email || (currentUser?.role === 'BDM' ? 'bdm@markops.io' : 'admin@markops.io');
 
+    const ws = this.activeWorkspacePackage();
+    const pkgMeta = this.activePackageMeta();
+    const activeProdId = ws ? ws.productId : pkgMeta.id;
+    const activeProdName = ws ? this.getProductNameForPackage(ws) : pkgMeta.name;
+
     const payload = {
       ...formVal,
       packageName: activePkg,
+      productId: activeProdId,
+      productName: activeProdName,
       creatorId: currentUserId,
       creatorName: currentUserName,
       creatorRole: currentUserRole,

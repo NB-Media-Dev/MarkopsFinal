@@ -44,7 +44,6 @@ const DB_URL = process.env.DATABASE_URL?.replace(/[?&]ssl-mode=[^&]*/i, '').repl
     console.log('Products table error:', e.message);
   }
 
-  // Seed products
   try {
     await conn.query(`
      INSERT INTO product_catalog

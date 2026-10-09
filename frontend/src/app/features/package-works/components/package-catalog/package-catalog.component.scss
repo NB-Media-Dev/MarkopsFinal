@@ -90,9 +90,6 @@
       z-index: 5;
       user-select: none;
 
-    
-
-      
     }
 
     .package-card-menu-wrapper {
@@ -319,7 +316,6 @@
   }
 }
 
-/* Bottom Bar: Pagination + Watermark */
 .catalog-bottom-bar {
   display: flex;
   align-items: center;
@@ -377,7 +373,7 @@
       height: 28px;
       border-radius: 9999px;
       border: none;
-     
+
       color: #000000;
       font-size: 0.78rem;
       font-weight: 600;
@@ -414,11 +410,9 @@
     user-select: none;
     z-index: 2;
 
-
   }
 }
 
-/* Empty State */
 .packages-empty-state-card {
   background: #FFFFFF;
   border: 1px dashed #F1D3A8;
