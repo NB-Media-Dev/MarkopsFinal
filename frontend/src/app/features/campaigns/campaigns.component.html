@@ -68,6 +68,7 @@
     [campaigns]="filteredCampaigns"
     [totalCampaignsCount]="filteredCampaigns.length"
     [canManageCampaigns]="canManageCampaigns()"
+    [currentUserId]="authService.currentUser()?.id ?? null"
     (create)="openCreateModal()"
     (edit)="openEditModal($event)"
     (delete)="confirmDelete($event)"

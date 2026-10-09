@@ -39,59 +39,6 @@ export function sanitizeNotification(item: NotificationItem): NotificationItem {
   };
 }
 
-export function isNotificationAllowedForRole(item: NotificationItem, role?: string): boolean {
-  if (!role) return true;
-  const roleUpper = role.toUpperCase().trim();
-  const t = (item.title || '').toLowerCase();
-  const m = (item.message || '').toLowerCase();
-  const target = (item.targetRoute || '').toLowerCase();
-
-  if (roleUpper === 'DESIGNER') {
-  
-    if (
-      t.includes('lead') ||
-      m.includes('lead') ||
-      t.includes('telecall') ||
-      m.includes('telecall') ||
-      t.includes('call logged') ||
-      m.includes('call logged') ||
-      t.includes('interested') ||
-      m.includes('interested') ||
-      t.includes('qualified') ||
-      m.includes('qualified') ||
-      t.includes('campaign') ||
-      m.includes('campaign') ||
-      t.includes('target') ||
-      m.includes('target') ||
-      target.includes('/leads') ||
-      target.includes('/telecalling') ||
-      target.includes('/targets') ||
-      target.includes('dept=telecalling')
-    ) {
-      return false;
-    }
-  }
-
-  if (roleUpper === 'TELECALLER') {
-    if (
-      t.includes('task approved') ||
-      t.includes('design uploaded') ||
-      t.includes('redesign') ||
-      t.includes('submission') ||
-      t.includes('creative design') ||
-      t.includes('creative brief') ||
-      target.includes('/designer-tasks') ||
-      target.includes('/submissions') ||
-      target.includes('/revisions') ||
-      target.includes('dept=designer')
-    ) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 export const TELECALLING_PACKAGE_TARGET_ROUTE =
   '/package-works?package=CAREERMATE&workspace=CURRENT-AFFAIR-PACKAGE&dept=TELECALLING&tab=TELECALLER_MEMBERS';
 
@@ -114,91 +61,53 @@ export class NotificationService {
 
   constructor() {
     if (this.isBrowser) {
-      this.loadNotifications();
+      void this.initializeNotifications();
+    }
+  }
+
+  private async initializeNotifications(): Promise<void> {
+    try {
+      if (!(await this.authService.ensureInitialized())) return;
+      await this.loadNotifications();
       this.initRealtimeSocket();
+    } catch (error) {
+      console.error('[NotificationService] Failed to initialize notifications:', error);
     }
   }
 
   private initRealtimeSocket(): void {
     try {
+      const currentUser = this.authService.currentUser();
+      const token = this.authService.accessToken();
+      if (!currentUser || !token) return;
       const backendUrl = getBackendBaseUrl();
       this.socket = io(backendUrl, {
+        auth: {
+          token,
+          userId: currentUser.id,
+          role: currentUser.role,
+          email: currentUser.email,
+          fullName: currentUser.fullName,
+        },
         transports: ['polling', 'websocket'],
         reconnectionAttempts: 5,
         timeout: 10000,
       });
 
-      this.socket.on('connect_error', () => {
-
+      this.socket.on('connect_error', (error) => {
+        console.error('[NotificationService] Realtime connection failed:', error.message);
       });
 
       this.socket.on('notification:created', (rawNotif: NotificationItem) => {
         const notif = sanitizeNotification(rawNotif);
-        const currentUser = this.authService.currentUser();
-        if (!currentUser) return;
+        const currentUserId = String(this.authService.currentUser()?.id ?? '').trim().toLowerCase();
+        if (!currentUserId || String(notif.userId ?? '').trim().toLowerCase() !== currentUserId) return;
 
-        const currentUserId = currentUser.id;
-        const currentUserEmail = currentUser.email;
-        const currentUserFullName = currentUser.fullName;
-        const currentUserRole = currentUser.role;
-
-      
-        if (!isNotificationAllowedForRole(notif, currentUserRole)) {
-          return;
-        }
-
-        const targetUserIdStr = String(notif.userId || '').trim().toLowerCase();
-        const uIdStr = String(currentUserId || '').trim().toLowerCase();
-        const uEmailStr = String(currentUserEmail || '').trim().toLowerCase();
-        const uNameStr = String(currentUserFullName || '').trim().toLowerCase();
-
-        if (!targetUserIdStr) return;
-
-    
-        let matchesUser =
-          (uIdStr && targetUserIdStr === uIdStr) ||
-          (uEmailStr && targetUserIdStr === uEmailStr) ||
-          (uNameStr && targetUserIdStr === uNameStr);
-
-     
-        if (!matchesUser) {
-          if (uIdStr === '1' || uIdStr === 'usr_admin_01') {
-            matchesUser = targetUserIdStr === '1' || targetUserIdStr === 'usr_admin_01';
-          } else if (uIdStr === '2' || uIdStr === 'usr_bdm_01') {
-            matchesUser = targetUserIdStr === '2' || targetUserIdStr === 'usr_bdm_01';
-          } else if (uIdStr === '3' || uIdStr === 'usr_mktg_01') {
-            matchesUser = targetUserIdStr === '3' || targetUserIdStr === 'usr_mktg_01';
-          } else if (uIdStr === '4' || uIdStr === 'usr_digital_01') {
-            matchesUser = targetUserIdStr === '4' || targetUserIdStr === 'usr_digital_01';
-          } else if (uIdStr === '5' || uIdStr === 'usr_designer_01') {
-            matchesUser = targetUserIdStr === '5' || targetUserIdStr === 'usr_designer_01';
-          } else if (uIdStr === '6' || uIdStr === 'usr_telecaller_01') {
-            matchesUser = targetUserIdStr === '6' || targetUserIdStr === 'usr_telecaller_01';
-          }
-        }
-
-        if (matchesUser) {
-          const m = String(notif.message || '').toLowerCase();
-          const t = String(notif.title || '').toLowerCase();
-          if (t.includes('30 leads') || m.includes('total leads: 30')) return;
-
-          this.notifications.update((list) => {
-            const exists = list.some(
-              (n) => String(n.id) === String(notif.id) || (n.title?.trim() === notif.title?.trim() && n.message?.trim() === notif.message?.trim())
-            );
-            if (exists) {
-              return list.map((n) =>
-                n.title?.trim() === notif.title?.trim() && n.message?.trim() === notif.message?.trim()
-                  ? { ...notif, id: n.id }
-                  : n
-              );
-            }
-            return [notif, ...list];
-          });
-          if (!notif.isRead) {
-            this.triggerToast(notif);
-          }
-        }
+        this.notifications.update((list) => {
+          if (list.some((item) => String(item.id) === String(notif.id))) return list;
+          return [notif, ...list];
+        });
+        if (!notif.isRead) this.triggerToast(notif);
       });
 
       const syncOnTaskEvent = () => {
@@ -238,86 +147,46 @@ export class NotificationService {
 
   async loadNotifications(): Promise<void> {
     try {
-      const currentUser = this.authService.currentUser();
-      const currentUserId = currentUser?.id || 'usr_admin_01';
-      const currentUserRole = currentUser?.role || '';
-      const currentUserName = currentUser?.fullName || '';
-      const currentUserEmail = currentUser?.email || '';
-
-      const res = await safeFetch(`/api/notifications?userId=${encodeURIComponent(currentUserId)}&role=${encodeURIComponent(currentUserRole)}&name=${encodeURIComponent(currentUserName)}&email=${encodeURIComponent(currentUserEmail)}`, {
-        headers: {
-          'x-user-id': currentUserId,
-          'x-user-role': currentUserRole,
-          'x-user-name': currentUserName,
-          'x-user-email': currentUserEmail,
-        },
-      });
+      if (!this.authService.currentUser()) return;
+      const res = await safeFetch('/api/notifications');
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          const cleaned = data.filter((n: any) => {
-            const m = String(n.message || '').toLowerCase();
-            const t = String(n.title || '').toLowerCase();
-            return !t.includes('30 leads') && !m.includes('total leads: 30');
-          });
-
-          const seen = new Set<string>();
-          const deduped: NotificationItem[] = [];
-          for (const item of cleaned.map(sanitizeNotification)) {
-            if (!isNotificationAllowedForRole(item, currentUserRole)) {
-              continue;
-            }
-            const key = `${item.title?.trim()}_${item.message?.trim()}`;
-            if (!seen.has(key)) {
-              seen.add(key);
-              deduped.push(item);
-            }
-          }
-          this.notifications.set(deduped);
+          this.notifications.set(data.map(sanitizeNotification));
         }
+      } else {
+        console.error(`[NotificationService] Loading notifications failed (${res.status}).`);
       }
     } catch (err) {
-      console.log('Error loading notifications:', err);
+      console.error('[NotificationService] Error loading notifications:', err);
     }
   }
 
   async markAsRead(id: string): Promise<void> {
- 
-    this.notifications.update((list) =>
-      list.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
-
     try {
-      const currentUserId = this.authService.currentUser()?.id || 'usr_admin_01';
-      await safeFetch(`/api/notifications/${id}/read`, {
+      const res = await safeFetch(`/api/notifications/${encodeURIComponent(id)}/read`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': currentUserId,
-        },
       });
+      if (!res.ok) throw new Error(`Request failed with status ${res.status}.`);
+      this.notifications.update((list) =>
+        list.map((notification) => (notification.id === id ? { ...notification, isRead: true } : notification))
+      );
     } catch (err) {
-      console.log('Error marking notification read:', err);
+      console.error('[NotificationService] Error marking notification read:', err);
     }
   }
 
   async markAllAsRead(): Promise<void> {
-
-    this.notifications.update((list) =>
-      list.map((n) => ({ ...n, isRead: true }))
-    );
-
     try {
-      const currentUserId = this.authService.currentUser()?.id || 'usr_admin_01';
-      await safeFetch(`/api/notifications/read-all`, {
+      const res = await safeFetch('/api/notifications/read-all', {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': currentUserId,
-        },
       });
+      if (!res.ok) throw new Error(`Request failed with status ${res.status}.`);
+      this.notifications.update((list) =>
+        list.map((notification) => ({ ...notification, isRead: true }))
+      );
     } catch (err) {
-      console.log('Error marking all notifications read:', err);
+      console.error('[NotificationService] Error marking all notifications read:', err);
     }
   }
 

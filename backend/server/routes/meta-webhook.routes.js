@@ -31,6 +31,7 @@ router.get('/', (req, res) => {
 async function ensureMetaReferences(campaignId, adId, campaignName, adName) {
   if (!dbPool) throw new Error('Database is required to ingest Meta leads');
   let mysqlCampaignId = null;
+  let campaignOwnerId = 1;
 
   if (campaignId) {
     await dbPool.queryStrict(
@@ -42,19 +43,20 @@ async function ensureMetaReferences(campaignId, adId, campaignName, adName) {
       [campaignName || `Meta Campaign ${campaignId}`, campaignId]
     );
     const [campaignRows] = await dbPool.queryStrict(
-      'SELECT id FROM campaigns WHERE meta_campaign_id = ? LIMIT 1',
+      'SELECT id, owner_id FROM campaigns WHERE meta_campaign_id = ? LIMIT 1',
       [campaignId]
     );
     mysqlCampaignId = campaignRows[0]?.id || null;
+    campaignOwnerId = campaignRows[0]?.owner_id || 1;
   }
 
   if (adId) {
     await dbPool.queryStrict(
       `INSERT INTO ads
-       (campaign_id, platform, platform_ad_id, platform_campaign_id, name, status, spend, impressions, clicks, leads_count)
-       VALUES (?, 'Meta', ?, ?, ?, 'ACTIVE', 0, 0, 0, 0)
+       (campaign_id, created_by, platform, platform_ad_id, platform_campaign_id, name, status, spend, impressions, clicks, leads_count)
+       VALUES (?, ?, 'Meta', ?, ?, ?, 'ACTIVE', 0, 0, 0, 0)
        ON DUPLICATE KEY UPDATE platform_ad_id = VALUES(platform_ad_id)`,
-      [mysqlCampaignId, adId, campaignId, adName || `Meta Ad ${adId}`]
+      [mysqlCampaignId, campaignOwnerId, adId, campaignId, adName || `Meta Ad ${adId}`]
     );
   }
 }

@@ -172,6 +172,11 @@ export class CampaignsComponent implements OnInit {
     );
   });
 
+  private isCampaignCreator(campaign: CampaignItem): boolean {
+    const user = this.authService.currentUser();
+    return !!user && String(campaign.ownerId) === String(user.id);
+  }
+
   setFilterStatus(st: string) {
     this.filterStatus.set(st);
   }
@@ -223,6 +228,10 @@ export class CampaignsComponent implements OnInit {
       this.errorMessage.set('Access Denied: Only Marketing Manager, Digital Marketing Specialist, and Administrator can edit campaigns.');
       return;
     }
+    if (!this.isCampaignCreator(cmp)) {
+      this.errorMessage.set('Access Denied: Only the campaign creator can edit this campaign.');
+      return;
+    }
     this.isEditing.set(true);
     this.editingCampaignId.set(cmp.id);
     this.formModel = {
@@ -252,6 +261,13 @@ export class CampaignsComponent implements OnInit {
     if (!this.canManageCampaigns()) {
       this.errorMessage.set('Access Denied: Only Marketing Manager, Digital Marketing Specialist, and Administrator can create or modify campaigns.');
       return;
+    }
+    if (this.isEditing()) {
+      const campaign = this.campaignService.campaigns().find((item) => item.id === this.editingCampaignId());
+      if (!campaign || !this.isCampaignCreator(campaign)) {
+        this.errorMessage.set('Access Denied: Only the campaign creator can edit this campaign.');
+        return;
+      }
     }
 
     if (!this.formModel.name || !this.formModel.name.trim()) {
@@ -324,6 +340,10 @@ export class CampaignsComponent implements OnInit {
       this.errorMessage.set('Access Denied: Only Marketing Manager, Digital Marketing Specialist, and Administrator can delete campaigns.');
       return;
     }
+    if (!this.isCampaignCreator(cmp)) {
+      this.errorMessage.set('Access Denied: Only the campaign creator can delete this campaign.');
+      return;
+    }
     this.deleteConfirmTarget.set(cmp);
   }
 
@@ -338,6 +358,11 @@ export class CampaignsComponent implements OnInit {
     }
     const target = this.deleteConfirmTarget();
     if (!target) return;
+    if (!this.isCampaignCreator(target)) {
+      this.deleteConfirmTarget.set(null);
+      this.errorMessage.set('Access Denied: Only the campaign creator can delete this campaign.');
+      return;
+    }
 
     this.campaignService.deleteCampaign(target.id).subscribe({
       next: () => {
@@ -386,4 +411,3 @@ export class CampaignsComponent implements OnInit {
     return list;
   }
 }
-

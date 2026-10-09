@@ -13,6 +13,7 @@ export class CampaignsTableComponent {
   @Input() campaigns: CampaignItem[] = [];
   @Input() totalCampaignsCount = 0;
   @Input() canManageCampaigns = false;
+  @Input() currentUserId: string | number | null = null;
 
   @Output() create = new EventEmitter<void>();
   @Output() edit = new EventEmitter<CampaignItem>();
@@ -20,6 +21,12 @@ export class CampaignsTableComponent {
 
   onCreate() {
     this.create.emit();
+  }
+
+  canManageCampaign(campaign: CampaignItem): boolean {
+    return this.canManageCampaigns &&
+      this.currentUserId != null &&
+      String(campaign.ownerId) === String(this.currentUserId);
   }
 
   onEdit(cmp: CampaignItem) {

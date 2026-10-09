@@ -151,6 +151,7 @@ CREATE TABLE `ads` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `campaign_id` INT NOT NULL,
   `meta_connection_id` INT DEFAULT NULL,
+  `created_by` INT DEFAULT NULL,
   `platform_ad_id` VARCHAR(100) DEFAULT NULL,
   `platform_adset_id` VARCHAR(100) DEFAULT NULL,
   `platform_campaign_id` VARCHAR(100) DEFAULT NULL,
@@ -165,10 +166,12 @@ CREATE TABLE `ads` (
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_ads_campaign` (`campaign_id`),
+  KEY `idx_ads_created_by` (`created_by`),
   KEY `idx_ads_meta` (`meta_connection_id`),
   UNIQUE KEY `uq_ads_platform_ad_id` (`platform_ad_id`),
   KEY `idx_ads_platform_campaign_id` (`platform_campaign_id`),
   CONSTRAINT `fk_ads_campaign` FOREIGN KEY (`campaign_id`) REFERENCES `campaigns` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_ads_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_ads_meta` FOREIGN KEY (`meta_connection_id`) REFERENCES `meta_connections` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

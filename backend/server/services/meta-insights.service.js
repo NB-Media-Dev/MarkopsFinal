@@ -80,7 +80,7 @@ async function upsertInsights(insights) {
     const metaCampaignId = String(insight.campaign_id);
     const metaAdId = String(insight.ad_id);
     const [campaignRows] = await dbPool.queryStrict(
-      'SELECT id FROM campaigns WHERE meta_campaign_id = ? LIMIT 1',
+      'SELECT id, owner_id FROM campaigns WHERE meta_campaign_id = ? LIMIT 1',
       [metaCampaignId]
     );
     const campaign = campaignRows[0];
@@ -88,13 +88,14 @@ async function upsertInsights(insights) {
 
     await dbPool.queryStrict(
       `INSERT INTO ads
-       (campaign_id, platform, platform_ad_id, platform_campaign_id, name, status, spend, impressions, clicks, leads_count)
-       VALUES (?, 'Meta', ?, ?, ?, 'ACTIVE', ?, ?, ?, 0)
+       (campaign_id, created_by, platform, platform_ad_id, platform_campaign_id, name, status, spend, impressions, clicks, leads_count)
+       VALUES (?, ?, 'Meta', ?, ?, ?, 'ACTIVE', ?, ?, ?, 0)
        ON DUPLICATE KEY UPDATE campaign_id = VALUES(campaign_id), platform_campaign_id = VALUES(platform_campaign_id),
        name = VALUES(name), spend = VALUES(spend), impressions = VALUES(impressions), clicks = VALUES(clicks),
        updated_at = CURRENT_TIMESTAMP`,
       [
         campaign.id,
+        campaign.owner_id,
         metaAdId,
         metaCampaignId,
         String(insight.ad_name || `Meta Ad ${metaAdId}`),

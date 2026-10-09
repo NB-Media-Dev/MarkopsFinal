@@ -65,6 +65,7 @@
   <app-ads-table
     [ads]="filteredAds"
     [canManageAds]="canManageAds()"
+    [currentUserId]="authService.currentUser()?.id ?? null"
     (create)="openCreateModal()"
     (edit)="openEditModal($event)"
     (delete)="confirmDelete($event)"

@@ -168,35 +168,7 @@ export class MainLayoutComponent {
   readonly notifFlyoutFilter = signal<'ALL' | 'UNREAD' | 'TODAY'>('ALL');
 
   readonly flyoutNotifications = computed(() => {
-    let list = this.notifService.notifications();
-    const user = this.authService.currentUser();
-    const role = user?.role;
-    const uId = String(user?.id || '').toLowerCase().trim();
-    const uName = String(user?.fullName || '').toLowerCase().trim();
-    const uEmail = String(user?.email || '').toLowerCase().trim();
-
-    if (role === 'TELECALLER' || uName.includes('raj') || uId.includes('raj')) {
-      list = list.filter((n) => {
-        const titleLower = (n.title || '').toLowerCase();
-
-        if (
-          titleLower.includes('task approved') ||
-          titleLower.includes('design uploaded') ||
-          titleLower.includes('redesign') ||
-          titleLower.includes('submission') ||
-          titleLower.includes('creative design')
-        ) {
-          return false;
-        }
-        const nUid = String(n.userId || '').toLowerCase().trim();
-        if (!nUid) return false;
-        if (nUid === uId || nUid === uName || nUid === uEmail) return true;
-        if ((uName.includes('raj') || uId.includes('raj')) && (nUid.includes('raj') || nUid === '6')) return true;
-        if (n.targetRoute === '/telecalling' || titleLower.includes('lead')) return true;
-        return false;
-      });
-    }
-
+    const list = this.notifService.notifications();
     const f = this.notifFlyoutFilter();
     if (f === 'UNREAD') {
       return list.filter((n) => !n.isRead);

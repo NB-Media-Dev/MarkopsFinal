@@ -2655,3 +2655,71 @@
     }
   }
 }
+.user-detail-page-container.digital-marketing-report {
+  gap: 0.55rem;
+  padding: 0.35rem;
+  border-radius: 16px;
+  background: #FFF7ED;
+
+  .detail-top-nav-bar {
+    padding: 0.45rem 0.75rem;
+    border-color: #F1E3D1;
+    border-radius: 12px;
+  }
+
+  .detail-queue-card {
+    border-radius: 12px;
+    box-shadow: 0 3px 14px rgba(15, 23, 42, 0.04);
+
+    .queue-card-header {
+      padding: 0.85rem 1rem;
+    }
+
+    .detail-tasks-table-wrap {
+      overflow-x: auto;
+
+      .dm-record-table {
+        min-width: 760px;
+
+        th,
+        td {
+          padding-top: 0.48rem;
+          padding-bottom: 0.48rem;
+        }
+      }
+    }
+  }
+
+  @media (max-width: 640px) {
+    padding: 0.25rem;
+
+    .detail-top-nav-bar {
+      align-items: flex-start;
+
+      .detail-top-nav-left {
+        width: 100%;
+        gap: 0.55rem;
+      }
+
+      .top-nav-right-cluster {
+        width: 100%;
+        justify-content: flex-end;
+      }
+    }
+
+    .detail-queue-card .queue-card-header {
+      align-items: flex-start;
+      padding: 0.75rem;
+
+      .queue-header-right {
+        width: 100%;
+        gap: 0.5rem;
+
+        .queue-search-wrap {
+          min-width: 0;
+          flex: 1 1 100%;
+        }
+      }
+    }
+  }
+}

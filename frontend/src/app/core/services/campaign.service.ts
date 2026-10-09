@@ -31,6 +31,7 @@ export interface CampaignItem {
 export interface AdItem {
   id: string;
   campaignId: string;
+  createdBy?: string | null;
   campaignName: string;
   name: string;
   platform: 'Meta' | 'Google Ads' | 'Instagram' | 'LinkedIn' | 'YouTube' | string;

@@ -49,6 +49,11 @@
   @media (max-width: 480px) {
     padding: 0.65rem 0.65rem 1.25rem;
   }
+
+  @media (max-width: 420px) {
+    margin-top: 16px;
+    padding: 0.65rem 0.5rem 1rem;
+  }
 }
 
 .top-navbar {

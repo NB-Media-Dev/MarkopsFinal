@@ -225,16 +225,19 @@
   }
 
   .table-responsive {
-    overflow-x: hidden !important;
-    overflow-y: visible !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
     width: 100% !important;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
   }
 
   table.data-table.unified-queue-table {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    table-layout: fixed !important;
+    width: max-content !important;
+    min-width: 1080px !important;
+    max-width: none !important;
+    table-layout: auto !important;
     border-collapse: collapse !important;
     border-spacing: 0;
 

@@ -166,6 +166,7 @@ model User {
   callActivities   CallActivity[]
   conversions      Conversion[]
   createdCampaigns Campaign[]     @relation("CampaignOwner")
+  createdAds       Ad[]            @relation("AdCreator")
   followUps        FollowUp[]
   assignedLeads    Lead[]         @relation("LeadAssignee")
   telecallerAssignedLeads Lead[]  @relation("AssignedTelecaller")
@@ -265,6 +266,7 @@ model MetaWebhookEvent {
 model Ad {
   id                 Int             @id @default(autoincrement())
   campaignId         Int             @map("campaign_id")
+  createdBy         Int?           @map("created_by")
   metaConnectionId   Int?            @map("meta_connection_id")
   platformAdId       String?         @map("platform_ad_id") @db.VarChar(100)
   platformAdsetId    String?         @map("platform_adset_id") @db.VarChar(100)
@@ -280,11 +282,13 @@ model Ad {
   updatedAt          DateTime        @updatedAt @map("updated_at")
   adMetrics          AdMetric[]
   campaign           Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creator           User?         @relation("AdCreator", fields: [createdBy], references: [id])
   metaConnection     MetaConnection? @relation(fields: [metaConnectionId], references: [id], onDelete: SetNull)
   leads              Lead[]
   metaLeads          Lead[]          @relation("MetaAdLeads")
 
   @@index([campaignId])
+  @@index([createdBy])
   @@index([metaConnectionId])
   @@index([platformCampaignId])
   @@unique([platformAdId])

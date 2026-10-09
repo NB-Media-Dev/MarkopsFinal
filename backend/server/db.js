@@ -59,9 +59,9 @@ async function initDatabase() {
     if (!connected) {
       pool = mysqlModule.createPool({
         host: process.env.DB_HOST || 'localhost',
-        port: Number(process.env.DB_PORT) || 3306,
+        port: Number(process.env.DB_PORT) || 3303,
         user: process.env.DB_USER || 'root',
-        password: process.env.DB_PASSWORD || 'tiger',
+        password: process.env.DB_PASSWORD || 'Ratheesh@17',
         database: process.env.DB_NAME || 'markops',
         connectTimeout: 10000,
         waitForConnections: true,
@@ -90,6 +90,10 @@ async function initDatabase() {
     try { await activePool.query('ALTER TABLE leads ADD COLUMN campaign_id VARCHAR(100) DEFAULT NULL'); } catch (e) {}
     try { await activePool.query('ALTER TABLE leads ADD COLUMN campaign_name VARCHAR(255) DEFAULT NULL'); } catch (e) {}
     try { await activePool.query('ALTER TABLE ads ADD COLUMN platform_ad_id VARCHAR(100) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE ads ADD COLUMN created_by INT DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('UPDATE ads a JOIN campaigns c ON c.id = a.campaign_id SET a.created_by = c.owner_id WHERE a.created_by IS NULL'); } catch (e) {}
+    try { await activePool.query('CREATE INDEX idx_ads_created_by ON ads (created_by)'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE ads ADD CONSTRAINT fk_ads_creator FOREIGN KEY (created_by) REFERENCES users (id)'); } catch (e) {}
     try { await activePool.query('ALTER TABLE ads ADD COLUMN design_id VARCHAR(100) DEFAULT NULL'); } catch (e) {}
     try { await activePool.query('ALTER TABLE ads ADD COLUMN design_image_url TEXT DEFAULT NULL'); } catch (e) {}
     try { await activePool.query('ALTER TABLE ads ADD COLUMN ad_creative_url TEXT DEFAULT NULL'); } catch (e) {}

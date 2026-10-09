@@ -96,11 +96,15 @@ test('batch import stores a null campaign reference when no campaigns exist', as
   );
   dbLeadsStore.length = 0;
   dbPool.isConnected = () => true;
-  dbPool.queryStrict = async (sql) => (
-    sql.includes('FROM users u')
-      ? [[{ id: 7, fullName: 'Telecaller One', email: 'tc1@example.com' }]]
-      : [[]]
-  );
+  dbPool.queryStrict = async (sql) => {
+    if (sql.includes('FROM users u')) {
+      return [[{ id: 7, fullName: 'Telecaller One', email: 'tc1@example.com' }]];
+    }
+    if (sql.includes('INSERT INTO notifications')) {
+      return [{ insertId: 1 }, []];
+    }
+    return [[]];
+  };
   dbPool.query = async () => [[]];
   dbPool.getConnection = async () => ({
     beginTransaction: async () => {},

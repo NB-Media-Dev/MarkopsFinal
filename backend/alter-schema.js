@@ -17,9 +17,9 @@ async function runAlterTables() {
     } else {
       connection = await mysql.createConnection({
         host: process.env.DB_HOST || 'localhost',
-        port: Number(process.env.DB_PORT) || 3306,
+        port: Number(process.env.DB_PORT) || 3303,
         user: process.env.DB_USER || 'root',
-        password: process.env.DB_PASSWORD || 'tiger',
+        password: process.env.DB_PASSWORD || 'Ratheesh@17',
         database: process.env.DB_NAME || 'markops',
       });
     }
@@ -43,6 +43,7 @@ async function runAlterTables() {
       { table: 'leads', col: 'campaign_name', type: 'VARCHAR(255) DEFAULT NULL' },
 
       { table: 'ads', col: 'platform_ad_id', type: 'VARCHAR(100) DEFAULT NULL' },
+      { table: 'ads', col: 'created_by', type: 'INT DEFAULT NULL' },
       { table: 'ads', col: 'design_id', type: 'VARCHAR(100) DEFAULT NULL' },
       { table: 'ads', col: 'design_image_url', type: 'TEXT DEFAULT NULL' },
       { table: 'ads', col: 'ad_creative_url', type: 'TEXT DEFAULT NULL' },

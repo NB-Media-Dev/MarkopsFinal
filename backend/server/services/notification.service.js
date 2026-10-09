@@ -1,5 +1,5 @@
 const { dbPool, dbNotificationsStore, dbUsersStore } = require('../db');
-const { emitRealtimeEvent } = require('../events');
+const { emitUserRealtimeEvent } = require('../events');
 
 function stripEmojis(str) {
   if (!str) return '';
@@ -76,10 +76,19 @@ async function dispatchNotification({ userIds = [], title, message, type = 'INFO
   const createdNotifs = [];
 
   for (const rId of recipients) {
-    const numericUserId = typeof rId === 'number' ? rId : (parseInt(rId, 10) || null);
+    if (String(rId).trim().toUpperCase() === 'ALL') {
+      throw new Error('Notification recipients must be explicit user IDs; ALL is not supported.');
+    }
+    const recipient = String(rId).trim();
+    const numericUserId = typeof rId === 'number'
+      ? rId
+      : (/^\d+$/.test(recipient) ? Number(recipient) : null);
+    if (dbPool.isConnected() && (!Number.isSafeInteger(numericUserId) || numericUserId < 1)) {
+      throw new Error(`Notification recipient "${rId}" is not a valid database user ID.`);
+    }
     const notifObj = {
       id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      userId: numericUserId || String(rId),
+      userId: numericUserId || recipient,
       title: cleanTitle,
       message: cleanMessage,
       type,
@@ -97,38 +106,26 @@ async function dispatchNotification({ userIds = [], title, message, type = 'INFO
         Math.abs(new Date(n.createdAt).getTime() - new Date(notifObj.createdAt).getTime()) < 5000
     );
 
-    if (!isDuplicate) {
-      dbNotificationsStore.unshift(notifObj);
-    }
-
-    if (dbPool && numericUserId) {
+    if (dbPool.isConnected() && numericUserId) {
       try {
-        const [res] = await dbPool.query(
+        const [res] = await dbPool.queryStrict(
           `INSERT INTO notifications (user_id, title, message, type, target_route, is_read, created_at)
            VALUES (?, ?, ?, ?, ?, 0, NOW())`,
           [numericUserId, cleanTitle, cleanMessage, type, targetRoute || null]
         );
-        if (res && res.insertId) {
-          notifObj.id = String(res.insertId);
-        }
-      } catch (err) {
-   
-        try {
-          const [res2] = await dbPool.query(
-            `INSERT INTO notifications (user_id, title, message, type, is_read, created_at)
-             VALUES (?, ?, ?, ?, 0, NOW())`,
-            [numericUserId, cleanTitle, cleanMessage, type]
-          );
-          if (res2 && res2.insertId) {
-            notifObj.id = String(res2.insertId);
-          }
-        } catch (innerErr) {
-      
-        }
+        if (!res?.insertId) throw new Error('Notification was not persisted by the database.');
+        notifObj.id = String(res.insertId);
+      } catch (error) {
+        console.error(`[Notification Service] Persistence failed for recipient ${numericUserId}:`, error?.message || error);
+        throw error;
       }
     }
 
-    emitRealtimeEvent('notification:created', notifObj);
+    if (!isDuplicate) {
+      dbNotificationsStore.unshift(notifObj);
+    }
+
+    emitUserRealtimeEvent('notification:created', notifObj, [notifObj.userId]);
     createdNotifs.push(notifObj);
   }
 

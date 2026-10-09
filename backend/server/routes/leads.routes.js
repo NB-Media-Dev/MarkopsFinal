@@ -319,9 +319,9 @@ router.post('/leads', async (req, res) => {
         numericAdId = existingAds[0].id;
       } else if (mysqlCampaignId) {
         const [insertedAd] = await dbPool.query(
-          `INSERT INTO ads (campaign_id, name, platform, status, spend, impressions, clicks, leads_count, created_at, updated_at)
-           VALUES (?, ?, 'Meta', 'ACTIVE', 0, 0, 0, 0, NOW(), NOW())`,
-          [mysqlCampaignId, targetAdName]
+          `INSERT INTO ads (campaign_id, created_by, name, platform, status, spend, impressions, clicks, leads_count, created_at, updated_at)
+           VALUES (?, ?, ?, 'Meta', 'ACTIVE', 0, 0, 0, 0, NOW(), NOW())`,
+          [mysqlCampaignId, numericCreatorId, targetAdName]
         );
         if (insertedAd && insertedAd.insertId) {
           numericAdId = insertedAd.insertId;

@@ -110,6 +110,11 @@ export class AdsComponent implements OnInit {
     return role === 'ADMINISTRATOR' || role === 'DIGITAL_MARKETING';
   });
 
+  private isAdCreator(ad: AdItem): boolean {
+    const user = this.authService.currentUser();
+    return !!user && ad.createdBy != null && String(ad.createdBy) === String(user.id);
+  }
+
   readonly filteredCampaigns = computed(() => {
     const list = this.campaignService.campaigns();
     const pkg = this.packageFilterSignal()?.trim();
@@ -188,6 +193,10 @@ export class AdsComponent implements OnInit {
       this.errorMessage.set('Access Denied: Only Digital Marketing Specialists and Administrators can edit ads.');
       return;
     }
+    if (!this.isAdCreator(ad)) {
+      this.errorMessage.set('Access Denied: Only the ad creator can edit this ad metric.');
+      return;
+    }
     this.isEditing.set(true);
     this.editingAdId.set(ad.id);
     this.formModel = {
@@ -221,6 +230,13 @@ export class AdsComponent implements OnInit {
     if (!this.canManageAds()) {
       this.errorMessage.set('Access Denied: Only Digital Marketing Specialists and Administrators can create or modify ads.');
       return;
+    }
+    if (this.isEditing()) {
+      const ad = this.campaignService.ads().find((item) => item.id === this.editingAdId());
+      if (!ad || !this.isAdCreator(ad)) {
+        this.errorMessage.set('Access Denied: Only the ad creator can edit this ad metric.');
+        return;
+      }
     }
 
     if (!this.formModel.name || !this.formModel.name.trim()) {
@@ -295,6 +311,10 @@ export class AdsComponent implements OnInit {
       this.errorMessage.set('Access Denied: Only Digital Marketing Specialists and Administrators can delete ads.');
       return;
     }
+    if (!this.isAdCreator(ad)) {
+      this.errorMessage.set('Access Denied: Only the ad creator can delete this ad metric.');
+      return;
+    }
     this.deleteConfirmTarget.set(ad);
   }
 
@@ -309,6 +329,11 @@ export class AdsComponent implements OnInit {
     }
     const target = this.deleteConfirmTarget();
     if (!target) return;
+    if (!this.isAdCreator(target)) {
+      this.deleteConfirmTarget.set(null);
+      this.errorMessage.set('Access Denied: Only the ad creator can delete this ad metric.');
+      return;
+    }
 
     this.campaignService.deleteAd(target.id).subscribe({
       next: () => {
@@ -376,4 +401,3 @@ export class AdsComponent implements OnInit {
     return list;
   }
 }
-

@@ -11,7 +11,20 @@ function emitRealtimeEvent(event, payload) {
   }
 }
 
+function emitUserRealtimeEvent(event, payload, userIds) {
+  if (!ioInstance) return;
+  const recipients = Array.isArray(userIds) ? userIds : [userIds];
+  for (const userId of recipients) {
+    if (userId === undefined || userId === null || userId === '') continue;
+    ioInstance.to(`user:${String(userId).trim().toLowerCase()}`).emit(event, {
+      ...payload,
+      timestamp: new Date().toISOString(),
+    });
+  }
+}
+
 module.exports = {
   setSocketIO,
   emitRealtimeEvent,
+  emitUserRealtimeEvent,
 };

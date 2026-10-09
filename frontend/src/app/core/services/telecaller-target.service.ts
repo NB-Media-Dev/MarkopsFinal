@@ -1,7 +1,7 @@
 import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { NotificationService } from './notification.service';
+import { NotificationService, TELECALLING_PACKAGE_TARGET_ROUTE } from './notification.service';
 import { AuthService } from './auth.service';
 import { safeFetch } from '../utils/api-url.utils';
 
@@ -64,6 +64,28 @@ export class TelecallerTargetService {
 
   readonly commonTarget = computed(() => this._commonTarget());
   readonly targets = computed(() => this._targets());
+
+  private async sendNotification(
+    userId: string | number,
+    title: string,
+    message: string,
+    type: 'WARNING' | 'SUCCESS'
+  ): Promise<void> {
+    const response = await safeFetch('/api/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId,
+        title,
+        message,
+        type,
+        targetRoute: TELECALLING_PACKAGE_TARGET_ROUTE,
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`Notification delivery to user ${userId} failed (${response.status}): ${await response.text()}`);
+    }
+  }
 
   constructor() {
     if (this.isBrowser) {
@@ -248,54 +270,34 @@ export class TelecallerTargetService {
 
         for (const recipientId of targetsToNotify) {
           try {
-            await safeFetch('/api/notifications', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userId: recipientId,
-                title: alertTitle,
-                message: alertMessage,
-                type: 'WARNING',
-                targetRoute: '/package-works?package=CAREERMATE&workspace=CURRENT-AFFAIR-PACKAGE&dept=TELECALLING&tab=TELECALLER_MEMBERS',
-              }),
-            });
+            await this.sendNotification(recipientId, alertTitle, alertMessage, 'WARNING');
           } catch (err) {
-            console.log('API notification call error:', err);
+            console.error('API notification delivery failed:', err);
           }
         }
       } else {
-       
         try {
-        
-          await safeFetch('/api/notifications', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              userId: tc.id,
-              title: 'Target Achieved! Congratulations!',
-              message: `Outstanding work, ${tc.fullName}! You have successfully achieved your daily target today (${callsCount} / ${common.dailyCallsTarget} calls, ${achievementPct}% achieved).`,
-              type: 'SUCCESS',
-              targetRoute: '/package-works?package=CAREERMATE&workspace=CURRENT-AFFAIR-PACKAGE&dept=TELECALLING&tab=TELECALLER_MEMBERS',
-            }),
-          });
-
-      
-          const targetsToNotify = Array.from(new Set([adminUser.id, mktgManager.id]));
-          for (const recipientId of targetsToNotify) {
-            await safeFetch('/api/notifications', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userId: recipientId,
-                title: `Telecaller Target Achieved: ${tc.fullName}`,
-                message: `${tc.fullName} has reached their daily target today with ${callsCount} calls (${achievementPct}% achieved)!`,
-                type: 'SUCCESS',
-                targetRoute: '/package-works?package=CAREERMATE&workspace=CURRENT-AFFAIR-PACKAGE&dept=TELECALLING&tab=TELECALLER_MEMBERS',
-              }),
-            });
-          }
+          await this.sendNotification(
+            tc.id,
+            'Target Achieved! Congratulations!',
+            `Outstanding work, ${tc.fullName}! You have successfully achieved your daily target today (${callsCount} / ${common.dailyCallsTarget} calls, ${achievementPct}% achieved).`,
+            'SUCCESS'
+          );
         } catch (err) {
-          console.log('API target achieved notification notice:', err);
+          console.error('Telecaller target notification delivery failed:', err);
+        }
+        const targetsToNotify = Array.from(new Set([adminUser.id, mktgManager.id]));
+        for (const recipientId of targetsToNotify) {
+          try {
+            await this.sendNotification(
+              recipientId,
+              `Telecaller Target Achieved: ${tc.fullName}`,
+              `${tc.fullName} has reached their daily target today with ${callsCount} calls (${achievementPct}% achieved)!`,
+              'SUCCESS'
+            );
+          } catch (err) {
+            console.error('Target achievement notification delivery failed:', err);
+          }
         }
       }
     }

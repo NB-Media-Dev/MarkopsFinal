@@ -4,7 +4,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { TaskPriority } from '../../../../../core/models/task.model';
 
 export interface TaskTypeOption {
-  id: 'BANNER_DESIGN' | 'POST_DESIGN' | 'VIDEO'; 
+  id: 'BANNER_DESIGN' | 'POST_DESIGN' | 'VIDEO';
   name: string;
   subtitle: string;
   icon: string;
@@ -161,7 +161,7 @@ export class CreateTaskModalComponent implements OnChanges {
  getRelativeDeadline(dateStr?: string): string {
   const raw = dateStr || this.createTaskForm.get('dueDate')?.value;
   if (!raw) return '';
-  
+
   try {
 
     const target = new Date(raw);
@@ -171,14 +171,14 @@ export class CreateTaskModalComponent implements OnChanges {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
 
-  
+
     const diffDays = Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
-  
+
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Tomorrow';
     if (diffDays > 1) return `In ${diffDays} days`;
-    
+
     return 'Overdue';
   } catch {
     return '';

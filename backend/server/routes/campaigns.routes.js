@@ -45,11 +45,53 @@ function mapCampaignRow(row) {
     conversions: Math.round(numericLeads * 0.15),
     convRate: 15,
     revenue: Math.round(numericLeads * 0.15 * 3000),
-    ownerId: String(row.owner_id || 1),
-    owner_id: row.owner_id || 1,
+    ownerId: row.owner_id == null ? '' : String(row.owner_id),
+    owner_id: row.owner_id ?? null,
     ownerName: 'Marketing Operations',
     createdAt: row.created_at ? new Date(row.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
     updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
+  };
+}
+
+function requireRecordCreator(resource) {
+  const isCampaign = resource === 'campaign';
+  const table = isCampaign ? 'campaigns' : 'ads';
+  const creatorColumn = isCampaign ? 'owner_id' : 'created_by';
+  const store = isCampaign ? dbCampaignsStore : dbAdsStore;
+  const creatorProperty = isCampaign ? 'ownerId' : 'createdBy';
+  const label = isCampaign ? 'Campaign' : 'Ad record';
+
+  return async (req, res, next) => {
+    if (!req.user?.id) {
+      return res.status(401).json({ error: 'Authentication required.' });
+    }
+
+    try {
+      let creatorId;
+      if (dbPool.isConnected()) {
+        const [rows] = await dbPool.queryStrict(
+          `SELECT ${creatorColumn} FROM ${table} WHERE id = ? LIMIT 1`,
+          [req.params.id]
+        );
+        if (!rows.length) {
+          return res.status(404).json({ error: `${label} #${req.params.id} not found.` });
+        }
+        creatorId = rows[0][creatorColumn];
+      } else {
+        const record = store.find((item) => String(item.id) === String(req.params.id));
+        if (!record) {
+          return res.status(404).json({ error: `${label} #${req.params.id} not found.` });
+        }
+        creatorId = record[creatorProperty];
+      }
+
+      if (creatorId == null || String(creatorId) !== String(req.user.id)) {
+        return res.status(403).json({ error: `Only the creator can modify or delete this ${label.toLowerCase()}.` });
+      }
+      return next();
+    } catch (error) {
+      return next(error);
+    }
   };
 }
 
@@ -74,7 +116,7 @@ router.get('/campaigns', async (req, res) => {
 
 
 router.post('/campaigns', async (req, res) => {
-  const effectiveRole = String(req.body.creatorRole || req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
+  const effectiveRole = String(req.user?.role || '').toUpperCase();
   const allowedRoles = ['ADMINISTRATOR', 'MARKETING_MANAGER', 'DIGITAL_MARKETING'];
 
   if (effectiveRole && !allowedRoles.includes(effectiveRole)) {
@@ -103,9 +145,6 @@ router.post('/campaigns', async (req, res) => {
     conversions,
     convRate,
     revenue,
-    ownerId,
-    ownerName,
-    ownerEmail,
   } = req.body;
 
   if (!name) {
@@ -113,9 +152,11 @@ router.post('/campaigns', async (req, res) => {
   }
 
  
-  const id = `cmp_${Math.random().toString(36).substring(2, 10)}`;
-  const effectiveOwnerIdNumeric = parseInt(String(ownerId || req.headers['x-user-id'] || '').replace(/\D/g, ''), 10) || 1;
-  const effectiveOwnerName = ownerName || req.headers['x-user-name'] || 'Digital Marketer';
+  const effectiveOwnerIdNumeric = Number(req.user?.id);
+  if (!Number.isSafeInteger(effectiveOwnerIdNumeric) || effectiveOwnerIdNumeric < 1) {
+    return res.status(401).json({ error: 'Authenticated user ID is invalid.' });
+  }
+  const effectiveOwnerName = req.user.fullName || 'Digital Marketer';
 
   const numericSpend = Number(spend) || 0;
   const numericLeads = Number(leadsCount) || 0;
@@ -124,7 +165,7 @@ router.post('/campaigns', async (req, res) => {
   const computedConvRate = convRate !== undefined && convRate !== null ? Number(convRate) : (numericLeads > 0 ? Number(((numericConversions / numericLeads) * 100).toFixed(1)) : 0);
 
   const newCmp = {
-    id, 
+    id: `cmp_${Math.random().toString(36).substring(2, 10)}`,
     name: String(name).trim(),
     objective: String(objective || 'LEAD_GENERATION'),
     productId: productId || null,
@@ -144,16 +185,13 @@ router.post('/campaigns', async (req, res) => {
     conversions: numericConversions,
     convRate: computedConvRate,
     revenue: Number(revenue) || numericConversions * 3000,
-    ownerId: effectiveOwnerIdNumeric,
+    ownerId: String(effectiveOwnerIdNumeric),
     ownerName: effectiveOwnerName,
     createdAt: new Date().toISOString().split('T')[0],
   };
 
-  dbCampaignsStore.unshift(newCmp);
-  
-  if (dbPool) {
-    try {
-      await dbPool.query(
+  if (dbPool.isConnected()) {
+      const [result] = await dbPool.queryStrict(
         `INSERT INTO campaigns (name, objective, product_id, status, budget, spend, leads_count, owner_id)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -167,18 +205,17 @@ router.post('/campaigns', async (req, res) => {
           newCmp.ownerId 
         ]
       );
-    } catch (e) {
-      console.log('[MySQL Notice] Save campaign to database failed:', e?.message || e);
-    }
+      newCmp.id = String(result.insertId);
   }
+  dbCampaignsStore.unshift(newCmp);
 
 
   await recordAuditLog(dbPool, {
     actorId: String(effectiveOwnerIdNumeric),
-    actorEmail: ownerEmail || 'admin@markops.io',
+    actorEmail: req.user.email || 'admin@markops.io',
     action: 'CAMPAIGN_CREATED',
     entityType: 'Campaign',
-    entityId: id, 
+    entityId: newCmp.id,
     newState: { name: newCmp.name, status: newCmp.status, budget: newCmp.budget },
     ipAddress: req.ip || req.socket.remoteAddress,
     userAgent: req.headers['user-agent'],
@@ -190,8 +227,8 @@ router.post('/campaigns', async (req, res) => {
 
 
 
-router.put('/campaigns/:id', async (req, res) => {
-  const effectiveRole = String(req.body.userRole || req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
+router.put('/campaigns/:id', requireRecordCreator('campaign'), async (req, res) => {
+  const effectiveRole = String(req.user?.role || '').toUpperCase();
   const allowedRoles = ['ADMINISTRATOR', 'MARKETING_MANAGER', 'DIGITAL_MARKETING'];
 
   if (effectiveRole && !allowedRoles.includes(effectiveRole)) {
@@ -256,22 +293,16 @@ router.put('/campaigns/:id', async (req, res) => {
     updatedAt: new Date().toISOString(),
   };
 
-  if (index !== -1) {
-    dbCampaignsStore[index] = updatedCmp;
-  } else {
-    dbCampaignsStore.unshift(updatedCmp);
-  }
-
-  if (dbPool) {
-    try {
-      await dbPool.query(
+  if (dbPool.isConnected()) {
+      const [result] = await dbPool.queryStrict(
         `UPDATE campaigns SET name = ?, objective = ?, status = ?, budget = ?, spend = ?, leads_count = ? WHERE id = ?`,
         [updatedCmp.name, updatedCmp.objective, updatedCmp.status, updatedCmp.budget, updatedCmp.spend, updatedCmp.leadsCount, id]
       );
-    } catch (e) {
-      console.log('[MySQL Error] Update campaign failed:', e.message);
-    }
+      if (!result.affectedRows) {
+        return res.status(404).json({ error: `Campaign #${id} not found.` });
+      }
   }
+  dbCampaignsStore[index] = updatedCmp;
 
  
   if (name && (!existing || name !== existing.name)) {
@@ -298,8 +329,8 @@ router.put('/campaigns/:id', async (req, res) => {
 });
 
 
-router.delete('/campaigns/:id', async (req, res) => {
-  const effectiveRole = String(req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
+router.delete('/campaigns/:id', requireRecordCreator('campaign'), async (req, res) => {
+  const effectiveRole = String(req.user?.role || '').toUpperCase();
   const allowedRoles = ['ADMINISTRATOR', 'MARKETING_MANAGER', 'DIGITAL_MARKETING'];
 
   if (effectiveRole && !allowedRoles.includes(effectiveRole)) {
@@ -311,18 +342,34 @@ router.delete('/campaigns/:id', async (req, res) => {
   const { id } = req.params;
   const index = dbCampaignsStore.findIndex((c) => String(c.id) === String(id));
   let deletedName = `Campaign #${id}`;
-
-  if (index !== -1) {
-    const [deleted] = dbCampaignsStore.splice(index, 1);
-    if (deleted && deleted.name) deletedName = deleted.name;
+  const hasMemoryAdsOwnedByOthers = dbAdsStore.some((ad) =>
+    String(ad.campaignId) === String(id) &&
+    (ad.createdBy == null || String(ad.createdBy) !== String(req.user.id))
+  );
+  if (hasMemoryAdsOwnedByOthers) {
+    return res.status(409).json({
+      error: 'This campaign has ad metrics created by other users. Each ad creator must delete their own ad metrics first.',
+    });
   }
 
-  if (dbPool) {
-    try {
-      await dbPool.query(`DELETE FROM campaigns WHERE id = ?`, [id]);
-    } catch (e) {
-      console.log('[MySQL Error] Delete campaign failed:', e.message);
+  if (dbPool.isConnected()) {
+    const [adsOwnedByOthers] = await dbPool.queryStrict(
+      'SELECT id FROM ads WHERE campaign_id = ? AND (created_by IS NULL OR created_by <> ?) LIMIT 1',
+      [id, req.user.id]
+    );
+    if (adsOwnedByOthers.length) {
+      return res.status(409).json({
+        error: 'This campaign has ad metrics created by other users. Each ad creator must delete their own ad metrics first.',
+      });
     }
+    const [result] = await dbPool.queryStrict(`DELETE FROM campaigns WHERE id = ?`, [id]);
+    if (!result.affectedRows) {
+      return res.status(404).json({ error: `Campaign #${id} not found.` });
+    }
+  }
+  if (index !== -1) {
+    const [deleted] = dbCampaignsStore.splice(index, 1);
+    if (deleted?.name) deletedName = deleted.name;
   }
 
   await recordAuditLog(dbPool, {
@@ -374,6 +421,7 @@ router.get('/ads', async (req, res) => {
 
           return {
             id: String(r.id),
+            createdBy: r.created_by == null ? null : String(r.created_by),
             campaignId: String(r.campaign_id || ''),
             campaign_id: r.campaign_id,
             campaignName: r.campaign_name || 'General Funnel',
@@ -414,7 +462,7 @@ router.get('/ads', async (req, res) => {
 
 
 router.post('/ads', async (req, res) => {
-  const effectiveRole = String(req.body.creatorRole || req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
+  const effectiveRole = String(req.user?.role || '').toUpperCase();
   const allowedRoles = ['ADMINISTRATOR', 'DIGITAL_MARKETING'];
 
   if (effectiveRole && !allowedRoles.includes(effectiveRole)) {
@@ -443,7 +491,11 @@ router.post('/ads', async (req, res) => {
     return res.status(400).json({ error: 'Ad Name is required.' });
   }
 
-  const id = `ad_${Math.random().toString(36).substring(2, 10)}`;
+  const creatorId = Number(req.user?.id);
+  if (!Number.isSafeInteger(creatorId) || creatorId < 1) {
+    return res.status(401).json({ error: 'Authenticated user ID is invalid.' });
+  }
+  let id = `ad_${Math.random().toString(36).substring(2, 10)}`;
   const numericSpend = Number(spend) || 0;
   const numericLeads = Number(leadsCount) || 0;
   const computedCpl = cpl !== undefined && cpl !== null ? Number(cpl) : (numericLeads > 0 ? Number((numericSpend / numericLeads).toFixed(2)) : 0);
@@ -456,36 +508,26 @@ router.post('/ads', async (req, res) => {
   let mysqlCampaignId = null;
 
  
-  if (dbPool && campaignId) {
-    try {
-
-      const [campaigns] = await dbPool.query(
-        `SELECT id, name FROM campaigns WHERE name = ? LIMIT 1`, 
-        [matchedCampaignName || '']
-      );
-      
-      if (campaigns && campaigns.length > 0) {
-        mysqlCampaignId = campaigns[0].id;
-        matchedCampaignName = campaigns[0].name;
-      } else {
-        const [firstCmp] = await dbPool.query(`SELECT id, name FROM campaigns LIMIT 1`);
-        if (firstCmp && firstCmp.length > 0) {
-          mysqlCampaignId = firstCmp[0].id;
-          matchedCampaignName = firstCmp[0].name;
-        }
-      }
-    } catch (dbErr) {
-      console.log('[MySQL LookUp Notice] Failed to find parent campaign:', dbErr.message);
+  if (dbPool.isConnected() && campaignId) {
+    const [campaigns] = await dbPool.queryStrict(
+      'SELECT id, name FROM campaigns WHERE id = ? LIMIT 1',
+      [campaignId]
+    );
+    if (campaigns.length) {
+      mysqlCampaignId = campaigns[0].id;
+      matchedCampaignName = campaigns[0].name;
+    } else {
+      return res.status(400).json({ error: 'Selected campaign was not found.' });
     }
   }
 
-
-  if (!mysqlCampaignId) {
-    mysqlCampaignId = 1; 
+  if (dbPool.isConnected() && !mysqlCampaignId) {
+    return res.status(400).json({ error: 'A valid campaign is required to create an ad.' });
   }
 
   const newAd = {
     id,
+    createdBy: String(creatorId),
     name: String(name).trim(),
     campaignId: campaignId || '',
     campaignName: matchedCampaignName || 'General Digital Funnel',
@@ -508,16 +550,13 @@ router.post('/ads', async (req, res) => {
     lastSyncedAt: new Date().toISOString(),
   };
 
-  dbAdsStore.unshift(newAd);
-  
-  if (dbPool) {
-    try {
-    
-      await dbPool.query(
-        `INSERT INTO ads (campaign_id, name, platform, status, spend, impressions, clicks, leads_count, platform_ad_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  if (dbPool.isConnected()) {
+      const [result] = await dbPool.queryStrict(
+        `INSERT INTO ads (campaign_id, created_by, name, platform, status, spend, impressions, clicks, leads_count, platform_ad_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           mysqlCampaignId,     
+          creatorId,
           newAd.name,              
           newAd.platform,          
           newAd.status,            
@@ -528,14 +567,13 @@ router.post('/ads', async (req, res) => {
           newAd.platformAdId       
         ]
       );
-    } catch (e) {
-      console.log('[MySQL Notice] Save ad metric to database failed:', e?.message || e);
-    }
+      newAd.id = String(result.insertId);
   }
+  dbAdsStore.unshift(newAd);
 
   await recordAuditLog(dbPool, {
-    actorId: req.headers['x-user-id'] || 'usr_admin_01',
-    actorEmail: req.headers['x-user-email'] || 'admin@markops.io',
+    actorId: String(creatorId),
+    actorEmail: req.user.email || 'admin@markops.io',
     action: 'AD_CREATED',
     entityType: 'AdAccount',
     entityId: id,
@@ -550,8 +588,8 @@ router.post('/ads', async (req, res) => {
 
 
 
-router.put('/ads/:id', async (req, res) => {
-  const effectiveRole = String(req.body.userRole || req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
+router.put('/ads/:id', requireRecordCreator('ad'), async (req, res) => {
+  const effectiveRole = String(req.user?.role || '').toUpperCase();
   const allowedRoles = ['ADMINISTRATOR', 'DIGITAL_MARKETING'];
 
   if (effectiveRole && !allowedRoles.includes(effectiveRole)) {
@@ -618,22 +656,16 @@ router.put('/ads/:id', async (req, res) => {
     lastSyncedAt: new Date().toISOString(),
   };
 
-  if (index !== -1) {
-    dbAdsStore[index] = updatedAd;
-  } else {
-    dbAdsStore.unshift(updatedAd);
-  }
-
-  if (dbPool) {
-    try {
-      await dbPool.query(
-        `UPDATE ads SET name = ?, platform = ?, status = ?, spend = ?, impressions = ?, clicks = ?, leads_count = ? WHERE id = ?`,
-        [updatedAd.name, updatedAd.platform, updatedAd.status, updatedAd.spend, updatedAd.impressions, updatedAd.clicks, updatedAd.leadsCount, id]
-      );
-    } catch (e) {
-      console.log('[MySQL Error] Update ad failed:', e.message);
+  if (dbPool.isConnected()) {
+    const [result] = await dbPool.queryStrict(
+      `UPDATE ads SET name = ?, platform = ?, status = ?, spend = ?, impressions = ?, clicks = ?, leads_count = ? WHERE id = ?`,
+      [updatedAd.name, updatedAd.platform, updatedAd.status, updatedAd.spend, updatedAd.impressions, updatedAd.clicks, updatedAd.leadsCount, id]
+    );
+    if (!result.affectedRows) {
+      return res.status(404).json({ error: `Ad record #${id} not found.` });
     }
   }
+  dbAdsStore[index] = updatedAd;
 
   await recordAuditLog(dbPool, {
     actorId: req.headers['x-user-id'] || 'usr_admin_01',
@@ -651,8 +683,8 @@ router.put('/ads/:id', async (req, res) => {
 });
 
 
-router.delete('/ads/:id', async (req, res) => {
-  const effectiveRole = String(req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
+router.delete('/ads/:id', requireRecordCreator('ad'), async (req, res) => {
+  const effectiveRole = String(req.user?.role || '').toUpperCase();
   const allowedRoles = ['ADMINISTRATOR', 'DIGITAL_MARKETING'];
 
   if (effectiveRole && !allowedRoles.includes(effectiveRole)) {
@@ -663,20 +695,19 @@ router.delete('/ads/:id', async (req, res) => {
 
   const { id } = req.params;
   const index = dbAdsStore.findIndex((a) => String(a.id) === String(id));
-  let deletedName = `Ad #${id}`;
-
-  if (index !== -1) {
-    const [deleted] = dbAdsStore.splice(index, 1);
-    if (deleted && deleted.name) deletedName = deleted.name;
+  if (index === -1) {
+    return res.status(404).json({ error: `Ad record #${id} not found.` });
   }
+  let deletedName = dbAdsStore[index]?.name || `Ad #${id}`;
 
-  if (dbPool) {
-    try {
-      await dbPool.query(`DELETE FROM ads WHERE id = ?`, [id]);
-    } catch (e) {
-      console.log('[MySQL Error] Delete ad failed:', e.message);
+  if (dbPool.isConnected()) {
+    const [result] = await dbPool.queryStrict(`DELETE FROM ads WHERE id = ?`, [id]);
+    if (!result.affectedRows) {
+      return res.status(404).json({ error: `Ad record #${id} not found.` });
     }
   }
+  const [deleted] = dbAdsStore.splice(index, 1);
+  deletedName = deleted?.name || deletedName;
 
   await recordAuditLog(dbPool, {
     actorId: req.headers['x-user-id'] || 'usr_admin_01',
@@ -684,18 +715,18 @@ router.delete('/ads/:id', async (req, res) => {
     action: 'AD_DELETED',
     entityType: 'AdAccount',
     entityId: id,
-    newState: { deletedAdName: deleted.name },
+    newState: { deletedAdName: deletedName },
     ipAddress: req.ip || req.socket.remoteAddress,
     userAgent: req.headers['user-agent'],
   });
 
   emitRealtimeEvent('ad:deleted', { id });
-  return res.json({ success: true, message: `Ad "${deleted.name}" deleted successfully.`, id });
+  return res.json({ success: true, message: `Ad "${deletedName}" deleted successfully.`, id });
 });
 
 
 router.post('/ads/sync', async (req, res) => {
-  const effectiveRole = String(req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
+  const effectiveRole = String(req.user?.role || '').toUpperCase();
   const allowedRoles = ['ADMINISTRATOR', 'DIGITAL_MARKETING'];
 
   if (effectiveRole && !allowedRoles.includes(effectiveRole)) {

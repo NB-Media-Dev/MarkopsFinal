@@ -8,6 +8,7 @@ const cors = require('cors');
 const { Server: SocketIOServer } = require('socket.io');
 
 const { setSocketIO } = require('./events');
+const { authenticateJwt } = require('./middleware/auth.middleware');
 
 const authRoutes = require('./routes/auth.routes');
 const tasksRoutes = require('./routes/tasks.routes');
@@ -169,7 +170,6 @@ app.use('/uploads', (req, res) => {
   `);
 });
 
-const { authenticateJwt } = require('./middleware/auth.middleware');
 const { dbPool } = require('./db');
 
 app.use('/api/auth', authRoutes);
@@ -205,7 +205,45 @@ function setupSocketIO(httpServer) {
     allowEIO3: true,
   });
 
+  const authenticateSocket = authenticateJwt(dbPool);
+  io.use((socket, next) => {
+    const identity = socket.handshake.auth || {};
+    const req = {
+      headers: {
+        authorization: identity.token ? `Bearer ${identity.token}` : '',
+        'x-user-id': identity.userId == null ? '' : String(identity.userId),
+        'x-user-role': identity.role || '',
+        'x-user-email': identity.email || '',
+        'x-user-name': identity.fullName || '',
+      },
+      cookies: {},
+    };
+    const res = {
+      statusCode: 200,
+      status(code) {
+        this.statusCode = code;
+        return this;
+      },
+      json(body) {
+        this.body = body;
+        return this;
+      },
+    };
+    let nextCalled = false;
+
+    authenticateSocket(req, res, (error) => {
+      nextCalled = true;
+      if (error) return next(error);
+      if (!req.user?.id) return next(new Error('Authentication required.'));
+      socket.data.userId = String(req.user.id).trim().toLowerCase();
+      return next();
+    }).then(() => {
+      if (!nextCalled) next(new Error(res.body?.error || 'Authentication required.'));
+    }).catch(next);
+  });
+
   io.on('connection', (socket) => {
+    socket.join(`user:${socket.data.userId}`);
     console.log('[Socket.IO] Realtime client connected:', socket.id);
     socket.on('disconnect', () => {
       console.log('[Socket.IO] Realtime client disconnected:', socket.id);

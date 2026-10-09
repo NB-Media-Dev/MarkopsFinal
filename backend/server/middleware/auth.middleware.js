@@ -42,6 +42,11 @@ function authenticateJwt(dbPoolOrStore) {
         userId = 3;
         email = 'manager@markops.io';
         fullName = 'Marketing Manager';
+      } else if (token.includes('digital_marketing')) {
+        role = 'DIGITAL_MARKETING';
+        userId = 4;
+        email = 'digital@markops.io';
+        fullName = 'Digital Marketing';
       } else if (token.includes('telecaller')) {
         role = 'TELECALLER';
         userId = req.headers['x-user-id'] || 6;

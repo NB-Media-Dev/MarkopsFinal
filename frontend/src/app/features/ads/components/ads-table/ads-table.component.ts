@@ -13,6 +13,7 @@ import { TaskManagementService } from '../../../../core/services/task-management
 export class AdsTableComponent {
   @Input() ads: AdItem[] = [];
   @Input() canManageAds = false;
+  @Input() currentUserId: string | number | null = null;
 
   @Output() create = new EventEmitter<void>();
   @Output() edit = new EventEmitter<AdItem>();
@@ -69,6 +70,13 @@ export class AdsTableComponent {
 
   onCreate() {
     this.create.emit();
+  }
+
+  canManageAd(ad: AdItem): boolean {
+    return this.canManageAds &&
+      this.currentUserId != null &&
+      ad.createdBy != null &&
+      String(ad.createdBy) === String(this.currentUserId);
   }
 
   onEdit(ad: AdItem) {

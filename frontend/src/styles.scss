@@ -1807,3 +1807,56 @@ html, body {
     min-width: 1250px;
   }
 }
+
+@media (max-width: 420px) {
+  app-root {
+    display: block;
+    width: 100%;
+    min-width: 0;
+  }
+
+  [class*="kpi-grid"],
+  [class*="kpi-row"],
+  [class*="kpis-grid"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .page-header h1,
+  .page-header h2,
+  .page-heading {
+    font-size: clamp(1.15rem, 5vw, 1.4rem) !important;
+  }
+
+  .page-header .subtitle,
+  .page-header .page-sub {
+    overflow-wrap: anywhere;
+  }
+
+  .table-responsive,
+  .table-responsive-wrapper {
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+  }
+}
+
+@media (max-width: 640px) {
+  .table-responsive,
+  .table-responsive-wrapper {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto !important;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    touch-action: pan-x;
+  }
+
+  .table-responsive > table,
+  .table-responsive-wrapper > table {
+    width: max-content;
+    min-width: max(100%, 680px);
+    table-layout: auto;
+  }
+}
