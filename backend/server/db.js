@@ -1,6 +1,4 @@
 
-
-
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
@@ -64,7 +62,7 @@ async function initDatabase() {
         host: process.env.DB_HOST || 'localhost',
         port: Number(process.env.DB_PORT) || 3306,
         user: process.env.DB_USER || 'root',
-        password: process.env.DB_PASSWORD || 'tiger',
+        password: process.env.DB_PASSWORD || 'nb123',
         database: process.env.DB_NAME || 'markops',
         connectTimeout: 10000,
         waitForConnections: true,
@@ -77,13 +75,20 @@ async function initDatabase() {
 
     activePool = pool;
     console.log('[MySQL DB] Successfully connected to MySQL pool.');
+
+    try { await activePool.query('ALTER TABLE notifications ADD COLUMN target_route VARCHAR(255) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN package_name VARCHAR(255) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN product_id VARCHAR(100) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN product_name VARCHAR(255) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN remarks TEXT DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN notes TEXT DEFAULT NULL'); } catch (e) {}
   } catch (err) {
     console.log('[MySQL DB Notice] MySQL unreachable, operating in high-performance memory store mode:', err?.message || err);
     activePool = null;
   }
 }
 
-
+// In-Memory Fallback Stores (Clean slate for production use)
 const dbUsersStore = [];
 const dbTasksStore = [];
 const dbCampaignsStore = [];

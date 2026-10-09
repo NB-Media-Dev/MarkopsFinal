@@ -65,3 +65,31 @@ export const SYSTEM_ROLES_METADATA: RoleMetadata[] = [
     permissionsCount: 8,
   },
 ];
+
+export interface UserPerformanceRecord {
+  user: ManagedUser;
+  userId: string;
+  name: string;
+  email: string;
+  role: string;
+  roleLabel: string;
+  roleBadgeClass: string;
+  avatarColor: string;
+  department: string;
+  isActive: boolean;
+  outputMain: string;
+  outputSub: string;
+  efficiencyMain: string;
+  efficiencySub: string;
+  qualificationPct: number;
+  ratingScore: string;
+  ratingBadge: string;
+  ratingBadgeClass: string;
+  tasksAssignedCount: number;
+  tasksCompletedCount: number;
+  tasksInProgressCount: number;
+  tasksRevisionCount: number;
+  taskCompletionPct: number;
+  tasks: any[];
+  roleMetrics: { label: string; value: string | number }[];
+}

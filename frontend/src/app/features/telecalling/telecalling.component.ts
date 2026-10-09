@@ -769,6 +769,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     this.leadService.loadSummary().subscribe();
     this.userService.loadUsersFromDatabase();
     this.campaignService.loadCampaigns().subscribe();
+    this.campaignService.loadAds().subscribe();
 
     this.clockInterval = setInterval(() => {
       this.currentTime.set(Date.now());
@@ -1012,7 +1013,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     const finalFollowUpTime = this.enableReminder ? this.followUpTime : '';
 
     this.leadService.leads.update((list) =>
-      list.map((l) => (l.id === lead.id || (l.phone && lead.phone && l.phone.replace(/\D/g, '') === lead.phone.replace(/\D/g, '')) ? { ...l, status: finalOutcome as any } : l))
+      list.map((l) => (l.id === lead.id || (l.phone && lead.phone && l.phone.replace(/\D/g, '') === lead.phone.replace(/\D/g, '')) ? { ...l, status: finalOutcome as any, remarks: this.callRemarks, notes: this.callRemarks } : l))
     );
 
     this.leadService
@@ -1057,6 +1058,8 @@ export class TelecallingComponent implements OnInit, OnDestroy {
                     assignedTo: res.lead?.assignedTo || l.assignedTo,
                     assigneeName: res.lead?.assigneeName || l.assigneeName,
                     status: finalOutcome as any,
+                    remarks: this.callRemarks || (res.lead as any)?.remarks || (l as any)?.remarks || '',
+                    notes: this.callRemarks || (res.lead as any)?.notes || (l as any)?.notes || '',
                     updatedAt: new Date().toISOString(),
                   };
                 }

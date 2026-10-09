@@ -128,9 +128,25 @@
             @if (availableCampaigns.length === 0) {
               <option value="">General Ad Campaign</option>
             }
-            @for (cmp of availableCampaigns; track cmp) {
+            @for (cmp of availableCampaigns; track cmp.id) {
               <option [value]="cmp.id">
                 {{ cmp.name }}
+              </option>
+            }
+          </select>
+        </div>
+        <!-- Row 4.1: Ad Creative / Ads Dropdown Selection (Digital Marketing) -->
+        <div class="form-group">
+          <label class="form-label">Select Ad <span class="text-muted text-xs font-normal">(Digital Marketing Ad)</span></label>
+          <select
+            class="form-input custom-select"
+            [ngModel]="newAdId"
+            (change)="adChange.emit($event)"
+          >
+            <option value="">-- No specific Ad / Select Ad --</option>
+            @for (ad of availableAds; track ad.id) {
+              <option [value]="ad.id">
+                {{ ad.name }}{{ ad.platform ? ' (' + ad.platform + ')' : '' }}
               </option>
             }
           </select>

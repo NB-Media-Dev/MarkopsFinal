@@ -64,6 +64,8 @@ export interface Task {
   id: string;
   title: string;
   packageName?: string;
+  productId?: string;
+  productName?: string;
   description?: string;
   content?: string;
   attachmentUrl?: string;
@@ -91,6 +93,8 @@ export interface Task {
 export interface CreateTaskRequest {
   title: string;
   packageName?: string;
+  productId?: string;
+  productName?: string;
   description?: string;
   content?: string;
   attachmentUrl?: string;

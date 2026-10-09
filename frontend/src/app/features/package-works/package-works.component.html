@@ -44,9 +44,9 @@
         </div>
       </nav>
 
-      <!-- Page Heading After Breadcrumbs -->
+
       <div class="page-title-block">
-        <!-- Root Packages Catalog Level -->
+     
         @if (!activeWorkspacePackage()) {
           <div class="catalog-heading-row">
             <h1 class="page-main-heading">{{ activePackageMeta().name }} Product</h1>
@@ -56,7 +56,7 @@
     </div>
 
     <div class="header-actions-group">
-      <!-- When at Product level: Product Switcher Pills + Create Package Button -->
+
       @if (!activeWorkspacePackage()) {
         <div class="package-pill-switcher">
           @for (pkg of availablePackages; track pkg) {
@@ -78,7 +78,6 @@
        
       }
 
-      <!-- When inside a package workspace: Back button & product badge -->
       @if (activeWorkspacePackage(); as selectedPkg) {
         <div class="workspace-header-actions">
           <span class="workspace-product-badge">Product: {{ activePackageMeta().name }}</span>
@@ -87,9 +86,6 @@
     </div>
   </header>
 
-  <!-- ========================================================================= -->
-  <!-- LEVEL 1: PRODUCT PACKAGES OVERVIEW (When no package is clicked)           -->
-  <!-- ========================================================================= -->
   @if (!activeWorkspacePackage()) {
     <section class="product-hero-banner" [style.background-image]="'url(' + activeHeroBanner() + ')'">
       @if (canCreatePackage()) {
@@ -197,7 +193,6 @@
           </div>
         </section>
       } @else {
-        <!-- Simple, clean empty hero banner when package has no image -->
         <section class="product-hero-banner hero-banner-blank">
           @if (canEditPackage()) {
             <button
@@ -249,9 +244,15 @@
         [getAuditLogCreatorFn]="getAuditLogCreator.bind(this)"
         [getAuditLogAssigneeFn]="getAuditLogAssignee.bind(this)"
         [getAuditLogTaskTitleFn]="getAuditLogTaskTitle.bind(this)"
+        [getAuditLogTaskFileFn]="getAuditLogTaskFile.bind(this)"
         [activePackageDisplayNameFn]="activePackageDisplayName.bind(this)"
+        [teamPerformanceList]="teamPerformanceList()"
+        [activeUsersCount]="activeUsersCount()"
+        [productPackages]="packageService.packages()"
         (operationTabSelect)="selectOperationTab($event)"
         (openTaskAudit)="openTaskAuditModal($event.log, $event.event)"
+        (openTaskFile)="openTaskFileFromAudit($event.log, $event.event)"
+        (previewTaskDoc)="onPreviewTaskDocFromMatrix($event)"
       ></app-package-department-view>
     }
   }

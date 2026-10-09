@@ -69,6 +69,11 @@
               <span class="campaign-name-txt">{{
                 lead.campaignName || 'General Campaign'
               }}</span>
+              @if (lead.adName) {
+                <div class="lead-ad-txt text-xs text-slate-500 font-medium mt-0.5">
+                  Ad: {{ lead.adName }}
+                </div>
+              }
             </td>
             <td>
               <span class="status-pill" [ngClass]="getStatusBadgeClass(lead.status)">
