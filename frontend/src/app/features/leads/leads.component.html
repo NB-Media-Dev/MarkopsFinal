@@ -47,63 +47,31 @@
     </header>
   }
 
-  <!-- Embedded Toolbar Header (Visible inside Package Works) -->
-  @if (embedded) {
-    <div class="embedded-header-card">
-      <div class="embedded-info">
-        <div class="embedded-squircle-icon">
-          <span class="material-symbols-outlined">groups</span>
-        </div>
-        <div>
-          <h3 class="embedded-title">
-            {{ isTelecaller() ? 'Assigned Leads Workspace' : 'Leads Workspace' }}
-          </h3>
-          <p class="embedded-sub">
-            Manage lead allocations, contact information, and pipeline progress
-          </p>
-        </div>
+  @if (leadUploadStatus()) {
+    <div class="alert-banner alert-success" role="status">
+      <div class="alert-icon-wrap">
+        <span class="material-symbols-outlined">check_circle</span>
       </div>
-      <div class="header-actions">
-        @if (canCreateLeads()) {
-          <button
-            class="btn-action-secondary btn-sm"
-            type="button"
-            [disabled]="isUploadingLeads()"
-            (click)="leadFileInput.click()"
-          >
-            <span class="material-symbols-outlined fs-16">upload_file</span>
-            <span>{{ isUploadingLeads() ? 'Uploading...' : 'Upload Excel' }}</span>
-          </button>
-        }
-        @if (canCreateLeads()) {
-          <button class="btn-action-secondary btn-sm" (click)="openModal()">
-            <span class="material-symbols-outlined fs-16">person_add</span>
-            <span>Add Lead</span>
-          </button>
-        }
-        @if (!canCreateLeads() && !isTelecaller()) {
-          <div class="role-restricted-badge">
-            <span class="material-symbols-outlined text-amber fs-16">lock</span>
-            <span>Lead creation restricted to Marketing roles</span>
-          </div>
-        }
+      <span class="alert-text">{{ leadUploadStatus() }}</span>
+      <button type="button" class="alert-dismiss-btn" (click)="leadUploadStatus.set(null)" title="Dismiss">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+  }
+  @if (leadUploadError()) {
+    <div class="alert-banner alert-danger" role="alert">
+      <div class="alert-icon-wrap">
+        <span class="material-symbols-outlined">error</span>
       </div>
+      <span class="alert-text">{{ leadUploadError() }}</span>
+      <button type="button" class="alert-dismiss-btn" (click)="leadUploadError.set(null)" title="Dismiss">
+        <span class="material-symbols-outlined">close</span>
+      </button>
     </div>
   }
 
-  @if (leadUploadStatus()) {
-    <p class="lead-upload-feedback success" role="status">{{ leadUploadStatus() }}</p>
-  }
-  @if (leadUploadError()) {
-    <p class="lead-upload-feedback error" role="alert">{{ leadUploadError() }}</p>
-  }
-  @if (canCreateLeads()) {
-    <p class="lead-upload-hint">Use columns: First Name, Last Name, Email, Phone, and Source. Campaign, status, and telecaller assignment are set automatically.</p>
-  }
-
-  <!-- TAB 1: ALL LEADS LIST VIEW -->
   @if (activeTab() === 'LEADS_LIST') {
-    <!-- 1. Leads Toolbar & Filters -->
+
     <app-leads-toolbar
       [searchQuery]="searchQuery()"
       [filterStatus]="filterStatus()"
@@ -112,6 +80,9 @@
       [isTelecaller]="isTelecaller()"
       [activeTelecallers]="activeTelecallers()"
       [availableCampaigns]="availableCampaigns()"
+      [canCreateLeads]="canCreateLeads()"
+      [isUploadingLeads]="isUploadingLeads()"
+      [embedded]="embedded"
       [hasActiveFilters]="hasActiveFilters()"
       [filteredLeadsCount]="filteredLeads.length"
       [myLeadsCount]="myLeadsList().length"
@@ -120,9 +91,10 @@
       (telecallerChange)="onTelecallerChange($event)"
       (campaignChange)="onCampaignChange($event)"
       (resetFilters)="resetFilters()"
+      (uploadExcel)="leadFileInput.click()"
+      (addLead)="openModal()"
     ></app-leads-toolbar>
 
-    <!-- 2. Leads Data Table Card -->
     <app-leads-table
       [isTelecaller]="isTelecaller()"
       [paginatedLeads]="paginatedLeads"
@@ -146,14 +118,12 @@
     ></app-leads-table>
   }
 
-  <!-- TAB 2: TELECALLING MONITORING DASHBOARD -->
   @if (activeTab() === 'TELECALLING_MONITOR') {
     <app-telecalling-monitor
       [summary]="leadService.summary()"
     ></app-telecalling-monitor>
   }
 
-  <!-- MODAL 1: SINGLE MANUAL LEAD MODAL -->
   <app-add-lead-modal
     [isOpen]="showModal()"
     [newFirstName]="newFirstName"
@@ -162,8 +132,10 @@
     [newPhone]="newPhone"
     [newSource]="newSource"
     [newCampaignId]="newCampaignId"
+    [newAdId]="newAdId"
     [newAssignedTelecallerId]="newAssignedTelecallerId"
     [availableCampaigns]="availableCampaigns()"
+    [availableAds]="availableAds()"
     [activeTelecallers]="activeTelecallers()"
     [isCreatingLead]="isCreatingLead()"
     (newFirstNameChange)="newFirstName = $event"
@@ -172,12 +144,12 @@
     (newPhoneChange)="newPhone = $event"
     (newSourceChange)="newSource = $event"
     (campaignChange)="onCampaignSelectChange($event)"
+    (adChange)="onAdSelectChange($event)"
     (telecallerChange)="onTelecallerSelectChange($event)"
     (closeModal)="closeModal()"
     (save)="createLead()"
   ></app-add-lead-modal>
 
-  <!-- MODAL 2: MANUAL ASSIGN MODAL -->
   <app-assign-lead-modal
     [lead]="selectedLeadForAssign"
     [selectedUserId]="selectedUserId"
@@ -187,7 +159,6 @@
     (confirm)="confirmAssign()"
   ></app-assign-lead-modal>
 
-  <!-- MODAL 3: EDIT LEAD MODAL (Creator Only) -->
   <app-edit-lead-modal
     [isOpen]="showEditModal()"
     [lead]="editingLead()"
@@ -214,7 +185,6 @@
     (save)="saveLeadEdit()"
   ></app-edit-lead-modal>
 
-  <!-- MODAL 4: LEAD DETAILS & TELECALLING HISTORY MODAL -->
   <app-lead-details-modal
     [lead]="selectedLeadForDetails()"
     [historyCalls]="getLeadHistoryCalls(selectedLeadForDetails())"

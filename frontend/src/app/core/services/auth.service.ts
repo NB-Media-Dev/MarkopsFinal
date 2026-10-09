@@ -320,7 +320,7 @@ export class AuthService {
       safeFetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
-      }).catch((e) => console.log('Logout API notification notice:', e));
+      }).catch((e: any) => console.log('Logout API notification notice:', e));
       this.clearSession();
     } else {
       this._currentUser.set(null);

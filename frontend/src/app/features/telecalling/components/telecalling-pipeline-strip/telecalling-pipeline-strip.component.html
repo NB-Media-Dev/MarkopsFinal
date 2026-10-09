@@ -5,9 +5,9 @@
   viewMode === 'ASSIGNED'
 ) {
   <div class="pipeline-strip-container">
-    <!-- Top Date Filter Toolbar (All Data, Today, Yesterday + Calendar) & Campaign Filter -->
+
     <div class="pipeline-top-filter-bar">
-      <!-- Date & Calendar Filter Group -->
+
       <div class="filter-cluster date-cluster">
         <div class="cluster-label">
           <span class="material-symbols-outlined icon-lead-filter">calendar_month</span>
@@ -38,7 +38,7 @@
           >
             <span>Yesterday</span>
           </button>
-          <!-- Calendar Custom Date Picker -->
+
           <label
             class="calendar-picker-pill"
             [class.active]="dateFilter === 'CUSTOM'"
@@ -61,7 +61,7 @@
           </label>
         </div>
       </div>
-      <!-- Campaign Filter Dropdown -->
+
       <div class="filter-cluster campaign-cluster">
         <div class="cluster-label">
           <span class="material-symbols-outlined icon-lead-filter text-amber">campaign</span>
@@ -83,7 +83,7 @@
         </div>
       </div>
     </div>
-    <!-- Active Filter Tags Strip (Shown when a filter is engaged) -->
+
     @if (selectedCampaign !== 'ALL' || dateFilter !== 'ALL') {
       <div class="active-filter-tags-strip">
         <div class="active-tags-list">

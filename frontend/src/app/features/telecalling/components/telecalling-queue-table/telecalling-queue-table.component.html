@@ -1,4 +1,3 @@
-<!-- Queue Filter Tabs for Manager -->
 @if (!isTelecaller) {
   <div class="toolbar-card">
     <div class="segmented-tabs">
@@ -24,7 +23,6 @@
   </div>
 }
 
-<!-- Full-Width Unified Call Queue & Lead Performance Table -->
 <div class="table-card card-full-queue">
   <div class="card-title-bar">
     <div class="title-with-badge">
@@ -76,7 +74,7 @@
     </div>
 
     <div class="card-action-meta">
-      <!-- Live Search Field for Telecaller Name, Lead, Phone -->
+
       <div class="queue-search-field-wrap">
         <span class="material-symbols-outlined search-icon">search</span>
         <input
@@ -138,7 +136,7 @@
       <tbody>
         @for (lead of paginatedLeads; track lead.id) {
           <tr class="queue-row">
-            <!-- 1. Lead Name & Source -->
+
             <td class="col-lead">
               <div class="lead-profile-cell">
                 <div class="lead-avatar-squircle">
@@ -152,7 +150,7 @@
                 </div>
               </div>
             </td>
-            <!-- 2. Phone Number -->
+
             <td class="col-phone">
               <a [href]="'tel:' + lead.phone" class="phone-chip" title="Click to dial">
                 <span
@@ -163,7 +161,7 @@
                 <span class="phone-num-txt">{{ lead.phone }}</span>
               </a>
             </td>
-            <!-- 3. Current Status -->
+
             <td class="col-status">
               <span
                 class="status-pill"
@@ -177,7 +175,7 @@
                 }
                 <span class="pill-label">{{ getLeadCurrentStatusFn(lead).replace('_', ' ') }}</span>
               </span>
-              <!-- Scheduled Callback Reminder Chip -->
+
               @if (hasScheduledCallbackFn(lead) && getFollowUpTimeLabelFn(lead); as fTime) {
                 <div class="scheduled-callback-chip">
                   <span
@@ -189,7 +187,7 @@
                 </div>
               }
             </td>
-            <!-- 4. Created By -->
+
             <td class="col-creator">
               <div class="assignee-badge-chip creator-badge-chip">
                 <div class="assignee-mini-avatar avatar-creator-mini">
@@ -198,7 +196,7 @@
                 <span class="assignee-name-txt">{{ getLeadCreatorNameFn(lead) }}</span>
               </div>
             </td>
-            <!-- 5. Assigned To -->
+
             <td class="col-assignee">
               @if (lead.assigneeName) {
                 <div class="assignee-badge-chip">
@@ -210,7 +208,7 @@
                 <span class="unassigned-pill">Unassigned</span>
               }
             </td>
-            <!-- 5. Calls Logged -->
+
             <td class="col-calls text-center">
               <span
                 class="calls-count-badge"
@@ -220,7 +218,7 @@
                 <strong>{{ getLeadMetricsFn(lead).callsCount }}</strong>
               </span>
             </td>
-            <!-- 6. Attended / Missed -->
+
             <td class="col-attended text-center">
               <div class="ratio-chips-group">
                 <span class="tag-attended" title="Attended / Connected Calls">
@@ -234,14 +232,14 @@
                 </span>
               </div>
             </td>
-            <!-- 7. Avg Duration -->
+
             <td class="col-duration text-center">
               <span class="avg-duration-pill">
                 <span class="material-symbols-outlined fs-14">timer</span>
                 <span>{{ getLeadMetricsFn(lead).avgDuration }}s</span>
               </span>
             </td>
-            <!-- 8. Action Buttons -->
+
             <td class="col-action text-right">
               <div class="action-buttons-wrap">
                 @if (canLogCalls) {
@@ -326,7 +324,6 @@
     </table>
   </div>
 
-  <!-- Pagination Footer Bar (Active when filtered leads exist) -->
   @if (filteredAssignedLeads.length > 0) {
     <div class="table-pagination-bar">
       <div class="pagination-info">

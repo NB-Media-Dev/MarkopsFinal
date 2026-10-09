@@ -17,8 +17,10 @@ export class AddLeadModalComponent {
   @Input() newPhone = '';
   @Input() newSource = 'Digital Ads Lead Form';
   @Input() newCampaignId = '';
+  @Input() newAdId = '';
   @Input() newAssignedTelecallerId = '';
   @Input() availableCampaigns: { id: string; name: string }[] = [];
+  @Input() availableAds: { id: string; name: string; platform?: string; campaignId?: string }[] = [];
   @Input() activeTelecallers: any[] = [];
   @Input() isCreatingLead = false;
 
@@ -28,6 +30,7 @@ export class AddLeadModalComponent {
   @Output() newPhoneChange = new EventEmitter<string>();
   @Output() newSourceChange = new EventEmitter<string>();
   @Output() campaignChange = new EventEmitter<Event>();
+  @Output() adChange = new EventEmitter<Event>();
   @Output() telecallerChange = new EventEmitter<Event>();
   @Output() closeModal = new EventEmitter<void>();
   @Output() save = new EventEmitter<void>();

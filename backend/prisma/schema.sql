@@ -1,15 +1,10 @@
-CREATE DATABASE IF NOT EXISTS `markops` 
-DEFAULT CHARACTER SET utf8mb4 
+CREATE DATABASE IF NOT EXISTS `markops`
+DEFAULT CHARACTER SET utf8mb4
 COLLATE utf8mb4_unicode_ci;
 
 USE `markops`;
 
--- Disable foreign key checks for clean creation sequence
 SET FOREIGN_KEY_CHECKS = 0;
-
--- ----------------------------------------------------------------------------
--- 1. SECURITY & ACCESS CONTROL MODULE
--- ----------------------------------------------------------------------------
 
 DROP TABLE IF EXISTS `role_permissions`;
 DROP TABLE IF EXISTS `permissions`;
@@ -17,7 +12,6 @@ DROP TABLE IF EXISTS `users`;
 DROP TABLE IF EXISTS `teams`;
 DROP TABLE IF EXISTS `roles`;
 
--- Roles table
 CREATE TABLE `roles` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(50) NOT NULL,
@@ -28,7 +22,6 @@ CREATE TABLE `roles` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Permissions table
 CREATE TABLE `permissions` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(100) NOT NULL,
@@ -39,7 +32,6 @@ CREATE TABLE `permissions` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Role to Permission mapping
 CREATE TABLE `role_permissions` (
   `role_id` INT NOT NULL,
   `permission_id` INT NOT NULL,
@@ -49,7 +41,6 @@ CREATE TABLE `role_permissions` (
   CONSTRAINT `fk_rp_permission` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Teams table
 CREATE TABLE `teams` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(100) NOT NULL,
@@ -60,7 +51,6 @@ CREATE TABLE `teams` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Users table
 CREATE TABLE `users` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `email` VARCHAR(191) NOT NULL UNIQUE,
@@ -80,17 +70,12 @@ CREATE TABLE `users` (
   CONSTRAINT `fk_users_team` FOREIGN KEY (`team_id`) REFERENCES `teams` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ----------------------------------------------------------------------------
--- 2. CAMPAIGNS & INTEGRATIONS MODULE
--- ----------------------------------------------------------------------------
-
 DROP TABLE IF EXISTS `ad_metrics`;
 DROP TABLE IF EXISTS `ads`;
 DROP TABLE IF EXISTS `meta_sync_logs`;
 DROP TABLE IF EXISTS `meta_connections`;
 DROP TABLE IF EXISTS `campaigns`;
 
--- Campaigns table
 CREATE TABLE `campaigns` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `name` VARCHAR(150) NOT NULL,
@@ -118,7 +103,6 @@ CREATE TABLE `campaigns` (
   CONSTRAINT `fk_campaigns_owner` FOREIGN KEY (`owner_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Meta connections table
 CREATE TABLE `meta_connections` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `account_name` VARCHAR(100) NOT NULL,
@@ -133,7 +117,6 @@ CREATE TABLE `meta_connections` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Meta sync logs table
 CREATE TABLE `meta_sync_logs` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `meta_connection_id` INT NOT NULL,
@@ -164,7 +147,6 @@ CREATE TABLE `meta_webhook_events` (
   KEY `idx_meta_webhook_status_next_attempt` (`status`, `next_attempt_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Ads table
 CREATE TABLE `ads` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `campaign_id` INT NOT NULL,
@@ -190,7 +172,6 @@ CREATE TABLE `ads` (
   CONSTRAINT `fk_ads_meta` FOREIGN KEY (`meta_connection_id`) REFERENCES `meta_connections` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Ad metrics snapshot table
 CREATE TABLE `ad_metrics` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `ad_id` INT NOT NULL,
@@ -210,10 +191,6 @@ CREATE TABLE `ad_metrics` (
   CONSTRAINT `fk_metrics_ad` FOREIGN KEY (`ad_id`) REFERENCES `ads` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ----------------------------------------------------------------------------
--- 3. TASK & CREATIVE MANAGEMENT MODULE
--- ----------------------------------------------------------------------------
-
 DROP TABLE IF EXISTS `task_attachments`;
 DROP TABLE IF EXISTS `task_comments`;
 DROP TABLE IF EXISTS `task_versions`;
@@ -222,7 +199,6 @@ DROP TABLE IF EXISTS `task_status_history`;
 DROP TABLE IF EXISTS `task_assignments`;
 DROP TABLE IF EXISTS `tasks`;
 
--- Tasks table
 CREATE TABLE `tasks` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `campaign_id` INT DEFAULT NULL,
@@ -249,7 +225,6 @@ CREATE TABLE `tasks` (
   CONSTRAINT `fk_tasks_assignee` FOREIGN KEY (`assigned_to`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Task assignments history
 CREATE TABLE `task_assignments` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `task_id` INT NOT NULL,
@@ -262,7 +237,6 @@ CREATE TABLE `task_assignments` (
   CONSTRAINT `fk_ta_task` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Task status history
 CREATE TABLE `task_status_history` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `task_id` INT NOT NULL,
@@ -276,7 +250,6 @@ CREATE TABLE `task_status_history` (
   CONSTRAINT `fk_tsh_task` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Task progress history
 CREATE TABLE `task_progress_history` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `task_id` INT NOT NULL,
@@ -289,7 +262,6 @@ CREATE TABLE `task_progress_history` (
   CONSTRAINT `fk_tph_task` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Task creative versions
 CREATE TABLE `task_versions` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `task_id` INT NOT NULL,
@@ -307,7 +279,6 @@ CREATE TABLE `task_versions` (
   CONSTRAINT `fk_tv_task` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Task discussion comments
 CREATE TABLE `task_comments` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `task_id` INT NOT NULL,
@@ -319,7 +290,6 @@ CREATE TABLE `task_comments` (
   CONSTRAINT `fk_tc_task` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Task attachments
 CREATE TABLE `task_attachments` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `task_id` INT NOT NULL,
@@ -333,17 +303,12 @@ CREATE TABLE `task_attachments` (
   CONSTRAINT `fk_att_task` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ----------------------------------------------------------------------------
--- 4. LEADS & TELECALLING PIPELINE MODULE
--- ----------------------------------------------------------------------------
-
 DROP TABLE IF EXISTS `follow_ups`;
 DROP TABLE IF EXISTS `call_activities`;
 DROP TABLE IF EXISTS `lead_status_history`;
 DROP TABLE IF EXISTS `lead_assignments`;
 DROP TABLE IF EXISTS `leads`;
 
--- Leads table
 CREATE TABLE `leads` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `first_name` VARCHAR(100) NOT NULL,
@@ -385,7 +350,6 @@ CREATE TABLE `leads` (
   CONSTRAINT `fk_leads_assigned_telecaller` FOREIGN KEY (`assigned_telecaller_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Lead assignment history
 CREATE TABLE `lead_assignments` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `lead_id` INT NOT NULL,
@@ -397,7 +361,6 @@ CREATE TABLE `lead_assignments` (
   CONSTRAINT `fk_la_lead` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Lead status history
 CREATE TABLE `lead_status_history` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `lead_id` INT NOT NULL,
@@ -411,7 +374,6 @@ CREATE TABLE `lead_status_history` (
   CONSTRAINT `fk_lsh_lead` FOREIGN KEY (`lead_id`) REFERENCES `leads` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Call activities table
 CREATE TABLE `call_activities` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `lead_id` INT NOT NULL,
@@ -428,7 +390,6 @@ CREATE TABLE `call_activities` (
   CONSTRAINT `fk_ca_caller` FOREIGN KEY (`telecaller_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Follow ups table
 CREATE TABLE `follow_ups` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `lead_id` INT NOT NULL,
@@ -446,14 +407,9 @@ CREATE TABLE `follow_ups` (
   CONSTRAINT `fk_fu_caller` FOREIGN KEY (`telecaller_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ----------------------------------------------------------------------------
--- 5. CONVERSIONS & FINANCIAL TRANSACTIONS MODULE
--- ----------------------------------------------------------------------------
-
 DROP TABLE IF EXISTS `transactions`;
 DROP TABLE IF EXISTS `conversions`;
 
--- Conversions table
 CREATE TABLE `conversions` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `lead_id` INT NOT NULL UNIQUE,
@@ -469,7 +425,6 @@ CREATE TABLE `conversions` (
   CONSTRAINT `fk_conv_user` FOREIGN KEY (`confirmed_by`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Transactions table
 CREATE TABLE `transactions` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `conversion_id` INT NOT NULL,
@@ -489,16 +444,11 @@ CREATE TABLE `transactions` (
   CONSTRAINT `fk_tx_user` FOREIGN KEY (`recorded_by`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ----------------------------------------------------------------------------
--- 6. SYSTEM AUDIT, METRICS & PACKAGES MODULE
--- ----------------------------------------------------------------------------
-
 DROP TABLE IF EXISTS `notifications`;
 DROP TABLE IF EXISTS `audit_logs`;
 DROP TABLE IF EXISTS `daily_performance`;
 DROP TABLE IF EXISTS `packages`;
 
--- User notifications table
 CREATE TABLE `notifications` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `user_id` INT NOT NULL,
@@ -513,7 +463,6 @@ CREATE TABLE `notifications` (
   CONSTRAINT `fk_notif_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- System Audit logs table
 CREATE TABLE `audit_logs` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `actor_id` INT DEFAULT NULL,
@@ -531,7 +480,6 @@ CREATE TABLE `audit_logs` (
   CONSTRAINT `fk_audit_actor` FOREIGN KEY (`actor_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Aggregated Daily Performance metrics table
 CREATE TABLE `daily_performance` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `metric_date` DATE NOT NULL UNIQUE,
@@ -546,7 +494,6 @@ CREATE TABLE `daily_performance` (
   KEY `idx_dp_date` (`metric_date`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Product Packages table
 CREATE TABLE `packages` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `product_id` VARCHAR(100) NOT NULL,
@@ -562,16 +509,10 @@ CREATE TABLE `packages` (
   KEY `idx_packages_product` (`product_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Re-enable foreign key checks
 SET FOREIGN_KEY_CHECKS = 1;
-
--- ============================================================================
--- PRODUCTION SEED DATA (ROLES, TEAMS & DEFAULT ADMIN USER)
--- ============================================================================
 
 SET FOREIGN_KEY_CHECKS = 0;
 
--- 1. Insert System Roles
 INSERT INTO `roles` (`id`, `name`, `code`, `description`) VALUES
 (1, 'Administrator', 'ADMINISTRATOR', 'Full System Access'),
 (2, 'Marketing Manager', 'MARKETING_MANAGER', 'Campaign Operations'),
@@ -581,12 +522,10 @@ INSERT INTO `roles` (`id`, `name`, `code`, `description`) VALUES
 (6, 'Business Development Manager', 'BDM', 'Package Task Management & Designer Collaboration')
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `description` = VALUES(`description`);
 
--- 2. Insert Core Team
 INSERT INTO `teams` (`id`, `name`, `description`) VALUES
 (1, 'System Administration', 'Core administrative operations')
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `description` = VALUES(`description`);
 
--- 3. Insert Ready-to-Use Administrator Account (Password: admin123)
 INSERT INTO `users` (`id`, `email`, `password_hash`, `full_name`, `role_id`, `team_id`, `department`, `is_active`) VALUES
 (1, 'admin@markops.io', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3BoB6tK3y/G', 'System Administrator', 1, 1, 'Executive Operations', 1)
 ON DUPLICATE KEY UPDATE
@@ -596,4 +535,4 @@ ON DUPLICATE KEY UPDATE
   `department` = VALUES(`department`),
   `is_active` = VALUES(`is_active`);
 
-SET FOREIGN_KEY_CHECKS = 1;git
+SET FOREIGN_KEY_CHECKS = 1;

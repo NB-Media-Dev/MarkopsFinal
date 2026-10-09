@@ -1,19 +1,17 @@
 <div class="mo-login-page">
   <div class="mo-login-center-container">
-    <!-- Brand Logo & Name Header -->
+
     <div class="mo-brand-header">
       <img src="/favicon.png" alt="MarkOps Logo" class="mo-brand-logo-img" />
       <span class="mo-brand-title">MarkOps</span>
     </div>
 
-    <!-- Centered Login Card -->
     <div class="mo-card-wrapper">
       <header class="mo-card-header">
         <h2 class="mo-card-title">Sign in to your account</h2>
         <p class="mo-card-subtitle">Welcome back! Please enter your details.</p>
       </header>
 
-      <!-- Global Auth Error Alert -->
       @if (authService.authError()) {
         <div class="mo-alert mo-alert-danger" role="alert">
           <svg class="alert-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -23,9 +21,8 @@
         </div>
       }
 
-      <!-- Production Authentication Form -->
       <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="mo-login-form" novalidate>
-        <!-- Email Field -->
+
         <div class="form-group">
           <label for="email">Email Address</label>
           <div class="input-wrapper">
@@ -52,7 +49,6 @@
           }
         </div>
 
-        <!-- Password Field -->
         <div class="form-group">
           <div class="label-row">
             <label for="password">Password</label>
@@ -96,7 +92,6 @@
           }
         </div>
 
-        <!-- Remember Session Checkbox -->
         <div class="form-group-checkbox">
           <label class="checkbox-label">
             <input type="checkbox" formControlName="rememberMe" />
@@ -104,7 +99,6 @@
           </label>
         </div>
 
-        <!-- Submit Button -->
         <button
           type="submit"
           class="mo-submit-btn"
@@ -123,7 +117,6 @@
       </form>
     </div>
 
-    <!-- Subtle Footer branding -->
     <footer class="mo-login-footer">
       <span>MarkOps &bull; Marketing Operations Platform</span>
     </footer>

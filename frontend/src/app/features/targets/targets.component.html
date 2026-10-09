@@ -1,6 +1,6 @@
 <div class="targets-page" [class.embedded-view]="embedded">
   <header class="page-header">
-    
+
     <div class="header-actions">
       @if (isManagerOrAdmin()) {
         <button class="btn-action-primary" (click)="openCommonModal()">
@@ -16,11 +16,10 @@
         <span>{{ isEvaluating() ? 'Evaluating Quotas...' : 'Check Target Compliance' }}</span>
       </button>
       }
-    
+
     </div>
   </header>
 
-  <!-- Evaluation Alert Summary Banner (Admin & Marketing Manager Only) -->
   @if (isManagerOrAdmin() && lastEvaluationSummary(); as summary) {
     <div class="alert-banner alert-warning">
       <div class="alert-icon-wrap">
@@ -49,8 +48,6 @@
     </div>
   }
 
-  <!-- KPI Summary Cards (Medium-Sized Luxury Design) -->
-  <!-- Manager & Admin KPI Summary Cards -->
   @if (isManagerOrAdmin() && summaryKpis(); as kpis) {
     <section class="kpi-grid">
         <div class="kpi-card card-pkg-works">
@@ -119,7 +116,7 @@
         </div>
       </section>
     }
-    <!-- Telecaller Personal Target Progress KPI Cards -->
+
     @if (!isManagerOrAdmin() && myTargetProgress(); as myTgt) {
       <section class="kpi-grid">
         <div class="kpi-card card-pkg-works">
@@ -189,7 +186,6 @@
       </section>
     }
 
-  <!-- Controls & Filters Bar (Manager & Admin Only) -->
   @if (isManagerOrAdmin()) {
     <div class="toolbar-card">
       <div class="search-box">
@@ -238,7 +234,6 @@
     </div>
   }
 
-  <!-- Telecaller Targets Table Card -->
   <div class="table-card card-targets-perf">
     <div class="card-title-bar">
       <div class="title-with-badge">
@@ -353,7 +348,6 @@
     </div>
   </div>
 
-  <!-- TARGET CONFIGURATION MODAL -->
   @if (isEditModalOpen()) {
     <div class="modal-backdrop" (click)="closeEditModal()">
       <div class="modal-card modal-md" (click)="$event.stopPropagation()">

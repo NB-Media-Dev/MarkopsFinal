@@ -31,6 +31,7 @@ async function run(conn, sql, label) {
  
   console.log('📋 Patching `tasks` table...');
   await run(conn, `ALTER TABLE tasks ADD COLUMN package_name VARCHAR(100) DEFAULT 'Careermate'`, 'tasks.package_name');
+  await run(conn, `ALTER TABLE tasks ADD COLUMN task_type VARCHAR(50) NOT NULL DEFAULT 'BANNER_DESIGN'`, 'tasks.task_type');
   await run(conn, `ALTER TABLE tasks ADD COLUMN attachment_url LONGTEXT DEFAULT NULL`, 'tasks.attachment_url');
   await run(conn, `ALTER TABLE tasks ADD COLUMN attachment_name VARCHAR(255) DEFAULT NULL`, 'tasks.attachment_name');
   await run(conn, `ALTER TABLE tasks ADD COLUMN content LONGTEXT DEFAULT NULL`, 'tasks.content');

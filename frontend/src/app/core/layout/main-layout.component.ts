@@ -32,16 +32,7 @@ export const ROLE_SIDEBAR_MENU: Record<string, NavMenuItem[]> = {
     { label: 'Downloads', route: '/downloads', icon: 'download' },
     { label: 'Notifications', route: '/notifications', icon: 'notifications' },
   ],
-  /* MARKETING_MANAGER: [
-    { label: 'Dashboard', route: '/dashboard', icon: 'dashboard' },
-    { label: 'Targets', route: '/targets', icon: 'track_changes' },
-    { label: 'Campaigns', route: '/campaigns', icon: 'campaign' },
-    { label: 'Tasks', route: '/tasks', icon: 'task_alt' },
-    { label: 'Leads', route: '/leads', icon: 'contacts' },
-    { label: 'Reports', route: '/reports', icon: 'bar_chart' },
-    { label: 'Performance', route: '/performance', icon: 'trending_up' },
-    { label: 'Downloads', route: '/downloads', icon: 'download' },
-  ], */
+
   DIGITAL_MARKETING: [
     { label: 'Dashboard', route: '/dashboard', icon: 'dashboard' },
     { label: 'Package Works', route: '/package-works', icon: 'inventory_2' },
@@ -187,7 +178,7 @@ export class MainLayoutComponent {
     if (role === 'TELECALLER' || uName.includes('raj') || uId.includes('raj')) {
       list = list.filter((n) => {
         const titleLower = (n.title || '').toLowerCase();
-     
+
         if (
           titleLower.includes('task approved') ||
           titleLower.includes('design uploaded') ||

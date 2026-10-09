@@ -1,7 +1,7 @@
 @if (isOpen && pkg) {
   <div class="custom-modal-overlay" (click)="onClose()">
     <div class="custom-modal-container package-detail-modal" (click)="$event.stopPropagation()">
-      <!-- Modal Header -->
+
       <div class="custom-modal-header">
         <div class="modal-title-with-badge">
           <div class="modal-header-icon-squircle icon-indigo">
@@ -21,9 +21,9 @@
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
-      <!-- Modal Body -->
+
       <div class="custom-modal-body">
-        <!-- Banner Image -->
+
         @if (pkg.imageUrl) {
           <div class="detail-banner-card mb-4">
             <img
@@ -34,7 +34,7 @@
             />
           </div>
         }
-        <!-- Detail Meta Grid -->
+
         <div class="detail-meta-grid">
           <div class="detail-meta-item">
             <span class="detail-label">Package Name</span>
@@ -61,7 +61,7 @@
             </div>
           }
         </div>
-        <!-- Description -->
+
         @if (pkg.description) {
           <div class="detail-desc-block mt-3">
             <h4 class="detail-desc-title">Description</h4>
@@ -69,7 +69,7 @@
           </div>
         }
       </div>
-      <!-- Modal Footer -->
+
       <div class="custom-modal-footer">
         <button type="button" class="btn-modal-secondary" (click)="onClose()">
           Close

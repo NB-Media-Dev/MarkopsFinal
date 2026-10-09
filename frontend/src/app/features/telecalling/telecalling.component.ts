@@ -6,7 +6,8 @@ import { LeadTelecallingService, LeadItem, CallActivityItem } from '../../core/s
 import { UserManagementService } from '../../core/services/user-management.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CampaignService } from '../../core/services/campaign.service';
-import { FIXED_PACKAGES } from '../../core/models/package.model';
+import { FIXED_PACKAGES, isItemForPackage, resolveProductContext } from '../../core/models/package.model';
+import { PackageService } from '../../core/services/package.service';
 
 import { TelecallingKpisComponent } from './components/telecalling-kpis/telecalling-kpis.component';
 import { TelecallingPipelineStripComponent } from './components/telecalling-pipeline-strip/telecalling-pipeline-strip.component';
@@ -18,30 +19,39 @@ export function isLeadAssignedToUser(l: any, user: any): boolean {
   if (!l || !user) return false;
   const uId = String(user.id || '').trim();
   const uEmail = String(user.email || '').toLowerCase().trim();
-  const uName = String(user.fullName || '').toLowerCase().trim();
+  const uName = String(user.fullName || user.name || user.username || '').toLowerCase().trim();
 
-  const lAssignedTo = String(l.assignedTo || l.assigned_to || '').trim();
-  const lAssigneeName = String(l.assigneeName || l.assignee_name || '').toLowerCase().trim();
-
-
-  if (uId && lAssignedTo && (lAssignedTo === uId || lAssignedTo.toLowerCase() === uId.toLowerCase())) return true;
+  const lAssignedTo = String(l.assignedTo || l.assigned_to || l.assignedTelecallerId || l.assigned_telecaller_id || '').trim();
+  const lAssigneeName = String(l.assigneeName || l.assignee_name || l.assigneeFullName || l.assignedToName || '').toLowerCase().trim();
+  const lAssigneeEmail = String(l.assigneeEmail || l.assignee_email || '').toLowerCase().trim();
 
 
-  if (uEmail && lAssignedTo && lAssignedTo.toLowerCase() === uEmail) return true;
+  if (uId && lAssignedTo) {
+    if (lAssignedTo === uId || lAssignedTo.toLowerCase() === uId.toLowerCase()) return true;
+    const numUId = parseInt(uId.replace(/\D/g, ''), 10);
+    const numLId = parseInt(lAssignedTo.replace(/\D/g, ''), 10);
+    if (!isNaN(numUId) && !isNaN(numLId) && numUId === numLId) return true;
+  }
 
  
-  if (uName && (lAssigneeName === uName || lAssignedTo.toLowerCase() === uName)) return true;
-
-
-  if (uName && lAssigneeName && (lAssigneeName.includes(uName) || uName.includes(lAssigneeName))) return true;
-
-  if ((uName.includes('priya') || uEmail.includes('priya') || uId.includes('priya')) &&
-      (lAssigneeName.includes('priya') || lAssignedTo.toLowerCase().includes('priya'))) {
+  if (uEmail && (lAssignedTo.toLowerCase() === uEmail || lAssigneeEmail === uEmail || lAssigneeName === uEmail)) {
     return true;
   }
-  if ((uName.includes('raj') || uEmail.includes('raj') || uId.includes('raj')) &&
-      (lAssigneeName.includes('raj') || lAssignedTo.toLowerCase().includes('raj'))) {
-    return true;
+
+
+  if (uName) {
+    if (lAssigneeName === uName || lAssignedTo.toLowerCase() === uName) return true;
+    if (lAssigneeName && (lAssigneeName.includes(uName) || uName.includes(lAssigneeName))) return true;
+    if (lAssignedTo && (lAssignedTo.toLowerCase().includes(uName) || uName.includes(lAssignedTo.toLowerCase()))) return true;
+  }
+
+
+  const uTokens = [uName, uEmail.split('@')[0], uId].filter((t) => t && t.length >= 3);
+  const lTokens = [lAssigneeName, lAssignedTo.toLowerCase(), lAssigneeEmail.split('@')[0]].filter((t) => t && t.length >= 3);
+  for (const ut of uTokens) {
+    for (const lt of lTokens) {
+      if (ut === lt || ut.includes(lt) || lt.includes(ut)) return true;
+    }
   }
 
   return false;
@@ -202,12 +212,28 @@ export function parseFollowUpDateTime(dateStr?: string, timeStr?: string): Date 
 export class TelecallingComponent implements OnInit, OnDestroy {
   @Input() embedded = false;
   @Input() viewMode: 'ALL' | 'MEMBERS' | 'ASSIGNED' | 'OVERVIEW' = 'ALL';
-  @Input() packageFilter?: string;
+
+  readonly packageFilterSignal = signal<string | undefined>(undefined);
+  @Input() set packageFilter(val: string | undefined) {
+    this.packageFilterSignal.set(val);
+  }
+  get packageFilter(): string | undefined {
+    return this.packageFilterSignal();
+  }
+
+  readonly productFilterSignal = signal<string | undefined>(undefined);
+  @Input() set productFilter(val: string | undefined) {
+    this.productFilterSignal.set(val);
+  }
+  get productFilter(): string | undefined {
+    return this.productFilterSignal();
+  }
 
   readonly leadService = inject(LeadTelecallingService);
   readonly userService = inject(UserManagementService);
   readonly authService = inject(AuthService);
   readonly campaignService = inject(CampaignService);
+  readonly packageService = inject(PackageService);
 
   readonly selectedLeadForCall = signal<LeadItem | null>(null);
   readonly selectedLeadForHistory = signal<LeadItem | null>(null);
@@ -316,7 +342,10 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     const user = this.authService.currentUser();
     if (!user) return [];
     if (user.role === 'TELECALLER') {
-      return all.filter((l) => isLeadAssignedToUser(l, user));
+      const assigned = all.filter((l) => isLeadAssignedToUser(l, user));
+      if (assigned.length > 0) return assigned;
+    
+      return all;
     }
     const directAssigned = all.filter((l) => isLeadAssignedToUser(l, user));
     if (directAssigned.length > 0) return directAssigned;
@@ -340,43 +369,33 @@ export class TelecallingComponent implements OnInit, OnDestroy {
       leads = filter === 'ALL_LEADS' ? this.leadService.leads() : this.myLeads();
     }
 
-    const pkg = (this.packageFilter || '').toLowerCase().trim();
-    if (pkg && pkg !== 'all') {
-      const fixedProd = FIXED_PACKAGES.find((fp) => fp.name.toLowerCase() === pkg || fp.id.toLowerCase() === pkg);
-      if (fixedProd) {
-        const prodId = fixedProd.id.toLowerCase();
-        leads = leads.filter((l) => {
-          const src = (l.source || '').toLowerCase();
-          const cmp = (l.campaignName || '').toLowerCase();
-          if (prodId.includes('career')) {
-            return src.includes('career') || cmp.includes('career') || cmp.includes('tn-schema') || src.includes('lead') || src.includes('excel') || src.includes('csv') || src.includes('upload') || src.includes('meta');
-          }
-          if (prodId.includes('class')) {
-            return src.includes('class') || cmp.includes('class');
-          }
-          if (prodId.includes('jesus')) {
-            return src.includes('jesus') || cmp.includes('jesus');
-          }
-          return false;
-        });
-      } else {
-        leads = leads.filter((l) => {
-          const src = (l.source || '').toLowerCase();
-          const cmp = (l.campaignName || '').toLowerCase();
-          const lPkg = ((l as any).packageName || (l as any).package || '').toLowerCase();
-          return lPkg === pkg || src.includes(pkg) || cmp.includes(pkg);
-        });
+    const pkg = this.packageFilterSignal()?.trim();
+    const prod = this.productFilterSignal()?.trim();
+    const dbPkgs = this.packageService.packages();
+
+    if ((pkg && pkg.toLowerCase() !== 'all') || (prod && prod.toLowerCase() !== 'all')) {
+      const filtered = leads.filter((l) => isItemForPackage(l, pkg, prod, dbPkgs));
+      if (filtered.length > 0) {
+        leads = filtered;
       }
     }
+
     return leads;
   });
 
   readonly availableCampaigns = computed(() => {
     const portfolioCampaigns = this.campaignService.campaigns();
+    const pkg = this.packageFilterSignal()?.trim();
+    const prod = this.productFilterSignal()?.trim();
+    const dbPkgs = this.packageService.packages();
+    const scopedCampaigns = ((pkg && pkg.toLowerCase() !== 'all') || (prod && prod.toLowerCase() !== 'all'))
+      ? portfolioCampaigns.filter((c) => isItemForPackage(c, pkg, prod, dbPkgs))
+      : portfolioCampaigns;
+
     const leads = this.assignedLeads();
 
-    if (portfolioCampaigns.length > 0) {
-      return portfolioCampaigns.map((cmp) => {
+    if (scopedCampaigns.length > 0) {
+      return scopedCampaigns.map((cmp) => {
         const count = leads.filter((l) => isLeadInCampaign(l, cmp)).length;
         return {
           id: cmp.id,
@@ -769,6 +788,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     this.leadService.loadSummary().subscribe();
     this.userService.loadUsersFromDatabase();
     this.campaignService.loadCampaigns().subscribe();
+    this.packageService.loadPackages().subscribe();
 
     this.clockInterval = setInterval(() => {
       this.currentTime.set(Date.now());
@@ -1012,7 +1032,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     const finalFollowUpTime = this.enableReminder ? this.followUpTime : '';
 
     this.leadService.leads.update((list) =>
-      list.map((l) => (l.id === lead.id || (l.phone && lead.phone && l.phone.replace(/\D/g, '') === lead.phone.replace(/\D/g, '')) ? { ...l, status: finalOutcome as any } : l))
+      list.map((l) => (l.id === lead.id || (l.phone && lead.phone && l.phone.replace(/\D/g, '') === lead.phone.replace(/\D/g, '')) ? { ...l, status: finalOutcome as any, remarks: this.callRemarks, notes: this.callRemarks } : l))
     );
 
     this.leadService
@@ -1057,6 +1077,8 @@ export class TelecallingComponent implements OnInit, OnDestroy {
                     assignedTo: res.lead?.assignedTo || l.assignedTo,
                     assigneeName: res.lead?.assigneeName || l.assigneeName,
                     status: finalOutcome as any,
+                    remarks: this.callRemarks || (res.lead as any)?.remarks || (l as any)?.remarks || '',
+                    notes: this.callRemarks || (res.lead as any)?.notes || (l as any)?.notes || '',
                     updatedAt: new Date().toISOString(),
                   };
                 }

@@ -141,7 +141,7 @@ export class TelecallerTargetService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedCommon),
-      }).catch((e) => console.log('Error syncing target to backend:', e));
+      }).catch((e: any) => console.log('Error syncing target to backend:', e));
     }
   }
 
@@ -185,7 +185,7 @@ export class TelecallerTargetService {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userTarget),
-      }).catch((e) => console.log('Error saving individual target to backend:', e));
+      }).catch((e: any) => console.log('Error saving individual target to backend:', e));
     }
   }
 

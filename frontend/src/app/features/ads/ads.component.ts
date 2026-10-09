@@ -5,7 +5,8 @@ import { RouterModule } from '@angular/router';
 import { CampaignService, AdItem, CampaignItem } from '../../core/services/campaign.service';
 import { TaskManagementService } from '../../core/services/task-management.service';
 import { AuthService } from '../../core/services/auth.service';
-import { FIXED_PACKAGES } from '../../core/models/package.model';
+import { FIXED_PACKAGES, isItemForPackage, resolveProductContext } from '../../core/models/package.model';
+import { PackageService } from '../../core/services/package.service';
 import { AdKpisComponent } from './components/ad-kpis/ad-kpis.component';
 import { AdsToolbarComponent } from './components/ads-toolbar/ads-toolbar.component';
 import { AdsTableComponent } from './components/ads-table/ads-table.component';
@@ -36,9 +37,19 @@ export class AdsComponent implements OnInit {
   get packageFilter(): string | undefined {
     return this.packageFilterSignal();
   }
+
+  readonly productFilterSignal = signal<string | undefined>(undefined);
+  @Input() set productFilter(val: string | undefined) {
+    this.productFilterSignal.set(val);
+  }
+  get productFilter(): string | undefined {
+    return this.productFilterSignal();
+  }
+
   @Input() embedded = false;
 
   readonly campaignService = inject(CampaignService);
+  readonly packageService = inject(PackageService);
   readonly taskService = inject(TaskManagementService);
   readonly authService = inject(AuthService);
 
@@ -100,40 +111,19 @@ export class AdsComponent implements OnInit {
   });
 
   readonly filteredCampaigns = computed(() => {
-    let list = this.campaignService.campaigns();
-    const pkg = this.packageFilterSignal()?.trim().toLowerCase();
-    if (!pkg || pkg === 'all') return list;
+    const list = this.campaignService.campaigns();
+    const pkg = this.packageFilterSignal()?.trim();
+    const prod = this.productFilterSignal()?.trim();
+    const dbPkgs = this.packageService.packages();
+    if ((!pkg || pkg.toLowerCase() === 'all') && (!prod || prod.toLowerCase() === 'all')) return list;
 
-    const fixedProd = FIXED_PACKAGES.find((fp) => fp.name.toLowerCase() === pkg || fp.id.toLowerCase() === pkg);
-    if (fixedProd) {
-      const prodId = fixedProd.id.toLowerCase();
-      return list.filter((c) => {
-        const cPkg = ((c as any).packageName || (c as any).package || c.productId || '').toLowerCase().trim();
-        const name = (c.name || '').toLowerCase();
-        if (cPkg === prodId) return true;
-        if (prodId.includes('career')) {
-          return cPkg.includes('career') || name.includes('career') || cPkg === 'pkg_careermate';
-        }
-        if (prodId.includes('class')) {
-          return cPkg.includes('class') || name.includes('class') || cPkg === 'pkg_classmate';
-        }
-        if (prodId.includes('jesus')) {
-          return cPkg.includes('jesus') || name.includes('jesus') || cPkg.includes('messang') || cPkg === 'pkg_jesus_messanger';
-        }
-        return false;
-      });
-    }
-
-    return list.filter((c) => {
-      const cPkg = ((c as any).packageName || (c as any).package || c.productId || '').toLowerCase().trim();
-      const name = (c.name || '').toLowerCase();
-      return cPkg === pkg || name.includes(pkg) || pkg.includes(cPkg);
-    });
+    return list.filter((c) => isItemForPackage(c, pkg, prod, dbPkgs));
   });
 
   ngOnInit() {
     this.campaignService.loadAds().subscribe();
     this.campaignService.loadCampaigns().subscribe();
+    this.packageService.loadPackages().subscribe();
     this.taskService.loadTasks();
   }
 
@@ -167,13 +157,7 @@ export class AdsComponent implements OnInit {
     }
     this.isEditing.set(false);
     this.editingAdId.set(null);
-    const pkg = this.packageFilter ? this.packageFilter.toLowerCase().trim() : '';
-    const campaigns = pkg
-      ? this.campaignService.campaigns().filter((c) => {
-          const cPkg = ((c as any).packageName || (c as any).package || c.productId || '').toLowerCase().trim();
-          return c.name.toLowerCase().includes(pkg) || (cPkg && (cPkg.includes(pkg) || pkg.includes(cPkg))) || !cPkg;
-        })
-      : this.campaignService.campaigns();
+    const campaigns = this.filteredCampaigns();
     const defaultCmp = campaigns.length > 0 ? campaigns[0] : (this.campaignService.campaigns()[0] || null);
 
     const defaultPrefix = this.packageFilter ? `${this.packageFilter} - ` : '';
@@ -253,13 +237,18 @@ export class AdsComponent implements OnInit {
     const computedCtr = impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(2)) : Number(this.formModel.ctr || 0);
     const computedCpc = clicks > 0 ? Number((spend / clicks).toFixed(2)) : Number(this.formModel.cpc || 0);
 
-    const activePkg = this.packageFilterSignal() || 'Careermate';
+    const pkg = this.packageFilterSignal()?.trim();
+    const prod = this.productFilterSignal()?.trim();
+    const dbPkgs = this.packageService.packages();
+    const resolved = resolveProductContext(pkg, prod, dbPkgs);
+
+    const activePkg = pkg || resolved.productName;
 
     const payload: Partial<AdItem> & { creatorRole?: string; userRole?: string } = {
       name: this.formModel.name.trim(),
       campaignId: this.formModel.campaignId,
       campaignName: this.formModel.campaignName || 'General Digital Funnel',
-      productId: activePkg.toLowerCase().includes('career') ? 'pkg_careermate' : (activePkg.toLowerCase().includes('class') ? 'pkg_classmate' : (activePkg.toLowerCase().includes('jesus') ? 'pkg_jesus_messanger' : activePkg)),
+      productId: resolved.productId,
       packageName: activePkg,
       platform: this.formModel.platform,
       status: this.formModel.status,
@@ -364,39 +353,12 @@ export class AdsComponent implements OnInit {
     let list = this.campaignService.ads();
     const plat = this.filterPlatform();
     const q = this.searchQuery().trim().toLowerCase();
-    const pkg = this.packageFilterSignal()?.trim().toLowerCase();
+    const pkg = this.packageFilterSignal()?.trim();
+    const prod = this.productFilterSignal()?.trim();
+    const dbPkgs = this.packageService.packages();
 
-    if (pkg && pkg !== 'all') {
-      const fixedProd = FIXED_PACKAGES.find((fp) => fp.name.toLowerCase() === pkg || fp.id.toLowerCase() === pkg);
-      if (fixedProd) {
-        const prodId = fixedProd.id.toLowerCase();
-        list = list.filter((a) => {
-          const aPkg = ((a as any).packageName || (a as any).package || '').toLowerCase().trim();
-          const aProd = (a.productId || '').toLowerCase().trim();
-          const name = (a.name || '').toLowerCase();
-          const cmp = (a.campaignName || '').toLowerCase();
-
-          if (aProd === prodId) return true;
-          if (prodId.includes('career')) {
-            return aProd.includes('career') || aPkg.includes('career') || name.includes('career') || cmp.includes('career') || !aProd;
-          }
-          if (prodId.includes('class')) {
-            return aProd.includes('class') || aPkg.includes('class') || name.includes('class') || cmp.includes('class');
-          }
-          if (prodId.includes('jesus')) {
-            return aProd.includes('jesus') || aPkg.includes('jesus') || name.includes('jesus') || cmp.includes('jesus');
-          }
-          return false;
-        });
-      } else {
-  
-        list = list.filter((a) => {
-          const aPkg = ((a as any).packageName || (a as any).package || '').toLowerCase().trim();
-          const name = (a.name || '').toLowerCase();
-          const cmp = (a.campaignName || '').toLowerCase();
-          return aPkg === pkg || name.includes(pkg) || cmp.includes(pkg);
-        });
-      }
+    if ((pkg && pkg.toLowerCase() !== 'all') || (prod && prod.toLowerCase() !== 'all')) {
+      list = list.filter((a) => isItemForPackage(a, pkg, prod, dbPkgs));
     }
 
     if (plat !== 'ALL') {
@@ -414,3 +376,4 @@ export class AdsComponent implements OnInit {
     return list;
   }
 }
+

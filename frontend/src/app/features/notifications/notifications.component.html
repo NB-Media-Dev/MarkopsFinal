@@ -1,5 +1,5 @@
 <div class="notifications-page">
-  <!-- Sleek Page Header -->
+
   <header class="page-header">
     <div class="header-left">
       <div class="header-title-row">
@@ -27,9 +27,8 @@
     </div>
   </header>
 
-  <!-- Unified Compact Filter & Control Bar -->
   <div class="compact-controls-bar">
-    <!-- Category Tabs / Filter Chips -->
+
     <div class="category-tabs">
       <button
         type="button"
@@ -85,9 +84,8 @@
       </button>
     </div>
 
-    <!-- Secondary Controls: Date Filter & Search -->
     <div class="controls-right">
-      <!-- Date Quick Filter Pills -->
+
       <div class="date-filter-group">
         <button
           type="button"
@@ -114,7 +112,6 @@
           7d
         </button>
 
-        <!-- Compact Date Picker -->
         <div
           class="mini-date-picker"
           [class.active]="selectedDateFilter() === 'CUSTOM'"
@@ -130,7 +127,6 @@
         </div>
       </div>
 
-      <!-- Compact Search Box -->
       <div class="mini-search-box">
         <span class="material-symbols-outlined fs-16 search-icon">search</span>
         <input
@@ -147,7 +143,6 @@
         }
       </div>
 
-      <!-- Clear All Active Filters -->
       @if (searchQuery() || selectedDateFilter() !== 'ALL' || selectedStatusFilter() !== 'ALL') {
         <button class="btn-reset-filters" (click)="clearFilters()" title="Reset all filters">
           <span class="material-symbols-outlined fs-14">filter_alt_off</span>
@@ -157,12 +152,11 @@
     </div>
   </div>
 
-  <!-- Notification Grouped Streamlined Listing -->
   @if (groupedNotifications().length > 0) {
     <div class="notifications-container">
       @for (group of groupedNotifications(); track group) {
         <div class="date-group">
-          <!-- Date Divider Header -->
+
           <div class="date-group-divider">
             <div class="divider-left">
               <span class="material-symbols-outlined fs-14 group-icon">{{ group.icon }}</span>
@@ -170,7 +164,7 @@
             </div>
             <span class="group-badge">{{ group.count }}</span>
           </div>
-          <!-- Compact Notification Rows -->
+
           <div class="date-group-rows">
             @for (item of group.items; track item) {
               <div
@@ -180,19 +174,19 @@
                 (click)="onNotificationClick(item)"
                 title="Click to open related page"
               >
-                <!-- Unread Dot Indicator -->
+
                 <div class="status-indicator">
                   @if (!item.isRead) {
                     <span class="unread-dot"></span>
                   }
                 </div>
-                <!-- Type Icon Pill -->
+
                 <div class="type-icon-pill" [ngClass]="getNotificationTypeClass(item)">
                   <span class="material-symbols-outlined fs-18">{{
                     getNotificationIcon(item)
                   }}</span>
                 </div>
-                <!-- Notification Main Content Area -->
+
                 <div class="notif-body-area">
                   <div class="notif-header-line">
                     <div class="notif-title-wrap">
@@ -205,14 +199,14 @@
                       formatNotificationTime(item.createdAt)
                     }}</span>
                   </div>
-                  <!-- Single-line / Two-line Message summary -->
+
                   <p class="notif-message-preview" [title]="item.message">
                     {{ item.message }}
                   </p>
                 </div>
-                <!-- Right Action Zone -->
+
                 <div class="notif-action-zone">
-                  <!-- Mark as Read Button (shown when unread) -->
+
                   @if (!item.isRead) {
                     <button
                       class="btn-quick-read"
@@ -222,7 +216,7 @@
                       <span class="material-symbols-outlined fs-16">done</span>
                     </button>
                   }
-                  <!-- Navigation Chevron -->
+
                   <span class="material-symbols-outlined fs-18 nav-arrow">arrow_forward</span>
                 </div>
               </div>
@@ -233,7 +227,6 @@
     </div>
   }
 
-  <!-- Sleek Empty State -->
   @if (groupedNotifications().length === 0) {
     <div class="empty-state">
       <div class="empty-icon-box">

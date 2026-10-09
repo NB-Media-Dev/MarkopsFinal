@@ -167,6 +167,7 @@ async function findTask(taskId) {
         return {
           id: row.id,
           title: row.title || 'Untitled Task',
+          taskType: row.task_type || 'BANNER_DESIGN',
           packageName: row.package_name || '',
           description: row.description || '',
           content: row.content || '',
@@ -270,6 +271,38 @@ async function populateTaskRelations(tasksList) {
         t.statusHistory = historyByTask[tid];
       }
     }
+
+    try {
+      const [pkgRows] = await dbPool.query('SELECT id, product_id, name FROM packages');
+      if (Array.isArray(pkgRows)) {
+        for (const t of tasksList) {
+          const normPkg = (t.packageName || '').toLowerCase().trim();
+          const matched = pkgRows.find((p) => (p.name || '').toLowerCase().trim() === normPkg);
+          if (matched) {
+            t.productId = matched.product_id;
+            const pId = (matched.product_id || '').toLowerCase();
+            if (pId.includes('jesus') || pId.includes('messang')) {
+              t.productName = 'Jesus the messanger';
+            } else if (pId.includes('class')) {
+              t.productName = 'Classmate';
+            } else {
+              t.productName = 'Careermate';
+            }
+          } else {
+            if (normPkg.includes('jesus') || normPkg.includes('messang')) {
+              t.productId = 'pkg_jesus_messanger';
+              t.productName = 'Jesus the messanger';
+            } else if (normPkg.includes('class')) {
+              t.productId = 'pkg_classmate';
+              t.productName = 'Classmate';
+            } else if (normPkg.includes('career')) {
+              t.productId = 'pkg_careermate';
+              t.productName = 'Careermate';
+            }
+          }
+        }
+      }
+    } catch (pe) {}
   } catch (e) {
     console.error('[populateTaskRelations Error]:', e?.message || e);
   }
@@ -337,6 +370,7 @@ router.get('/tasks', async (req, res) => {
           return {
             id: row.id,
             title: row.title,
+            taskType: row.task_type || 'BANNER_DESIGN',
             packageName: row.package_name || '',
             description: row.description || '',
             content: row.content || '',
@@ -614,14 +648,22 @@ router.post('/tasks', async (req, res) => {
     return res.status(403).json({ error: 'Permission Denied: Only Admin, Marketing Manager, and BDM can create tasks.' });
   }
 
-  const { title, description, content, attachmentUrl, attachmentName, campaignId, campaignName, priority, assignedTo, dueDate, creatorId, creatorName, creatorEmail, packageName } = req.body;
-  if (!title || !priority) {
-    return res.status(400).json({ error: 'Task Title and Priority are required fields.' });
+  const { title, taskType, description, content, attachmentUrl, attachmentName, campaignId, campaignName, priority, assignedTo, dueDate, creatorId, creatorName, creatorEmail, packageName } = req.body;
+  if (!title || !priority || !packageName || !assignedTo || !dueDate) {
+    return res.status(400).json({ error: 'All fields (Title, Package, Designer, Priority, and Deadline) are required.' });
   }
 
   const authUserId = req.user?.id ? (parseInt(req.user.id, 10) || req.user.id) : null;
   let numericCreatorId = typeof creatorId === 'number' ? creatorId : (parseInt(creatorId, 10) || (typeof authUserId === 'number' ? authUserId : 1));
   const numericAssignedTo = assignedTo ? (typeof assignedTo === 'number' ? assignedTo : (parseInt(assignedTo, 10) || null)) : null;
+
+  let safeTaskType = taskType || req.body.task_type;
+  if (!safeTaskType) {
+    const lower = String(title || '').toLowerCase();
+    if (lower.includes('video')) safeTaskType = 'VIDEO';
+    else if (lower.includes('post') || lower.includes('social')) safeTaskType = 'POST_DESIGN';
+    else safeTaskType = 'BANNER_DESIGN';
+  }
 
   if (dbPool) {
     try {
@@ -654,14 +696,15 @@ router.post('/tasks', async (req, res) => {
       } catch (ue) {}
 
       const safeDueDate = formatDueDate(dueDate);
-      const safePackageName = packageName ? String(packageName).trim() : 'Careermate';
+      const safePackageName = packageName ? String(packageName).trim() : (req.body.productName ? String(req.body.productName).trim() : 'Careermate');
       const savedAttachmentUrl = saveBase64Attachment(attachmentUrl, attachmentName, 'briefs');
 
       const [result] = await dbPool.query(
-        `INSERT INTO tasks (title, description, content, attachment_url, attachment_name, package_name, status, priority, created_by, assigned_to, due_date, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        `INSERT INTO tasks (title, task_type, description, content, attachment_url, attachment_name, package_name, status, priority, created_by, assigned_to, due_date, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
         [
           String(title).trim(),
+          safeTaskType,
           (description && !String(description).startsWith('Document File:')) ? String(description).trim() : null,
           content || null,
           savedAttachmentUrl || null,
@@ -688,6 +731,8 @@ router.post('/tasks', async (req, res) => {
         const dbTask = await findTask(newTaskId);
         if (dbTask) {
           if (packageName) dbTask.packageName = packageName;
+          if (req.body.productName) dbTask.productName = req.body.productName;
+          if (req.body.productId) dbTask.productId = req.body.productId;
           if (content) dbTask.content = content;
           if (savedAttachmentUrl) dbTask.attachmentUrl = savedAttachmentUrl;
           if (attachmentName) dbTask.attachmentName = attachmentName;

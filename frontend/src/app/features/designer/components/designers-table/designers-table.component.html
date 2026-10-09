@@ -35,7 +35,7 @@
       <tbody>
         @for (designer of designers; track designer.id) {
           <tr class="clickable-row" (click)="onSelect(designer.id)">
-            <!-- Designer Profile -->
+
             <td class="col-designer-profile">
               <div class="designer-user-cell">
                 <div
@@ -50,25 +50,25 @@
                 </div>
               </div>
             </td>
-            <!-- Completed Task Count -->
+
             <td class="text-center col-count">
               <span class="stat-pill pill-completed" title="Completed Tasks">
                 {{ designer.completedCount }}
               </span>
             </td>
-            <!-- Pending Task Count -->
+
             <td class="text-center col-count">
               <span class="stat-pill pill-pending" title="Pending Tasks">
                 {{ designer.pendingCount }}
               </span>
             </td>
-            <!-- Total Task Count -->
+
             <td class="text-center col-count">
               <span class="stat-pill pill-total" title="Total Assigned Tasks">
                 {{ designer.totalCount }}
               </span>
             </td>
-            <!-- Action Buttons: View Tasks -->
+
             <td class="text-right col-actions" (click)="$event.stopPropagation()">
               <div class="action-btn-group">
                 <button

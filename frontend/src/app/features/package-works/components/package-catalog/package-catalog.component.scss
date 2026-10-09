@@ -7,7 +7,7 @@
 
 .custom-packages-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
   gap: 1.5rem;
   width: 100%;
 }
@@ -89,9 +89,6 @@
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
       z-index: 5;
       user-select: none;
-
-
-
 
     }
 
@@ -319,7 +316,6 @@
   }
 }
 
-/* Bottom Bar: Pagination + Watermark */
 .catalog-bottom-bar {
   display: flex;
   align-items: center;
@@ -414,11 +410,9 @@
     user-select: none;
     z-index: 2;
 
-
   }
 }
 
-/* Empty State */
 .packages-empty-state-card {
   background: #FFFFFF;
   border: 1px dashed #F1D3A8;

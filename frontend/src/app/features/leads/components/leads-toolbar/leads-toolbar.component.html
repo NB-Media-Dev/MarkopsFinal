@@ -1,93 +1,139 @@
-<!-- Filter & Toolbar Card -->
 <div class="toolbar-card leads-filter-toolbar">
-  <!-- Search Input -->
-  <div class="filter-search-box">
-    <span class="material-symbols-outlined search-icon">search</span>
-    <input
-      type="text"
-      [ngModel]="searchQuery"
-      (ngModelChange)="onSearch($event)"
-      placeholder="Search by name, phone, email, campaign, assignee..."
-      class="filter-search-input"
-    />
-    @if (searchQuery) {
-      <button
-        type="button"
-        class="btn-clear-search"
-        (click)="onSearch('')"
-        title="Clear search"
-      >
-        ✕
-      </button>
+  <div class="toolbar-main-row">
+
+    <div class="filter-search-box">
+      <span class="material-symbols-outlined search-icon">search</span>
+      <input
+        type="text"
+        [ngModel]="searchQuery"
+        (ngModelChange)="onSearch($event)"
+        placeholder="Search by name, phone, email, campaign, assignee..."
+        class="filter-search-input"
+      />
+      @if (searchQuery) {
+        <button
+          type="button"
+          class="btn-clear-search"
+          (click)="onSearch('')"
+          title="Clear search"
+        >
+          ✕
+        </button>
+      }
+    </div>
+
+    <div class="filters-row-wrap">
+
+      <div class="filter-group">
+        <label class="filter-label">
+          <span class="material-symbols-outlined filter-icon">flag</span>
+          <span>Status:</span>
+        </label>
+        <select
+          [ngModel]="filterStatus"
+          (ngModelChange)="onStatus($event)"
+          class="filter-select"
+        >
+          <option value="ALL">All Statuses</option>
+          <option value="NEW">New</option>
+          <option value="ASSIGNED">Assigned</option>
+          <option value="CONTACTED">Contacted</option>
+          <option value="CONNECTED">Connected</option>
+          <option value="INTERESTED">Interested</option>
+          <option value="QUALIFIED">Qualified / Paid</option>
+          <option value="FOLLOW_UP">Follow-up</option>
+          <option value="NO_ANSWER">No Answer</option>
+          <option value="LINE_BUSY">Busy / Line Busy</option>
+          <option value="WRONG_NUMBER">Wrong Number</option>
+          <option value="NOT_INTERESTED">Not Interested</option>
+          <option value="CONVERTED">Converted</option>
+        </select>
+      </div>
+
+      @if (!isTelecaller) {
+        <div class="filter-group">
+          <label class="filter-label">
+            <span class="material-symbols-outlined filter-icon">headset_mic</span>
+            <span>Telecaller:</span>
+          </label>
+          <select
+            [ngModel]="filterTelecaller"
+            (ngModelChange)="onTelecaller($event)"
+            class="filter-select"
+          >
+            <option value="ALL">All Telecallers</option>
+            <option value="UNASSIGNED">Unassigned Only</option>
+            @for (tc of activeTelecallers; track tc.id) {
+              <option [value]="tc.id || tc.fullName">{{ tc.fullName }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      @if (availableCampaigns.length > 0) {
+        <div class="filter-group">
+          <label class="filter-label">
+            <span class="material-symbols-outlined filter-icon">campaign</span>
+            <span>Campaign:</span>
+          </label>
+          <select
+            [ngModel]="filterCampaign"
+            (ngModelChange)="onCampaign($event)"
+            class="filter-select"
+          >
+            <option value="ALL">All Campaigns</option>
+            @for (c of availableCampaigns; track c.name) {
+              <option [value]="c.name">{{ c.name }}</option>
+            }
+          </select>
+        </div>
+      }
+    </div>
+
+    @if (canCreateLeads) {
+      <div class="toolbar-actions-wrap">
+        <button
+          type="button"
+          class="btn-toolbar-secondary btn-upload-excel"
+          [disabled]="isUploadingLeads"
+          (click)="uploadExcel.emit()"
+          title="Upload Leads via Excel/CSV"
+        >
+          <span class="material-symbols-outlined icon-btn">upload_file</span>
+          <span>{{ isUploadingLeads ? 'Uploading...' : 'Upload Excel' }}</span>
+        </button>
+
+        <button
+          type="button"
+          class="btn-toolbar-primary btn-add-lead"
+          (click)="addLead.emit()"
+          title="Manually Add a New Lead"
+        >
+          <span class="material-symbols-outlined icon-btn">person_add</span>
+          <span>Add Lead</span>
+        </button>
+      </div>
     }
   </div>
-  <div class="filters-row-wrap">
-    <!-- Status Filter -->
-    <div class="filter-group">
-      <label class="filter-label">
-        <span class="material-symbols-outlined filter-icon">flag</span>
-        <span>Status:</span>
-      </label>
-      <select
-        [ngModel]="filterStatus"
-        (ngModelChange)="onStatus($event)"
-        class="filter-select"
-      >
-        <option value="ALL">All Statuses</option>
-        <option value="NEW">New</option>
-        <option value="ASSIGNED">Assigned</option>
-        <option value="CONTACTED">Contacted</option>
-        <option value="CONNECTED">Connected</option>
-        <option value="INTERESTED">Interested</option>
-        <option value="QUALIFIED">Qualified / Paid</option>
-        <option value="FOLLOW_UP">Follow-up</option>
-        <option value="NO_ANSWER">No Answer</option>
-        <option value="LINE_BUSY">Busy / Line Busy</option>
-        <option value="WRONG_NUMBER">Wrong Number</option>
-        <option value="NOT_INTERESTED">Not Interested</option>
-        <option value="CONVERTED">Converted</option>
-      </select>
+
+  <div class="quick-stats-group">
+    <div class="stats-pills-left">
+      @if (hasActiveFilters) {
+        <span class="stat-badge-pill stat-matching">
+          <strong class="text-amber">{{ filteredLeadsCount }}</strong> Matching
+        </span>
+      }
+      <span class="stat-badge-pill">
+        <strong class="text-amber">{{ myLeadsCount }}</strong>
+        {{ isTelecaller ? 'My Assigned Leads' : 'Total Leads' }}
+      </span>
+      @if (!isTelecaller) {
+        <span class="stat-badge-pill">
+          <strong class="text-emerald">{{ activeTelecallers.length }}</strong> Active Telecallers
+        </span>
+      }
     </div>
-    <!-- Telecaller Assignment Filter (for Admin / Digital Marketing) -->
-    @if (!isTelecaller) {
-      <div class="filter-group">
-        <label class="filter-label">
-          <span class="material-symbols-outlined filter-icon">headset_mic</span>
-          <span>Telecaller:</span>
-        </label>
-        <select
-          [ngModel]="filterTelecaller"
-          (ngModelChange)="onTelecaller($event)"
-          class="filter-select"
-        >
-          <option value="ALL">All Telecallers</option>
-          <option value="UNASSIGNED">Unassigned Only</option>
-          @for (tc of activeTelecallers; track tc.id) {
-            <option [value]="tc.id || tc.fullName">{{ tc.fullName }}</option>
-          }
-        </select>
-      </div>
-    }
-    <!-- Campaign Filter -->
-    @if (availableCampaigns.length > 0) {
-      <div class="filter-group">
-        <label class="filter-label">
-          <span class="material-symbols-outlined filter-icon">campaign</span>
-          <span>Campaign:</span>
-        </label>
-        <select
-          [ngModel]="filterCampaign"
-          (ngModelChange)="onCampaign($event)"
-          class="filter-select"
-        >
-          <option value="ALL">All Campaigns</option>
-          @for (c of availableCampaigns; track c.name) {
-            <option [value]="c.name">{{ c.name }}</option>
-          }
-        </select>
-      </div>
-    }
-    <!-- Reset Filters Button -->
+
     @if (hasActiveFilters) {
       <button
         type="button"
@@ -98,23 +144,6 @@
         <span class="material-symbols-outlined fs-15">restart_alt</span>
         <span>Reset Filters</span>
       </button>
-    }
-  </div>
-  <!-- Quick Stats Counts -->
-  <div class="quick-stats-group">
-    @if (hasActiveFilters) {
-      <span class="stat-badge-pill">
-        <strong class="text-indigo">{{ filteredLeadsCount }}</strong> Matching
-      </span>
-    }
-    <span class="stat-badge-pill">
-      <strong class="text-indigo">{{ myLeadsCount }}</strong>
-      {{ isTelecaller ? 'My Assigned Leads' : 'Total Leads' }}
-    </span>
-    @if (!isTelecaller) {
-      <span class="stat-badge-pill">
-        <strong class="text-purple">{{ activeTelecallers.length }}</strong> Active Telecallers
-      </span>
     }
   </div>
 </div>

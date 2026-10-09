@@ -1,5 +1,5 @@
 <div class="packages-catalog-container">
-  <!-- Packages Cards Grid matching Image 1 -->
+
   @if (filteredProductPackages.length > 0) {
     <div class="custom-packages-grid">
       @for (pkg of paginatedProductPackages; track pkg.id || pkg.name) {
@@ -8,7 +8,7 @@
           (click)="onOpenPackage(pkg)"
           [attr.data-package-id]="pkg.id"
         >
-          <!-- Top Banner Image Area -->
+
           <div class="package-display-banner" [class.is-blank]="!pkg.imageUrl">
             @if (pkg.imageUrl) {
               <img
@@ -22,10 +22,6 @@
               </div>
             }
 
-            <!-- Category Tag Floating Pill (Top-Left) -->
-          
-
-            <!-- Top-Right 3-Dots Menu Button -->
             <div class="package-card-menu-wrapper" (click)="$event.stopPropagation()">
               <button
                 type="button"
@@ -60,22 +56,19 @@
             </div>
           </div>
 
-          <!-- Bottom Card Content Area -->
           <div class="package-display-info">
-            <!-- Header Row with Squircle Icon & Title/Desc -->
+
             <div class="package-header-row">
               <div class="package-squircle-icon">
                 <span class="material-symbols-outlined">{{ getPackageSquircleIcon(pkg.name) }}</span>
               </div>
               <div class="package-title-desc-box">
                 <h3 class="package-display-title" [title]="pkg.name">{{ pkg.name }}</h3>
-        
+
               </div>
             </div>
 
-            <!-- Footer Row with Tasks, Days, and Open Button -->
             <div class="package-card-footer">
-            
 
               <button
                 type="button"
@@ -92,9 +85,8 @@
       }
     </div>
 
-    <!-- Bottom Bar: Pagination + Watermark Branding -->
     <div class="catalog-bottom-bar">
-      <!-- Subtle Decorative Leaves Motif (Bottom Left) -->
+
       <div class="bottom-decorative-motif" aria-hidden="true">
         <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M10 90C10 60 30 30 60 20C60 50 40 80 10 90Z" fill="#FED7AA" opacity="0.7"/>
@@ -138,7 +130,6 @@
     </div>
   }
 
-  <!-- Empty State -->
   @if (filteredProductPackages.length === 0) {
     <div class="packages-empty-state-card">
       <div class="empty-squircle-icon">

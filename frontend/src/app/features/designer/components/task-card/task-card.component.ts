@@ -103,21 +103,24 @@ export class TaskCardComponent {
     return raw.split(' ')[0];
   }
 
-  hasCustomDescription(): boolean {
-    const desc = (this.task.description || '').trim();
-    if (!desc) return false;
-    if (desc.startsWith('Document File:') || (desc.includes('File Size:') && desc.includes('File Type:'))) {
-      return false;
+  getTaskTypeLabel(): string {
+    const type = this.task.taskType || (this.task as any).task_type;
+    switch (type) {
+      case 'BANNER_DESIGN': return 'Banner Design';
+      case 'POST_DESIGN': return 'Post Design';
+      case 'VIDEO': return 'Video';
+      default: return '';
     }
-    if (this.task.attachmentName && desc.toLowerCase() === this.task.attachmentName.trim().toLowerCase()) {
-      return false;
-    }
-    return true;
   }
 
-  getCleanDescription(): string {
-    if (!this.hasCustomDescription()) return '';
-    return this.task.description!.trim();
+  getTaskTypeIcon(): string {
+    const type = this.task.taskType || (this.task as any).task_type;
+    switch (type) {
+      case 'BANNER_DESIGN': return 'campaign';
+      case 'POST_DESIGN': return 'photo_library';
+      case 'VIDEO': return 'play_arrow';
+      default: return 'palette';
+    }
   }
 
   getStatusBadgeClass(status: TaskStatus): string {

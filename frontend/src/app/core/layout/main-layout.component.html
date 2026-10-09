@@ -1,7 +1,7 @@
 <div class="mo-dashboard-layout full-width-layout">
   <main #mainContent class="mo-main-content">
     <header class="top-navbar">
-      <!-- Left: Brand Logo -->
+
       <div class="navbar-left">
         <a routerLink="/dashboard" class="brand-link" title="MarkOps Home">
           <img src="/favicon.png" alt="MarkOps Logo" class="brand-logo-img" />
@@ -9,9 +9,8 @@
         </a>
       </div>
 
-      <!-- Right: Notifications, Divider, User Pill, Action Button -->
       <div class="navbar-right">
-        <!-- Notification Bell Button -->
+
         <div class="notification-wrapper">
           <button
             class="notif-bell-btn"
@@ -37,7 +36,6 @@
             }
           </button>
 
-          <!-- Notification Dropdown Flyout -->
           @if (isNotificationFlyoutOpen()) {
             <div class="notif-dropdown">
               <div class="dropdown-header">
@@ -50,7 +48,7 @@
                     <button class="close-notif-btn" (click)="closeNotificationFlyout()">×</button>
                   </div>
                 </div>
-                <!-- Quick Filter Pills: All, Unread, Today -->
+
                 <div class="flyout-filter-bar">
                   <button
                     type="button"
@@ -127,7 +125,6 @@
 
         <div class="navbar-divider-vertical"></div>
 
-        <!-- User Profile Pill Card -->
         <div class="header-user-pill">
           <div class="user-avatar-navy">
             {{ userInitials() }}
@@ -140,7 +137,6 @@
           </div>
         </div>
 
-        <!-- Action Button (Manage Users / Role action) -->
         @if (roleAction(); as action) {
           <a [routerLink]="[action.link]" class="header-action-dark-btn">
             <span class="material-symbols-outlined action-icon-amber">{{ action.icon }}</span>
@@ -148,14 +144,12 @@
           </a>
         }
 
-        <!-- Logout button (subtle pill) -->
         <button class="header-logout-pill-btn" (click)="logout()" title="Sign Out">
           <span class="material-symbols-outlined">logout</span>
         </button>
       </div>
     </header>
 
-    <!-- Global Realtime Notification Toast Popup across entire App -->
     @if (notifService.activeToast(); as toast) {
       <div
         class="global-realtime-toast"

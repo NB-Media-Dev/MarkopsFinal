@@ -1,7 +1,7 @@
 @if (isOpen) {
   <div class="custom-modal-overlay" (click)="onClose()">
     <div class="custom-modal-container create-package-modal" (click)="$event.stopPropagation()">
-      <!-- Modal Header -->
+
       <div class="custom-modal-header">
         <div class="modal-title-with-badge">
           <div class="modal-header-icon-squircle icon-amber">
@@ -21,14 +21,14 @@
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
-      <!-- Modal Form -->
+
       <form
         [formGroup]="form"
         (ngSubmit)="onSubmit()"
         class="custom-modal-form-content"
       >
         <div class="custom-modal-body">
-          <!-- Package Name Field -->
+
           <div class="form-group-block mb-3">
             <label class="custom-form-label" for="edit-pkg-input-name">
               Package Name <span class="required-star">*</span>
@@ -37,28 +37,39 @@
               id="edit-pkg-input-name"
               type="text"
               formControlName="name"
-              placeholder="e.g. TNPSC Group 4 General Studies 2026"
+              placeholder="e.g. TNPSC Group General Studies"
               class="custom-form-input"
               [class.is-invalid]="
                 form.get('name')?.invalid &&
                 form.get('name')?.touched
               "
             />
-            @if (
-              form.get('name')?.invalid &&
-              form.get('name')?.touched
-            ) {
-              <div class="field-validation-msg">
-                Package name is required (minimum 3 characters).
-              </div>
+            @if (form.get('name')?.touched && form.get('name')?.errors) {
+              @if (form.get('name')?.hasError('required')) {
+                <div class="field-validation-msg">
+                  Package name is required.
+                </div>
+              } @else if (form.get('name')?.hasError('minlength')) {
+                <div class="field-validation-msg">
+                  Package name must be at least 3 characters.
+                </div>
+              } @else if (form.get('name')?.hasError('pattern')) {
+                <div class="field-validation-msg">
+                  Package name can only contain letters and spaces (no numbers or symbols).
+                </div>
+              } @else if (form.get('name')?.hasError('duplicate')) {
+                <div class="field-validation-msg">
+                  A package with this name already exists. Please choose a different name.
+                </div>
+              }
             }
           </div>
-          <!-- Banner Image Upload Field -->
+
           <div class="form-group-block mb-3">
             <label class="custom-form-label">
               Package Banner Image <span class="optional-label">(Optional)</span>
             </label>
-            <!-- Upload Drop Area when no image is selected -->
+
             @if (!imagePreview) {
               <div class="pkg-image-uploader-area">
                 <input
@@ -79,7 +90,7 @@
                 </label>
               </div>
             }
-            <!-- Active Image Thumbnail Preview -->
+
             @if (imagePreview) {
               <div class="pkg-active-image-preview">
                 <div class="preview-img-container">
@@ -103,7 +114,7 @@
             }
           </div>
         </div>
-        <!-- Modal Footer -->
+
         <div class="custom-modal-footer">
           <button
             type="button"

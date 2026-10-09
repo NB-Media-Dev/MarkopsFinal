@@ -129,7 +129,6 @@
   }
 }
 
-
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -306,7 +305,6 @@
   }
 }
 
-
 .toolbar-card {
   background: #FFFFFF;
   border-radius: 16px;
@@ -421,7 +419,6 @@
   }
 }
 
-
 .loading-state-card {
   background: #FFFFFF;
   border-radius: 18px;
@@ -460,7 +457,6 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-
 
 .table-card {
   background: #FFFFFF;
@@ -564,7 +560,6 @@
     }
   }
 }
-
 
 .timestamp-cell {
   display: flex;

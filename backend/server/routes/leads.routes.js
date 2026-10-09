@@ -3,6 +3,7 @@ const {
   dbPool,
   dbLeadsStore,
   dbUsersStore,
+  dbAdsStore,
   dbCallActivitiesStore,
   dbFollowUpsStore,
   dbCommonTargetStore,
@@ -39,35 +40,84 @@ router.get('/leads', async (req, res) => {
                c.full_name as creator_full_name, 
                c.email as creator_user_email,
                u.full_name as assignee_full_name,
-               u.email as assignee_user_email
+               u.email as assignee_user_email,
+               a.name as ad_name
         FROM leads l
         LEFT JOIN users c ON l.creator_id = c.id
-        LEFT JOIN users u ON l.assigned_to = u.id
+        LEFT JOIN users u ON (l.assigned_to = u.id OR CAST(l.assigned_to AS CHAR) = CAST(u.id AS CHAR) OR LOWER(l.assigned_to) = LOWER(u.full_name) OR LOWER(l.assigned_to) = LOWER(u.email))
+        LEFT JOIN ads a ON l.ad_id = a.id
       `;
       const queryParams = [];
 
       if (isTelecallerRole) {
+        const numUid = parseInt(String(currentUserId || '').replace(/\D/g, ''), 10);
         queryStr += `
           WHERE (
             l.assigned_to = ?
+            OR l.assigned_to = ?
+            OR CAST(l.assigned_to AS CHAR) = ?
+            OR LOWER(l.assigned_to) = ?
+            OR LOWER(l.assigned_to) = ?
+            OR (u.id IS NOT NULL AND (u.id = ? OR CAST(u.id AS CHAR) = ?))
             OR (u.email IS NOT NULL AND LOWER(u.email) = ?)
-            OR (u.full_name IS NOT NULL AND LOWER(u.full_name) = ?)
+            OR (u.full_name IS NOT NULL AND (LOWER(u.full_name) = ? OR LOWER(u.full_name) LIKE ?))
           )
         `;
         queryParams.push(
           currentUserId || -1,
+          isNaN(numUid) ? -1 : numUid,
+          currentUserId || '__none__',
           currentUserEmail || '__none__',
-          currentUserName || '__none__'
+          currentUserName || '__none__',
+          isNaN(numUid) ? -1 : numUid,
+          currentUserId || '__none__',
+          currentUserEmail || '__none__',
+          currentUserName || '__none__',
+          `%${currentUserName || '__none__'}%`
         );
       }
 
       queryStr += ` ORDER BY l.created_at DESC`;
 
+      try {
+        const [callRows] = await dbPool.query(`
+          SELECT ca.*, l.phone as lead_phone, l.first_name, l.last_name
+          FROM call_activities ca
+          LEFT JOIN leads l ON ca.lead_id = l.id
+          ORDER BY ca.called_at DESC
+        `);
+        if (Array.isArray(callRows)) {
+          callRows.forEach((r) => {
+            const exists = dbCallActivitiesStore.some((c) => String(c.id) === `call_${r.id}` || (String(c.leadId) === String(r.lead_id) && c.calledAt === (r.called_at ? new Date(r.called_at).toISOString() : '')));
+            if (!exists) {
+              dbCallActivitiesStore.unshift({
+                id: `call_${r.id}`,
+                leadId: String(r.lead_id),
+                leadPhone: r.lead_phone || '',
+                leadName: `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Lead Customer',
+                telecallerId: String(r.telecaller_id),
+                outcome: r.outcome,
+                durationSeconds: r.duration_seconds || 0,
+                remarks: r.remarks || '',
+                nextAction: r.next_action || '',
+                calledAt: r.called_at ? new Date(r.called_at).toISOString() : new Date().toISOString(),
+              });
+            }
+          });
+        }
+      } catch (callErr) {
+      }
+
       const [rows] = await dbPool.query(queryStr, queryParams);
       if (Array.isArray(rows)) {
         const leads = rows.map((row) => {
-          const finalCreatorName = row.creator_full_name || row.creator_name || 'System Administrator';
-          const finalCreatorEmail = row.creator_user_email || row.creator_email || 'admin@markops.io';
+          const inMem = dbLeadsStore.find((m) => String(m.id) === String(row.id) || (m.phone && row.phone && m.phone.replace(/\D/g, '') === row.phone.replace(/\D/g, '')));
+          const matchedAd = dbAdsStore.find((ad) => String(ad.id) === String(row.ad_id) || String(ad.platformAdId) === String(row.ad_id));
+          const matchedAdByCmp = dbAdsStore.find((ad) => (row.campaign_id && String(ad.campaignId) === String(row.campaign_id)) || (row.campaign_name && ad.campaignName && ad.campaignName.toLowerCase().trim() === String(row.campaign_name).toLowerCase().trim()));
+          const finalAdName = row.ad_name || inMem?.adName || inMem?.ad_name || (matchedAd ? matchedAd.name : '') || (matchedAdByCmp ? matchedAdByCmp.name : '') || (row.adName || '');
+          const finalAdId = row.ad_id ? String(row.ad_id) : (inMem?.adId || row.adId || '');
+          const finalCreatorName = row.creator_full_name || row.creator_name || inMem?.creatorName || 'System Administrator';
+          const finalCreatorEmail = row.creator_user_email || row.creator_email || inMem?.creatorEmail || 'admin@markops.io';
           return {
             id: row.id,
             firstName: row.first_name,
@@ -87,6 +137,14 @@ router.get('/leads', async (req, res) => {
             creator_email: finalCreatorEmail,
             campaignId: row.campaign_id,
             campaignName: row.campaign_name || '',
+            packageName: row.package_name || inMem?.packageName || inMem?.package || '',
+            package: row.package_name || inMem?.package || inMem?.packageName || '',
+            productId: row.product_id || inMem?.productId || '',
+            productName: row.product_name || inMem?.productName || '',
+            adId: finalAdId,
+            adName: finalAdName,
+            remarks: inMem?.remarks || inMem?.notes || '',
+            notes: inMem?.notes || inMem?.remarks || '',
             createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
             updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
           };
@@ -112,6 +170,10 @@ router.get('/leads', async (req, res) => {
               const latestCall = leadCalls[0];
               const out = String(latestCall.outcome || '').toUpperCase().replace(/\s+/g, '_');
               lead.status = out === 'BUSY' ? 'LINE_BUSY' : out;
+              if (latestCall.remarks && latestCall.remarks !== '—') {
+                lead.remarks = latestCall.remarks;
+                lead.notes = latestCall.remarks;
+              }
             }
           });
         }
@@ -127,11 +189,15 @@ router.get('/leads', async (req, res) => {
   let leads = [...dbLeadsStore];
   if (isTelecallerRole) {
     leads = leads.filter((l) => {
-      const aTo = String(l.assignedTo || l.assigned_to || '').toLowerCase().trim();
+      const aTo = String(l.assignedTo || l.assigned_to || l.assignedTelecallerId || l.assigned_telecaller_id || '').toLowerCase().trim();
       const aName = String(l.assigneeName || l.assignee_name || '').toLowerCase().trim();
-      if (currentUserId && aTo === String(currentUserId).toLowerCase().trim()) return true;
-      if (currentUserEmail && aTo === currentUserEmail) return true;
-      if (currentUserName && (aName === currentUserName || aTo === currentUserName)) return true;
+      const uid = String(currentUserId || '').toLowerCase().trim();
+      const uemail = String(currentUserEmail || '').toLowerCase().trim();
+      const uname = String(currentUserName || '').toLowerCase().trim();
+
+      if (uid && (aTo === uid || parseInt(aTo, 10) === parseInt(uid, 10))) return true;
+      if (uemail && (aTo === uemail || aName === uemail || aTo.includes(uemail))) return true;
+      if (uname && (aName === uname || aTo === uname || aName.includes(uname) || uname.includes(aName) || aTo.includes(uname))) return true;
       return false;
     });
   }
@@ -174,7 +240,7 @@ router.get('/leads', async (req, res) => {
 });
 
 router.post('/leads', async (req, res) => {
-  const { firstName, lastName, email, phone, source, campaignId, campaignName, assignedTo, assigneeName, creatorId, creatorEmail, creatorRole, creatorName, productName, packageName } = req.body;
+  const { firstName, lastName, email, phone, source, campaignId, campaignName, adId, adName, assignedTo, assigneeName, creatorId, creatorEmail, creatorRole, creatorName, productName, packageName } = req.body;
   const effectiveRole = String(creatorRole || req.headers['x-user-role'] || '').toUpperCase();
 
   if (effectiveRole === 'TELECALLER' || effectiveRole === 'BDM') {
@@ -188,6 +254,8 @@ router.post('/leads', async (req, res) => {
   const src = String(source || '').trim();
   const campId = String(campaignId || '').trim();
   const campName = String(campaignName || 'General Intake').trim();
+  const targetAdId = String(adId || '').trim();
+  const targetAdName = String(adName || '').trim();
   const targetAssignedTo = assignedTo ? String(assignedTo).trim() : null;
   let targetAssigneeName = targetAssignedTo ? String(assigneeName || 'Assigned Telecaller').trim() : 'Unassigned';
 
@@ -242,6 +310,27 @@ router.post('/leads', async (req, res) => {
 
   const numericCreatorId = parseInt(String(effectiveUserId || '1').replace(/\D/g, ''), 10) || 1;
   const numericAssignedTo = targetAssignedTo ? (parseInt(targetAssignedTo.replace(/\D/g, ''), 10) || null) : null;
+  let numericAdId = targetAdId ? (parseInt(targetAdId.replace(/\D/g, ''), 10) || null) : null;
+
+  if (dbPool && targetAdName) {
+    try {
+      const [existingAds] = await dbPool.query('SELECT id, name FROM ads WHERE name = ? LIMIT 1', [targetAdName]);
+      if (existingAds && existingAds.length > 0) {
+        numericAdId = existingAds[0].id;
+      } else if (mysqlCampaignId) {
+        const [insertedAd] = await dbPool.query(
+          `INSERT INTO ads (campaign_id, name, platform, status, spend, impressions, clicks, leads_count, created_at, updated_at)
+           VALUES (?, ?, 'Meta', 'ACTIVE', 0, 0, 0, 0, NOW(), NOW())`,
+          [mysqlCampaignId, targetAdName]
+        );
+        if (insertedAd && insertedAd.insertId) {
+          numericAdId = insertedAd.insertId;
+        }
+      }
+    } catch (adErr) {
+      console.log('[MySQL Notice] Auto-link ad for lead notice:', adErr.message);
+    }
+  }
 
   const newLead = {
     id: `lead_${Math.random().toString(36).substring(2, 10)}`,
@@ -252,7 +341,12 @@ router.post('/leads', async (req, res) => {
     source: src,
     campaignId: campId, 
     campaignName: campName,
-    adId: '',
+    packageName: packageName || '',
+    package: packageName || '',
+    productName: productName || '',
+    productId: req.body.productId || '',
+    adId: targetAdId,
+    adName: targetAdName,
     status: targetAssignedTo ? 'ASSIGNED' : 'NEW',
     assignmentStatus: targetAssignedTo ? 'ASSIGNED' : 'UNASSIGNED',
     callDisposition: null,
@@ -270,10 +364,9 @@ router.post('/leads', async (req, res) => {
 
   if (dbPool) {
     try {
-   
       await dbPool.query(
-        `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, assigned_telecaller_id, assignment_status, creator_id, creator_name, creator_email, campaign_id, campaign_name, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, assigned_telecaller_id, assignment_status, creator_id, creator_name, creator_email, campaign_id, campaign_name, package_name, product_id, ad_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
         [
           newLead.firstName, 
           newLead.lastName, 
@@ -288,11 +381,36 @@ router.post('/leads', async (req, res) => {
           newLead.creatorName, 
           newLead.creatorEmail, 
           mysqlCampaignId,      
-          newLead.campaignName
+          newLead.campaignName,
+          newLead.packageName || null,
+          newLead.productId || null,
+          numericAdId
         ]
       );
     } catch (e) {
-      console.log('[MySQL Notice] Save lead to database failed:', e?.message || e);
+      console.log('[MySQL Notice] Save lead to database with ad_id failed, trying default format:', e?.message || e);
+      try {
+        await dbPool.query(
+          `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, creator_id, creator_name, creator_email, campaign_id, campaign_name, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+          [
+            newLead.firstName, 
+            newLead.lastName, 
+            newLead.email, 
+            newLead.phone, 
+            newLead.source, 
+            newLead.status, 
+            numericAssignedTo,    
+            numericCreatorId,     
+            newLead.creatorName, 
+            newLead.creatorEmail, 
+            mysqlCampaignId,      
+            newLead.campaignName
+          ]
+        );
+      } catch (fallbackErr) {
+        console.log('[MySQL Notice] Fallback save lead failed:', fallbackErr?.message || fallbackErr);
+      }
     }
   }
 
@@ -449,18 +567,31 @@ router.post('/leads/:id/assign', async (req, res) => {
     try {
       const numLeadId = parseInt(leadId, 10);
       if (!isNaN(numLeadId)) {
-        await dbPool.query(
-          `UPDATE leads
-           SET assigned_to = ?, assigned_telecaller_id = ?, assignment_status = ?, status = ?, updated_at = NOW()
-           WHERE id = ?`,
-          [
-            cleanAssignedTo ? (parseInt(String(cleanAssignedTo).replace(/\D/g, ''), 10) || cleanAssignedTo) : null,
-            cleanAssignedTo ? (parseInt(String(cleanAssignedTo).replace(/\D/g, ''), 10) || cleanAssignedTo) : null,
-            cleanAssignedTo ? 'ASSIGNED' : 'UNASSIGNED',
-            finalStatus,
-            numLeadId,
-          ]
-        );
+        try {
+          await dbPool.query(
+            `UPDATE leads
+             SET assigned_to = ?, assigned_telecaller_id = ?, assignment_status = ?, status = ?, updated_at = NOW()
+             WHERE id = ?`,
+            [
+              cleanAssignedTo ? (parseInt(String(cleanAssignedTo).replace(/\D/g, ''), 10) || cleanAssignedTo) : null,
+              cleanAssignedTo ? (parseInt(String(cleanAssignedTo).replace(/\D/g, ''), 10) || cleanAssignedTo) : null,
+              cleanAssignedTo ? 'ASSIGNED' : 'UNASSIGNED',
+              finalStatus,
+              numLeadId,
+            ]
+          );
+        } catch (colErr) {
+          await dbPool.query(
+            `UPDATE leads
+             SET assigned_to = ?, status = ?, updated_at = NOW()
+             WHERE id = ?`,
+            [
+              cleanAssignedTo ? (parseInt(String(cleanAssignedTo).replace(/\D/g, ''), 10) || cleanAssignedTo) : null,
+              finalStatus,
+              numLeadId,
+            ]
+          );
+        }
       }
     } catch (e) {
       console.error('[MySQL Error] Update lead assignment failed:', e.message);
@@ -718,7 +849,42 @@ router.delete('/leads/:id', async (req, res) => {
   return res.json({ success: true, message: 'Lead deleted successfully.', leadId });
 });
 
-router.get('/calls', (req, res) => {
+router.get('/calls', async (req, res) => {
+  if (dbPool) {
+    try {
+      const [rows] = await dbPool.query(`
+        SELECT ca.*, l.first_name, l.last_name, l.phone as lead_phone, u.full_name as telecaller_name, u.email as telecaller_email
+        FROM call_activities ca
+        LEFT JOIN leads l ON ca.lead_id = l.id
+        LEFT JOIN users u ON ca.telecaller_id = u.id
+        ORDER BY ca.called_at DESC
+      `);
+      if (Array.isArray(rows) && rows.length > 0) {
+        const mapped = rows.map((r) => ({
+          id: `call_${r.id}`,
+          leadId: String(r.lead_id),
+          leadPhone: r.lead_phone || '',
+          leadName: `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Lead Customer',
+          telecallerId: String(r.telecaller_id),
+          telecallerName: r.telecaller_name || 'Telecaller',
+          telecallerEmail: r.telecaller_email || '',
+          outcome: r.outcome,
+          durationSeconds: r.duration_seconds || 0,
+          remarks: r.remarks || '',
+          nextAction: r.next_action || '',
+          calledAt: r.called_at ? new Date(r.called_at).toISOString() : new Date().toISOString(),
+        }));
+        mapped.forEach((m) => {
+          if (!dbCallActivitiesStore.some((c) => String(c.id) === String(m.id) || (String(c.leadId) === String(m.leadId) && c.calledAt === m.calledAt))) {
+            dbCallActivitiesStore.push(m);
+          }
+        });
+      }
+    } catch (e) {
+      console.log('[MySQL Error] Fetch call_activities failed:', e?.message || e);
+    }
+  }
+
   const { telecallerId, userId, telecallerName } = req.query;
   if (telecallerId || userId || telecallerName) {
     const targetId = String(telecallerId || userId || '').trim().toLowerCase();
@@ -756,7 +922,6 @@ router.post('/calls', async (req, res) => {
         await dbPool.query('UPDATE leads SET status = ?, updated_at = NOW() WHERE phone LIKE ?', [newStatus, `%${rawPhone}%`]);
       }
 
-  
       let fetchSql = `
         SELECT l.*, 
                c.full_name as creator_full_name, 
@@ -797,6 +962,8 @@ router.post('/calls', async (req, res) => {
             creatorEmail: row.creator_user_email || row.creator_email || 'admin@markops.io',
             campaignId: row.campaign_id,
             campaignName: row.campaign_name || '',
+            remarks: remarks || '',
+            notes: remarks || '',
             createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
             updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
           };
@@ -826,6 +993,8 @@ router.post('/calls', async (req, res) => {
 
     if (lead) {
       lead.status = newStatus;
+      lead.remarks = remarks || lead.remarks || 'Call logged.';
+      lead.notes = remarks || lead.notes || 'Call logged.';
       lead.updatedAt = new Date().toISOString();
     } else if (rawLeadId || rawName || rawPhone) {
       lead = {
@@ -837,6 +1006,8 @@ router.post('/calls', async (req, res) => {
         campaignId: 'cmp_default',
         campaignName: 'Digital Ad Campaign',
         status: newStatus,
+        remarks: remarks || 'Call logged.',
+        notes: remarks || 'Call logged.',
         assignedTo: telecallerId || null,
         assigneeName: telecallerName || 'Assigned Telecaller',
         createdAt: new Date().toISOString(),
@@ -867,13 +1038,55 @@ router.post('/calls', async (req, res) => {
   };
 
   dbCallActivitiesStore.unshift(newCall);
+
+  if (dbPool) {
+    try {
+      const numLeadId = parseInt(String(newCall.leadId).replace(/\D/g, ''), 10);
+      const numCallerId = parseInt(String(effectiveCallerId).replace(/\D/g, ''), 10) || 1;
+      let mysqlOutcome = outcomeUpper;
+      if (mysqlOutcome === 'LINE_BUSY') mysqlOutcome = 'BUSY';
+      if (mysqlOutcome === 'FOLLOW_UP') mysqlOutcome = 'CONNECTED';
+      if (mysqlOutcome === 'CONVERTED' || mysqlOutcome === 'PAID') mysqlOutcome = 'QUALIFIED';
+      if (mysqlOutcome === 'LOST') mysqlOutcome = 'NOT_INTERESTED';
+      if (!['CONNECTED', 'NO_ANSWER', 'BUSY', 'WRONG_NUMBER', 'INTERESTED', 'NOT_INTERESTED', 'QUALIFIED'].includes(mysqlOutcome)) {
+        mysqlOutcome = 'CONNECTED';
+      }
+      if (!isNaN(numLeadId)) {
+        await dbPool.query(
+          `INSERT INTO call_activities (lead_id, telecaller_id, outcome, duration_seconds, remarks, next_action, called_at)
+           VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+          [numLeadId, numCallerId, mysqlOutcome, Number(durationSeconds) || 120, remarks || 'Call logged.', nextAction || '']
+        );
+        await dbPool.query(`UPDATE leads SET status = ?, updated_at = NOW() WHERE id = ?`, [mysqlOutcome, numLeadId]).catch(() => {});
+      }
+    } catch (dbErr) {
+      console.log('[MySQL Error] Insert call_activities failed:', dbErr?.message || dbErr);
+    }
+  }
+
   emitRealtimeEvent('call:completed', newCall);
+
+  const finalRemarkText = (remarks && remarks !== '—' && String(remarks).trim()) ? String(remarks).trim() : 'Call logged.';
 
   const finalLead = lead || {
     id: rawLeadId,
     status: newStatus,
+    remarks: finalRemarkText,
+    notes: finalRemarkText,
     updatedAt: new Date().toISOString(),
   };
+
+  if (lead) {
+    lead.remarks = finalRemarkText;
+    lead.notes = finalRemarkText;
+  }
+
+  const inMemLead = dbLeadsStore.find((l) => String(l.id) === String(rawLeadId) || (l.phone && newCall.leadPhone && l.phone.replace(/\D/g, '') === newCall.leadPhone.replace(/\D/g, '')));
+  if (inMemLead) {
+    inMemLead.remarks = finalRemarkText;
+    inMemLead.notes = finalRemarkText;
+    inMemLead.status = newStatus;
+  }
 
   emitRealtimeEvent('lead:status_changed', { leadId: finalLead.id, status: newStatus });
   emitRealtimeEvent('lead:updated', finalLead);
@@ -1233,7 +1446,7 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
       `SELECT u.id, u.full_name AS fullName, u.email, COUNT(l.id) AS assignedCount
        FROM users u
        INNER JOIN roles r ON r.id = u.role_id
-       LEFT JOIN leads l ON l.assigned_telecaller_id = u.id
+       LEFT JOIN leads l ON (l.assigned_to = u.id)
        WHERE r.code = 'TELECALLER' AND u.is_active = 1
        GROUP BY u.id, u.full_name, u.email
        ORDER BY assignedCount ASC, u.id ASC`
@@ -1363,15 +1576,23 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
     const cleanAssignedToId = assignedTelecaller ? (parseInt(String(assignedTelecaller.id).replace(/\D/g, ''), 10) || null) : null;
     const cleanCreatorId = parseInt(String(uploaderUid || '1').replace(/\D/g, ''), 10) || 1;
 
+    const targetPkgName = req.body.packageName || raw.packageName || raw.package || targetCampName || 'Careermate';
+    const targetProdName = req.body.productName || raw.productName || raw.product || '';
+    const targetProdId = req.body.productId || raw.productId || raw.product_id || '';
+
     const newLead = {
       id: `lead_${Math.random().toString(36).substring(2, 10)}`,
       firstName,
       lastName,
       email: emailAddress,
       phone,
-      source: String(raw.source || raw['Source'] || raw['source'] || raw['Lead Source'] || source || (metaWebhook ? 'META_ADS' : 'EXCEL_UPLOAD')).trim(),
-      campaignId: metaWebhook && mysqlCampaignId != null ? String(mysqlCampaignId) : rowCampaignId,
-      campaignName: metaWebhook ? targetCampName : rowCampaignName,
+      source: String(raw.source || raw['Source'] || raw['source'] || raw['Lead Source'] || source || (metaWebhook ? 'META_ADS' : 'Excel Import')).trim(),
+      campaignId: metaWebhook && mysqlCampaignId != null ? String(mysqlCampaignId) : (campaignId || raw.campaignId || 'cmp_default'),
+      campaignName: targetCampName,
+      packageName: targetPkgName,
+      package: targetPkgName,
+      productName: targetProdName,
+      productId: targetProdId,
       adId: raw.adId || '',
       metaLeadId: metaWebhook ? String(raw.metaLeadId) : undefined,
       metaCampaignId: metaWebhook ? String(raw.metaCampaignId || '') : undefined,
@@ -1435,14 +1656,30 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
             ]
           );
         } else {
-          await importConnection.query(
-            `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, assigned_telecaller_id, assignment_status, creator_id, creator_name, creator_email, campaign_id, campaign_name, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-            [
-              l.firstName, l.lastName, l.email, l.phone, l.source, l.status, l._mysqlAssignedTo, l._mysqlAssignedTo,
-              l.assignmentStatus, l._mysqlCreatorId, l.creatorName, l.creatorEmail, l._mysqlCampaignId, l.campaignName,
-            ]
-          );
+          try {
+            await importConnection.query(
+              `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, assigned_telecaller_id, assignment_status, creator_id, creator_name, creator_email, campaign_id, campaign_name, package_name, product_id, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+              [
+                l.firstName, l.lastName, l.email, l.phone, l.source, l.status, l._mysqlAssignedTo, l._mysqlAssignedTo,
+                l.assignmentStatus, l._mysqlCreatorId, l.creatorName, l.creatorEmail, l._mysqlCampaignId, l.campaignName,
+                l.packageName || null, l.productId || null
+              ]
+            );
+          } catch (colErr) {
+            try {
+              await importConnection.query(
+                `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, creator_id, creator_name, creator_email, campaign_id, campaign_name, created_at, updated_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+                [
+                  l.firstName, l.lastName, l.email, l.phone, l.source, l.status, l._mysqlAssignedTo,
+                  l._mysqlCreatorId, l.creatorName, l.creatorEmail, l._mysqlCampaignId, l.campaignName
+                ]
+              );
+            } catch (coreErr) {
+              console.error('[MySQL Error] Bulk insert core fallback:', coreErr.message);
+            }
+          }
         }
       }
 

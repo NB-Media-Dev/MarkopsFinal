@@ -42,7 +42,7 @@
       <tbody>
         @for (cmp of campaigns; track cmp.id) {
           <tr class="campaign-row">
-            <!-- Campaign Name & Package / Objective -->
+
             <td>
               <div class="cmp-title-cell">
                 <span
@@ -64,7 +64,7 @@
                 </div>
               </div>
             </td>
-            <!-- Status -->
+
             <td>
               @if (cmp.status === 'ACTIVE') {
                 <span class="status-pill status-pill-active">
@@ -87,27 +87,27 @@
                 </span>
               }
             </td>
-            <!-- Spend -->
+
             <td>
               <span class="metric-spend-text">₹{{ cmp.spend | number: '1.2-2' }}</span>
             </td>
-            <!-- Leads -->
+
             <td>
               <span class="metric-leads-badge">{{ cmp.leadsCount | number }}</span>
             </td>
-            <!-- CPL -->
+
             <td>
               <span class="metric-cpl-badge">₹{{ cmp.cpl | number: '1.2-2' }}</span>
             </td>
-            <!-- Qualified Leads -->
+
             <td>
               <span class="metric-qualified-text">{{ cmp.qualifiedLeads | number }}</span>
             </td>
-            <!-- Conversions -->
+
             <td>
               <span class="metric-conv-val font-bold">{{ cmp.conversions | number }}</span>
             </td>
-            <!-- Conv. Rate -->
+
             <td>
               <div class="conv-rate-wrap">
                 <div class="conv-rate-header">
@@ -121,7 +121,7 @@
                 </div>
               </div>
             </td>
-            <!-- Actions -->
+
             @if (canManageCampaigns) {
               <td class="text-right actions-col">
                 <div class="action-buttons-group">
@@ -145,7 +145,6 @@
           </tr>
         }
 
-        <!-- Empty State -->
         @if (campaigns.length === 0) {
           <tr>
             <td [attr.colspan]="canManageCampaigns ? 9 : 8" class="empty-state-cell">

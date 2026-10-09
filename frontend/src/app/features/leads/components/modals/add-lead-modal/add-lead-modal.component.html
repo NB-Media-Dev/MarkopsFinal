@@ -1,4 +1,3 @@
-<!-- SINGLE MANUAL LEAD MODAL -->
 @if (isOpen) {
   <div class="modal-backdrop" (click)="onClose()">
     <div class="modal-card modal-md add-lead-modal-card" (click)="$event.stopPropagation()">
@@ -17,7 +16,7 @@
         </button>
       </div>
       <div class="modal-body">
-        <!-- Row 1: First Name & Last Name -->
+
         <div class="form-row">
           <div class="form-group flex-1">
             <label class="form-label">First Name <span class="required">*</span></label>
@@ -56,7 +55,7 @@
             }
           </div>
         </div>
-        <!-- Row 2: Phone Number (With live validation) -->
+
         <div class="form-group">
           <label class="form-label">Phone Number <span class="required">*</span></label>
           <div class="input-with-icon-wrap">
@@ -89,7 +88,7 @@
             </span>
           }
         </div>
-        <!-- Row 3: Email Address (With live validation) -->
+
         <div class="form-group">
           <label class="form-label">Email Address <span class="required">*</span></label>
           <div class="input-with-icon-wrap">
@@ -117,7 +116,7 @@
             </span>
           }
         </div>
-        <!-- Row 4: Marketing Campaign Dropdown Selection -->
+
         <div class="form-group">
           <label class="form-label">Marketing Campaign <span class="required">*</span></label>
           <select
@@ -128,14 +127,30 @@
             @if (availableCampaigns.length === 0) {
               <option value="">General Ad Campaign</option>
             }
-            @for (cmp of availableCampaigns; track cmp) {
+            @for (cmp of availableCampaigns; track cmp.id) {
               <option [value]="cmp.id">
                 {{ cmp.name }}
               </option>
             }
           </select>
         </div>
-        <!-- Row 5: Lead Source Selection -->
+
+        <div class="form-group">
+          <label class="form-label">Select Ad <span class="text-muted text-xs font-normal">(Digital Marketing Ad)</span></label>
+          <select
+            class="form-input custom-select"
+            [ngModel]="newAdId"
+            (change)="adChange.emit($event)"
+          >
+            <option value="">-- No specific Ad / Select Ad --</option>
+            @for (ad of availableAds; track ad.id) {
+              <option [value]="ad.id">
+                {{ ad.name }}{{ ad.platform ? ' (' + ad.platform + ')' : '' }}
+              </option>
+            }
+          </select>
+        </div>
+
         <div class="form-group">
           <label class="form-label">Lead Source <span class="required">*</span></label>
           <select class="form-input custom-select" [ngModel]="newSource" (ngModelChange)="newSourceChange.emit($event)">
@@ -147,7 +162,7 @@
             <option value="Youtube">Youtube</option>
           </select>
         </div>
-        <!-- Row 6: Target Telecaller Assignment (Referenced from Upload Leads) -->
+
         <div class="form-group telecaller-assign-group">
           <label class="form-label">
             <span>Target Telecaller Assignment</span>

@@ -1,68 +1,164 @@
-<section class="kpi-grid">
-  <div class="kpi-card card-revenue">
-    <div class="kpi-top-row">
-      <div class="kpi-squircle-icon icon-amber">
-        <span class="currency-symbol">₹</span>
-      </div>
-    </div>
-    <div class="kpi-body">
-      <span class="kpi-title">TOTAL AD SPEND</span>
-      <div class="kpi-value">₹{{ totalSpend | number: '1.2-2' }}</div>
-    </div>
-    <div class="kpi-footer-row">
-      <span class="kpi-footer-text">Budget: ₹{{ totalBudget | number: '1.0-0' }}</span>
-      <span class="kpi-footer-pill pill-amber">{{ budgetUsedPercent }}% Allocated</span>
-    </div>
-  </div>
+<div class="marketing-hub-section">
 
-  <div class="kpi-card card-leads">
-    <div class="kpi-top-row">
-      <div class="kpi-squircle-icon icon-purple">
-        <span class="material-symbols-outlined">groups</span>
-      </div>
-    </div>
-    <div class="kpi-body">
-      <span class="kpi-title">TOTAL LEADS</span>
-      <div class="kpi-value">{{ totalLeads | number }}</div>
-    </div>
-    <div class="kpi-footer-row">
-      <span class="kpi-footer-text">PAID: {{ totalQualifiedLeads | number }}</span>
-      <span class="kpi-footer-pill pill-purple">+{{ totalLeads | number }} Total</span>
-    </div>
-  </div>
+  <div class="marketing-showcase-grid">
 
-  <div class="kpi-card card-conversion">
-    <div class="kpi-top-row">
-      <div class="kpi-squircle-icon icon-emerald">
-        <span class="material-symbols-outlined">trending_down</span>
+    <div class="marketing-card card-campaigns">
+      <div class="card-top-header">
+        <div class="card-icon-pill icon-orange">
+          <span class="material-symbols-outlined">campaign</span>
+        </div>
+        <div class="card-title-group">
+          <h3 class="card-title">Campaigns</h3>
+        </div>
       </div>
-    </div>
-    <div class="kpi-body">
-      <span class="kpi-title">AVERAGE CPL</span>
-      <div class="kpi-value">₹{{ averageCpl }}</div>
-    </div>
-    <div class="kpi-footer-progress">
-      <div class="kpi-progress-meta">
-        <span class="kpi-footer-text">Cost Efficiency</span>
-        <span class="kpi-footer-text text-emerald font-semibold">Per Acquisition</span>
-      </div>
-    </div>
-  </div>
 
-  <div class="kpi-card card-tasks">
-    <div class="kpi-top-row">
-      <div class="kpi-squircle-icon icon-rose">
-        <span class="material-symbols-outlined">verified</span>
+      <div class="card-graphic-area graphic-bg-orange">
+        <div class="graphic-canvas graphic-campaigns-art">
+          <svg viewBox="0 0 200 120" fill="none" class="feature-art-svg">
+            <defs>
+              <radialGradient id="campGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#FED7AA" stop-opacity="0.7"/>
+                <stop offset="100%" stop-color="#FFF7ED" stop-opacity="0"/>
+              </radialGradient>
+              <linearGradient id="speakerGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#F59E0B"/>
+                <stop offset="100%" stop-color="#EA580C"/>
+              </linearGradient>
+            </defs>
+            <circle cx="100" cy="65" r="50" fill="url(#campGlow)"/>
+
+            <path d="M50 78L85 68L85 42L50 32C45 30 40 34 40 40L40 70C40 76 45 80 50 78Z" fill="url(#speakerGrad)"/>
+            <path d="M85 42L115 28C118 26 122 29 122 33L122 77C122 81 118 84 115 82L85 68Z" fill="#F97316"/>
+
+            <ellipse cx="122" cy="55" rx="8" ry="27" fill="#EA580C"/>
+            <ellipse cx="122" cy="55" rx="4" ry="18" fill="#FDE047"/>
+
+            <path d="M55 76L62 98C63 101 60 104 57 104L52 104C49 104 47 101 48 98L53 76Z" fill="#D97706"/>
+
+            <circle cx="145" cy="40" r="14" fill="#FEE2E2" stroke="#EF4444" stroke-width="2"/>
+            <circle cx="145" cy="40" r="8" fill="#EF4444"/>
+            <circle cx="145" cy="40" r="3" fill="#FFFFFF"/>
+
+            <rect x="135" y="65" width="28" height="22" rx="4" fill="#FFFFFF" stroke="#FED7AA" stroke-width="1.5"/>
+            <circle cx="143" cy="72" r="2.5" fill="#F59E0B"/>
+            <path d="M138 83L146 76L158 84" stroke="#FB923C" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
       </div>
-      <div class="kpi-pill-badge pill-rose">{{ overallConvRate }}% Rate</div>
+
+      <div class="card-action-wrap">
+        <button type="button" class="btn-primary-card btn-orange-solid" (click)="onCreateCampaign(); $event.stopPropagation()">
+          <span>Open</span>
+          <span class="material-symbols-outlined icon-arrow">arrow_forward</span>
+        </button>
+      </div>
     </div>
-    <div class="kpi-body">
-      <span class="kpi-title">TOTAL CONVERSIONS</span>
-      <div class="kpi-value">{{ totalConversions | number }}</div>
+
+    <div class="marketing-card card-ads">
+      <div class="card-top-header">
+        <div class="card-icon-pill icon-blue">
+          <span class="material-symbols-outlined">analytics</span>
+        </div>
+        <div class="card-title-group">
+          <h3 class="card-title">Ads Metrics</h3>
+        </div>
+
+      </div>
+
+      <div class="card-graphic-area graphic-bg-blue">
+        <div class="graphic-canvas graphic-ads-art">
+          <svg viewBox="0 0 200 120" fill="none" class="feature-art-svg">
+            <defs>
+              <radialGradient id="adsGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#BFDBFE" stop-opacity="0.7"/>
+                <stop offset="100%" stop-color="#EFF6FF" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+            <circle cx="100" cy="65" r="50" fill="url(#adsGlow)"/>
+
+            <rect x="45" y="25" width="105" height="68" rx="7" fill="#FFFFFF" stroke="#3B82F6" stroke-width="2"/>
+            <path d="M45 38H150" stroke="#DBEAFE" stroke-width="1.5"/>
+
+            <path d="M88 93H107L112 103H83L88 93Z" fill="#93C5FD"/>
+
+            <rect x="120" y="29" width="24" height="13" rx="3" fill="#2563EB"/>
+            <text x="124" y="39" fill="#FFFFFF" font-size="8" font-weight="900" font-family="sans-serif">AD</text>
+
+            <rect x="60" y="65" width="8" height="20" rx="2" fill="#93C5FD"/>
+            <rect x="73" y="52" width="8" height="33" rx="2" fill="#60A5FA"/>
+            <rect x="86" y="44" width="8" height="41" rx="2" fill="#3B82F6"/>
+            <rect x="99" y="36" width="8" height="49" rx="2" fill="#1D4ED8"/>
+
+            <path d="M58 70L74 54L88 47L102 38" stroke="#38BDF8" stroke-width="2" stroke-linecap="round"/>
+
+            <path d="M135 68L150 78L143 81L147 90L142 92L138 83L131 87L135 68Z" fill="#1E40AF" stroke="#FFFFFF" stroke-width="1.5"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="card-action-wrap">
+        <button type="button" class="btn-primary-card btn-blue-solid" (click)="onViewAnalytics(); $event.stopPropagation()">
+          <span>Open</span>
+          <span class="material-symbols-outlined icon-arrow">arrow_forward</span>
+        </button>
+      </div>
     </div>
-    <div class="kpi-footer-row">
-      <span class="kpi-footer-text">Funnel Yield</span>
-      <span class="kpi-footer-pill pill-rose">High Intent</span>
+
+    <div class="marketing-card card-leads">
+      <div class="card-top-header">
+        <div class="card-icon-pill icon-green">
+          <span class="material-symbols-outlined">groups</span>
+        </div>
+        <div class="card-title-group">
+          <h3 class="card-title">Leads</h3>
+        </div>
+      </div>
+
+      <div class="card-graphic-area graphic-bg-green">
+        <div class="graphic-canvas graphic-leads-art">
+          <svg viewBox="0 0 200 120" fill="none" class="feature-art-svg">
+            <defs>
+              <radialGradient id="leadGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#A7F3D0" stop-opacity="0.7"/>
+                <stop offset="100%" stop-color="#ECFDF5" stop-opacity="0"/>
+              </radialGradient>
+              <linearGradient id="funnelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#34D399"/>
+                <stop offset="100%" stop-color="#059669"/>
+              </linearGradient>
+            </defs>
+            <circle cx="100" cy="65" r="50" fill="url(#leadGlow)"/>
+
+            <circle cx="70" cy="30" r="7" fill="#6EE7B7"/>
+            <circle cx="70" cy="27" r="3" fill="#047857"/>
+            <path d="M65 35C65 32 67 31 70 31C73 31 75 32 75 35" stroke="#047857" stroke-width="1.5" stroke-linecap="round"/>
+
+            <circle cx="100" cy="22" r="8" fill="#10B981"/>
+            <circle cx="100" cy="19" r="3.5" fill="#FFFFFF"/>
+            <path d="M94 28C94 25 97 24 100 24C103 24 106 25 106 28" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round"/>
+
+            <circle cx="130" cy="30" r="7" fill="#6EE7B7"/>
+            <circle cx="130" cy="27" r="3" fill="#047857"/>
+            <path d="M125 35C125 32 127 31 130 31C133 31 135 32 135 35" stroke="#047857" stroke-width="1.5" stroke-linecap="round"/>
+
+            <path d="M60 42H140L115 78V92H85V78L60 42Z" fill="url(#funnelGrad)"/>
+            <ellipse cx="100" cy="42" rx="40" ry="6" fill="#10B981"/>
+
+            <ellipse cx="94" cy="98" rx="8" ry="4" fill="#FBBF24" stroke="#D97706" stroke-width="1"/>
+            <ellipse cx="94" cy="95" rx="8" ry="4" fill="#FDE047" stroke="#D97706" stroke-width="1"/>
+            <ellipse cx="106" cy="99" rx="8" ry="4" fill="#F59E0B" stroke="#B45309" stroke-width="1"/>
+            <ellipse cx="106" cy="96" rx="8" ry="8" fill="#FBBF24" stroke="#D97706" stroke-width="1"/>
+            <text x="103" y="99" fill="#B45309" font-size="7" font-weight="900" font-family="sans-serif">₹</text>
+          </svg>
+        </div>
+      </div>
+
+      <div class="card-action-wrap">
+        <button type="button" class="btn-primary-card btn-green-solid" (click)="onViewLeads(); $event.stopPropagation()">
+          <span>Open</span>
+          <span class="material-symbols-outlined icon-arrow">arrow_forward</span>
+        </button>
+      </div>
     </div>
   </div>
-</section>
+</div>

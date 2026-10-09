@@ -1,6 +1,3 @@
-
-
-
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
@@ -77,12 +74,39 @@ async function initDatabase() {
 
     activePool = pool;
     console.log('[MySQL DB] Successfully connected to MySQL pool.');
+
+    try { await activePool.query('ALTER TABLE notifications ADD COLUMN target_route VARCHAR(255) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN package_name VARCHAR(255) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN product_id VARCHAR(100) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN product_name VARCHAR(255) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN remarks TEXT DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN notes TEXT DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN assigned_telecaller_id INT DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN assignment_status VARCHAR(50) DEFAULT "UNASSIGNED"'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN creator_id INT DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN creator_name VARCHAR(255) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN creator_email VARCHAR(255) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN ad_id INT DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN campaign_id VARCHAR(100) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE leads ADD COLUMN campaign_name VARCHAR(255) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE ads ADD COLUMN platform_ad_id VARCHAR(100) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE ads ADD COLUMN design_id VARCHAR(100) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE ads ADD COLUMN design_image_url TEXT DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE ads ADD COLUMN ad_creative_url TEXT DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE ads ADD COLUMN impressions INT DEFAULT 0'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE ads ADD COLUMN clicks INT DEFAULT 0'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE ads ADD COLUMN leads_count INT DEFAULT 0'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE ads ADD COLUMN spend DECIMAL(12,2) DEFAULT 0.00'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE ads ADD COLUMN reach INT DEFAULT 0'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE campaigns ADD COLUMN product_id VARCHAR(100) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE campaigns ADD COLUMN leads_count INT DEFAULT 0'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE campaigns ADD COLUMN spend DECIMAL(12,2) DEFAULT 0.00'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE campaigns ADD COLUMN target_cpl DECIMAL(10,2) DEFAULT 0.00'); } catch (e) {}
   } catch (err) {
     console.log('[MySQL DB Notice] MySQL unreachable, operating in high-performance memory store mode:', err?.message || err);
     activePool = null;
   }
 }
-
 
 const dbUsersStore = [];
 const dbTasksStore = [];

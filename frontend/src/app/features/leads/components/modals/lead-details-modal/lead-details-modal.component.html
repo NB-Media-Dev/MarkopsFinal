@@ -1,8 +1,7 @@
-<!-- LEAD DETAILS & TELECALLING HISTORY MODAL -->
 @if (lead) {
   <div class="modal-backdrop" (click)="onClose()">
     <div class="modal-card lead-history-modal modal-lg" (click)="$event.stopPropagation()">
-      <!-- Modal Header -->
+
       <div class="modal-header">
         <div class="modal-title-wrap">
           <div class="modal-squircle-icon icon-indigo">
@@ -36,9 +35,8 @@
         </button>
       </div>
 
-      <!-- Modal Body: Overview Summary Grid + Call Timeline -->
       <div class="modal-body history-modal-body">
-        <!-- Lead Metadata Summary Card -->
+
         <div class="lead-detail-summary-grid">
           <div class="detail-summary-item">
             <span class="d-label">Campaign</span>
@@ -73,7 +71,6 @@
           </div>
         </div>
 
-        <!-- Chronological Call Activities Feed -->
         @if (historyCalls.length > 0) {
           <div class="timeline-feed-list custom-scroll">
             @for (call of historyCalls; track call) {
