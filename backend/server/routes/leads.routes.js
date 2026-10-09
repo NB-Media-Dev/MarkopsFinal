@@ -1653,7 +1653,6 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
       if (importConnection) {
         await importConnection.commit();
       }
-      }
     } catch (e) {
       if (importConnection) {
         try {
