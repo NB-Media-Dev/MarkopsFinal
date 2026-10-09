@@ -1,5 +1,5 @@
 <!-- Tier 2: Specific Operation Sub-Pills Bar -->
-@if (activeDepartmentTabs.length > 1) {
+<!-- @if (activeDepartmentTabs.length > 1) {
   <div class="dept-nav-tabs-bar">
     @for (op of activeDepartmentTabs; track op.id) {
       <button
@@ -15,7 +15,7 @@
       </button>
     }
   </div>
-}
+} -->
 
 <!-- Main Content Container for Active Department -->
 <div class="works-content-wrapper dept-active-content">
@@ -36,12 +36,39 @@
       ></app-designer-dashboard>
     </div>
   }
-  <!-- Campaigns View (Digital Marketing) -->
+  <!-- Digital Marketing Overview (Initial 3 Feature Cards) -->
+  @if (
+    currentDept === 'DIGITAL_MARKETING' &&
+    (!activeOperationTab || activeOperationTab === 'MARKETING_OVERVIEW' || activeOperationTab === 'OVERVIEW')
+  ) {
+    <div class="marketing-overview-container">
+      <app-campaign-kpis
+        [totalSpend]="totalSpend()"
+        [totalBudget]="totalBudget()"
+        [totalLeads]="totalLeads()"
+        [totalQualifiedLeads]="totalQualifiedLeads()"
+        [averageCpl]="averageCpl()"
+        [totalConversions]="totalConversions()"
+        [overallConvRate]="overallConvRate()"
+        [totalCampaignsCount]="totalCampaignsCount()"
+        [activeCampaignsCount]="activeCampaignsCount()"
+        [completedCampaignsCount]="completedCampaignsCount()"
+        [totalClicks]="totalClicks()"
+        (createCampaign)="selectOperationTab('CAMPAIGNS')"
+        (viewAnalytics)="selectOperationTab('ADS')"
+        (viewLeads)="selectOperationTab('LEADS')"
+      ></app-campaign-kpis>
+    </div>
+  }
+
+  <!-- Campaigns View (Digital Marketing - Only Campaigns Table & Create Campaign, NO KPI cards!) -->
   @if (currentDept === 'DIGITAL_MARKETING' && activeOperationTab === 'CAMPAIGNS') {
     <div>
       <app-campaigns
         [packageFilter]="currentFilterTarget"
         [embedded]="true"
+        [hideKpis]="true"
+        (switchTab)="selectOperationTab($event)"
       ></app-campaigns>
     </div>
   }

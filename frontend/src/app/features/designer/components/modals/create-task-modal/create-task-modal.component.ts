@@ -41,7 +41,7 @@ export class CreateTaskModalComponent implements OnChanges {
   readonly taskTypes: TaskTypeOption[] = [
     { id: 'CURRENT_AFFAIR', name: 'Current Affair', subtitle: 'Banner Design', icon: 'campaign', color: 'orange' },
     { id: 'SOCIAL_MEDIA', name: 'Social Media', subtitle: 'Post Design', icon: 'photo_library', color: 'purple' },
-    { id: 'VIDEO', name: 'Video', subtitle: 'Edit & Create', icon: 'play_arrow', color: 'blue' },
+    { id: 'VIDEO', name: 'Video', subtitle: 'Video', icon: 'play_arrow', color: 'blue' },
    ];
 
   readonly selectedTaskType = signal<'CURRENT_AFFAIR' | 'SOCIAL_MEDIA' | 'VIDEO'>('CURRENT_AFFAIR');
@@ -76,7 +76,7 @@ export class CreateTaskModalComponent implements OnChanges {
     const pkgName = this.defaultPackage || (this.availablePackages[0]?.name || 'Careermate');
     this.createTaskForm.reset({
       title: `${pkgName} Banner Design`,
-      description: 'Create a creative banner with modern and clean design.',
+      description: '',
       packageName: pkgName,
       assignedTo: targetDesigner,
       priority: 'HIGH',
@@ -126,32 +126,66 @@ export class CreateTaskModalComponent implements OnChanges {
         return 'Select Task Type';
     }
   }
+  getFormattedDisplayDate(dateStr?: string): string {
+    const raw = dateStr || this.createTaskForm.get('dueDate')?.value;
+    if (!raw) return 'DD/MM/YYYY';
+    const parts = raw.split('-');
+    if (parts.length === 3) {
+      const [year, month, day] = parts;
+      return `${day}/${month}/${year}`;
+    }
+    return raw;
+  }
+
   formatDueDate(dateStr?: string): string {
     const raw = dateStr || this.createTaskForm.get('dueDate')?.value;
     if (!raw) return 'No Deadline';
+
     try {
+      const parts = raw.split('-');
+      if (parts.length === 3) {
+        const [year, month, day] = parts;
+        return `${day}/${month}/${year}`;
+      }
       const d = new Date(raw);
-      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      return d.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
     } catch {
       return raw;
     }
   }
 
-  getRelativeDeadline(dateStr?: string): string {
-    const raw = dateStr || this.createTaskForm.get('dueDate')?.value;
-    if (!raw) return '';
-    try {
-      const target = new Date(raw).getTime();
-      const now = new Date().setHours(0, 0, 0, 0);
-      const diffDays = Math.ceil((target - now) / (1000 * 60 * 60 * 24));
-      if (diffDays === 0) return 'Today';
-      if (diffDays === 1) return 'Tomorrow';
-      if (diffDays > 1) return `In ${diffDays} days`;
-      return 'Overdue';
-    } catch {
-      return '';
-    }
+
+ getRelativeDeadline(dateStr?: string): string {
+  const raw = dateStr || this.createTaskForm.get('dueDate')?.value;
+  if (!raw) return '';
+  
+  try {
+    // 1. Strip hours from the target date
+    const target = new Date(raw);
+    target.setHours(0, 0, 0, 0);
+
+    // 2. Strip hours from today's date
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    // 3. Calculate absolute calendar day difference using Math.round to avoid DST issues
+    const diffDays = Math.round((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    // 4. Return matching labels
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    if (diffDays > 1) return `In ${diffDays} days`;
+    
+    return 'Overdue';
+  } catch {
+    return '';
   }
+}
+
 
   getPackageIcon(packageName?: string): string {
     const targetName = (packageName || this.defaultPackage || 'Careermate').toLowerCase().trim();

@@ -10,10 +10,6 @@
           <span class="header-title">Create Task</span>
         </div>
         <div class="header-right">
-          <div class="quick-simple-badge">
-            <span class="material-symbols-outlined">auto_awesome</span>
-            <span>Quick & Simple</span>
-          </div>
           <button type="button" class="header-close-btn" (click)="onClose()" title="Close">
             <span class="material-symbols-outlined">close</span>
           </button>
@@ -21,12 +17,10 @@
       </div>
 
       <div class="modern-modal-layout">
-        <!-- LEFT COLUMN: BUILD YOUR TASK (STEPS 1, 2, 3) -->
         <div class="build-task-column">
-
           <form [formGroup]="createTaskForm" (ngSubmit)="onSubmit()" class="task-steps-form">
             <!-- ========================================== -->
-            <!-- STEP 1: CHOOSE TASK TYPE (ONELINE BOX)     -->
+            <!-- STEP 1: CHOOSE TASK TYPE                   -->
             <!-- ========================================== -->
             <div class="step-card step-1-card">
               <div class="step-header">
@@ -54,7 +48,6 @@
                     </div>
                     <div class="type-title-box">
                       <span class="type-main-title">{{ type.subtitle }}</span>
-                     
                     </div>
                   </div>
                 }
@@ -69,90 +62,75 @@
                 <div class="step-num-circle step-num-blue">2</div>
                 <div class="step-header-text">
                   <h3>Add Details</h3>
-                
                 </div>
               </div>
 
               <div class="step-details-stack">
-                <!-- 1. Task Title & Creative Brief Item -->
-                <div class="detail-field-card">
-                  <div class="detail-field-header">
-                   
-                  
-                  
-                  </div>
-                  <div class="detail-inputs-wrapper">
-                    <textarea
-                      rows="2"
-                      placeholder="Provide design requirements, target audience, dimensions..."
-                      class="step-textarea-input"
-                    ></textarea>
-                  </div>
+                <!-- Requirements Textarea -->
+                <div class="detail-inputs-wrapper">
+                  <textarea
+                    rows="2"
+                    formControlName="description"
+                    placeholder="Provide design requirements, target audience, dimensions..."
+                    class="step-textarea-input"
+                  ></textarea>
                 </div>
 
-                <!-- 2. Attachments Item -->
-                <div class="detail-field-card">
-                  <div class="detail-field-header">
-                    <div class="detail-icon-circle icon-purple">
-                      <span class="material-symbols-outlined">attach_file</span>
-                    </div>
-                    <div class="detail-header-copy">
-                      <span class="detail-title">Attachments</span>
-                   
-                    </div>
-                    @if (createdBriefFileName()) {
-                      <span class="detail-status-pill attached">
-                        <span class="material-symbols-outlined">attach_file</span> 1 file attached
-                      </span>
-                    }
-                  </div>
-
-                  <div class="step-dropzone" [class.has-file]="createdBriefFileName()">
-                    <input
-                      type="file"
-                      (change)="onTaskBriefFileSelected($event)"
-                      accept="image/*,video/*,.pdf,.doc,.docx,.txt,.md,.json,.csv"
-                      class="file-input-hidden"
-                      id="modernBriefFileInput"
-                    />
-                    <label for="modernBriefFileInput" class="step-dropzone-label">
-                      @if (!createdBriefFileName()) {
-                        <span class="material-symbols-outlined upload-cloud-icon">cloud_upload</span>
-                        <span class="dropzone-text">Click or drag document to attach brief (PDF, DOCX, TXT, Images)</span>
-                      }
-                      @if (createdBriefFileName()) {
-                        <span class="material-symbols-outlined check-file-icon">check_circle</span>
-                        <span class="dropzone-text-file">{{ createdBriefFileName() }}</span>
-                        <button
-                          type="button"
-                          class="btn-remove-file"
-                          (click)="clearTaskBriefFile($event)"
-                          title="Remove file"
-                        >
-                          <span class="material-symbols-outlined">close</span>
-                        </button>
-                      }
-                    </label>
-                  </div>
-                </div>
-
-                <!-- 3. Package Workspace Item -->
-                <div class="detail-field-card">
-                  <div class="detail-field-header">
-                    <div class="detail-icon-circle icon-teal">
-                      <span class="material-symbols-outlined">folder_special</span>
-                    </div>
-                    <div class="detail-header-copy">
-                      <span class="detail-title">Package</span>
-                      <span class="detail-desc">Select the package for this task</span>
-                    </div>
-                    <div class="package-pill-select-wrapper">
-                      <select formControlName="packageName" class="package-pill-select">
-                        @for (pkg of availablePackages; track pkg.name) {
-                          <option [value]="pkg.name">{{ pkg.name }}</option>
+                <!-- 2-Column: Attachments & Package -->
+                <div class="details-split-row">
+                  <!-- Attachments Item -->
+                  <div class="detail-field-card compact-attachment-card">
+                    <div class="step-dropzone" [class.has-file]="createdBriefFileName()">
+                      <input
+                        type="file"
+                        (change)="onTaskBriefFileSelected($event)"
+                        accept="image/*,video/*,.pdf,.doc,.docx,.txt,.md,.json,.csv"
+                        class="file-input-hidden"
+                        id="modernBriefFileInput"
+                      />
+                      <label for="modernBriefFileInput" class="step-dropzone-label">
+                        @if (!createdBriefFileName()) {
+                          <div class="dropzone-icon-title">
+                            <span class="material-symbols-outlined upload-cloud-icon">attach_file</span>
+                            <span class="dropzone-label-title">Attachments:</span>
+                          </div>
+                          <span class="dropzone-text">Click or drag document to attach brief</span>
                         }
-                      </select>
-                      <span class="material-symbols-outlined select-chevron">expand_more</span>
+                        @if (createdBriefFileName()) {
+                          <div class="dropzone-icon-title">
+                            <span class="material-symbols-outlined check-file-icon">check_circle</span>
+                            <span class="dropzone-text-file">{{ createdBriefFileName() }}</span>
+                          </div>
+                          <button
+                            type="button"
+                            class="btn-remove-file"
+                            (click)="clearTaskBriefFile($event)"
+                            title="Remove file"
+                          >
+                            <span class="material-symbols-outlined">close</span>
+                          </button>
+                        }
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Package Workspace Item -->
+                  <div class="detail-field-card compact-package-card">
+                    <div class="package-card-inner">
+                      <div class="package-icon-title">
+                        <div class="detail-icon-circle icon-teal">
+                          <span class="material-symbols-outlined">folder_special</span>
+                        </div>
+                        <span class="detail-title">Package:</span>
+                      </div>
+                      <div class="package-pill-select-wrapper">
+                        <select formControlName="packageName" class="package-pill-select">
+                          @for (pkg of availablePackages; track pkg.name) {
+                            <option [value]="pkg.name">{{ pkg.name }}</option>
+                          }
+                        </select>
+                        <span class="material-symbols-outlined select-chevron">expand_more</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -160,14 +138,13 @@
             </div>
 
             <!-- ========================================== -->
-            <!-- STEP 3: ASSIGN & SET PRIORITY              -->
+            <!-- STEP 3: ASSIGN & SET PRIORITY             -->
             <!-- ========================================== -->
             <div class="step-card step-3-card">
               <div class="step-header">
                 <div class="step-num-circle step-num-green">3</div>
                 <div class="step-header-text">
                   <h3>Assign & Set Priority</h3>
-             
                 </div>
               </div>
 
@@ -190,9 +167,9 @@
                             <option [value]="d.id">{{ d.name }}</option>
                           }
                         </select>
-                        <span class="designer-role-sub">UI/UX Designer</span>
+                     
                       </div>
-                      <span class="material-symbols-outlined chevron">chevron_right</span>
+                  
                     </div>
                   </div>
                 </div>
@@ -249,12 +226,16 @@
                   </div>
                   <div class="widget-content">
                     <div class="deadline-input-wrap">
-                      <input
-                        type="date"
-                        formControlName="dueDate"
-                        [min]="todayDate"
-                        class="deadline-native-input"
-                      />
+                      <div class="custom-date-picker-box">
+                        <span class="formatted-date-text">{{ getFormattedDisplayDate() }}</span>
+                        <span class="material-symbols-outlined cal-mini-icon">calendar_today</span>
+                        <input
+                          type="date"
+                          formControlName="dueDate"
+                          [min]="todayDate"
+                          class="deadline-native-picker-overlay"
+                        />
+                      </div>
                       <span class="deadline-relative-tag">{{ getRelativeDeadline() }}</span>
                     </div>
                   </div>
@@ -264,10 +245,7 @@
 
             <!-- Modal Action Buttons Bar -->
             <div class="build-task-footer-bar">
-              <button type="button" class="btn-save-draft" (click)="onClose()">
-                <span class="material-symbols-outlined">draft</span>
-                <span>Save as Draft</span>
-              </button>
+            
 
               <button
                 type="submit"
@@ -279,120 +257,6 @@
               </button>
             </div>
           </form>
-        </div>
-
-        <!-- RIGHT COLUMN: TASK PREVIEW -->
-        <div class="task-preview-column">
-          <div class="preview-header">
-            <span class="material-symbols-outlined preview-eye-icon">visibility</span>
-            <span class="preview-heading">Task Preview</span>
-          </div>
-
-          <div class="preview-showcase-card">
-            <!-- Card Top: Icon & Category Tag -->
-            <div class="preview-card-top">
-              <div class="preview-icon-square">
-                <span class="material-symbols-outlined">campaign</span>
-              </div>
-              <span class="preview-category-pill">
-                {{selectedTaskTypeLabel()}}
-              </span>
-            </div>
-
-            <!-- Card Title & Description -->
-            <div class="preview-card-title-box">
-              <h3 class="preview-card-title">
-                {{ createTaskForm.get('title')?.value || 'Banner Design' }}
-              </h3>
-              <p class="preview-card-desc">
-                {{ createTaskForm.get('description')?.value || 'Create a creative banner for current-affair with modern and clean design.' }}
-              </p>
-            </div>
-
-            <!-- Graphic Banner Illustration -->
-            <div class="preview-banner-illustration">
-              <div class="illustration-graphic">
-                <div class="graphic-globe">🌍</div>
-                <div class="graphic-news-card">
-                  <span class="news-badge">CURRENT</span>
-                  <span class="news-title">AFFAIRS</span>
-                </div>
-                <div class="graphic-plant">🪴</div>
-              </div>
-            </div>
-
-            <!-- Metadata Key-Value List -->
-            <div class="preview-meta-list">
-              <!-- Designer -->
-              <div class="meta-row">
-                <div class="meta-label">
-                  <span class="material-symbols-outlined">person</span>
-                  <span>Designer</span>
-                </div>
-                <div class="meta-value designer-val">
-                  <div class="preview-avatar">{{ getDesignerInitials() }}</div>
-                  <div class="designer-meta-text">
-                    <span class="designer-name">{{ getSelectedDesignerName() }}</span>
-                    <span class="designer-sub">UI/UX Designer</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Priority -->
-              <div class="meta-row">
-                <div class="meta-label">
-                  <span class="material-symbols-outlined">local_fire_department</span>
-                  <span>Priority</span>
-                </div>
-                <div class="meta-value priority-val">
-                  <span class="fire-icon">🔥</span>
-                  <span class="priority-name">{{ createTaskForm.get('priority')?.value | titlecase }}</span>
-                </div>
-              </div>
-
-              <!-- Deadline -->
-              <div class="meta-row">
-                <div class="meta-label">
-                  <span class="material-symbols-outlined">calendar_today</span>
-                  <span>Deadline</span>
-                </div>
-                <div class="meta-value deadline-val">
-                  <span class="cal-icon material-symbols-outlined">event</span>
-                  <div class="deadline-text-group">
-                    <span class="date-str">{{ formatDueDate() }}</span>
-                    <span class="relative-str">({{ getRelativeDeadline() }})</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Package -->
-              <div class="meta-row">
-                <div class="meta-label">
-                  <span class="material-symbols-outlined">inventory_2</span>
-                  <span>Package</span>
-                </div>
-                <div class="meta-value package-val">
-                  <span class="material-symbols-outlined pkg-icon">folder_special</span>
-                  <span>{{ createTaskForm.get('packageName')?.value }}</span>
-                </div>
-              </div>
-
-              <!-- Attachments -->
-              <div class="meta-row">
-                <div class="meta-label">
-                  <span class="material-symbols-outlined">attach_file</span>
-                  <span>Attachments</span>
-                </div>
-                <div class="meta-value attach-val">
-                  <span class="material-symbols-outlined paperclip">attachment</span>
-                  <span>{{ createdBriefFileName() ? '1 file' : '0 files' }}</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Ready To Go Helper Box -->
-           
-          </div>
         </div>
       </div>
     </div>

@@ -9,8 +9,11 @@
         </button>
 
         <div class="breadcrumbs-list">
-          <a routerLink="/dashboard" class="bc-item">Dashboard</a>
-          <span class="bc-sep">/</span>
+          <a routerLink="/dashboard" class="bc-item">
+            <span class="material-symbols-outlined bc-icon">dashboard</span>
+            <span>Dashboard</span>
+          </a>
+          <span class="material-symbols-outlined bc-sep">chevron_right</span>
 
           <!-- When inside a workspace package -->
           @if (activeWorkspacePackage(); as selectedPkg) {
@@ -20,9 +23,9 @@
               class="bc-item bc-btn"
               title="Back to Packages List"
             >
-              <span class="bc-item bc-package">{{ activePackageMeta().name }}</span>
+              <span>{{ activePackageMeta().name }}</span>
             </button>
-            <span class="bc-sep">/</span>
+            <span class="material-symbols-outlined bc-sep">chevron_right</span>
             @if (activeDepartment(); as currentDept) {
               <button
                 type="button"
@@ -30,16 +33,32 @@
                 class="bc-item bc-btn"
                 [title]="'Back to ' + selectedPkg.name + ' Overview'"
               >
-                {{ selectedPkg.name }}
+                <span>{{ selectedPkg.name }}</span>
               </button>
-              <span class="bc-sep">/</span>
-              <span class="bc-item active">{{ getDepartmentTitle(currentDept) }}</span>
+              <span class="material-symbols-outlined bc-sep">chevron_right</span>
+              @if (
+                currentDept === 'DIGITAL_MARKETING' &&
+                activeOperationTab() &&
+                activeOperationTab() !== 'MARKETING_OVERVIEW'
+              ) {
+                <button
+                  type="button"
+                  (click)="selectOperationTab('MARKETING_OVERVIEW')"
+                  class="bc-item bc-btn"
+                  title="Back to Digital Marketing Overview"
+                >
+                  <span>Digital Marketing</span>
+                </button>
+                <span class="material-symbols-outlined bc-sep">chevron_right</span>
+                <span class="bc-item active">{{ getOperationTabLabel(activeOperationTab()) }}</span>
+              } @else {
+                <span class="bc-item active">{{ getDepartmentTitle(currentDept) }}</span>
+              }
             } @else {
               <span class="bc-item active">{{ selectedPkg.name }}</span>
             }
           } @else {
-            <span class="bc-item bc-package">{{ activePackageMeta().name }}</span>
-            <span class="bc-item">Package Works</span>
+            <span class="bc-item active">{{ activePackageMeta().name }} Product</span>
           }
         </div>
       </nav>
@@ -87,9 +106,7 @@
     </div>
   </header>
 
-  <!-- ========================================================================= -->
-  <!-- LEVEL 1: PRODUCT PACKAGES OVERVIEW (When no package is clicked)           -->
-  <!-- ========================================================================= -->
+ 
   @if (!activeWorkspacePackage()) {
     <section class="product-hero-banner" [style.background-image]="'url(' + activeHeroBanner() + ')'">
       @if (canCreatePackage()) {
@@ -108,7 +125,7 @@
         <img [src]="productVisual().logo" [alt]="productVisual().title + ' logo'" class="product-hero-logo" />
         <div class="product-hero-copy">
           <h1>{{ productVisual().title }}</h1>
-          <p>{{ productVisual().tagline }}</p>
+         
         </div>
       </div>
     </section>
@@ -192,7 +209,7 @@
             />
             <div class="product-hero-copy">
               <h1>{{ selectedPkg.name }}</h1>
-              <p>{{ selectedPkg.description || productVisual().tagline }}</p>
+              
             </div>
           </div>
         </section>
@@ -217,7 +234,7 @@
             />
             <div class="blank-hero-copy">
               <h1>{{ selectedPkg.name }}</h1>
-              <p>{{ selectedPkg.description || productVisual().tagline }}</p>
+      
             </div>
           </div>
         </section>

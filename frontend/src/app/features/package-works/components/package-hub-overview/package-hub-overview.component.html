@@ -12,7 +12,7 @@
         <div
           class="dept-operation-card"
           [ngClass]="'dept-theme-' + dept.id.toLowerCase()"
-          (click)="onSelectDepartment(dept.id)"
+          
         >
           <!-- Background Watermark Motif -->
           <div class="dept-card-watermark" aria-hidden="true">
@@ -58,19 +58,19 @@
           <!-- Body: Title & Description -->
           <div class="dept-card-content">
             <h3 class="dept-title">{{ dept.label }}</h3>
-            <p class="dept-desc">{{ getDepartmentDescription(dept.id) }}</p>
+           
           </div>
 
           <!-- Footer: Metric Stats & Open Button -->
           <div class="dept-card-footer">
-            <div class="dept-metrics-meta">
+            <!-- <div class="dept-metrics-meta">
               <span class="metric-total">{{ getDepartmentMetricCount(dept.id) }}</span>
               <span class="metric-divider">|</span>
               <span class="metric-active">
                 <span class="active-dot"></span>
                 <span>{{ getDepartmentActiveCount(dept.id) }} Active</span>
               </span>
-            </div>
+            </div> -->
 
             <button
               type="button"

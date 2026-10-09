@@ -46,7 +46,8 @@
         color: #FFFFFF;
 
         &.icon-indigo {
-          background: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%);
+           background-color: #F59E0B;
+      color: #FFFFFF;
         }
 
         .material-symbols-outlined {
@@ -65,8 +66,8 @@
       .modal-sub-badge {
         font-size: 0.75rem;
         font-weight: 700;
-        color: #4F46E5;
-        background: #EEF2FF;
+         background-color: #F59E0B;
+      color: #FFFFFF;
         padding: 0.15rem 0.5rem;
         border-radius: 6px;
         border: 1px solid #E0E7FF;

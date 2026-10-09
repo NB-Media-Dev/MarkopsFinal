@@ -57,15 +57,6 @@ export class PackageHubOverviewComponent {
     }
   }
 
-  getDepartmentDescription(deptId: string): string {
-    switch (deptId) {
-      case 'DESIGNER': return 'Create, design and bring your ideas to life.';
-      case 'DIGITAL_MARKETING': return 'Plan, create and manage marketing campaigns.';
-      case 'TELECALLING': return 'Connect, follow up and convert leads.';
-      case 'ANALYTICS': return 'Track performance and make data-driven decisions.';
-      default: return 'Manage and execute operations.';
-    }
-  }
 
   getDepartmentMetricCount(deptId: string): string {
     switch (deptId) {

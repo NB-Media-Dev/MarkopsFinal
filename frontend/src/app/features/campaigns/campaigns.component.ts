@@ -1,7 +1,7 @@
-import { Component, inject, OnInit, signal, computed, Input } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { CampaignService, CampaignItem } from '../../core/services/campaign.service';
 import { AuthService } from '../../core/services/auth.service';
 import { FIXED_PACKAGES } from '../../core/models/package.model';
@@ -36,9 +36,12 @@ export class CampaignsComponent implements OnInit {
     return this.packageFilterSignal();
   }
   @Input() embedded = false;
+  @Input() hideKpis = false;
+  @Output() switchTab = new EventEmitter<string>();
 
   readonly campaignService = inject(CampaignService);
   readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   readonly showModal = signal<boolean>(false);
   readonly isEditing = signal<boolean>(false);
@@ -121,6 +124,35 @@ export class CampaignsComponent implements OnInit {
   readonly completedCampaignsCount = computed(() =>
     this.filteredCampaigns.filter((c) => c.status === 'COMPLETED').length
   );
+
+  readonly totalClicks = computed(() => {
+    const allAds = this.campaignService.ads();
+    const pkg = this.packageFilterSignal();
+    const filtered = pkg
+      ? allAds.filter(
+          (a) =>
+            (a.packageName || '').toLowerCase() === pkg.toLowerCase() ||
+            (a.productId || '').toLowerCase() === pkg.toLowerCase()
+        )
+      : allAds;
+    return filtered.reduce((sum, a) => sum + (a.clicks || 0), 0);
+  });
+
+  onViewAnalytics(): void {
+    if (this.embedded) {
+      this.switchTab.emit('ADS');
+    } else {
+      this.router.navigate(['/ads']);
+    }
+  }
+
+  onViewLeads(): void {
+    if (this.embedded) {
+      this.switchTab.emit('LEADS');
+    } else {
+      this.router.navigate(['/leads']);
+    }
+  }
 
   readonly canManageCampaigns = computed(() => {
     const user = this.authService.currentUser();

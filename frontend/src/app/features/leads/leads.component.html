@@ -32,19 +32,7 @@
   <!-- Embedded Toolbar Header (Visible inside Package Works) -->
   @if (embedded) {
     <div class="embedded-header-card">
-      <div class="embedded-info">
-        <div class="embedded-squircle-icon">
-          <span class="material-symbols-outlined">groups</span>
-        </div>
-        <div>
-          <h3 class="embedded-title">
-            {{ isTelecaller() ? 'Assigned Leads Workspace' : 'Leads Workspace' }}
-          </h3>
-          <p class="embedded-sub">
-            Manage lead allocations, contact information, and pipeline progress
-          </p>
-        </div>
-      </div>
+     
       <div class="header-actions">
         @if (canCreateLeads()) {
           <button class="btn-action-secondary btn-sm" (click)="openModal()">

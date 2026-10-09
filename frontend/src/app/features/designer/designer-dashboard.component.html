@@ -8,10 +8,13 @@
             <span class="material-symbols-outlined icon-back">arrow_back</span>
           </button>
           <div class="breadcrumbs-list">
-            <a routerLink="/dashboard" class="bc-item">Dashboard</a>
-            <span class="bc-sep">/</span>
-            <a routerLink="/package-works" class="bc-item bc-package">Package Works</a>
-            <span class="bc-sep">/</span>
+            <a routerLink="/dashboard" class="bc-item">
+              <span class="material-symbols-outlined bc-icon">dashboard</span>
+              <span>Dashboard</span>
+            </a>
+            <span class="material-symbols-outlined bc-sep">chevron_right</span>
+            <a routerLink="/package-works" class="bc-item">Package Works</a>
+            <span class="material-symbols-outlined bc-sep">chevron_right</span>
             <span class="bc-item active">{{ isDesigner() ? 'My Tasks' : 'Tasks' }}</span>
           </div>
         </nav>

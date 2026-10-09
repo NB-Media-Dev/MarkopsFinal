@@ -89,21 +89,21 @@ export class PackageWorksComponent implements OnInit {
         return {
           banner: '/classmate-hero-banner.jpg',
           logo: '/vidhvaa-class-img.png',
-          tagline: 'Learn • Discover • Excel',
+  
           title: 'Classmate',
         };
       case 'pkg_jesus_messanger':
         return {
           banner: '/jesus-hero-banner.jpg',
           logo: '/jesus-img.png',
-          tagline: 'Share • Inspire • Empower',
+      
           title: 'Jesus the Messenger',
         };
       default:
         return {
           banner: '/careermate-hero-banner.jpg',
           logo: '/vidhvaa-career-img.png',
-          tagline: 'Learn • Grow • Build',
+     
           title: 'CareerMate',
         };
     }
@@ -458,6 +458,7 @@ export class PackageWorksComponent implements OnInit {
         description: 'Multi-channel ad campaigns, live ad metrics, inbound leads pipeline & call monitoring.',
         badge: 'Campaigns & Leads',
         tabs: [
+          { id: 'MARKETING_OVERVIEW', label: 'Overview', icon: 'grid_view' },
           { id: 'CAMPAIGNS', label: 'Campaigns', icon: 'campaign' },
           { id: 'ADS', label: 'Ads Metrics', icon: 'ads_click' },
           { id: 'LEADS', label: 'Leads', icon: 'groups' },
@@ -522,9 +523,13 @@ export class PackageWorksComponent implements OnInit {
 
   selectDepartment(deptId: 'DESIGNER' | 'DIGITAL_MARKETING' | 'TELECALLING' | 'ANALYTICS'): void {
     this.activeDepartment.set(deptId);
-    const dept = this.operationDepartments().find((d) => d.id === deptId);
-    if (dept && dept.tabs.length > 0) {
-      this.selectOperationTab(dept.tabs[0].id);
+    if (deptId === 'DIGITAL_MARKETING') {
+      this.selectOperationTab('MARKETING_OVERVIEW');
+    } else {
+      const dept = this.operationDepartments().find((d) => d.id === deptId);
+      if (dept && dept.tabs.length > 0) {
+        this.selectOperationTab(dept.tabs[0].id);
+      }
     }
   }
 
@@ -1274,12 +1279,33 @@ export class PackageWorksComponent implements OnInit {
   }
 
   onBreadcrumbBack(): void {
-    if (this.activeDepartment()) {
+    if (
+      this.activeDepartment() === 'DIGITAL_MARKETING' &&
+      this.activeOperationTab() &&
+      this.activeOperationTab() !== 'MARKETING_OVERVIEW'
+    ) {
+      this.selectOperationTab('MARKETING_OVERVIEW');
+    } else if (this.activeDepartment()) {
       this.backToPackageHub();
     } else if (this.activeWorkspacePackage()) {
       this.closePackageWorkspace();
     } else {
       this.router.navigate(['/dashboard']);
+    }
+  }
+
+  getOperationTabLabel(tabId: string): string {
+    switch (tabId) {
+      case 'CAMPAIGNS':
+        return 'Campaigns';
+      case 'ADS':
+        return 'Ads Metrics';
+      case 'LEADS':
+        return 'Leads';
+      case 'MARKETING_OVERVIEW':
+        return 'Overview';
+      default:
+        return tabId;
     }
   }
 

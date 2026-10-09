@@ -32,17 +32,26 @@
     </div>
   }
 
-  <!-- 1. Top KPI Summary Cards -->
-  <app-campaign-kpis
-    [totalSpend]="totalSpend()"
-    [totalBudget]="totalBudget()"
-    [budgetUsedPercent]="budgetUsedPercent()"
-    [totalLeads]="totalLeads()"
-    [totalQualifiedLeads]="totalQualifiedLeads()"
-    [averageCpl]="averageCpl()"
-    [totalConversions]="totalConversions()"
-    [overallConvRate]="overallConvRate()"
-  ></app-campaign-kpis>
+  <!-- 1. Top Feature Showcase Cards -->
+  @if (!hideKpis) {
+    <app-campaign-kpis
+      [totalSpend]="totalSpend()"
+      [totalBudget]="totalBudget()"
+      [budgetUsedPercent]="budgetUsedPercent()"
+      [totalLeads]="totalLeads()"
+      [totalQualifiedLeads]="totalQualifiedLeads()"
+      [averageCpl]="averageCpl()"
+      [totalConversions]="totalConversions()"
+      [overallConvRate]="overallConvRate()"
+      [totalCampaignsCount]="filteredCampaigns.length"
+      [activeCampaignsCount]="activeCampaignsCount()"
+      [completedCampaignsCount]="completedCampaignsCount()"
+      [totalClicks]="totalClicks()"
+      (createCampaign)="openCreateModal()"
+      (viewAnalytics)="onViewAnalytics()"
+      (viewLeads)="onViewLeads()"
+    ></app-campaign-kpis>
+  }
 
   <!-- 2. Search Box & Segmented Status Filter Tabs -->
   <app-campaign-toolbar
