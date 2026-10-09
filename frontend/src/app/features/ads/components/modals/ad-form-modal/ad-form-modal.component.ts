@@ -5,6 +5,15 @@ import { CampaignItem } from '../../../../../core/services/campaign.service';
 import { Task } from '../../../../../core/models/task.model';
 import { isTaskForPackage } from '../../../../../core/models/package.model';
 
+export type DesignFilterType = 'BANNER' | 'POSTER' | 'VIDEO';
+
+export interface DesignTypeOption {
+  id: DesignFilterType;
+  title: string;
+  icon: string;
+  color: 'orange' | 'purple' | 'blue';
+}
+
 export interface ApprovedDesignItem {
   id: string;
   title: string;
@@ -13,10 +22,15 @@ export interface ApprovedDesignItem {
   campaignId?: string;
   versionNumber: number;
   imageUrl: string;
+  isVideo: boolean;
+  videoUrl?: string;
+  designType: 'BANNER' | 'POSTER' | 'VIDEO';
+  designTypeLabel: string;
   approverName: string;
   approverRole: 'BDM' | 'ADMIN' | 'MANAGER';
   approvedAt?: string;
   status: string;
+  description?: string;
 }
 
 @Component({
@@ -40,9 +54,15 @@ export class AdFormModalComponent implements OnInit, OnChanges {
   @Output() closeModal = new EventEmitter<void>();
   @Output() save = new EventEmitter<void>();
 
-  designSearchQuery = '';
+  readonly designTypes: DesignTypeOption[] = [
+    { id: 'BANNER', title: 'Banner Design', icon: 'campaign', color: 'orange' },
+    { id: 'POSTER', title: 'Post Design', icon: 'photo_library', color: 'purple' },
+    { id: 'VIDEO', title: 'Video', icon: 'play_arrow', color: 'blue' },
+  ];
+
+  selectedDesignType: DesignFilterType = 'BANNER';
   selectedDesignId: string | null = null;
-  activeFilterPackage = 'ALL';
+  designSearchQuery = '';
 
   ngOnInit() {
     this.syncSelectedDesignFromModel();
@@ -56,14 +76,19 @@ export class AdFormModalComponent implements OnInit, OnChanges {
 
   private syncSelectedDesignFromModel() {
     if (this.formModel) {
-      this.selectedDesignId = this.formModel.designId || null;
-      if (!this.selectedDesignId && this.formModel.name) {
-        const found = this.allApprovedDesigns.find(
-          (d) => d.title.toLowerCase() === this.formModel.name.toLowerCase()
-        );
+      this.selectedDesignId = this.formModel.designId ? String(this.formModel.designId) : null;
+      if (this.selectedDesignId) {
+        const found = this.allApprovedDesigns.find((d) => String(d.id) === String(this.selectedDesignId));
         if (found) {
-          this.selectedDesignId = found.id;
+          this.selectedDesignType = found.designType;
+          return;
         }
+      }
+
+      // If no design is currently selected or matching, auto-select the first approved design of current type
+      const matching = this.filteredApprovedDesigns;
+      if (matching.length > 0) {
+        this.selectDesign(matching[0]);
       }
     }
   }
@@ -72,29 +97,39 @@ export class AdFormModalComponent implements OnInit, OnChanges {
     const list: ApprovedDesignItem[] = [];
     const activePkg = this.packageFilter?.trim().toLowerCase();
 
-    // Extract exclusively approved tasks from task store
+    // Extract approved tasks from task store
     if (this.tasks && this.tasks.length > 0) {
       for (const t of this.tasks) {
         const status = String(t.status || '').toUpperCase().trim();
-        const isApproved = status === 'APPROVED' || status === 'COMPLETED' || status === 'PUBLISHED';
+        const isApprovedStatus = status === 'APPROVED' || status === 'COMPLETED' || status === 'PUBLISHED';
         const creatorRole = String(t.creatorRole || '').toUpperCase();
-        const isBdmOrAdminCreator = creatorRole === 'BDM' || creatorRole === 'ADMINISTRATOR' || creatorRole === 'MARKETING_MANAGER' || !creatorRole;
+        const isBdmOrAdminCreator =
+          creatorRole === 'BDM' ||
+          creatorRole === 'ADMINISTRATOR' ||
+          creatorRole === 'ADMIN' ||
+          creatorRole === 'MARKETING_MANAGER' ||
+          !creatorRole;
 
         // Check if there is an approval in status history
         const approvalHist = t.statusHistory?.find(
           (h) => String(h.newStatus || '').toUpperCase() === 'APPROVED'
         );
 
-        if (isApproved || isBdmOrAdminCreator || approvalHist) {
-          // Strictly filter out designs belonging to other packages
+        if (isApprovedStatus || isBdmOrAdminCreator || approvalHist) {
+          // Filter out designs belonging to other packages if filter active
           if (activePkg && activePkg !== 'all') {
             if (!isTaskForPackage(t, this.packageFilter)) {
               continue;
             }
           }
+
           const approverInfo = this.extractApproverInfo(t, approvalHist);
           const thumbUrl = this.extractTaskImage(t);
-          const verNum = t.versions && t.versions.length > 0 ? t.versions[0].versionNumber || t.versions.length : 1;
+          const designTypeInfo = this.detectDesignType(t, thumbUrl);
+          const verNum =
+            t.versions && t.versions.length > 0
+              ? t.versions[0].versionNumber || t.versions.length
+              : 1;
 
           list.push({
             id: String(t.id),
@@ -104,10 +139,15 @@ export class AdFormModalComponent implements OnInit, OnChanges {
             campaignId: t.campaignId,
             versionNumber: verNum,
             imageUrl: thumbUrl,
+            isVideo: designTypeInfo.isVideo,
+            videoUrl: designTypeInfo.isVideo ? thumbUrl : undefined,
+            designType: designTypeInfo.type,
+            designTypeLabel: designTypeInfo.label,
             approverName: approverInfo.name,
             approverRole: approverInfo.role,
             approvedAt: approverInfo.label,
             status: t.status,
+            description: t.description || 'Approved design asset ready for campaign ad attribution.',
           });
         }
       }
@@ -118,14 +158,13 @@ export class AdFormModalComponent implements OnInit, OnChanges {
 
   get filteredApprovedDesigns(): ApprovedDesignItem[] {
     let list = this.allApprovedDesigns;
-    const q = this.designSearchQuery.trim().toLowerCase();
-    const pkg = this.activeFilterPackage.toLowerCase();
 
-    if (pkg !== 'all') {
-      list = list.filter((d) => d.packageName.toLowerCase().includes(pkg) || pkg.includes(d.packageName.toLowerCase()));
+    if (this.selectedDesignType) {
+      list = list.filter((d) => d.designType === this.selectedDesignType);
     }
 
-    if (q) {
+    if (this.designSearchQuery.trim()) {
+      const q = this.designSearchQuery.trim().toLowerCase();
       list = list.filter(
         (d) =>
           d.title.toLowerCase().includes(q) ||
@@ -140,75 +179,48 @@ export class AdFormModalComponent implements OnInit, OnChanges {
 
   get selectedDesign(): ApprovedDesignItem | null {
     if (!this.selectedDesignId) return null;
-    return this.allApprovedDesigns.find((d) => d.id === this.selectedDesignId) || null;
+    return this.allApprovedDesigns.find((d) => String(d.id) === String(this.selectedDesignId)) || null;
   }
 
-  private extractApproverInfo(t: Task, approvalHist?: any): { name: string; role: 'BDM' | 'ADMIN' | 'MANAGER'; label: string } {
-    if (approvalHist) {
-      const actorRole = String(approvalHist.actorRole || '').toUpperCase();
-      const actorName = approvalHist.actorName || 'Supervisor';
-      if (actorRole.includes('BDM')) {
-        return { name: actorName, role: 'BDM', label: `Approved by BDM (${actorName})` };
-      }
-      if (actorRole.includes('ADMIN')) {
-        return { name: actorName, role: 'ADMIN', label: `Approved by Admin (${actorName})` };
-      }
-      return { name: actorName, role: 'MANAGER', label: `Approved by ${actorName}` };
-    }
-
-    const creatorRole = String(t.creatorRole || '').toUpperCase();
-    const creatorName = t.creatorName || 'Operations';
-    if (creatorRole.includes('BDM')) {
-      return { name: creatorName, role: 'BDM', label: `Approved by BDM (${creatorName})` };
-    }
-    if (creatorRole.includes('ADMIN')) {
-      return { name: creatorName, role: 'ADMIN', label: `Approved by Admin (${creatorName})` };
-    }
-    return { name: 'BDM & Admin Review', role: 'BDM', label: 'Approved by BDM & Admin' };
+  get countBanner(): number {
+    return this.allApprovedDesigns.filter((d) => d.designType === 'BANNER').length;
   }
 
-  private extractTaskImage(t: Task): string {
-    if (t.versions && t.versions.length > 0) {
-      for (const ver of t.versions) {
-        const url = (ver as any).fileUrl || ver.filePath || ver.fileContent;
-        if (url && typeof url === 'string') {
-          const lower = url.toLowerCase();
-          if (
-            lower.startsWith('data:image/') ||
-            lower.startsWith('http') ||
-            lower.startsWith('/uploads/') ||
-            lower.endsWith('.png') ||
-            lower.endsWith('.jpg') ||
-            lower.endsWith('.jpeg') ||
-            lower.endsWith('.webp') ||
-            lower.endsWith('.svg')
-          ) {
-            return url;
-          }
-        }
-      }
-    }
-    if (t.attachmentUrl && typeof t.attachmentUrl === 'string') {
-      const lower = t.attachmentUrl.toLowerCase();
-      if (
-        lower.startsWith('data:image/') ||
-        lower.startsWith('http') ||
-        lower.startsWith('/uploads/') ||
-        lower.endsWith('.png') ||
-        lower.endsWith('.jpg') ||
-        lower.endsWith('.jpeg') ||
-        lower.endsWith('.webp') ||
-        lower.endsWith('.svg')
-      ) {
-        return t.attachmentUrl;
-      }
-    }
+  get countPoster(): number {
+    return this.allApprovedDesigns.filter((d) => d.designType === 'POSTER').length;
+  }
 
-    return '';
+  get countVideo(): number {
+    return this.allApprovedDesigns.filter((d) => d.designType === 'VIDEO').length;
+  }
+
+  selectDesignType(type: DesignFilterType) {
+    this.selectedDesignType = type;
+    const matching = this.allApprovedDesigns.filter((d) => d.designType === type);
+    if (matching.length > 0) {
+      const currentMatch = matching.find((d) => String(d.id) === String(this.selectedDesignId));
+      if (!currentMatch) {
+        this.selectDesign(matching[0]);
+      }
+    } else {
+      this.clearSelectedDesign();
+    }
+  }
+
+  onDesignDropdownChange(designId: string) {
+    if (!designId) {
+      this.clearSelectedDesign();
+      return;
+    }
+    const found = this.allApprovedDesigns.find((d) => String(d.id) === String(designId));
+    if (found) {
+      this.selectDesign(found);
+    }
   }
 
   selectDesign(design: ApprovedDesignItem) {
     this.selectedDesignId = design.id;
+    this.selectedDesignType = design.designType;
     this.formModel.name = design.title;
     this.formModel.designId = design.id;
     this.formModel.designTitle = design.title;
@@ -243,6 +255,152 @@ export class AdFormModalComponent implements OnInit, OnChanges {
     this.formModel.designId = '';
     this.formModel.designTitle = '';
     this.formModel.designImageUrl = '';
+  }
+
+  getCampaignName(): string {
+    if (!this.formModel.campaignId) return 'Not Linked';
+    const cmp = this.campaigns.find((c) => String(c.id) === String(this.formModel.campaignId));
+    return cmp ? cmp.name : (this.formModel.campaignName || 'Active Campaign');
+  }
+
+  getPlatformIcon(platform: string): string {
+    const p = (platform || '').toLowerCase();
+    if (p.includes('meta') || p.includes('facebook')) return 'public';
+    if (p.includes('google')) return 'travel_explore';
+    if (p.includes('instagram')) return 'photo_camera';
+    if (p.includes('linkedin')) return 'work';
+    if (p.includes('youtube')) return 'smart_display';
+    return 'ads_click';
+  }
+
+  private detectDesignType(t: Task, url: string): { type: 'BANNER' | 'POSTER' | 'VIDEO'; label: string; isVideo: boolean } {
+    const rawType = String(t.taskType || (t as any).task_type || '').toUpperCase().trim();
+    if (rawType === 'VIDEO' || rawType.includes('VIDEO')) {
+      return { type: 'VIDEO', label: 'Video', isVideo: true };
+    }
+    if (rawType === 'POST_DESIGN' || rawType.includes('POST') || rawType.includes('SOCIAL')) {
+      return { type: 'POSTER', label: 'Post Design', isVideo: false };
+    }
+    if (rawType === 'BANNER_DESIGN' || rawType.includes('BANNER')) {
+      return { type: 'BANNER', label: 'Banner Design', isVideo: false };
+    }
+
+    const text = `${t.title || ''} ${t.description || ''} ${t.packageName || ''}`.toLowerCase();
+    const lowerUrl = (url || '').toLowerCase();
+    const mime = t.versions && t.versions.length > 0 ? (t.versions[0].mimeType || '').toLowerCase() : '';
+
+    const isVid =
+      text.includes('video') ||
+      lowerUrl.endsWith('.mp4') ||
+      lowerUrl.endsWith('.mov') ||
+      lowerUrl.endsWith('.webm') ||
+      mime.includes('video');
+
+    if (isVid) {
+      return { type: 'VIDEO', label: 'Video', isVideo: true };
+    }
+    if (
+      text.includes('poster') ||
+      text.includes('social') ||
+      text.includes('post') ||
+      text.includes('flyer') ||
+      text.includes('instagram')
+    ) {
+      return { type: 'POSTER', label: 'Post Design', isVideo: false };
+    }
+    return { type: 'BANNER', label: 'Banner Design', isVideo: false };
+  }
+
+  private extractApproverInfo(
+    t: Task,
+    approvalHist?: any
+  ): { name: string; role: 'BDM' | 'ADMIN' | 'MANAGER'; label: string } {
+    if (approvalHist) {
+      const actorRole = String(approvalHist.actorRole || '').toUpperCase();
+      const actorName = approvalHist.actorName || 'Supervisor';
+      if (actorRole.includes('BDM')) {
+        return { name: actorName, role: 'BDM', label: `Approved by BDM (${actorName})` };
+      }
+      if (actorRole.includes('ADMIN')) {
+        return { name: actorName, role: 'ADMIN', label: `Approved by Admin (${actorName})` };
+      }
+      return { name: actorName, role: 'MANAGER', label: `Approved by ${actorName}` };
+    }
+
+    const creatorRole = String(t.creatorRole || '').toUpperCase();
+    const creatorName = t.creatorName || 'Operations';
+    if (creatorRole.includes('BDM')) {
+      return { name: creatorName, role: 'BDM', label: `Approved by BDM (${creatorName})` };
+    }
+    if (creatorRole.includes('ADMIN')) {
+      return { name: creatorName, role: 'ADMIN', label: `Approved by Admin (${creatorName})` };
+    }
+    return { name: 'BDM & Admin Review', role: 'ADMIN', label: 'Approved by Admin' };
+  }
+
+  private extractTaskImage(t: Task): string {
+    const cleanUrl = (raw?: string | null): string => {
+      if (!raw || typeof raw !== 'string') return '';
+      const trimmed = raw.trim();
+      if (!trimmed) return '';
+      if (trimmed.startsWith('data:image/') || trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('blob:')) {
+        return trimmed;
+      }
+      if (trimmed.startsWith('/')) {
+        return trimmed;
+      }
+      return `/${trimmed}`;
+    };
+
+    if (t.versions && t.versions.length > 0) {
+      for (const ver of t.versions) {
+        const url = (ver as any).fileUrl || ver.filePath || ver.fileContent;
+        const cleaned = cleanUrl(url);
+        if (cleaned) {
+          const lower = cleaned.toLowerCase();
+          if (
+            lower.startsWith('data:image/') ||
+            lower.includes('/uploads/') ||
+            lower.endsWith('.png') ||
+            lower.endsWith('.jpg') ||
+            lower.endsWith('.jpeg') ||
+            lower.endsWith('.webp') ||
+            lower.endsWith('.svg') ||
+            lower.endsWith('.gif') ||
+            lower.endsWith('.mp4') ||
+            lower.endsWith('.mov') ||
+            lower.endsWith('.webm') ||
+            (cleaned.startsWith('http') && !cleaned.endsWith('.pdf'))
+          ) {
+            return cleaned;
+          }
+        }
+      }
+    }
+
+    if (t.attachmentUrl) {
+      const cleaned = cleanUrl(t.attachmentUrl);
+      if (cleaned) return cleaned;
+    }
+
+    if ((t as any).imageUrl) {
+      const cleaned = cleanUrl((t as any).imageUrl);
+      if (cleaned) return cleaned;
+    }
+
+    if ((t as any).image) {
+      const cleaned = cleanUrl((t as any).image);
+      if (cleaned) return cleaned;
+    }
+
+    if (t.content && typeof t.content === 'string') {
+      const trimmed = t.content.trim();
+      if (trimmed.startsWith('data:image/') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+        return trimmed;
+      }
+    }
+
+    return '';
   }
 
   onCampaignChange(campaignId: string) {

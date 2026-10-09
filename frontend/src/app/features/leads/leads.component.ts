@@ -10,7 +10,8 @@ import { CampaignService } from '../../core/services/campaign.service';
 import * as XLSX from '@e965/xlsx';
 import { firstValueFrom } from 'rxjs';
 import { isLeadAssignedToUser } from '../telecalling/telecalling.component';
-import { FIXED_PACKAGES } from '../../core/models/package.model';
+import { FIXED_PACKAGES, isItemForPackage, resolveProductContext } from '../../core/models/package.model';
+import { PackageService } from '../../core/services/package.service';
 import { LeadsToolbarComponent } from './components/leads-toolbar/leads-toolbar.component';
 import { LeadsTableComponent } from './components/leads-table/leads-table.component';
 import { TelecallingMonitorComponent } from './components/telecalling-monitor/telecalling-monitor.component';
@@ -45,6 +46,15 @@ export class LeadsComponent implements OnInit {
   get packageFilter(): string | undefined {
     return this.packageFilterSignal();
   }
+
+  readonly productFilterSignal = signal<string | undefined>(undefined);
+  @Input() set productFilter(val: string | undefined) {
+    this.productFilterSignal.set(val);
+  }
+  get productFilter(): string | undefined {
+    return this.productFilterSignal();
+  }
+
   @Input() embedded = false;
 
   readonly Math = Math;
@@ -52,6 +62,7 @@ export class LeadsComponent implements OnInit {
   readonly userMgmtService = inject(UserManagementService);
   readonly authService = inject(AuthService);
   readonly campaignService = inject(CampaignService);
+  readonly packageService = inject(PackageService);
 
   readonly activeTab = signal<'LEADS_LIST' | 'TELECALLING_MONITOR'>('LEADS_LIST');
   readonly showModal = signal<boolean>(false);
@@ -219,7 +230,7 @@ export class LeadsComponent implements OnInit {
     this.leadService.loadCalls().subscribe();
     this.leadService.loadSummary().subscribe();
     this.campaignService.loadCampaigns().subscribe();
-
+    this.packageService.loadPackages().subscribe();
   }
 
   async onLeadsFileSelected(event: Event): Promise<void> {
@@ -416,8 +427,13 @@ export class LeadsComponent implements OnInit {
     const assignedTc = this.activeTelecallers().find((t) => String(t.id).trim() === String(this.newAssignedTelecallerId).trim());
 
     const user = this.authService.currentUser();
-    const pkgName = this.packageFilterSignal() || 'CURRENT AFFAIRS AUGUST -2026';
-    const prodName = pkgName.toLowerCase().includes('class') ? 'Classmate' : (pkgName.toLowerCase().includes('jesus') ? 'Jesus Messenger' : 'Careermate');
+    const pkg = this.packageFilterSignal()?.trim();
+    const prod = this.productFilterSignal()?.trim();
+    const dbPkgs = this.packageService.packages();
+    const resolved = resolveProductContext(pkg, prod, dbPkgs);
+
+    const pkgName = pkg || resolved.productName;
+    const prodName = resolved.productName;
 
     const payload: Partial<LeadItem> & any = {
       firstName: this.newFirstName.trim(),
@@ -491,8 +507,13 @@ export class LeadsComponent implements OnInit {
     const foundUser = this.realUsersList().find((u) => String(u.id).trim() === targetUserId);
     const targetName = foundUser ? foundUser.fullName : (this.assigneeName || 'Assigned Telecaller');
     const user = this.authService.currentUser();
-    const pkgName = this.selectedLeadForAssign.campaignName || this.packageFilterSignal() || 'CURRENT AFFAIRS AUGUST -2026';
-    const prodName = pkgName.toLowerCase().includes('class') ? 'Classmate' : (pkgName.toLowerCase().includes('jesus') ? 'Jesus Messenger' : 'Careermate');
+    const pkg = this.packageFilterSignal()?.trim();
+    const prod = this.productFilterSignal()?.trim();
+    const dbPkgs = this.packageService.packages();
+    const resolved = resolveProductContext(pkg, prod, dbPkgs);
+
+    const pkgName = this.selectedLeadForAssign.campaignName || pkg || resolved.productName;
+    const prodName = resolved.productName;
 
     this.leadService.assignLead(this.selectedLeadForAssign.id, targetUserId, targetName, {
       creatorName: user?.fullName || 'System Administrator',
@@ -512,38 +533,18 @@ export class LeadsComponent implements OnInit {
   readonly myLeadsList = computed(() => {
     let list = this.leadService.leads();
     const user = this.authService.currentUser();
-    const pkg = this.packageFilterSignal()?.toLowerCase().trim();
+    const pkg = this.packageFilterSignal()?.trim();
+    const prod = this.productFilterSignal()?.trim();
+    const dbPkgs = this.packageService.packages();
 
     if (user && user.role === 'TELECALLER') {
       list = list.filter((l) => isLeadAssignedToUser(l, user));
-    } else if (pkg && pkg !== 'all') {
-      const fixedProd = FIXED_PACKAGES.find((fp) => fp.name.toLowerCase() === pkg || fp.id.toLowerCase() === pkg);
-      if (fixedProd) {
-        const prodId = fixedProd.id.toLowerCase();
-        list = list.filter((l) => {
-          const src = (l.source || '').toLowerCase();
-          const cmp = (l.campaignName || '').toLowerCase();
-          if (prodId.includes('career')) {
-            return src.includes('career') || cmp.includes('career') || cmp.includes('tn-schema') || src.includes('lead') || src.includes('excel') || src.includes('csv') || src.includes('upload') || src.includes('meta');
-          }
-          if (prodId.includes('class')) {
-            return src.includes('class') || cmp.includes('class');
-          }
-          if (prodId.includes('jesus')) {
-            return src.includes('jesus') || cmp.includes('jesus');
-          }
-          return false;
-        });
-      } else {
-       
-        list = list.filter((l) => {
-          const src = (l.source || '').toLowerCase();
-          const cmp = (l.campaignName || '').toLowerCase();
-          const lPkg = ((l as any).packageName || (l as any).package || '').toLowerCase();
-          return lPkg === pkg || src.includes(pkg) || cmp.includes(pkg);
-        });
-      }
     }
+
+    if ((pkg && pkg.toLowerCase() !== 'all') || (prod && prod.toLowerCase() !== 'all')) {
+      list = list.filter((l) => isItemForPackage(l, pkg, prod, dbPkgs));
+    }
+
     return list;
   });
 

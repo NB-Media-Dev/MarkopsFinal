@@ -142,3 +142,102 @@ export function isTaskForPackage(
   return false;
 }
 
+export function resolveProductContext(
+  targetPackage?: string,
+  targetProduct?: string,
+  dbPackages: ProductPackage[] = []
+): { productId: string; productName: string; isSpecificPackage: boolean } {
+  const normProd = (targetProduct || '').toLowerCase().trim();
+  const normPkg = (targetPackage || '').toLowerCase().trim();
+
+  // 1. If explicit product provided
+  if (normProd && normProd !== 'all') {
+    if (normProd.includes('career') || normProd === 'pkg_careermate') {
+      return { productId: 'pkg_careermate', productName: 'Careermate', isSpecificPackage: !!normPkg && normPkg !== normProd && normPkg !== 'pkg_careermate' && normPkg !== 'all' };
+    }
+    if (normProd.includes('class') || normProd === 'pkg_classmate') {
+      return { productId: 'pkg_classmate', productName: 'Classmate', isSpecificPackage: !!normPkg && normPkg !== normProd && normPkg !== 'pkg_classmate' && normPkg !== 'all' };
+    }
+    if (normProd.includes('jesus') || normProd === 'pkg_jesus_messanger') {
+      return { productId: 'pkg_jesus_messanger', productName: 'Jesus the messanger', isSpecificPackage: !!normPkg && normPkg !== normProd && normPkg !== 'pkg_jesus_messanger' && normPkg !== 'all' };
+    }
+  }
+
+  // 2. If targetPackage matches fixed product
+  if (normPkg && normPkg !== 'all') {
+    if (normPkg.includes('career') || normPkg === 'pkg_careermate') {
+      return { productId: 'pkg_careermate', productName: 'Careermate', isSpecificPackage: false };
+    }
+    if (normPkg.includes('class') || normPkg === 'pkg_classmate') {
+      return { productId: 'pkg_classmate', productName: 'Classmate', isSpecificPackage: false };
+    }
+    if (normPkg.includes('jesus') || normPkg === 'pkg_jesus_messanger') {
+      return { productId: 'pkg_jesus_messanger', productName: 'Jesus the messanger', isSpecificPackage: false };
+    }
+
+    // 3. Lookup in dbPackages
+    if (dbPackages && dbPackages.length > 0) {
+      const match = dbPackages.find((p) => (p.name || '').toLowerCase().trim() === normPkg || String(p.id).toLowerCase() === normPkg);
+      if (match && match.productId) {
+        const pProd = match.productId.toLowerCase();
+        if (pProd.includes('career')) return { productId: 'pkg_careermate', productName: 'Careermate', isSpecificPackage: true };
+        if (pProd.includes('class')) return { productId: 'pkg_classmate', productName: 'Classmate', isSpecificPackage: true };
+        if (pProd.includes('jesus')) return { productId: 'pkg_jesus_messanger', productName: 'Jesus the messanger', isSpecificPackage: true };
+      }
+    }
+  }
+
+  // Default fallback to Careermate
+  return { productId: 'pkg_careermate', productName: 'Careermate', isSpecificPackage: !!normPkg && normPkg !== 'all' };
+}
+
+export function isItemForPackage(
+  item: { productId?: string | null; packageName?: string | null; campaignName?: string | null; name?: string | null; source?: string | null; title?: string | null },
+  targetPackage?: string,
+  targetProduct?: string,
+  dbPackages: ProductPackage[] = []
+): boolean {
+  if (!targetPackage && !targetProduct) return true;
+  const cleanPkg = (targetPackage || '').toLowerCase().trim();
+  const cleanProd = (targetProduct || '').toLowerCase().trim();
+  if ((!cleanPkg || cleanPkg === 'all') && (!cleanProd || cleanProd === 'all')) return true;
+
+  const itemPkg = (item.packageName || '').toLowerCase().trim();
+  const itemProd = (item.productId || '').toLowerCase().trim();
+  const itemName = (item.name || item.title || '').toLowerCase().trim();
+  const itemCamp = (item.campaignName || '').toLowerCase().trim();
+  const itemSrc = (item.source || '').toLowerCase().trim();
+
+  // 1. Direct package match
+  if (cleanPkg && cleanPkg !== 'all') {
+    if (itemPkg === cleanPkg || (itemPkg.length >= 3 && cleanPkg.includes(itemPkg)) || (cleanPkg.length >= 3 && itemPkg.includes(cleanPkg))) {
+      return true;
+    }
+    if (itemName.includes(cleanPkg) || itemCamp.includes(cleanPkg) || itemSrc.includes(cleanPkg)) {
+      return true;
+    }
+  }
+
+  // 2. Product family resolution
+  const resolved = resolveProductContext(targetPackage, targetProduct, dbPackages);
+  const targetProdId = resolved.productId.toLowerCase();
+
+  const isClassItem = itemProd.includes('class') || itemPkg.includes('class') || itemName.includes('class') || itemCamp.includes('class') || itemSrc.includes('class');
+  const isJesusItem = itemProd.includes('jesus') || itemPkg.includes('jesus') || itemName.includes('jesus') || itemCamp.includes('jesus') || itemSrc.includes('jesus');
+  const isCareerItem = itemProd.includes('career') || itemPkg.includes('career') || itemName.includes('career') || itemCamp.includes('career') || itemSrc.includes('career') || (!itemProd && !itemPkg && !isClassItem && !isJesusItem);
+
+  if (targetProdId.includes('career')) {
+    if (isClassItem || isJesusItem) return false;
+    return true;
+  }
+  if (targetProdId.includes('class')) {
+    return isClassItem;
+  }
+  if (targetProdId.includes('jesus')) {
+    return isJesusItem;
+  }
+
+  return true;
+}
+
+

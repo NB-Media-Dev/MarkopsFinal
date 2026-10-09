@@ -37,20 +37,31 @@
               id="edit-pkg-input-name"
               type="text"
               formControlName="name"
-              placeholder="e.g. TNPSC Group 4 General Studies 2026"
+              placeholder="e.g. TNPSC Group General Studies"
               class="custom-form-input"
               [class.is-invalid]="
                 form.get('name')?.invalid &&
                 form.get('name')?.touched
               "
             />
-            @if (
-              form.get('name')?.invalid &&
-              form.get('name')?.touched
-            ) {
-              <div class="field-validation-msg">
-                Package name is required (minimum 3 characters).
-              </div>
+            @if (form.get('name')?.touched && form.get('name')?.errors) {
+              @if (form.get('name')?.hasError('required')) {
+                <div class="field-validation-msg">
+                  Package name is required.
+                </div>
+              } @else if (form.get('name')?.hasError('minlength')) {
+                <div class="field-validation-msg">
+                  Package name must be at least 3 characters.
+                </div>
+              } @else if (form.get('name')?.hasError('pattern')) {
+                <div class="field-validation-msg">
+                  Package name can only contain letters and spaces (no numbers or symbols).
+                </div>
+              } @else if (form.get('name')?.hasError('duplicate')) {
+                <div class="field-validation-msg">
+                  A package with this name already exists. Please choose a different name.
+                </div>
+              }
             }
           </div>
           <!-- Banner Image Upload Field -->

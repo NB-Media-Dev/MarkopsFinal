@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RoleOperationTab, FixedPackageMeta } from '../../../../core/models/package.model';
+import { RoleOperationTab, FixedPackageMeta, isItemForPackage } from '../../../../core/models/package.model';
 
 import { DesignerDashboardComponent } from '../../../designer/designer-dashboard.component';
 import { TelecallingComponent } from '../../../telecalling/telecalling.component';
@@ -11,6 +11,7 @@ import { AdsComponent } from '../../../ads/ads.component';
 import { CampaignKpisComponent } from '../../../campaigns/components/campaign-kpis/campaign-kpis.component';
 import { CampaignService } from '../../../../core/services/campaign.service';
 import { LeadTelecallingService } from '../../../../core/services/lead-telecalling.service';
+import { PackageService } from '../../../../core/services/package.service';
 
 @Component({
   selector: 'app-package-department-view',
@@ -49,16 +50,14 @@ export class PackageDepartmentViewComponent {
 
   private readonly campaignService = inject(CampaignService);
   private readonly leadService = inject(LeadTelecallingService);
+  private readonly packageService = inject(PackageService);
 
   readonly filteredCampaigns = computed(() => {
     const all = this.campaignService.campaigns();
-    const pkg = (this.currentFilterTarget || this.activePackageName || '').toLowerCase().trim();
-    if (!pkg) return all;
-    return all.filter((c) => {
-      const cPkg = (c.packageName || '').toLowerCase().trim();
-      const cProd = (c.productId || '').toLowerCase().trim();
-      return cPkg === pkg || cProd === pkg || cPkg.includes(pkg) || pkg.includes(cPkg);
-    });
+    const pkg = this.currentFilterTarget;
+    const prod = this.activePackageName;
+    const dbPkgs = this.packageService.packages();
+    return all.filter((c) => isItemForPackage(c, pkg, prod, dbPkgs));
   });
 
   readonly totalCampaignsCount = computed(() => this.filteredCampaigns().length);
@@ -83,10 +82,10 @@ export class PackageDepartmentViewComponent {
 
   readonly totalClicks = computed(() => {
     const allAds = this.campaignService.ads();
-    const pkg = (this.currentFilterTarget || this.activePackageName || '').toLowerCase().trim();
-    const filtered = pkg
-      ? allAds.filter((a) => (a.packageName || '').toLowerCase().includes(pkg) || (a.productId || '').toLowerCase().includes(pkg))
-      : allAds;
+    const pkg = this.currentFilterTarget;
+    const prod = this.activePackageName;
+    const dbPkgs = this.packageService.packages();
+    const filtered = allAds.filter((a) => isItemForPackage(a, pkg, prod, dbPkgs));
     return filtered.reduce((sum, a) => sum + (a.clicks || 0), 0);
   });
 

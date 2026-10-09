@@ -4,11 +4,11 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { TaskPriority } from '../../../../../core/models/task.model';
 
 export interface TaskTypeOption {
-  id: 'CURRENT_AFFAIR' | 'SOCIAL_MEDIA' | 'VIDEO' ; 
+  id: 'BANNER_DESIGN' | 'POST_DESIGN' | 'VIDEO'; 
   name: string;
   subtitle: string;
   icon: string;
-  color: 'orange' | 'purple' | 'blue' | 'green';
+  color: 'orange' | 'purple' | 'blue';
 }
 
 @Component({
@@ -39,20 +39,21 @@ export class CreateTaskModalComponent implements OnChanges {
   readonly todayDate = new Date().toISOString().split('T')[0];
 
   readonly taskTypes: TaskTypeOption[] = [
-    { id: 'CURRENT_AFFAIR', name: 'Current Affair', subtitle: 'Banner Design', icon: 'campaign', color: 'orange' },
-    { id: 'SOCIAL_MEDIA', name: 'Social Media', subtitle: 'Post Design', icon: 'photo_library', color: 'purple' },
+    { id: 'BANNER_DESIGN', name: 'Banner Design', subtitle: 'Banner Design', icon: 'campaign', color: 'orange' },
+    { id: 'POST_DESIGN', name: 'Post Design', subtitle: 'Post Design', icon: 'photo_library', color: 'purple' },
     { id: 'VIDEO', name: 'Video', subtitle: 'Video', icon: 'play_arrow', color: 'blue' },
-   ];
+  ];
 
-  readonly selectedTaskType = signal<'CURRENT_AFFAIR' | 'SOCIAL_MEDIA' | 'VIDEO'>('CURRENT_AFFAIR');
+  readonly selectedTaskType = signal<'BANNER_DESIGN' | 'POST_DESIGN' | 'VIDEO' | ''>('');
 
   readonly createTaskForm: FormGroup = this.fb.group({
-    title: ['Banner Design', [Validators.required, Validators.minLength(2)]],
-    packageName: ['Careermate', [Validators.required]],
-    description: ['Create a creative banner for current-affair with modern and clean design.'],
+    title: ['', [Validators.required, Validators.minLength(2)]],
+    taskType: ['', [Validators.required]],
+    packageName: ['', [Validators.required]],
+    description: [''],
     assignedTo: ['', [Validators.required]],
-    priority: ['HIGH' as TaskPriority, [Validators.required]],
-    dueDate: [new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0], [Validators.required]],
+    priority: ['', [Validators.required]],
+    dueDate: ['', [Validators.required]],
   });
 
   readonly createdBriefFile = signal<File | null>(null);
@@ -71,25 +72,22 @@ export class CreateTaskModalComponent implements OnChanges {
     this.createdBriefFileName.set('');
     this.createdBriefDataUrl.set('');
     this.createdBriefContent.set('');
-    this.selectedTaskType.set('CURRENT_AFFAIR');
-    const targetDesigner = this.preselectedDesignerId || (this.designers[0]?.id ? String(this.designers[0].id) : '');
-    const pkgName = this.defaultPackage || (this.availablePackages[0]?.name || 'Careermate');
+    this.selectedTaskType.set('');
     this.createTaskForm.reset({
-      title: `${pkgName} Banner Design`,
+      title: '',
+      taskType: '',
+      packageName: '',
       description: '',
-      packageName: pkgName,
-      assignedTo: targetDesigner,
-      priority: 'HIGH',
-      dueDate: new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
+      assignedTo: '',
+      priority: '',
+      dueDate: '',
     });
   }
 
   selectTaskType(type: TaskTypeOption): void {
     this.selectedTaskType.set(type.id);
-    const pkg = this.createTaskForm.get('packageName')?.value || 'Package';
     this.createTaskForm.patchValue({
-      title: `${type.name} - ${type.subtitle}`,
-      description: `Create ${type.name.toLowerCase()} design for ${pkg} with modern and clean visuals.`,
+      taskType: type.id,
     });
   }
 
@@ -99,13 +97,14 @@ export class CreateTaskModalComponent implements OnChanges {
 
   getSelectedDesignerName(): string {
     const id = String(this.createTaskForm.get('assignedTo')?.value || '');
+    if (!id) return '';
     const found = this.designers.find((d) => String(d.id) === id);
-    return found ? found.name : (this.designers[0]?.name || 'Unassigned');
+    return found ? found.name : '';
   }
 
   getDesignerInitials(name?: string): string {
     const target = (name || this.getSelectedDesignerName()).trim();
-    if (!target) return 'DS';
+    if (!target) return '';
     const parts = target.split(' ');
     if (parts.length >= 2) {
       return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -116,10 +115,10 @@ export class CreateTaskModalComponent implements OnChanges {
   selectedTaskTypeLabel(): string {
     const type = this.selectedTaskType();
     switch (type) {
-      case 'CURRENT_AFFAIR':
-        return 'Current Affair';
-      case 'SOCIAL_MEDIA':
-        return 'Social Media';
+      case 'BANNER_DESIGN':
+        return 'Banner Design';
+      case 'POST_DESIGN':
+        return 'Post Design';
       case 'VIDEO':
         return 'Video';
       default:

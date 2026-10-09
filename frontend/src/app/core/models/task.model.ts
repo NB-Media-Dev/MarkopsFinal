@@ -60,9 +60,12 @@ export interface TaskComment {
   createdAt: string;
 }
 
+export type TaskType = 'BANNER_DESIGN' | 'POST_DESIGN' | 'VIDEO' | string;
+
 export interface Task {
   id: string;
   title: string;
+  taskType?: TaskType;
   packageName?: string;
   description?: string;
   content?: string;
@@ -90,6 +93,7 @@ export interface Task {
 
 export interface CreateTaskRequest {
   title: string;
+  taskType?: TaskType;
   packageName?: string;
   description?: string;
   content?: string;

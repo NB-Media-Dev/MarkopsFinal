@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { CampaignService, CampaignItem } from '../../core/services/campaign.service';
 import { AuthService } from '../../core/services/auth.service';
-import { FIXED_PACKAGES } from '../../core/models/package.model';
+import { FIXED_PACKAGES, isItemForPackage, resolveProductContext } from '../../core/models/package.model';
+import { PackageService } from '../../core/services/package.service';
 import { CampaignKpisComponent } from './components/campaign-kpis/campaign-kpis.component';
 import { CampaignToolbarComponent } from './components/campaign-toolbar/campaign-toolbar.component';
 import { CampaignsTableComponent } from './components/campaigns-table/campaigns-table.component';
@@ -35,11 +36,21 @@ export class CampaignsComponent implements OnInit {
   get packageFilter(): string | undefined {
     return this.packageFilterSignal();
   }
+
+  readonly productFilterSignal = signal<string | undefined>(undefined);
+  @Input() set productFilter(val: string | undefined) {
+    this.productFilterSignal.set(val);
+  }
+  get productFilter(): string | undefined {
+    return this.productFilterSignal();
+  }
+
   @Input() embedded = false;
   @Input() hideKpis = false;
   @Output() switchTab = new EventEmitter<string>();
 
   readonly campaignService = inject(CampaignService);
+  readonly packageService = inject(PackageService);
   readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
@@ -127,18 +138,14 @@ export class CampaignsComponent implements OnInit {
 
   readonly totalClicks = computed(() => {
     const allAds = this.campaignService.ads();
-    const pkg = this.packageFilterSignal();
-    const filtered = pkg
-      ? allAds.filter(
-          (a) =>
-            (a.packageName || '').toLowerCase() === pkg.toLowerCase() ||
-            (a.productId || '').toLowerCase() === pkg.toLowerCase()
-        )
-      : allAds;
+    const pkg = this.packageFilterSignal()?.trim();
+    const prod = this.productFilterSignal()?.trim();
+    const dbPkgs = this.packageService.packages();
+    const filtered = allAds.filter((a) => isItemForPackage(a, pkg, prod, dbPkgs));
     return filtered.reduce((sum, a) => sum + (a.clicks || 0), 0);
   });
 
-  onViewAnalytics(): void {
+  onViewAnalytics() {
     if (this.embedded) {
       this.switchTab.emit('ADS');
     } else {
@@ -146,7 +153,7 @@ export class CampaignsComponent implements OnInit {
     }
   }
 
-  onViewLeads(): void {
+  onViewLeads() {
     if (this.embedded) {
       this.switchTab.emit('LEADS');
     } else {
@@ -171,6 +178,7 @@ export class CampaignsComponent implements OnInit {
 
   ngOnInit() {
     this.campaignService.loadCampaigns().subscribe();
+    this.packageService.loadPackages().subscribe();
   }
 
   get computedModalCpl(): string {
@@ -259,13 +267,18 @@ export class CampaignsComponent implements OnInit {
     const computedCpl = leads > 0 ? Number((spend / leads).toFixed(2)) : 0;
     const computedConvRate = leads > 0 ? Number(((conversions / leads) * 100).toFixed(1)) : 0;
 
-    const activePkg = this.packageFilterSignal() || 'Careermate';
+    const pkg = this.packageFilterSignal()?.trim();
+    const prod = this.productFilterSignal()?.trim();
+    const dbPkgs = this.packageService.packages();
+    const resolved = resolveProductContext(pkg, prod, dbPkgs);
+
+    const activePkg = pkg || resolved.productName;
 
     const payload: Partial<CampaignItem> & { creatorRole?: string; userRole?: string } = {
       name: this.formModel.name.trim(),
       status: this.formModel.status,
       objective: this.formModel.objective,
-      productId: activePkg.toLowerCase().includes('career') ? 'pkg_careermate' : (activePkg.toLowerCase().includes('class') ? 'pkg_classmate' : (activePkg.toLowerCase().includes('jesus') ? 'pkg_jesus_messanger' : activePkg)),
+      productId: resolved.productId,
       packageName: activePkg,
       spend: spend,
       leadsCount: leads,
@@ -351,39 +364,12 @@ export class CampaignsComponent implements OnInit {
     let list = this.campaignService.campaigns();
     const st = this.filterStatus();
     const q = this.searchQuery().trim().toLowerCase();
-    const pkg = this.packageFilterSignal()?.trim().toLowerCase();
+    const pkg = this.packageFilterSignal()?.trim();
+    const prod = this.productFilterSignal()?.trim();
+    const dbPkgs = this.packageService.packages();
 
-    if (pkg && pkg !== 'all') {
-      const fixedProd = FIXED_PACKAGES.find((fp) => fp.name.toLowerCase() === pkg || fp.id.toLowerCase() === pkg);
-      if (fixedProd) {
-       
-        const prodId = fixedProd.id.toLowerCase();
-        list = list.filter((c) => {
-          const cPkg = ((c as any).packageName || (c as any).package || '').toLowerCase().trim();
-          const cProd = (c.productId || '').toLowerCase().trim();
-          const name = (c.name || '').toLowerCase();
-          const obj = (c.objective || '').toLowerCase();
-
-          if (cProd === prodId) return true;
-          if (prodId.includes('career')) {
-            return cProd.includes('career') || cPkg.includes('career') || name.includes('career') || obj.includes('career') || !cProd;
-          }
-          if (prodId.includes('class')) {
-            return cProd.includes('class') || cPkg.includes('class') || name.includes('class') || obj.includes('class');
-          }
-          if (prodId.includes('jesus')) {
-            return cProd.includes('jesus') || cPkg.includes('jesus') || name.includes('jesus') || obj.includes('jesus');
-          }
-          return false;
-        });
-      } else {
-       
-        list = list.filter((c) => {
-          const cPkg = ((c as any).packageName || (c as any).package || '').toLowerCase().trim();
-          const name = (c.name || '').toLowerCase();
-          return cPkg === pkg || name.includes(pkg);
-        });
-      }
+    if ((pkg && pkg.toLowerCase() !== 'all') || (prod && prod.toLowerCase() !== 'all')) {
+      list = list.filter((c) => isItemForPackage(c, pkg, prod, dbPkgs));
     }
 
     if (st !== 'ALL') {
@@ -400,3 +386,4 @@ export class CampaignsComponent implements OnInit {
     return list;
   }
 }
+

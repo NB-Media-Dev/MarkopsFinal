@@ -14,7 +14,7 @@ import { ProductPackage, FixedPackageMeta, RoleOperationTab, FIXED_PACKAGES, isT
 import { UserRole } from '../../core/models/auth.model';
 import { Task, TaskStatus, TaskVersion, computeTaskProgressPercent } from '../../core/models/task.model';
 import { safeFetch, getBackendBaseUrl } from '../../core/utils/api-url.utils';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { TaskPriority } from '../../core/models/task.model';
 
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -131,15 +131,56 @@ export class PackageWorksComponent implements OnInit {
   readonly editPackageImageFile = signal<File | null>(null);
   readonly editPackageImagePreview = signal<string>('');
 
+  private validateCreatePackageName = (control: AbstractControl): ValidationErrors | null => {
+    if (!control.value) return null;
+    const trimmed = String(control.value).trim().toLowerCase();
+    if (!trimmed) return null;
+    const activeProductId = this.activePackageMeta()?.id;
+    const existingPackages = this.packageService.packages();
+    const isDuplicate = existingPackages.some(
+      (p) => p.productId === activeProductId && p.name.trim().toLowerCase() === trimmed
+    );
+    return isDuplicate ? { duplicate: true } : null;
+  };
+
+  private validateEditPackageName = (control: AbstractControl): ValidationErrors | null => {
+    if (!control.value) return null;
+    const trimmed = String(control.value).trim().toLowerCase();
+    if (!trimmed) return null;
+    const activeProductId = this.activePackageMeta()?.id;
+    const currentPkgId = this.editingProductPackage()?.id;
+    const existingPackages = this.packageService.packages();
+    const isDuplicate = existingPackages.some(
+      (p) => p.productId === activeProductId && p.id !== currentPkgId && p.name.trim().toLowerCase() === trimmed
+    );
+    return isDuplicate ? { duplicate: true } : null;
+  };
+
   readonly createProductPackageForm: FormGroup = this.fb.group({
-    name: ['', [Validators.required, Validators.minLength(3)]],
+    name: [
+      '',
+      [
+        Validators.required,
+        Validators.minLength(3),
+        Validators.pattern(/^[a-zA-Z\s]+$/),
+        this.validateCreatePackageName,
+      ],
+    ],
     imageUrl: [''],
     price: [100],
     description: [''],
   });
 
   readonly editProductPackageForm: FormGroup = this.fb.group({
-    name: ['', [Validators.required, Validators.minLength(3)]],
+    name: [
+      '',
+      [
+        Validators.required,
+        Validators.minLength(3),
+        Validators.pattern(/^[a-zA-Z\s]+$/),
+        this.validateEditPackageName,
+      ],
+    ],
     imageUrl: [''],
     price: [100],
     description: [''],
@@ -488,9 +529,8 @@ export class PackageWorksComponent implements OnInit {
 
     if (role === 'ADMINISTRATOR' || role === 'MARKETING_MANAGER' || role === 'BDM') {
       const mgmtTabs: RoleOperationTab[] = [];
-      if (role === 'ADMINISTRATOR' || role === 'MARKETING_MANAGER') {
-        mgmtTabs.push({ id: 'TRANSACTIONS', label: 'Transactions', icon: 'payments' });
-      }
+      mgmtTabs.push({ id: 'ANALYTICS_OVERVIEW', label: 'Overview', icon: 'grid_view' });
+      mgmtTabs.push({ id: 'TRANSACTIONS', label: 'Transactions', icon: 'payments' });
       mgmtTabs.push({ id: 'REPORTS', label: 'Reports', icon: 'analytics' });
       mgmtTabs.push({ id: 'AUDITS', label: 'Audit Logs', icon: 'shield' });
 
@@ -525,6 +565,8 @@ export class PackageWorksComponent implements OnInit {
     this.activeDepartment.set(deptId);
     if (deptId === 'DIGITAL_MARKETING') {
       this.selectOperationTab('MARKETING_OVERVIEW');
+    } else if (deptId === 'ANALYTICS') {
+      this.selectOperationTab('ANALYTICS_OVERVIEW');
     } else {
       const dept = this.operationDepartments().find((d) => d.id === deptId);
       if (dept && dept.tabs.length > 0) {
@@ -1283,19 +1325,36 @@ export class PackageWorksComponent implements OnInit {
   }
 
   onBreadcrumbBack(): void {
+    const currentDept = this.activeDepartment();
+    const currentTab = this.activeOperationTab();
+
     if (
-      this.activeDepartment() === 'DIGITAL_MARKETING' &&
-      this.activeOperationTab() &&
-      this.activeOperationTab() !== 'MARKETING_OVERVIEW'
+      currentDept === 'ANALYTICS' &&
+      currentTab &&
+      currentTab !== 'ANALYTICS_OVERVIEW' &&
+      currentTab !== 'OVERVIEW' &&
+      currentTab !== 'MANAGEMENT'
+    ) {
+      this.selectOperationTab('ANALYTICS_OVERVIEW');
+      return;
+    }
+    if (
+      currentDept === 'DIGITAL_MARKETING' &&
+      currentTab &&
+      currentTab !== 'MARKETING_OVERVIEW'
     ) {
       this.selectOperationTab('MARKETING_OVERVIEW');
-    } else if (this.activeDepartment()) {
-      this.backToPackageHub();
-    } else if (this.activeWorkspacePackage()) {
-      this.closePackageWorkspace();
-    } else {
-      this.router.navigate(['/dashboard']);
+      return;
     }
+    if (currentDept) {
+      this.backToPackageHub();
+      return;
+    }
+    if (this.activeWorkspacePackage()) {
+      this.closePackageWorkspace();
+      return;
+    }
+    this.router.navigate(['/dashboard']);
   }
 
   getOperationTabLabel(tabId: string): string {
@@ -1308,6 +1367,24 @@ export class PackageWorksComponent implements OnInit {
         return 'Leads';
       case 'MARKETING_OVERVIEW':
         return 'Overview';
+      case 'ANALYTICS_OVERVIEW':
+        return 'Overview';
+      case 'TRANSACTIONS':
+        return 'Transactions';
+      case 'REPORTS':
+        return 'Reports';
+      case 'AUDITS':
+        return 'Audit Logs';
+      case 'TELECALLER_MEMBERS':
+        return 'Telecaller Details';
+      case 'TELECALLING':
+        return 'Telecalling';
+      case 'TARGETS':
+        return 'Targets';
+      case 'TASKS':
+        return 'Tasks';
+      case 'WORKS':
+        return 'Works';
       default:
         return tabId;
     }

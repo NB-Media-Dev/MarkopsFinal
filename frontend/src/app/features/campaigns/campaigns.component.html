@@ -57,7 +57,7 @@
   <app-campaign-toolbar
     [searchQuery]="searchQuery()"
     [filterStatus]="filterStatus()"
-    [totalCampaignsCount]="campaignService.campaigns().length"
+    [totalCampaignsCount]="filteredCampaigns.length"
     [activeCount]="activeCampaignsCount()"
     [planningCount]="planningCampaignsCount()"
     [pausedCount]="pausedCampaignsCount()"
@@ -69,7 +69,7 @@
   <!-- 3. Primary Campaigns Table -->
   <app-campaigns-table
     [campaigns]="filteredCampaigns"
-    [totalCampaignsCount]="campaignService.campaigns().length"
+    [totalCampaignsCount]="filteredCampaigns.length"
     [canManageCampaigns]="canManageCampaigns()"
     (create)="openCreateModal()"
     (edit)="openEditModal($event)"

@@ -1,22 +1,3 @@
-<!-- Tier 2: Specific Operation Sub-Pills Bar -->
-<!-- @if (activeDepartmentTabs.length > 1) {
-  <div class="dept-nav-tabs-bar">
-    @for (op of activeDepartmentTabs; track op.id) {
-      <button
-        type="button"
-        class="subtab-pill-btn"
-        [class.active]="activeOperationTab === op.id"
-        (click)="selectOperationTab(op.id)"
-      >
-        @if (op.icon) {
-          <span class="material-symbols-outlined subtab-icon">{{ op.icon }}</span>
-        }
-        <span class="subtab-text">{{ op.label }}</span>
-      </button>
-    }
-  </div>
-} -->
-
 <!-- Main Content Container for Active Department -->
 <div class="works-content-wrapper dept-active-content">
   <!-- Tasks / Works View (Embedded Designer Tasks Dashboard) -->
@@ -36,6 +17,7 @@
       ></app-designer-dashboard>
     </div>
   }
+
   <!-- Digital Marketing Overview (Initial 3 Feature Cards) -->
   @if (
     currentDept === 'DIGITAL_MARKETING' &&
@@ -61,11 +43,12 @@
     </div>
   }
 
-  <!-- Campaigns View (Digital Marketing - Only Campaigns Table & Create Campaign, NO KPI cards!) -->
+  <!-- Campaigns View (Digital Marketing) -->
   @if (currentDept === 'DIGITAL_MARKETING' && activeOperationTab === 'CAMPAIGNS') {
     <div>
       <app-campaigns
         [packageFilter]="currentFilterTarget"
+        [productFilter]="activePackageName"
         [embedded]="true"
         [hideKpis]="true"
         (switchTab)="selectOperationTab($event)"
@@ -75,19 +58,32 @@
   <!-- Ads Metrics View (Digital Marketing) -->
   @if (currentDept === 'DIGITAL_MARKETING' && activeOperationTab === 'ADS') {
     <div>
-      <app-ads [packageFilter]="currentFilterTarget" [embedded]="true"></app-ads>
+      <app-ads
+        [packageFilter]="currentFilterTarget"
+        [productFilter]="activePackageName"
+        [embedded]="true"
+      ></app-ads>
     </div>
   }
   <!-- Leads View (Digital Marketing) -->
   @if (currentDept === 'DIGITAL_MARKETING' && activeOperationTab === 'LEADS') {
     <div>
-      <app-leads [packageFilter]="currentFilterTarget" [embedded]="true"></app-leads>
+      <app-leads
+        [packageFilter]="currentFilterTarget"
+        [productFilter]="activePackageName"
+        [embedded]="true"
+      ></app-leads>
     </div>
   }
   <!-- View Telecalling (Digital Marketing) -->
   @if (currentDept === 'DIGITAL_MARKETING' && activeOperationTab === 'TELECALLING_VIEW') {
     <div>
-      <app-telecalling [embedded]="true" [viewMode]="'ALL'" [packageFilter]="currentFilterTarget"></app-telecalling>
+      <app-telecalling
+        [embedded]="true"
+        [viewMode]="'ALL'"
+        [packageFilter]="currentFilterTarget"
+        [productFilter]="activePackageName"
+      ></app-telecalling>
     </div>
   }
   <!-- Telecalling Content -->
@@ -96,7 +92,12 @@
     (activeOperationTab === 'TELECALLER_MEMBERS' || activeOperationTab === 'TELECALLING')
   ) {
     <div>
-      <app-telecalling [embedded]="true" [viewMode]="'ALL'" [packageFilter]="currentFilterTarget"></app-telecalling>
+      <app-telecalling
+        [embedded]="true"
+        [viewMode]="'ALL'"
+        [packageFilter]="currentFilterTarget"
+        [productFilter]="activePackageName"
+      ></app-telecalling>
     </div>
   }
   @if (currentDept === 'TELECALLING' && activeOperationTab === 'TARGETS') {
@@ -104,287 +105,459 @@
       <app-targets [embedded]="true"></app-targets>
     </div>
   }
-  <!-- Transactions & Ad Metrics View -->
-  @if (activeOperationTab === 'TRANSACTIONS') {
-    <div class="embedded-tab-section">
-      <div class="table-card card-transactions-perf">
-        <div class="card-title-bar">
-          <div class="title-with-badge">
-            <div class="title-icon-squircle">
-              <span class="material-symbols-outlined">payments</span>
+
+  <!-- ========================================================================= -->
+  <!-- ANALYTICS & MANAGEMENT DEPARTMENT                                         -->
+  <!-- ========================================================================= -->
+  @if (currentDept === 'ANALYTICS') {
+    
+    <!-- LEVEL 1: INITIAL 3 FEATURE CARDS OVERVIEW -->
+    @if (!activeOperationTab || activeOperationTab === 'ANALYTICS_OVERVIEW' || activeOperationTab === 'OVERVIEW' || activeOperationTab === 'MANAGEMENT') {
+      <div class="analytics-hub-section">
+        <div class="analytics-showcase-grid">
+          
+          <!-- CARD 1: TRANSACTIONS -->
+          <div class="analytics-card card-transactions" (click)="selectOperationTab('TRANSACTIONS')">
+            <div class="card-top-header">
+              <div class="card-icon-pill icon-orange">
+                <span class="material-symbols-outlined">payments</span>
+              </div>
+              <div class="card-title-group">
+                <h3 class="card-title">Transactions</h3>
+                <p class="card-desc">Conversion ledger, revenue & cashflow</p>
+              </div>
             </div>
-            <div>
-              <h3>{{ activePackageMeta?.name }} Conversion Ledger</h3>
-              <span class="table-sub-meta"
-                >{{ filteredTransactions.length }} conversion transactions logged</span
-              >
+
+            <!-- Graphic Visual Illustration -->
+            <div class="card-graphic-area graphic-bg-orange">
+              <div class="graphic-canvas">
+                <svg viewBox="0 0 200 120" fill="none" class="feature-art-svg">
+                  <defs>
+                    <radialGradient id="txGlow" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stop-color="#FED7AA" stop-opacity="0.8"/>
+                      <stop offset="100%" stop-color="#FFF7ED" stop-opacity="0"/>
+                    </radialGradient>
+                    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#F59E0B"/>
+                      <stop offset="100%" stop-color="#EA580C"/>
+                    </linearGradient>
+                  </defs>
+                  <circle cx="100" cy="65" r="50" fill="url(#txGlow)"/>
+                  <!-- Ledger / Card Base -->
+                  <rect x="42" y="32" width="116" height="66" rx="10" fill="url(#cardGrad)" filter="drop-shadow(0 6px 12px rgba(234,88,12,0.25))"/>
+                  <rect x="52" y="44" width="34" height="20" rx="4" fill="#FEF3C7" opacity="0.9"/>
+                  <circle cx="134" cy="52" r="12" fill="#FDE047" opacity="0.6"/>
+                  <circle cx="144" cy="52" r="12" fill="#FEF08A" opacity="0.6"/>
+                  <!-- Chip & lines -->
+                  <rect x="55" y="47" width="12" height="10" rx="2" fill="#D97706"/>
+                  <rect x="52" y="78" width="60" height="6" rx="3" fill="#FFFFFF" opacity="0.8"/>
+                  <rect x="52" y="87" width="38" height="4" rx="2" fill="#FFFFFF" opacity="0.5"/>
+                  <!-- Floating Rupee Coin -->
+                  <circle cx="150" cy="30" r="16" fill="#F59E0B" stroke="#FFFFFF" stroke-width="2.5"/>
+                  <text x="144" y="36" fill="#FFFFFF" font-size="16" font-weight="900" font-family="sans-serif">₹</text>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Action Button -->
+            <div class="card-action-wrap">
+              <button type="button" class="btn-primary-card btn-orange-solid" (click)="selectOperationTab('TRANSACTIONS'); $event.stopPropagation()">
+                <span>Open</span>
+                <span class="material-symbols-outlined icon-arrow">arrow_forward</span>
+              </button>
             </div>
           </div>
-          <div class="card-actions">
-            <span class="stat-badge-pill">
-              <strong class="text-emerald">{{ filteredTransactions.length }}</strong>
-              Transactions
-            </span>
+
+          <!-- CARD 2: REPORTS -->
+          <div class="analytics-card card-reports" (click)="selectOperationTab('REPORTS')">
+            <div class="card-top-header">
+              <div class="card-icon-pill icon-blue">
+                <span class="material-symbols-outlined">bar_chart</span>
+              </div>
+              <div class="card-title-group">
+                <h3 class="card-title">Reports</h3>
+                <p class="card-desc">Performance metrics, CPL & ROI analytics</p>
+              </div>
+            </div>
+
+            <!-- Graphic Visual Illustration -->
+            <div class="card-graphic-area graphic-bg-blue">
+              <div class="graphic-canvas">
+                <svg viewBox="0 0 200 120" fill="none" class="feature-art-svg">
+                  <defs>
+                    <radialGradient id="repGlow" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stop-color="#BFDBFE" stop-opacity="0.8"/>
+                      <stop offset="100%" stop-color="#EFF6FF" stop-opacity="0"/>
+                    </radialGradient>
+                  </defs>
+                  <circle cx="100" cy="65" r="50" fill="url(#repGlow)"/>
+                  <!-- Analytics Board -->
+                  <rect x="44" y="24" width="112" height="72" rx="10" fill="#FFFFFF" stroke="#3B82F6" stroke-width="2" filter="drop-shadow(0 6px 12px rgba(59,130,246,0.15))"/>
+                  <!-- Header bar -->
+                  <path d="M44 40H156" stroke="#E2E8F0" stroke-width="1.5"/>
+                  <circle cx="56" cy="32" r="3" fill="#EF4444"/>
+                  <circle cx="66" cy="32" r="3" fill="#F59E0B"/>
+                  <circle cx="76" cy="32" r="3" fill="#10B981"/>
+                  <!-- Bar Chart Bars -->
+                  <rect x="58" y="70" width="14" height="20" rx="3" fill="#93C5FD"/>
+                  <rect x="78" y="58" width="14" height="32" rx="3" fill="#60A5FA"/>
+                  <rect x="98" y="48" width="14" height="42" rx="3" fill="#3B82F6"/>
+                  <rect x="118" y="62" width="14" height="28" rx="3" fill="#2563EB"/>
+                  <rect x="138" y="44" width="14" height="46" rx="3" fill="#1D4ED8"/>
+                  <!-- Trend line -->
+                  <path d="M64 68L85 54L105 44L125 58L145 40" stroke="#F59E0B" stroke-width="2.5" stroke-linecap="round"/>
+                  <circle cx="145" cy="40" r="4" fill="#EA580C" stroke="#FFFFFF" stroke-width="1.5"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Action Button -->
+            <div class="card-action-wrap">
+              <button type="button" class="btn-primary-card btn-blue-solid" (click)="selectOperationTab('REPORTS'); $event.stopPropagation()">
+                <span>Open</span>
+                <span class="material-symbols-outlined icon-arrow">arrow_forward</span>
+              </button>
+            </div>
           </div>
-        </div>
-        <div class="table-responsive">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Transaction Reference</th>
-                <th>Customer / Lead</th>
-                <th>Package</th>
-                <th>Amount</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (txn of filteredTransactions; track txn.id || txn) {
-                <tr>
-                  <td class="font-bold text-slate-800">{{ txn.id }}</td>
-                  <td>{{ txn.customerName || 'Customer' }}</td>
-                  <td>
-                    <span class="source-tag">{{ activePackageMeta?.name }}</span>
-                  </td>
-                  <td class="font-bold text-emerald">₹{{ txn.amount | number }}</td>
-                  <td class="text-slate-600">{{ txn.transactionDate | date: 'short' }}</td>
-                </tr>
-              }
-              @if (filteredTransactions.length === 0) {
-                <tr>
-                  <td colspan="5" class="empty-state-cell">
-                    <div class="empty-state-box">
-                      <div class="empty-icon-squircle">
-                        <span class="material-symbols-outlined">payments</span>
-                      </div>
-                      <h4 class="empty-title">No transactions recorded</h4>
-                      <p class="empty-subtitle">
-                        Revenue and payment conversions for
-                        {{ activePackageMeta?.name }} will appear here.
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
+
+          <!-- CARD 3: AUDIT LOGS -->
+          <div class="analytics-card card-audits" (click)="selectOperationTab('AUDITS')">
+            <div class="card-top-header">
+              <div class="card-icon-pill icon-purple">
+                <span class="material-symbols-outlined">shield</span>
+              </div>
+              <div class="card-title-group">
+                <h3 class="card-title">Audit Logs</h3>
+                <p class="card-desc">Activity timeline, workflow & history</p>
+              </div>
+            </div>
+
+            <!-- Graphic Visual Illustration -->
+            <div class="card-graphic-area graphic-bg-purple">
+              <div class="graphic-canvas">
+                <svg viewBox="0 0 200 120" fill="none" class="feature-art-svg">
+                  <defs>
+                    <radialGradient id="audGlow" cx="50%" cy="50%" r="50%">
+                      <stop offset="0%" stop-color="#E9D5FF" stop-opacity="0.8"/>
+                      <stop offset="100%" stop-color="#FAF5FF" stop-opacity="0"/>
+                    </radialGradient>
+                    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stop-color="#A855F7"/>
+                      <stop offset="100%" stop-color="#6B21A8"/>
+                    </linearGradient>
+                  </defs>
+                  <circle cx="100" cy="65" r="50" fill="url(#audGlow)"/>
+                  <!-- Shield Illustration -->
+                  <path d="M100 24L142 40V68C142 92 100 106 100 106C100 106 58 92 58 68V40L100 24Z" fill="url(#shieldGrad)" filter="drop-shadow(0 6px 14px rgba(147,51,234,0.3))"/>
+                  <path d="M100 30L135 44V68C135 88 100 99 100 99V30Z" fill="#C084FC" opacity="0.3"/>
+                  <!-- Checkmark in Shield -->
+                  <circle cx="100" cy="64" r="18" fill="#FFFFFF"/>
+                  <path d="M91 64L97 70L110 56" stroke="#7E22CE" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <!-- Floating Verified Dots -->
+                  <circle cx="152" cy="40" r="6" fill="#10B981" stroke="#FFFFFF" stroke-width="1.5"/>
+                  <circle cx="48" cy="74" r="5" fill="#3B82F6" stroke="#FFFFFF" stroke-width="1.5"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Action Button -->
+            <div class="card-action-wrap">
+              <button type="button" class="btn-primary-card btn-purple-solid" (click)="selectOperationTab('AUDITS'); $event.stopPropagation()">
+                <span>Open</span>
+                <span class="material-symbols-outlined icon-arrow">arrow_forward</span>
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
-    </div>
-  }
-  <!-- Reports & Analytics In-Page Dashboard View -->
-  @if (activeOperationTab === 'REPORTS') {
-    <div class="embedded-tab-section">
-      <!-- 6 Single-Aligned Medium-Height KPI Cards (3x2 Grid) -->
-      @if (packageReportSummary) {
-        <div class="kpi-grid-reports">
-          <div class="kpi-card card-revenue">
-            <div class="kpi-header-row">
-              <div class="kpi-title-cluster">
-                <div class="kpi-squircle-icon icon-amber">
-                  <span class="currency-symbol">₹</span>
+    } @else {
+
+      <!-- LEVEL 2: EMBEDDED SUB-PAGES WITH TOP NAVIGATION PILL TOOLBAR (IMAGE 2) -->
+      <div class="embedded-tab-section">
+        
+  
+
+        <!-- 1. TRANSACTIONS TABLE VIEW -->
+        @if (activeOperationTab === 'TRANSACTIONS') {
+          <div class="table-card card-transactions-perf">
+            <div class="card-title-bar">
+              <div class="title-with-badge">
+                <div class="title-icon-squircle">
+                  <span class="material-symbols-outlined">payments</span>
                 </div>
-                <span class="kpi-title">Package Revenue</span>
-              </div>
-              <div class="kpi-pill-badge pill-amber">Conversions</div>
-            </div>
-            <div class="kpi-body-row">
-              <div class="kpi-value">₹{{ packageReportSummary.totalRevenue | number: '1.0-0' }}</div>
-              <div class="kpi-sub-target">Gross Inflow</div>
-            </div>
-          </div>
-          <div class="kpi-card card-pkg-works">
-            <div class="kpi-header-row">
-              <div class="kpi-title-cluster">
-                <div class="kpi-squircle-icon icon-indigo">
-                  <span class="material-symbols-outlined">campaign</span>
+                <div>
+                  <h3>{{ activePackageMeta?.name }} Conversion Ledger</h3>
+                  <span class="table-sub-meta"
+                    >{{ filteredTransactions.length }} conversion transactions logged</span
+                  >
                 </div>
-                <span class="kpi-title">Campaign Spend</span>
               </div>
-              <div class="kpi-pill-badge pill-indigo">Ad Spend</div>
-            </div>
-            <div class="kpi-body-row">
-              <div class="kpi-value">₹{{ packageReportSummary.totalSpend | number: '1.0-0' }}</div>
-              <div class="kpi-sub-target">Active Budget</div>
-            </div>
-          </div>
-          <div class="kpi-card card-leads">
-            <div class="kpi-header-row">
-              <div class="kpi-title-cluster">
-                <div class="kpi-squircle-icon icon-purple">
-                  <span class="material-symbols-outlined">adjust</span>
-                </div>
-                <span class="kpi-title">Qualification Rate</span>
+              <div class="card-actions">
+                <span class="stat-badge-pill">
+                  <strong class="text-emerald">{{ filteredTransactions.length }}</strong>
+                  Transactions
+                </span>
               </div>
-              <div class="kpi-pill-badge pill-purple">Quality Index</div>
             </div>
-            <div class="kpi-body-row">
-              <div class="kpi-value">{{ packageReportSummary.qualificationRate }}</div>
-              <div class="kpi-sub-target">Lead Quality</div>
-            </div>
-          </div>
-          <div class="kpi-card card-conversion">
-            <div class="kpi-header-row">
-              <div class="kpi-title-cluster">
-                <div class="kpi-squircle-icon icon-emerald">
-                  <span class="material-symbols-outlined">price_check</span>
-                </div>
-                <span class="kpi-title">Average CPL</span>
-              </div>
-              <div class="kpi-pill-badge pill-emerald">Optimized</div>
-            </div>
-            <div class="kpi-body-row">
-              <div class="kpi-value">{{ packageReportSummary.avgCpl }}</div>
-              <div class="kpi-sub-target">Cost Per Lead</div>
-            </div>
-          </div>
-          <div class="kpi-card card-blue">
-            <div class="kpi-header-row">
-              <div class="kpi-title-cluster">
-                <div class="kpi-squircle-icon icon-blue">
-                  <span class="material-symbols-outlined">trending_up</span>
-                </div>
-                <span class="kpi-title">Estimated ROI</span>
-              </div>
-              <div class="kpi-pill-badge pill-blue">Return</div>
-            </div>
-            <div class="kpi-body-row">
-              <div class="kpi-value">{{ packageReportSummary.roi }}</div>
-              <div class="kpi-sub-target">Marketing Yield</div>
-            </div>
-          </div>
-          <div class="kpi-card card-teal">
-            <div class="kpi-header-row">
-              <div class="kpi-title-cluster">
-                <div class="kpi-squircle-icon icon-teal">
-                  <span class="material-symbols-outlined">verified</span>
-                </div>
-                <span class="kpi-title">Work Delivery Speed</span>
-              </div>
-              <div class="kpi-pill-badge pill-teal">Deliveries</div>
-            </div>
-            <div class="kpi-body-row">
-              <div class="kpi-value">{{ packageReportSummary.completedTasksPct }}%</div>
-              <div class="kpi-sub-target">Approved Works</div>
-            </div>
-          </div>
-        </div>
-      }
-    </div>
-  }
-  <!-- Audit Logs In-Page View -->
-  @if (activeOperationTab === 'AUDITS') {
-    <div class="embedded-tab-section">
-      <div class="table-card card-audits-perf">
-        <div class="card-title-bar">
-          <div class="card-actions">
-            <span class="stat-badge-pill">
-              <strong class="text-indigo">{{ filteredAuditLogs.length }}</strong> Entries
-            </span>
-          </div>
-        </div>
-        <div class="table-responsive">
-          <table class="data-table audit-master-table">
-            <thead>
-              <tr>
-                <th style="width: 170px">Date</th>
-                <th>Creator</th>
-                <th>Assigned Designer</th>
-                <th>Task Name</th>
-                <th class="text-right" style="width: 150px">View Detail</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (log of filteredAuditLogs; track log.id || log) {
-                <tr class="audit-log-row">
-                  <!-- 1. Date -->
-                  <td class="timestamp-cell">
-                    <div class="d-flex align-items-center gap-1">
-                      <span class="material-symbols-outlined fs-15 text-muted">event</span>
-                      <span class="font-medium text-slate-700 whitespace-nowrap">{{
-                        log.createdAt | date: 'short'
-                      }}</span>
-                    </div>
-                  </td>
-                  <!-- 2. Creator -->
-                  <td>
-                    <div class="actor-cell-wrap">
-                      <div class="d-flex align-items-center gap-2">
-                        <div class="actor-avatar-circle-sm">
-                          {{ getAuditLogCreator(log).name.charAt(0).toUpperCase() }}
-                        </div>
-                        <div>
-                          <div class="font-bold log-actor-txt">
-                            {{ getAuditLogCreator(log).name }}
+            <div class="table-responsive">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Transaction Reference</th>
+                    <th>Customer / Lead</th>
+                    <th>Package</th>
+                    <th>Amount</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (txn of filteredTransactions; track txn.id || txn) {
+                    <tr>
+                      <td class="font-bold text-slate-800">{{ txn.id }}</td>
+                      <td>{{ txn.customerName || 'Customer' }}</td>
+                      <td>
+                        <span class="source-tag">{{ activePackageMeta?.name }}</span>
+                      </td>
+                      <td class="font-bold text-emerald">₹{{ txn.amount | number }}</td>
+                      <td class="text-slate-600">{{ txn.transactionDate | date: 'short' }}</td>
+                    </tr>
+                  }
+                  @if (filteredTransactions.length === 0) {
+                    <tr>
+                      <td colspan="5" class="empty-state-cell">
+                        <div class="empty-state-box">
+                          <div class="empty-icon-squircle">
+                            <span class="material-symbols-outlined">payments</span>
                           </div>
-                          <span class="creator-sub-role text-subtle fs-11">{{
-                            getAuditLogCreator(log).role
+                          <h4 class="empty-title">No transactions recorded</h4>
+                          <p class="empty-subtitle">
+                            Revenue and payment conversions for
+                            {{ activePackageMeta?.name }} will appear here.
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+
+        <!-- 2. REPORTS KPI GRID VIEW -->
+        @if (activeOperationTab === 'REPORTS') {
+          @if (packageReportSummary) {
+            <div class="kpi-grid-reports">
+              <div class="kpi-card card-revenue">
+                <div class="kpi-header-row">
+                  <div class="kpi-title-cluster">
+                    <div class="kpi-squircle-icon icon-amber">
+                      <span class="currency-symbol">₹</span>
+                    </div>
+                    <span class="kpi-title">Package Revenue</span>
+                  </div>
+                  <div class="kpi-pill-badge pill-amber">Conversions</div>
+                </div>
+                <div class="kpi-body-row">
+                  <div class="kpi-value">₹{{ packageReportSummary.totalRevenue | number: '1.0-0' }}</div>
+                  <div class="kpi-sub-target">Gross Inflow</div>
+                </div>
+              </div>
+              <div class="kpi-card card-pkg-works">
+                <div class="kpi-header-row">
+                  <div class="kpi-title-cluster">
+                    <div class="kpi-squircle-icon icon-indigo">
+                      <span class="material-symbols-outlined">campaign</span>
+                    </div>
+                    <span class="kpi-title">Campaign Spend</span>
+                  </div>
+                  <div class="kpi-pill-badge pill-indigo">Ad Spend</div>
+                </div>
+                <div class="kpi-body-row">
+                  <div class="kpi-value">₹{{ packageReportSummary.totalSpend | number: '1.0-0' }}</div>
+                  <div class="kpi-sub-target">Active Budget</div>
+                </div>
+              </div>
+              <div class="kpi-card card-leads">
+                <div class="kpi-header-row">
+                  <div class="kpi-title-cluster">
+                    <div class="kpi-squircle-icon icon-purple">
+                      <span class="material-symbols-outlined">adjust</span>
+                    </div>
+                    <span class="kpi-title">Qualification Rate</span>
+                  </div>
+                  <div class="kpi-pill-badge pill-purple">Quality Index</div>
+                </div>
+                <div class="kpi-body-row">
+                  <div class="kpi-value">{{ packageReportSummary.qualificationRate }}</div>
+                  <div class="kpi-sub-target">Lead Quality</div>
+                </div>
+              </div>
+              <div class="kpi-card card-conversion">
+                <div class="kpi-header-row">
+                  <div class="kpi-title-cluster">
+                    <div class="kpi-squircle-icon icon-emerald">
+                      <span class="material-symbols-outlined">price_check</span>
+                    </div>
+                    <span class="kpi-title">Average CPL</span>
+                  </div>
+                  <div class="kpi-pill-badge pill-emerald">Optimized</div>
+                </div>
+                <div class="kpi-body-row">
+                  <div class="kpi-value">{{ packageReportSummary.avgCpl }}</div>
+                  <div class="kpi-sub-target">Cost Per Lead</div>
+                </div>
+              </div>
+              <div class="kpi-card card-blue">
+                <div class="kpi-header-row">
+                  <div class="kpi-title-cluster">
+                    <div class="kpi-squircle-icon icon-blue">
+                      <span class="material-symbols-outlined">trending_up</span>
+                    </div>
+                    <span class="kpi-title">Estimated ROI</span>
+                  </div>
+                  <div class="kpi-pill-badge pill-blue">Return</div>
+                </div>
+                <div class="kpi-body-row">
+                  <div class="kpi-value">{{ packageReportSummary.roi }}</div>
+                  <div class="kpi-sub-target">Marketing Yield</div>
+                </div>
+              </div>
+              <div class="kpi-card card-teal">
+                <div class="kpi-header-row">
+                  <div class="kpi-title-cluster">
+                    <div class="kpi-squircle-icon icon-teal">
+                      <span class="material-symbols-outlined">verified</span>
+                    </div>
+                    <span class="kpi-title">Work Delivery Speed</span>
+                  </div>
+                  <div class="kpi-pill-badge pill-teal">Deliveries</div>
+                </div>
+                <div class="kpi-body-row">
+                  <div class="kpi-value">{{ packageReportSummary.completedTasksPct }}%</div>
+                  <div class="kpi-sub-target">Approved Works</div>
+                </div>
+              </div>
+            </div>
+          }
+        }
+
+        <!-- 3. AUDIT LOGS TABLE VIEW -->
+        @if (activeOperationTab === 'AUDITS') {
+          <div class="table-card card-audits-perf">
+            <div class="card-title-bar">
+              <div class="card-actions">
+                <span class="stat-badge-pill">
+                  <strong class="text-indigo">{{ filteredAuditLogs.length }}</strong> Entries
+                </span>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="data-table audit-master-table">
+                <thead>
+                  <tr>
+                    <th style="width: 170px">Date</th>
+                    <th>Creator</th>
+                    <th>Assigned Designer</th>
+                    <th>Task Name</th>
+                    <th class="text-right" style="width: 150px">View Detail</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (log of filteredAuditLogs; track log.id || log) {
+                    <tr class="audit-log-row">
+                      <!-- 1. Date -->
+                      <td class="timestamp-cell">
+                        <div class="d-flex align-items-center gap-1">
+                          <span class="material-symbols-outlined fs-15 text-muted">event</span>
+                          <span class="font-medium text-slate-700 whitespace-nowrap">{{
+                            log.createdAt | date: 'short'
                           }}</span>
                         </div>
-                      </div>
-                    </div>
-                  </td>
-                  <!-- 3. Assigned Designer -->
-                  <td>
-                    <div class="d-flex align-items-center gap-2">
-                      <span class="material-symbols-outlined fs-16 text-purple">palette</span>
-                      <span class="font-semibold text-slate-800">{{
-                        getAuditLogAssignee(log)
-                      }}</span>
-                    </div>
-                  </td>
-                  <!-- 4. Task Name -->
-                  <td class="taskname-cell">
-                    <div class="task-audit-link-cell">
-                      <button
-                        type="button"
-                        class="btn-task-audit-link"
-                        (click)="onOpenTaskAuditModal(log, $event)"
-                        title="Click to view comprehensive Task Audit, Lifecycle Journey & Shared Files"
-                      >
-                        <span class="material-symbols-outlined fs-15 task-link-icon"
-                          >assignment</span
+                      </td>
+                      <!-- 2. Creator -->
+                      <td>
+                        <div class="actor-cell-wrap">
+                          <div class="d-flex align-items-center gap-2">
+                            <div class="actor-avatar-circle-sm">
+                              {{ getAuditLogCreator(log).name.charAt(0).toUpperCase() }}
+                            </div>
+                            <div>
+                              <div class="font-bold log-actor-txt">
+                                {{ getAuditLogCreator(log).name }}
+                              </div>
+                              <span class="creator-sub-role text-subtle fs-11">{{
+                                getAuditLogCreator(log).role
+                              }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <!-- 3. Assigned Designer -->
+                      <td>
+                        <div class="d-flex align-items-center gap-2">
+                          <span class="material-symbols-outlined fs-16 text-purple">palette</span>
+                          <span class="font-semibold text-slate-800">{{
+                            getAuditLogAssignee(log)
+                          }}</span>
+                        </div>
+                      </td>
+                      <!-- 4. Task Name -->
+                      <td class="taskname-cell">
+                        <div class="task-audit-link-cell">
+                          <button
+                            type="button"
+                            class="btn-task-audit-link"
+                            (click)="onOpenTaskAuditModal(log, $event)"
+                            title="Click to view comprehensive Task Audit, Lifecycle Journey & Shared Files"
+                          >
+                            <span class="material-symbols-outlined fs-15 task-link-icon"
+                              >assignment</span
+                            >
+                            <span class="task-title-clamp font-bold">{{
+                              getAuditLogTaskTitle(log)
+                            }}</span>
+                          </button>
+                        </div>
+                      </td>
+                      <!-- 5. View Detail -->
+                      <td class="text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          class="btn btn-sm btn-outline-primary btn-view-audit-detail"
+                          (click)="onOpenTaskAuditModal(log, $event)"
+                          title="View Comprehensive Task Details"
                         >
-                        <span class="task-title-clamp font-bold">{{
-                          getAuditLogTaskTitle(log)
-                        }}</span>
-                      </button>
-                    </div>
-                  </td>
-                  <!-- 5. View Detail -->
-                  <td class="text-right whitespace-nowrap">
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-outline-primary btn-view-audit-detail"
-                      (click)="onOpenTaskAuditModal(log, $event)"
-                      title="View Comprehensive Task Details"
-                    >
-                      <span class="material-symbols-outlined fs-15">visibility</span>
-                      <span>View Detail</span>
-                    </button>
-                  </td>
-                </tr>
-              }
-              @if (filteredAuditLogs.length === 0) {
-                <tr>
-                  <td colspan="5" class="empty-state-cell">
-                    <div class="empty-state-box">
-                      <div class="empty-icon-squircle">
-                        <span class="material-symbols-outlined">shield</span>
-                      </div>
-                      <h4 class="empty-title">No audit records found</h4>
-                      <p class="empty-subtitle">
-                        Audit entries for {{ activePackageDisplayName() }} operations will be
-                        recorded here.
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
+                          <span class="material-symbols-outlined fs-15">visibility</span>
+                          <span>View Detail</span>
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                  @if (filteredAuditLogs.length === 0) {
+                    <tr>
+                      <td colspan="5" class="empty-state-cell">
+                        <div class="empty-state-box">
+                          <div class="empty-icon-squircle">
+                            <span class="material-symbols-outlined">shield</span>
+                          </div>
+                          <h4 class="empty-title">No audit records found</h4>
+                          <p class="empty-subtitle">
+                            Audit entries for {{ activePackageDisplayName() }} operations will be
+                            recorded here.
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+
       </div>
-    </div>
+    }
   }
 </div>

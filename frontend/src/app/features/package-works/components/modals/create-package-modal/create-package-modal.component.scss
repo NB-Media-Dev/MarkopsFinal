@@ -46,8 +46,8 @@
         color: #FFFFFF;
 
         &.icon-indigo {
-           background-color: #F59E0B;
-      color: #FFFFFF;
+          background-color: #F59E0B;
+          color: #FFFFFF;
         }
 
         .material-symbols-outlined {
@@ -66,11 +66,11 @@
       .modal-sub-badge {
         font-size: 0.75rem;
         font-weight: 700;
-         background-color: #F59E0B;
-      color: #FFFFFF;
+        background-color: #F59E0B;
+        color: #FFFFFF;
         padding: 0.15rem 0.5rem;
         border-radius: 6px;
-        border: 1px solid #E0E7FF;
+        border: 1px solid #D97706;
         margin-top: 0.2rem;
         display: inline-block;
       }
@@ -136,8 +136,8 @@
         outline: none;
 
         &:focus {
-          border-color: #3B82F6;
-          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+          border-color: #F59E0B;
+          box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
         }
 
         &.input-invalid {
@@ -172,7 +172,7 @@
 
         .upload-cloud-icon {
           font-size: 32px;
-          color: #3B82F6;
+          color: #F59E0B;
           margin-bottom: 0.5rem;
         }
 
@@ -188,8 +188,8 @@
         }
 
         &:hover {
-          border-color: #3B82F6;
-          background: #EFF6FF;
+          border-color: #F59E0B;
+          background: #FFFBEB;
         }
       }
     }
@@ -276,10 +276,10 @@
       font-size: 0.8125rem;
       font-weight: 700;
       color: #FFFFFF;
-      background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+      background-color: #F59E0B;
       border: none;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
       transition: all 0.18s ease;
 
       .material-symbols-outlined {
@@ -288,8 +288,8 @@
 
       &:hover:not(:disabled) {
         transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.45);
-        background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%);
+        box-shadow: 0 6px 16px rgba(245, 158, 11, 0.45);
+        background-color: #D97706;
       }
 
       &:disabled {

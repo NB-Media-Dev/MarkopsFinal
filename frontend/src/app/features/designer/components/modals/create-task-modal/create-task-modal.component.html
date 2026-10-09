@@ -66,14 +66,14 @@
               </div>
 
               <div class="step-details-stack">
-                <!-- Requirements Textarea -->
+                <!-- Task Name / Title Input -->
                 <div class="detail-inputs-wrapper">
-                  <textarea
-                    rows="2"
-                    formControlName="description"
-                    placeholder="Provide design requirements, target audience, dimensions..."
-                    class="step-textarea-input"
-                  ></textarea>
+                  <input
+                    type="text"
+                    formControlName="title"
+                    placeholder="Task Name (e.g. Festive Campaign Banner, Product Promo...)"
+                    class="step-text-input task-title-input"
+                  />
                 </div>
 
                 <!-- 2-Column: Attachments & Package -->
@@ -125,6 +125,7 @@
                       </div>
                       <div class="package-pill-select-wrapper">
                         <select formControlName="packageName" class="package-pill-select">
+                          <option value="" disabled selected>Select Package</option>
                           @for (pkg of availablePackages; track pkg.name) {
                             <option [value]="pkg.name">{{ pkg.name }}</option>
                           }
@@ -158,18 +159,20 @@
                   <div class="widget-content">
                     <div class="designer-select-card">
                       <div class="designer-avatar-circle">
-                        {{ getDesignerInitials() }}
+                        @if (getSelectedDesignerName()) {
+                          {{ getDesignerInitials() }}
+                        } @else {
+                          <span class="material-symbols-outlined" style="font-size: 14px;">person</span>
+                        }
                       </div>
                       <div class="designer-select-wrap">
                         <select formControlName="assignedTo" class="native-designer-select">
-                          <option value="" disabled>Select Designer</option>
+                          <option value="" disabled selected>Select Designer</option>
                           @for (d of designers; track d.id) {
                             <option [value]="d.id">{{ d.name }}</option>
                           }
                         </select>
-                     
                       </div>
-                  
                     </div>
                   </div>
                 </div>

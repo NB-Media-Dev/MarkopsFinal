@@ -17,6 +17,9 @@ export class LeadsToolbarComponent {
   @Input() isTelecaller = false;
   @Input() activeTelecallers: any[] = [];
   @Input() availableCampaigns: { id: string; name: string }[] = [];
+  @Input() canCreateLeads = false;
+  @Input() isUploadingLeads = false;
+  @Input() embedded = false;
   @Input() hasActiveFilters = false;
   @Input() filteredLeadsCount = 0;
   @Input() myLeadsCount = 0;
@@ -26,6 +29,8 @@ export class LeadsToolbarComponent {
   @Output() telecallerChange = new EventEmitter<string>();
   @Output() campaignChange = new EventEmitter<string>();
   @Output() resetFilters = new EventEmitter<void>();
+  @Output() uploadExcel = new EventEmitter<void>();
+  @Output() addLead = new EventEmitter<void>();
 
   onSearch(query: string) {
     this.searchChange.emit(query);

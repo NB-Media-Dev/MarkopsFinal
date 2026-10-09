@@ -4,16 +4,17 @@
     <div class="header-titles-group">
       <!-- Navigation & Breadcrumbs Bar -->
       <nav class="clean-breadcrumbs" aria-label="Breadcrumb">
-        <button type="button" class="btn-back" (click)="onBreadcrumbBack()" title="Back">
+        <button type="button" class="btn-back" (click)="onBreadcrumbBack()" title="Go Back">
           <span class="material-symbols-outlined icon-back">arrow_back</span>
         </button>
+        <span class="bc-bar-divider" aria-hidden="true"></span>
 
         <div class="breadcrumbs-list">
-          <a routerLink="/dashboard" class="bc-item">
-            <span class="material-symbols-outlined bc-icon">dashboard</span>
+          <a routerLink="/dashboard" class="bc-item bc-link" title="Dashboard">
+            <span class="material-symbols-outlined bc-home-icon">home</span>
             <span>Dashboard</span>
           </a>
-          <span class="material-symbols-outlined bc-sep">chevron_right</span>
+          <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
 
           <!-- When inside a workspace package -->
           @if (activeWorkspacePackage(); as selectedPkg) {
@@ -25,7 +26,8 @@
             >
               <span>{{ activePackageMeta().name }}</span>
             </button>
-            <span class="material-symbols-outlined bc-sep">chevron_right</span>
+            <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
+
             @if (activeDepartment(); as currentDept) {
               <button
                 type="button"
@@ -35,7 +37,8 @@
               >
                 <span>{{ selectedPkg.name }}</span>
               </button>
-              <span class="material-symbols-outlined bc-sep">chevron_right</span>
+              <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
+
               @if (
                 currentDept === 'DIGITAL_MARKETING' &&
                 activeOperationTab() &&
@@ -49,16 +52,33 @@
                 >
                   <span>Digital Marketing</span>
                 </button>
-                <span class="material-symbols-outlined bc-sep">chevron_right</span>
-                <span class="bc-item active">{{ getOperationTabLabel(activeOperationTab()) }}</span>
+                <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
+                <span class="bc-item bc-current">{{ getOperationTabLabel(activeOperationTab()) }}</span>
+              } @else if (
+                currentDept === 'ANALYTICS' &&
+                activeOperationTab() &&
+                activeOperationTab() !== 'ANALYTICS_OVERVIEW' &&
+                activeOperationTab() !== 'OVERVIEW' &&
+                activeOperationTab() !== 'MANAGEMENT'
+              ) {
+                <button
+                  type="button"
+                  (click)="selectOperationTab('ANALYTICS_OVERVIEW')"
+                  class="bc-item bc-btn"
+                  title="Back to Analytics & Management Overview"
+                >
+                  <span>Analytics & Management</span>
+                </button>
+                <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
+                <span class="bc-item bc-current">{{ getOperationTabLabel(activeOperationTab()) }}</span>
               } @else {
-                <span class="bc-item active">{{ getDepartmentTitle(currentDept) }}</span>
+                <span class="bc-item bc-current">{{ getDepartmentTitle(currentDept) }}</span>
               }
             } @else {
-              <span class="bc-item active">{{ selectedPkg.name }}</span>
+              <span class="bc-item bc-current">{{ selectedPkg.name }}</span>
             }
           } @else {
-            <span class="bc-item active">{{ activePackageMeta().name }} Product</span>
+            <span class="bc-item bc-current">{{ activePackageMeta().name }}</span>
           }
         </div>
       </nav>

@@ -6,7 +6,8 @@ import { LeadTelecallingService, LeadItem, CallActivityItem } from '../../core/s
 import { UserManagementService } from '../../core/services/user-management.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CampaignService } from '../../core/services/campaign.service';
-import { FIXED_PACKAGES } from '../../core/models/package.model';
+import { FIXED_PACKAGES, isItemForPackage, resolveProductContext } from '../../core/models/package.model';
+import { PackageService } from '../../core/services/package.service';
 
 import { TelecallingKpisComponent } from './components/telecalling-kpis/telecalling-kpis.component';
 import { TelecallingPipelineStripComponent } from './components/telecalling-pipeline-strip/telecalling-pipeline-strip.component';
@@ -202,12 +203,28 @@ export function parseFollowUpDateTime(dateStr?: string, timeStr?: string): Date 
 export class TelecallingComponent implements OnInit, OnDestroy {
   @Input() embedded = false;
   @Input() viewMode: 'ALL' | 'MEMBERS' | 'ASSIGNED' | 'OVERVIEW' = 'ALL';
-  @Input() packageFilter?: string;
+
+  readonly packageFilterSignal = signal<string | undefined>(undefined);
+  @Input() set packageFilter(val: string | undefined) {
+    this.packageFilterSignal.set(val);
+  }
+  get packageFilter(): string | undefined {
+    return this.packageFilterSignal();
+  }
+
+  readonly productFilterSignal = signal<string | undefined>(undefined);
+  @Input() set productFilter(val: string | undefined) {
+    this.productFilterSignal.set(val);
+  }
+  get productFilter(): string | undefined {
+    return this.productFilterSignal();
+  }
 
   readonly leadService = inject(LeadTelecallingService);
   readonly userService = inject(UserManagementService);
   readonly authService = inject(AuthService);
   readonly campaignService = inject(CampaignService);
+  readonly packageService = inject(PackageService);
 
   readonly selectedLeadForCall = signal<LeadItem | null>(null);
   readonly selectedLeadForHistory = signal<LeadItem | null>(null);
@@ -340,43 +357,30 @@ export class TelecallingComponent implements OnInit, OnDestroy {
       leads = filter === 'ALL_LEADS' ? this.leadService.leads() : this.myLeads();
     }
 
-    const pkg = (this.packageFilter || '').toLowerCase().trim();
-    if (pkg && pkg !== 'all') {
-      const fixedProd = FIXED_PACKAGES.find((fp) => fp.name.toLowerCase() === pkg || fp.id.toLowerCase() === pkg);
-      if (fixedProd) {
-        const prodId = fixedProd.id.toLowerCase();
-        leads = leads.filter((l) => {
-          const src = (l.source || '').toLowerCase();
-          const cmp = (l.campaignName || '').toLowerCase();
-          if (prodId.includes('career')) {
-            return src.includes('career') || cmp.includes('career') || cmp.includes('tn-schema') || src.includes('lead') || src.includes('excel') || src.includes('csv') || src.includes('upload') || src.includes('meta');
-          }
-          if (prodId.includes('class')) {
-            return src.includes('class') || cmp.includes('class');
-          }
-          if (prodId.includes('jesus')) {
-            return src.includes('jesus') || cmp.includes('jesus');
-          }
-          return false;
-        });
-      } else {
-        leads = leads.filter((l) => {
-          const src = (l.source || '').toLowerCase();
-          const cmp = (l.campaignName || '').toLowerCase();
-          const lPkg = ((l as any).packageName || (l as any).package || '').toLowerCase();
-          return lPkg === pkg || src.includes(pkg) || cmp.includes(pkg);
-        });
-      }
+    const pkg = this.packageFilterSignal()?.trim();
+    const prod = this.productFilterSignal()?.trim();
+    const dbPkgs = this.packageService.packages();
+
+    if ((pkg && pkg.toLowerCase() !== 'all') || (prod && prod.toLowerCase() !== 'all')) {
+      leads = leads.filter((l) => isItemForPackage(l, pkg, prod, dbPkgs));
     }
+
     return leads;
   });
 
   readonly availableCampaigns = computed(() => {
     const portfolioCampaigns = this.campaignService.campaigns();
+    const pkg = this.packageFilterSignal()?.trim();
+    const prod = this.productFilterSignal()?.trim();
+    const dbPkgs = this.packageService.packages();
+    const scopedCampaigns = ((pkg && pkg.toLowerCase() !== 'all') || (prod && prod.toLowerCase() !== 'all'))
+      ? portfolioCampaigns.filter((c) => isItemForPackage(c, pkg, prod, dbPkgs))
+      : portfolioCampaigns;
+
     const leads = this.assignedLeads();
 
-    if (portfolioCampaigns.length > 0) {
-      return portfolioCampaigns.map((cmp) => {
+    if (scopedCampaigns.length > 0) {
+      return scopedCampaigns.map((cmp) => {
         const count = leads.filter((l) => isLeadInCampaign(l, cmp)).length;
         return {
           id: cmp.id,
@@ -769,6 +773,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     this.leadService.loadSummary().subscribe();
     this.userService.loadUsersFromDatabase();
     this.campaignService.loadCampaigns().subscribe();
+    this.packageService.loadPackages().subscribe();
 
     this.clockInterval = setInterval(() => {
       this.currentTime.set(Date.now());

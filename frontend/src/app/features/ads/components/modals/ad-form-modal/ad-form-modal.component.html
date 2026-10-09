@@ -1,9 +1,9 @@
 <!-- CREATE / EDIT AD METRIC MODAL -->
 @if (isOpen) {
   <div class="modal-backdrop" (click)="onClose()">
-    <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-card modern-ad-modal" (click)="$event.stopPropagation()">
       
-      <!-- Modal Header -->
+      <!-- Modal Header Bar -->
       <div class="modal-header">
         <div class="modal-title-wrap">
           <div class="modal-squircle-icon">
@@ -12,192 +12,391 @@
             }}</span>
           </div>
           <div>
-            <h2>{{ isEditing ? 'Edit Ad Metric' : 'Create Ad Metric Record' }}</h2>
-            <p class="modal-sub">Link approved designs and configure performance metrics</p>
+            <h2>{{ isEditing ? 'Edit Ad Metric' : 'Create Ads Metric' }}</h2>
+           
           </div>
         </div>
-        <button class="btn-close-modal" (click)="onClose()" aria-label="Close">
+        <button type="button" class="btn-close-modal" (click)="onClose()" aria-label="Close" title="Close">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
 
-      <div class="modal-body">
+      <!-- 2-Column Split Body Layout -->
+      <div class="modal-grid-layout">
         
-    
-        @if (allApprovedDesigns.length > 0) {
-          <div class="approved-designs-strip-box">
-            <div class="strip-header">
-              <div class="strip-header-left">
-                <span class="material-symbols-outlined icon-verified">verified</span>
-                <span class="strip-title">Approved Designs</span>
-                <span class="strip-count">{{ allApprovedDesigns.length }}</span>
+        <!-- LEFT COLUMN: Form Steps & Configuration -->
+        <div class="modal-form-column">
+          
+          <!-- SECTION 1: CHOOSE TASK TYPE (MATCHING IMAGE 1 EXACTLY) -->
+          <div class="form-section-card design-link-section">
+            <div class="section-card-header">
+              <div class="sec-badge sec-badge-orange">1</div>
+              <div class="sec-titles">
+                <h3>Choose Task Type</h3>
               </div>
-              @if (selectedDesignId) {
-                <button type="button" class="btn-clear-link" (click)="clearSelectedDesign()">
-                  <span class="material-symbols-outlined">close</span>
-                  <span>Clear Selection</span>
-                </button>
-              }
             </div>
 
-            <!-- Compact Horizontal Scrollable Design Cards -->
-            <div class="designs-strip-list">
-              @for (design of allApprovedDesigns; track design.id) {
+            <!-- Task Types Oneline Row (Exact style from Reference Image 1) -->
+            <div class="task-types-oneline-row">
+              @for (type of designTypes; track type.id) {
                 <div
-                  class="compact-design-card"
-                  [class.selected]="selectedDesignId === design.id"
-                  (click)="selectDesign(design)"
+                  class="task-type-box"
+                  [class.is-selected]="selectedDesignType === type.id"
+                  [ngClass]="'type-box-' + type.color"
+                  (click)="selectDesignType(type.id)"
                 >
-                  <div class="card-thumb-frame">
-                    @if (design.imageUrl) {
-                      <img [src]="design.imageUrl" [alt]="design.title" loading="lazy" />
-                    } @else {
-                      <div class="no-img-icon">
-                        <span class="material-symbols-outlined">palette</span>
-                      </div>
-                    }
-                    @if (selectedDesignId === design.id) {
-                      <div class="thumb-check">
-                        <span class="material-symbols-outlined">check</span>
-                      </div>
-                    }
-                  </div>
-
-                  <div class="card-info">
-                    <span class="card-title" [title]="design.title">{{ design.title }}</span>
-                    <div class="card-tags">
-                      <span class="tag-pkg">{{ design.packageName }}</span>
-                      <span
-                        class="tag-role"
-                        [ngClass]="{
-                          'tag-role-bdm': design.approverRole === 'BDM',
-                          'tag-role-admin': design.approverRole === 'ADMIN'
-                        }"
-                      >
-                        <span class="material-symbols-outlined">verified</span>
-                        {{ design.approverRole === 'BDM' ? 'BDM' : 'Admin' }}
-                      </span>
+                  @if (selectedDesignType === type.id) {
+                    <div class="selected-checkmark-badge" [ngClass]="'badge-' + type.color">
+                      <span class="material-symbols-outlined">check</span>
                     </div>
+                  }
+                  <div class="type-icon-box" [ngClass]="'icon-' + type.color">
+                    <span class="material-symbols-outlined">{{ type.icon }}</span>
+                  </div>
+                  <div class="type-title-box">
+                    <span class="type-main-title">{{ type.title }}</span>
                   </div>
                 </div>
               }
             </div>
-          </div>
-        }
 
-        <!-- SECTION 2: AD ATTRIBUTION & CONFIGURATION -->
-        <div class="form-row">
-          <div class="form-group flex-2">
-            <label class="form-label">
-              Ad Name <span class="required">*</span>
-              @if (selectedDesignId) {
-                <span class="linked-tag">✓ Design Linked</span>
+            <!-- Approved Design Dropdown -->
+            <div class="design-dropdown-wrap">
+              <label class="form-label design-select-label">
+                <span>Approved Design Selection</span>
+                @if (selectedDesignId) {
+                  <button type="button" class="btn-clear-design" (click)="clearSelectedDesign()">
+                    <span class="material-symbols-outlined">close</span>
+                    <span>Clear Selection</span>
+                  </button>
+                }
+              </label>
+
+              <div class="select-with-prefix">
+                <span class="material-symbols-outlined select-prefix-icon">
+                  {{ selectedDesign ? (selectedDesign.isVideo ? 'play_circle' : 'palette') : 'assignment_turned_in' }}
+                </span>
+                <select
+                  [ngModel]="selectedDesignId || ''"
+                  (ngModelChange)="onDesignDropdownChange($event)"
+                  class="form-input dropdown-select"
+                >
+                  <option value="">-- Select Design--</option>
+                  @for (design of filteredApprovedDesigns; track design.id) {
+                    <option [value]="design.id">
+                      [{{ design.designTypeLabel }}] {{ design.title }} — {{ design.packageName }} ({{ design.approverRole }}: {{ design.approverName }})
+                    </option>
+                  }
+                </select>
+              </div>
+
+              <!-- Linked Indicator Pill -->
+              @if (selectedDesign) {
+                <div class="selected-design-banner">
+                  <div class="banner-left">
+                    <span class="material-symbols-outlined check-ico">verified</span>
+                    <div class="banner-meta">
+                      <span class="banner-title">{{ selectedDesign.title }}</span>
+                      <span class="banner-approver">
+                        {{ selectedDesign.approvedAt }} • {{ selectedDesign.packageName }}
+                      </span>
+                    </div>
+                  </div>
+                  <span class="type-tag" [ngClass]="'tag-' + selectedDesign.designType.toLowerCase()">
+                    {{ selectedDesign.designTypeLabel }}
+                  </span>
+                </div>
               }
-            </label>
-            <div class="input-with-icon">
-              <span class="material-symbols-outlined input-prefix-ico">brush</span>
-              <input
-                type="text"
-                [(ngModel)]="formModel.name"
-                placeholder="e.g. Meta - Carousel Promo"
-                class="form-input with-icon"
-              />
             </div>
           </div>
 
-          <div class="form-group flex-1">
-            <label class="form-label">Platform</label>
-            <select [(ngModel)]="formModel.platform" class="form-input">
-              <option value="Meta">Meta</option>
-              <option value="Google Ads">Google Ads</option>
-              <option value="Instagram">Instagram</option>
-              <option value="LinkedIn">LinkedIn</option>
-              <option value="YouTube">YouTube</option>
-            </select>
+          <!-- SECTION 2: AD ATTRIBUTION & CONFIGURATION -->
+          <div class="form-section-card">
+            <div class="section-card-header">
+              <div class="sec-badge sec-badge-blue">2</div>
+              <div class="sec-titles">
+                <h3>Ad Attribution & Details</h3>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group flex-2">
+                <label class="form-label">
+                  Ad Name <span class="required">*</span>
+                  @if (selectedDesignId) {
+                    <span class="linked-tag">✓ Design Linked</span>
+                  }
+                </label>
+                <div class="input-with-icon">
+                  <span class="material-symbols-outlined input-prefix-ico">brush</span>
+                  <input
+                    type="text"
+                    [(ngModel)]="formModel.name"
+                    placeholder="e.g. Meta - Carousel Promo"
+                    class="form-input with-icon"
+                  />
+                </div>
+              </div>
+
+              <div class="form-group flex-1">
+                <label class="form-label">Platform</label>
+                <select [(ngModel)]="formModel.platform" class="form-input">
+                  <option value="Meta">Meta</option>
+                  <option value="Google Ads">Google Ads</option>
+                  <option value="Instagram">Instagram</option>
+                  <option value="LinkedIn">LinkedIn</option>
+                  <option value="YouTube">YouTube</option>
+                </select>
+              </div>
+
+              <div class="form-group flex-1">
+                <label class="form-label">Status</label>
+                <select [(ngModel)]="formModel.status" class="form-input">
+                  <option value="ACTIVE">Active</option>
+                  <option value="PAUSED">Paused</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="DRAFT">Draft</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group flex-2">
+                <label class="form-label">Campaign Association</label>
+                <select
+                  [ngModel]="formModel.campaignId"
+                  (ngModelChange)="onCampaignChange($event)"
+                  class="form-input"
+                >
+                  <option value="">-- Select Campaign --</option>
+                  @for (cmp of campaigns; track cmp.id) {
+                    <option [value]="cmp.id">
+                      {{ cmp.name }}
+                    </option>
+                  }
+                </select>
+              </div>
+
+              <div class="form-group flex-1">
+                <label class="form-label">Platform Ad ID</label>
+                <input
+                  type="text"
+                  [(ngModel)]="formModel.platformAdId"
+                  placeholder="e.g. ad_ext_639767"
+                  class="form-input"
+                />
+              </div>
+            </div>
           </div>
 
-          <div class="form-group flex-1">
-            <label class="form-label">Status</label>
-            <select [(ngModel)]="formModel.status" class="form-input">
-              <option value="ACTIVE">Active</option>
-              <option value="PAUSED">Paused</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="DRAFT">Draft</option>
-            </select>
+          <!-- SECTION 3: SPEND & ENGAGEMENT METRICS -->
+          <div class="form-section-card">
+            <div class="section-card-header">
+              <div class="sec-badge sec-badge-green">3</div>
+              <div class="sec-titles">
+                <h3>Spend & Engagement</h3>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label class="form-label">Spend (₹)</label>
+                <input type="number" [(ngModel)]="formModel.spend" min="0" class="form-input" />
+              </div>
+              <div class="form-group flex-1">
+                <label class="form-label">Leads</label>
+                <input type="number" [(ngModel)]="formModel.leadsCount" min="0" class="form-input" />
+              </div>
+              <div class="form-group flex-1">
+                <label class="form-label">Impressions</label>
+                <input type="number" [(ngModel)]="formModel.impressions" min="0" class="form-input" />
+              </div>
+              <div class="form-group flex-1">
+                <label class="form-label">Clicks</label>
+                <input type="number" [(ngModel)]="formModel.clicks" min="0" class="form-input" />
+              </div>
+            </div>
+
+            <!-- Auto Computed Metrics Badges -->
+            <div class="live-calc-panel">
+              <div class="calc-item calc-item-emerald">
+                <span class="calc-label">AUTO CPL</span>
+                <span class="calc-val">₹{{ computedModalCpl }}</span>
+                <span class="calc-formula">(Spend / Leads)</span>
+              </div>
+              <div class="calc-item calc-item-purple">
+                <span class="calc-label">AUTO CTR</span>
+                <span class="calc-val">{{ computedModalCtr }}%</span>
+                <span class="calc-formula">(Clicks / Impressions * 100)</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: LIVE AD & DESIGN PREVIEW (REFERENCE IMAGE STYLE) -->
+        <div class="modal-preview-column">
+          <div class="preview-card-container">
+            
+            <!-- Preview Header -->
+            <div class="preview-header">
+              <div class="preview-header-left">
+                <span class="material-symbols-outlined eye-icon">visibility</span>
+                <span class="preview-header-title">Ad & Design Preview</span>
+              </div>
+              <span class="live-pulse-badge">
+                <span class="pulse-dot"></span>
+                <span>Live Preview</span>
+              </span>
+            </div>
+
+            <!-- Main Preview Card Content -->
+            <div class="preview-card-box">
+              
+              <!-- Design Media / Thumbnail Frame -->
+              <div class="preview-media-frame">
+                @if (selectedDesign?.imageUrl) {
+                  @if (selectedDesign?.isVideo) {
+                    <div class="video-preview-wrap">
+                      <video [src]="selectedDesign?.imageUrl" controls preload="metadata" class="preview-img-tag"></video>
+                      <div class="video-overlay-badge">
+                        <span class="material-symbols-outlined">play_circle</span>
+                        <span>Video Creative</span>
+                      </div>
+                    </div>
+                  } @else {
+                    <img
+                      [src]="selectedDesign?.imageUrl"
+                      [alt]="selectedDesign?.title || 'Preview'"
+                      class="preview-img-tag"
+                    />
+                  }
+                } @else {
+                  <!-- Elegant Placeholder Frame -->
+                  <div class="preview-empty-state">
+                    <div class="empty-icon-circle">
+                      <span class="material-symbols-outlined">
+                        {{ selectedDesignType === 'VIDEO' ? 'play_arrow' : (selectedDesignType === 'POSTER' ? 'photo_library' : 'campaign') }}
+                      </span>
+                    </div>
+                    <span class="empty-title">Creative Preview</span>
+                    <span class="empty-sub">
+                      {{ selectedDesign ? 'No media attachment attached to this task' : 'Select an design on the left to preview creative' }}
+                    </span>
+                  </div>
+                }
+
+                <!-- Floating Tags on Media -->
+                <div class="media-floating-tags">
+                  <span class="media-tag-type" [ngClass]="'tag-' + (selectedDesign?.designType || selectedDesignType || 'banner').toLowerCase()">
+                    <span class="material-symbols-outlined fs-12">
+                      {{ selectedDesign?.isVideo || selectedDesignType === 'VIDEO' ? 'play_arrow' : (selectedDesign?.designType === 'POSTER' || selectedDesignType === 'POSTER' ? 'photo_library' : 'campaign') }}
+                    </span>
+                    {{ selectedDesign ? (selectedDesign.designTypeLabel + ' Design') : (selectedDesignType === 'VIDEO' ? 'Video Design' : (selectedDesignType === 'POSTER' ? 'Post Design' : 'Banner Design')) }}
+                  </span>
+                  <span class="media-tag-pkg">
+                    {{ selectedDesign?.packageName || (formModel.packageName || 'Careermate') }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Preview Info Body -->
+              <div class="preview-info-body">
+                <h4 class="preview-ad-title">
+                  {{ formModel.name || selectedDesign?.title || 'New Ad Metric' }}
+                </h4>
+                <p class="preview-ad-desc">
+                  {{ selectedDesign?.description || 'Campaign creative configured for marketing attribution and multi-platform tracking.' }}
+                </p>
+
+                <!-- Key Attributes List -->
+                <div class="preview-meta-list">
+                  
+                  <!-- Approver -->
+                  <div class="meta-row-item">
+                    <div class="meta-icon-label">
+                      <span class="material-symbols-outlined meta-ico icon-blue">verified_user</span>
+                      <span class="meta-label">Approver</span>
+                    </div>
+                    <div class="meta-val-badge">
+                      <span class="approver-pill" [class.is-bdm]="selectedDesign?.approverRole === 'BDM'">
+                        {{ selectedDesign ? selectedDesign.approverRole + ' (' + selectedDesign.approverName + ')' : 'Admin / BDM' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Platform -->
+                  <div class="meta-row-item">
+                    <div class="meta-icon-label">
+                      <span class="material-symbols-outlined meta-ico icon-purple">
+                        {{ getPlatformIcon(formModel.platform) }}
+                      </span>
+                      <span class="meta-label">Platform</span>
+                    </div>
+                    <div class="meta-val-badge">
+                      <span class="platform-chip">{{ formModel.platform || 'Meta' }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Campaign -->
+                  <div class="meta-row-item">
+                    <div class="meta-icon-label">
+                      <span class="material-symbols-outlined meta-ico icon-teal">inventory_2</span>
+                      <span class="meta-label">Campaign</span>
+                    </div>
+                    <div class="meta-val-badge">
+                      <span class="campaign-chip">{{ getCampaignName() }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Ad ID -->
+                  <div class="meta-row-item">
+                    <div class="meta-icon-label">
+                      <span class="material-symbols-outlined meta-ico icon-orange">tag</span>
+                      <span class="meta-label">Platform Ad ID</span>
+                    </div>
+                    <div class="meta-val-badge">
+                      <span class="adid-chip">{{ formModel.platformAdId || 'ad_ext_auto' }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Live Metrics Summary Box -->
+                <div class="preview-kpi-grid">
+                  <div class="kpi-mini-box">
+                    <span class="kpi-mini-lbl">Spend</span>
+                    <span class="kpi-mini-val">₹{{ formModel.spend || 0 }}</span>
+                  </div>
+                  <div class="kpi-mini-box">
+                    <span class="kpi-mini-lbl">Leads</span>
+                    <span class="kpi-mini-val highlight-leads">{{ formModel.leadsCount || 0 }}</span>
+                  </div>
+                  <div class="kpi-mini-box">
+                    <span class="kpi-mini-lbl">CTR</span>
+                    <span class="kpi-mini-val highlight-ctr">{{ computedModalCtr }}%</span>
+                  </div>
+                  <div class="kpi-mini-box">
+                    <span class="kpi-mini-lbl">CPL</span>
+                    <span class="kpi-mini-val highlight-cpl">₹{{ computedModalCpl }}</span>
+                  </div>
+                </div>
+
+                <!-- Ready Status Prompt -->
+             
+
+              </div>
+
+            </div>
+
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group flex-2">
-            <label class="form-label">Campaign Association</label>
-            <select
-              [ngModel]="formModel.campaignId"
-              (ngModelChange)="onCampaignChange($event)"
-              class="form-input"
-            >
-              <option value="">-- Select Campaign --</option>
-              @for (cmp of campaigns; track cmp.id) {
-                <option [value]="cmp.id">
-                  {{ cmp.name }}
-                </option>
-              }
-            </select>
-          </div>
-
-          <div class="form-group flex-1">
-            <label class="form-label">Platform Ad ID</label>
-            <input
-              type="text"
-              [(ngModel)]="formModel.platformAdId"
-              placeholder="e.g. ad_ext_492019"
-              class="form-input"
-            />
-          </div>
-        </div>
-
-        <!-- SECTION 3: SPEND & ENGAGEMENT METRICS -->
-        <div class="section-divider">
-          <span>Spend & Engagement</span>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label class="form-label">Spend (₹)</label>
-            <input type="number" [(ngModel)]="formModel.spend" min="0" class="form-input" />
-          </div>
-          <div class="form-group flex-1">
-            <label class="form-label">Leads</label>
-            <input type="number" [(ngModel)]="formModel.leadsCount" min="0" class="form-input" />
-          </div>
-          <div class="form-group flex-1">
-            <label class="form-label">Impressions</label>
-            <input type="number" [(ngModel)]="formModel.impressions" min="0" class="form-input" />
-          </div>
-          <div class="form-group flex-1">
-            <label class="form-label">Clicks</label>
-            <input type="number" [(ngModel)]="formModel.clicks" min="0" class="form-input" />
-          </div>
-        </div>
-
-        <!-- Auto Computed Metrics Badges -->
-        <div class="live-calc-panel">
-          <div class="calc-item calc-item-emerald">
-            <span class="calc-label">Auto CPL</span>
-            <span class="calc-val">₹{{ computedModalCpl }}</span>
-            <span class="calc-formula">(Spend / Leads)</span>
-          </div>
-          <div class="calc-item calc-item-purple">
-            <span class="calc-label">Auto CTR</span>
-            <span class="calc-val">{{ computedModalCtr }}%</span>
-            <span class="calc-formula">(Clicks / Impressions * 100)</span>
-          </div>
-        </div>
       </div>
 
       <!-- Modal Footer -->
       <div class="modal-footer">
-        <button class="btn-action-secondary" (click)="onClose()">Cancel</button>
-        <button class="btn-action-primary" (click)="onSave()">
+        <button type="button" class="btn-action-secondary" (click)="onClose()">Cancel</button>
+        <button type="button" class="btn-action-primary" (click)="onSave()">
           <span class="material-symbols-outlined icon-glow">save</span>
           <span>{{ isEditing ? 'Update Ad' : 'Save Ad' }}</span>
         </button>

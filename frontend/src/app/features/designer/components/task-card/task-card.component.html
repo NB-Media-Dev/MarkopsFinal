@@ -3,15 +3,21 @@
   [class.selected]="isSelected"
   (click)="onView($event)"
 >
-  <!-- Card Header Topbar: Left Squircle + Package Chip | Right Priority & Status -->
+  <!-- Card Header Topbar: Left Squircle + Task Type Chip | Right Priority & Status -->
   <div class="task-card-header">
     <div class="task-header-left">
       <div
         class="task-squircle-badge"
         [ngClass]="'badge-status-' + (task.status | lowercase)"
       >
-        {{ (task.packageName || task.title || 'C')[0].toUpperCase() }}
+        {{ (task.title || task.packageName || 'T')[0].toUpperCase() }}
       </div>
+      @if (getTaskTypeLabel()) {
+        <span class="task-type-pill">
+          <span class="material-symbols-outlined icon-type">{{ getTaskTypeIcon() }}</span>
+          <span>{{ getTaskTypeLabel() }}</span>
+        </span>
+      }
     </div>
     <div class="task-badges-right">
       <span class="priority-pill" [ngClass]="getPriorityBadgeClass(task.priority)">{{
@@ -38,11 +44,6 @@
       </span>
     </div>
   </div>
-
-  <!-- Task Description (Comfortable reading size & line-height) -->
-  @if (hasCustomDescription()) {
-    <p class="task-desc">{{ getCleanDescription() }}</p>
-  }
 
   <!-- Requirement Attachment (Spacious & Clean Chip) -->
   @if (task.attachmentName || task.attachmentUrl || task.content) {

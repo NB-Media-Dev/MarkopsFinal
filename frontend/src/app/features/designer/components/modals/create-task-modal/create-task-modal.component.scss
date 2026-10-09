@@ -276,6 +276,31 @@
   gap: 0.45rem;
 
   .detail-inputs-wrapper {
+    .task-title-input {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid #CBD5E1;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #0F172A;
+      background: #FFFFFF;
+      box-sizing: border-box;
+      transition: all 0.15s ease;
+      font-family: inherit;
+
+      &::placeholder {
+        font-weight: 500;
+        color: #94A3B8;
+      }
+
+      &:focus {
+        outline: none;
+        border-color: #3B82F6;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+      }
+    }
+
     .step-textarea-input {
       width: 100%;
       padding: 6px 10px;

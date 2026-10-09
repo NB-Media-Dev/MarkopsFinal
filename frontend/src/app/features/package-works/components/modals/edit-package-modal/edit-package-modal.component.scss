@@ -46,7 +46,8 @@
         color: #FFFFFF;
 
         &.icon-amber {
-          background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+          background-color: #F59E0B;
+          color: #FFFFFF;
         }
 
         .material-symbols-outlined {
@@ -65,11 +66,11 @@
       .modal-sub-badge {
         font-size: 0.75rem;
         font-weight: 700;
-        color: #F59E0B;
-        background: #FEF3C7;
+        color: #FFFFFF;
+        background-color: #F59E0B;
         padding: 0.15rem 0.5rem;
         border-radius: 6px;
-        border: 1px solid #FDE68A;
+        border: 1px solid #D97706;
         margin-top: 0.2rem;
         display: inline-block;
       }
@@ -275,7 +276,7 @@
       font-size: 0.8125rem;
       font-weight: 700;
       color: #FFFFFF;
-      background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+      background-color: #F59E0B;
       border: none;
       cursor: pointer;
       box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
@@ -288,7 +289,7 @@
       &:hover:not(:disabled) {
         transform: translateY(-1px);
         box-shadow: 0 6px 16px rgba(245, 158, 11, 0.45);
-        background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+        background-color: #D97706;
       }
 
       &:disabled {
