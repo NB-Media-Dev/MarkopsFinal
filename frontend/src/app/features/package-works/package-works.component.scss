@@ -1342,7 +1342,7 @@
     }
   }
 
- 
+
   &.card-leads,
   &.card-purple {
     background: linear-gradient(145deg, #FAF8FF 0%, #EDE9FE 100%);
@@ -1414,7 +1414,7 @@
     }
   }
 
-  
+
   &.card-tasks,
   &.card-rose {
     background: linear-gradient(145deg, #FFF5F7 0%, #FFE4E6 100%);
@@ -1486,7 +1486,7 @@
     }
   }
 
-  
+
   &.card-blue,
   &.card-roi {
     background: linear-gradient(145deg, #F0F9FF 0%, #E0F2FE 100%);
@@ -1522,7 +1522,7 @@
     }
   }
 
- 
+
   &.card-teal,
   &.card-speed {
     background: linear-gradient(145deg, #F0FDFA 0%, #CCFBF1 100%);
@@ -1895,7 +1895,7 @@
       }
     }
 
-    
+
     &.dept-card-designer {
       background: linear-gradient(145deg, #FFF1F2 0%, #FFE4E6 50%, #FECDD3 100%);
       border-color: #FDA4AF;
@@ -1944,7 +1944,7 @@
       }
     }
 
-   
+
     &.dept-card-digital_marketing {
       background: linear-gradient(145deg, #FFFBEB 0%, #FEF3C7 50%, #FDE68A 100%);
       border-color: #FCD34D;
@@ -1993,7 +1993,7 @@
       }
     }
 
-    
+
     &.dept-card-telecalling {
       background: linear-gradient(145deg, #F5F3FF 0%, #EDE9FE 50%, #DDD6FE 100%);
       border-color: #C4B5FD;
@@ -2185,7 +2185,7 @@
   width: 100%;
   position: relative;
 
- 
+
   .hub-departments-row {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -2279,7 +2279,7 @@
         }
       }
 
-   
+
       &.active {
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
 
@@ -2287,7 +2287,7 @@
           color: #FFFFFF;
         }
 
-    
+
         &.dept-designer {
           background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%);
           border-color: #FDA4AF;
@@ -2306,7 +2306,7 @@
           }
         }
 
- 
+
         &.dept-digital_marketing {
           background: linear-gradient(135deg, #FFFDF5 0%, #FEF3C7 100%);
           border-color: #FCD34D;
@@ -2325,7 +2325,7 @@
           }
         }
 
-    
+
         &.dept-telecalling {
           background: linear-gradient(135deg, #FAF8FF 0%, #EDE9FE 100%);
           border-color: #C4B5FD;
@@ -2344,7 +2344,7 @@
           }
         }
 
-   
+
         &.dept-analytics {
           background: linear-gradient(135deg, #F4FDF8 0%, #D1FAE5 100%);
           border-color: #6EE7B7;
@@ -4773,7 +4773,7 @@
     }
   }
 
-  
+
   .selected-asset-preview-card {
     display: flex;
     align-items: center;
@@ -4944,7 +4944,7 @@
     }
   }
 
- 
+
   .designer-compact-bar {
     display: inline-flex;
     align-items: center;
@@ -5028,7 +5028,7 @@
     }
   }
 
- 
+
   .redesign-chips-wrap {
     display: flex;
     flex-wrap: wrap;
@@ -5260,13 +5260,12 @@
     box-shadow: 0 16px 36px rgba(37, 99, 235, 0.14), 0 4px 12px rgba(15, 23, 42, 0.04);
     border-color: #3B82F6;
   }
- 
+
   .package-display-banner {
     position: relative;
     width: 100%;
     height: 185px;
     border-radius: 16px;
-    overflow: hidden;
     background: #0F172A;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 
@@ -5389,7 +5388,7 @@
     }
   }
 
- 
+
   .package-display-info {
     padding-top: 14px;
     display: flex;
@@ -5795,7 +5794,7 @@
       }
     }
 
-  
+
     .pkg-active-image-preview {
       .preview-img-container {
         position: relative;
