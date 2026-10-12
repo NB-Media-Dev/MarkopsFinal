@@ -427,7 +427,7 @@
                 </div>
                 <div class="cta-text">
                   <h3>Submit New Creative Version</h3>
-                  <p>Upload revised PNG, JPG, or PDF design assets with changelog notes.</p>
+                  <p>Upload revised images, videos, or PDF assets with changelog notes.</p>
                 </div>
               </div>
               <button type="button" class="btn-cta-upload" (click)="openUploadModal()">
@@ -462,40 +462,54 @@
                   </div>
                   <div class="ver-body">
 
-                    @if (getVersionAssetUrl(ver)) {
+                    @if (getVersionAssetUrl(ver); as versionAssetUrl) {
                       <div class="ver-asset-preview">
-                        <div
-                          class="asset-img-container"
-                          (click)="openImageViewer(getVersionAssetUrl(ver), ver.fileName)"
-                        >
-                          <img [src]="getVersionAssetUrl(ver)" [alt]="ver.fileName" />
-                          <div class="asset-hover-overlay">
-                            <span class="material-symbols-outlined">zoom_in</span>
-                            <span>View Fullsize</span>
+                        @if (isVideo(ver.mimeType || versionAssetUrl) || isVideo(ver.fileName)) {
+                          <video
+                            class="version-video-preview"
+                            [src]="versionAssetUrl"
+                            controls
+                            preload="metadata"
+                            [attr.aria-label]="'Video deliverable: ' + ver.fileName"
+                          ></video>
+                        } @else if (isImage(versionAssetUrl) || isImage(ver.fileName)) {
+                          <div
+                            class="asset-img-container"
+                            (click)="openImageViewer(versionAssetUrl, ver.fileName)"
+                          >
+                            <img [src]="versionAssetUrl" [alt]="ver.fileName" />
+                            <div class="asset-hover-overlay">
+                              <span class="material-symbols-outlined">zoom_in</span>
+                              <span>View Fullsize</span>
+                            </div>
                           </div>
-                        </div>
+                        }
                       </div>
                     }
 
                     <div class="ver-meta-section">
                       <div class="ver-file-info-row">
                         <div class="file-name-group">
-                          <span class="material-symbols-outlined file-ico">image</span>
+                          <span class="material-symbols-outlined file-ico">
+                            {{ isVideo(ver.mimeType || ver.fileName) ? 'movie' : isPdf(ver.fileName) ? 'picture_as_pdf' : 'image' }}
+                          </span>
                           <strong class="file-title">{{ ver.fileName }}</strong>
                           @if (ver.fileSize) {
                             <span class="file-size">{{ getVersionFileSize(ver) }}</span>
                           }
                         </div>
                         <div class="file-actions">
-                          <button
-                            type="button"
-                            class="btn-file-action"
-                            (click)="openImageViewer(getVersionAssetUrl(ver), ver.fileName)"
-                            title="Fullscreen Preview"
-                          >
-                            <span class="material-symbols-outlined">fullscreen</span>
-                            <span>Preview</span>
-                          </button>
+                          @if (isImage(getVersionAssetUrl(ver)) || isVideo(ver.mimeType || getVersionAssetUrl(ver))) {
+                            <button
+                              type="button"
+                              class="btn-file-action"
+                              (click)="openImageViewer(getVersionAssetUrl(ver), ver.fileName)"
+                              title="Fullscreen Preview"
+                            >
+                              <span class="material-symbols-outlined">fullscreen</span>
+                              <span>Preview</span>
+                            </button>
+                          }
                           <button
                             type="button"
                             class="btn-file-action"
@@ -645,7 +659,7 @@
             type="file"
             id="taskDetailCreativeFileInput"
             style="display: none"
-            accept="image/*,.pdf"
+            accept="image/*,video/*,.pdf"
             (change)="onFileSelected($event)"
           />
 
@@ -655,12 +669,12 @@
             [class.has-file]="!!selectedFileObject()"
           >
             <span class="material-symbols-outlined dropzone-icon">
-              {{ selectedFileObject() ? 'check_circle' : 'add_photo_alternate' }}
+              {{ selectedFileObject() ? 'check_circle' : 'cloud_upload' }}
             </span>
             @if (!selectedFileObject()) {
               <div class="dropzone-text">
-                <strong>Click to upload artwork file</strong>
-                <span>Supports PNG, JPG, WebP, SVG, and PDF (Max 50MB)</span>
+                <strong>Click to upload an image, video, or PDF</strong>
+                <span>Supports images, MP4, WebM, MOV, and PDF (Max 35 MB)</span>
               </div>
             }
             @if (selectedFileObject(); as f) {
@@ -671,9 +685,27 @@
             }
           </div>
 
+          @if (uploadError()) {
+            <p class="upload-error-message" role="alert">{{ uploadError() }}</p>
+          }
+
           @if (selectedFileDataUrl()) {
             <div class="modal-preview-box">
-              <img [src]="selectedFileDataUrl()" alt="Upload preview" />
+              @if (isVideo(selectedFileObject()?.type || selectedFileObject()?.name)) {
+                <video
+                  [src]="selectedFileDataUrl()"
+                  controls
+                  preload="metadata"
+                  aria-label="Selected video preview"
+                ></video>
+              } @else if (isImage(selectedFileObject()?.name)) {
+                <img [src]="selectedFileDataUrl()" alt="Upload preview" />
+              } @else {
+                <div class="file-preview-placeholder">
+                  <span class="material-symbols-outlined">picture_as_pdf</span>
+                  <span>{{ selectedFileObject()?.name }}</span>
+                </div>
+              }
             </div>
           }
 
@@ -792,7 +824,11 @@
         </div>
       </div>
       <div class="lightbox-image-box">
-        <img [src]="imageViewerUrl()" [alt]="imageViewerTitle()" />
+        @if (isVideo(imageViewerUrl()) || isVideo(imageViewerTitle())) {
+          <video [src]="imageViewerUrl()" controls autoplay aria-label="Video deliverable preview"></video>
+        } @else {
+          <img [src]="imageViewerUrl()" [alt]="imageViewerTitle()" />
+        }
       </div>
     </div>
   </div>

@@ -45,6 +45,7 @@ export class TaskDetailComponent implements OnInit {
   readonly selectedFileObject = signal<File | null>(null);
   readonly selectedFileDataUrl = signal<string>('');
   readonly selectedFileContent = signal<string>('');
+  readonly uploadError = signal<string | null>(null);
 
   readonly isRedesignModalOpen = signal<boolean>(false);
   readonly redesignReason = signal<string>('');
@@ -334,6 +335,16 @@ export class TaskDetailComponent implements OnInit {
       clean.endsWith('.gif') ||
       clean.endsWith('.svg') ||
       clean.startsWith('data:image/')
+    );
+  }
+
+  isVideo(urlOrName?: string): boolean {
+    if (!urlOrName) return false;
+    const clean = urlOrName.split('?')[0].split('#')[0].toLowerCase().trim();
+    return (
+      clean.startsWith('data:video/') ||
+      clean.startsWith('video/') ||
+      /\.(mp4|webm|mov|m4v|ogv|avi|mkv|3gp|mpeg|mpg)$/.test(clean)
     );
   }
 
@@ -872,6 +883,7 @@ export class TaskDetailComponent implements OnInit {
     this.selectedFileObject.set(null);
     this.selectedFileDataUrl.set('');
     this.selectedFileContent.set('');
+    this.uploadError.set(null);
     this.uploadForm.reset({
       fileName: '',
       changelog: '',
@@ -885,6 +897,7 @@ export class TaskDetailComponent implements OnInit {
     this.selectedFileObject.set(null);
     this.selectedFileDataUrl.set('');
     this.selectedFileContent.set('');
+    this.uploadError.set(null);
   }
 
   triggerFileInput(): void {
@@ -894,24 +907,52 @@ export class TaskDetailComponent implements OnInit {
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      const file = input.files[0];
-      this.selectedFileObject.set(file);
+    const file = input.files?.[0];
+    if (!file) return;
 
-      const mbSize = parseFloat((file.size / (1024 * 1024)).toFixed(2));
+    input.value = '';
+    this.uploadError.set(null);
+    this.selectedFileObject.set(null);
+    this.selectedFileDataUrl.set('');
+    this.selectedFileContent.set('');
+    this.uploadForm.patchValue({ fileName: '', fileSizeMb: 0 });
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    const isSupported =
+      file.type.startsWith('image/') ||
+      file.type.startsWith('video/') ||
+      file.type === 'application/pdf' ||
+      (!file.type && ['png', 'jpg', 'jpeg', 'webp', 'svg', 'pdf', 'mp4', 'webm', 'mov', 'm4v', 'ogv', 'avi', 'mkv', '3gp', 'mpeg', 'mpg'].includes(extension || ''));
+    if (!isSupported) {
+      this.uploadError.set('Choose an image, video, or PDF file.');
+      return;
+    }
+
+    const maxSizeBytes = 35 * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      this.uploadError.set('The file must be 35 MB or smaller.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => {
+      this.uploadError.set('The selected file could not be read. Please try again.');
+    };
+    reader.onload = (e: ProgressEvent<FileReader>) => {
+      const result = typeof e.target?.result === 'string' ? e.target.result : '';
+      if (!result) {
+        this.uploadError.set('The selected file could not be read. Please try again.');
+        return;
+      }
+
+      this.selectedFileObject.set(file);
+      this.selectedFileDataUrl.set(result);
+      this.selectedFileContent.set('');
       this.uploadForm.patchValue({
         fileName: file.name,
-        fileSizeMb: mbSize,
+        fileSizeMb: Number((file.size / (1024 * 1024)).toFixed(2)),
       });
-
-      const reader = new FileReader();
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        const result = e.target?.result as string;
-        this.selectedFileDataUrl.set(result);
-        this.selectedFileContent.set(result);
-      };
-      reader.readAsDataURL(file);
-    }
+    };
+    reader.readAsDataURL(file);
   }
 
   appendChangelog(snippet: string): void {
@@ -962,7 +1003,7 @@ export class TaskDetailComponent implements OnInit {
       changelog,
       fileSize: fileSizeMb || 1.5,
       filePath: dataUrl || '',
-      fileContent: fileContent || '',
+      fileContent: fileContent || changelog,
     });
 
     if (ok) {

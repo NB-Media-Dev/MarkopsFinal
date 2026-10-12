@@ -135,6 +135,7 @@ async function findTask(taskId) {
               fileName: v.file_name,
               filePath: v.file_path,
               fileSize: v.file_size,
+              mimeType: v.mime_type,
               changelog: v.changelog,
               createdAt: v.created_at ? new Date(v.created_at).toISOString() : new Date().toISOString(),
             }));
@@ -230,6 +231,7 @@ async function populateTaskRelations(tasksList) {
           fileName: v.file_name,
           filePath: v.file_path,
           fileSize: v.file_size,
+          mimeType: v.mime_type,
           changelog: v.changelog,
           createdAt: v.created_at ? new Date(v.created_at).toISOString() : new Date().toISOString(),
         });
@@ -1138,6 +1140,8 @@ async function handleVersionSubmission(req, res, targetTask) {
 
   const effectiveUser = req.user?.id || submittedBy || req.headers['x-user-id'] || 'usr_admin_01';
   const effectiveUserName = req.user?.fullName || submittedByName || req.headers['x-user-name'] || 'Designer';
+  const fileMimeType =
+    String(filePath || fileContent || '').match(/^data:([^;,]+)/)?.[1] || 'application/octet-stream';
 
   let savedFilePath = filePath;
   if (filePath && typeof filePath === 'string' && filePath.startsWith('data:')) {
@@ -1160,6 +1164,7 @@ async function handleVersionSubmission(req, res, targetTask) {
     fileName: fileName || `creative_version_v${newVersionNumber}.png`,
     filePath: savedFilePath,
     fileSize: safeFileSize,
+    mimeType: fileMimeType,
     changelog: changelog || `Version ${newVersionNumber}.0 creative asset submission.`,
     fileContent: fileContent || changelog || '',
     createdAt: now,
@@ -1233,7 +1238,7 @@ async function handleVersionSubmission(req, res, targetTask) {
             savedFilePath,
             newVersion.fileName,
             safeFileSize,
-            'image/png',
+            fileMimeType,
             newVersion.changelog,
           ]
         );
@@ -1612,6 +1617,7 @@ router.get('/designer/dashboard-metrics', async (req, res) => {
                 fileName: v.file_name,
                 filePath: v.file_path,
                 fileSize: v.file_size,
+                mimeType: v.mime_type,
                 changelog: v.changelog,
                 createdAt: v.created_at ? new Date(v.created_at).toISOString() : new Date().toISOString(),
               }));
