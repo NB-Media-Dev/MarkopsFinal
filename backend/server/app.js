@@ -200,7 +200,11 @@ app.use((err, req, res, next) => {
 
 function setupSocketIO(httpServer) {
   const io = new SocketIOServer(httpServer, {
-    cors: { origin: '*', methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'] },
+    cors: {
+      origin: (origin, callback) => callback(null, origin || true),
+      credentials: true,
+      methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
+    },
     transports: ['polling', 'websocket'],
     allowEIO3: true,
   });

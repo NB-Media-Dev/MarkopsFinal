@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: markopsfinal
+    env: node
+    rootDir: backend
+    plan: free
+    buildCommand: npm install && npx prisma generate --schema=prisma/schema.prisma
+    startCommand: node server/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: FRONTEND_URL
+        value: https://markopsfinal-1.onrender.com
+
+  - type: static
+    name: markopsfinal-1
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    publishPath: dist/project-name/browser
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

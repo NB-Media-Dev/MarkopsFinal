@@ -16,6 +16,11 @@ export function getBackendBaseUrl(): string {
       return `${protocol}//${hostname}:4000`;
     }
 
+    // When deployed on Render (e.g. markopsfinal-1.onrender.com), connect to live backend service
+    if (hostname.includes('onrender.com') || hostname.includes('markops')) {
+      return 'https://markopsfinal.onrender.com';
+    }
+
     return window.location.origin;
   }
 
@@ -33,14 +38,10 @@ export function getApiUrl(url: string): string {
   const cleanPath = url.startsWith('/') ? url : `/${url}`;
 
   if (typeof window !== 'undefined' && window.location) {
-    const hostname = window.location.hostname || 'localhost';
     const baseUrl = getBackendBaseUrl();
-
-    // In local development (localhost / 127.0.0.1) or if custom backend URL configured
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || (baseUrl && baseUrl !== window.location.origin)) {
+    if (baseUrl) {
       return `${baseUrl}${cleanPath}`;
     }
-
     return cleanPath;
   }
 
