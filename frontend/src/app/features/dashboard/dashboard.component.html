@@ -11,7 +11,7 @@
 
     <section class="products-grid-section" aria-label="MarkOps Products">
       <div class="products-grid">
-        @for (pkg of fixedPackages(); track pkg.id) {
+        @for (pkg of fixedPackages(); track pkg.id){
           <article
             class="product-card"
             [ngClass]="'theme-' + pkg.cardTheme"

@@ -1692,7 +1692,7 @@ html, body {
       }
     }
 
-    .header-action-dark-btn {
+    .header-action-dark-btn:not(.manage-users-action) {
       display: none !important;
     }
   }

@@ -138,7 +138,11 @@
         </div>
 
         @if (roleAction(); as action) {
-          <a [routerLink]="[action.link]" class="header-action-dark-btn">
+          <a
+            [routerLink]="[action.link]"
+            class="header-action-dark-btn"
+            [class.manage-users-action]="activeRole() === 'ADMINISTRATOR'"
+          >
             <span class="material-symbols-outlined action-icon-amber">{{ action.icon }}</span>
             <span>{{ action.label }}</span>
           </a>

@@ -650,8 +650,24 @@
 
       @media (max-width: 520px) {
         padding: 0.4rem 0.65rem;
-        span:not(.action-icon-amber) {
+        &:not(.manage-users-action) span:not(.action-icon-amber) {
           display: none;
+        }
+      }
+
+      @media (max-width: 520px) {
+        &.manage-users-action {
+          gap: 0.25rem;
+          padding: 0.38rem 0.5rem;
+          font-size: 0.68rem;
+        }
+      }
+
+      @media (max-width: 360px) {
+        &.manage-users-action {
+          gap: 0.2rem;
+          padding: 0.35rem 0.4rem;
+          font-size: 0.64rem;
         }
       }
 
