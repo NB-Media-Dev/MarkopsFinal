@@ -27,6 +27,7 @@ export class TelecallingQueueTableComponent {
 
   @Input() getStatusBadgeClassFn!: (status?: string) => string;
   @Input() getLeadCurrentStatusFn!: (lead: LeadItem) => string;
+  @Input() formatStatusLabelFn?: (status?: string) => string;
   @Input() hasScheduledCallbackFn!: (lead: LeadItem) => boolean;
   @Input() getFollowUpTimeLabelFn!: (lead: LeadItem) => string | null;
   @Input() isFollowUpDueFn!: (lead: LeadItem) => boolean;
@@ -87,5 +88,38 @@ export class TelecallingQueueTableComponent {
 
   mathMin(a: number, b: number): number {
     return Math.min(a, b);
+  }
+
+  formatStatus(status?: string): string {
+    if (this.formatStatusLabelFn) {
+      return this.formatStatusLabelFn(status);
+    }
+    const s = (status || '').toUpperCase().trim();
+    switch (s) {
+      case 'PAID':
+      case 'QUALIFIED':
+      case 'CONVERTED':
+        return 'Paid';
+      case 'ASSIGNED':
+      case 'NEW':
+        return 'Assigned';
+      case 'LINE_BUSY':
+      case 'BUSY':
+        return 'Line Busy';
+      case 'NO_ANSWER':
+        return 'No Answer';
+      case 'WRONG_NUMBER':
+        return 'Wrong Number';
+      case 'FOLLOW_UP':
+      case 'FOLLOW_UP_SCHEDULED':
+        return 'Follow Up';
+      case 'INTERESTED':
+        return 'Interested';
+      case 'NOT_INTERESTED':
+        return 'Not Interested';
+      case 'CONNECTED':
+      default:
+        return 'Assigned';
+    }
   }
 }

@@ -2,7 +2,7 @@ import { Component, inject, OnInit, OnDestroy, signal, computed, Input } from '@
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { LeadTelecallingService, LeadItem, CallActivityItem } from '../../core/services/lead-telecalling.service';
+import { LeadTelecallingService, LeadItem, CallActivityItem, isClientDuplicateCall } from '../../core/services/lead-telecalling.service';
 import { UserManagementService } from '../../core/services/user-management.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CampaignService } from '../../core/services/campaign.service';
@@ -248,7 +248,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     return role === 'TELECALLER';
   });
 
-  callOutcome = 'CONNECTED';
+  callOutcome = 'BUSY';
   callDuration = 120;
   callRemarks = '';
   nextAction = '';
@@ -283,7 +283,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
 
       const uniqueAttendedLeads = new Set(
         calls
-          .filter((c) => ['CONNECTED', 'INTERESTED', 'QUALIFIED', 'NOT_INTERESTED', 'FOLLOW_UP', 'WRONG_NUMBER'].includes(c.outcome))
+          .filter((c) => ['CONNECTED', 'INTERESTED', 'QUALIFIED', 'PAID', 'NOT_INTERESTED', 'FOLLOW_UP', 'WRONG_NUMBER'].includes(c.outcome))
           .map((c) => String(c.leadId || c.leadPhone || c.leadName || '').trim().toLowerCase())
           .filter((k) => !!k)
       );
@@ -297,7 +297,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
 
       const uniqueInterestedLeads = new Set(
         calls
-          .filter((c) => ['INTERESTED', 'QUALIFIED'].includes(c.outcome))
+          .filter((c) => ['INTERESTED', 'QUALIFIED', 'PAID'].includes(c.outcome))
           .map((c) => String(c.leadId || c.leadPhone || c.leadName || '').trim().toLowerCase())
           .filter((k) => !!k)
       );
@@ -505,7 +505,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
 
       if (status === 'INTERESTED') {
         interestedCount++;
-      } else if (status === 'QUALIFIED' || status === 'CONVERTED') {
+      } else if (status === 'QUALIFIED' || status === 'CONVERTED' || status === 'PAID') {
         qualifiedCount++;
       } else if (status === 'FOLLOW_UP') {
         followUpCount++;
@@ -542,7 +542,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     } else if (pFilter === 'QUALIFIED') {
       leads = leads.filter((l) => {
         const s = this.getLeadCurrentStatus(l).toUpperCase();
-        return s === 'QUALIFIED' || s === 'CONVERTED';
+        return s === 'QUALIFIED' || s === 'CONVERTED' || s === 'PAID';
       });
     } else if (pFilter === 'RETRY') {
       leads = leads.filter((l) => ['LINE_BUSY', 'BUSY', 'NO_ANSWER'].includes(this.getLeadCurrentStatus(l).toUpperCase()));
@@ -595,6 +595,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
   readonly isFollowUpDueFn = (lead: LeadItem) => this.isFollowUpDue(lead);
   readonly getLeadCreatorNameFn = (lead: LeadItem) => this.getLeadCreatorName(lead);
   readonly getLeadMetricsFn = (lead: LeadItem) => this.getLeadMetrics(lead);
+  readonly formatStatusLabelFn = (status?: string) => this.formatStatusLabel(status);
 
   setSearchQuery(query: string) {
     this.searchQuery.set(query);
@@ -807,7 +808,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
       return;
     }
     this.selectedLeadForCall.set(lead);
-    this.callOutcome = 'CONNECTED';
+    this.callOutcome = 'BUSY';
     this.callDuration = 120;
     this.callRemarks = '';
     this.nextAction = '';
@@ -834,7 +835,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     const lPhone = String(lead.phone || '').replace(/\D/g, '');
     const lName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim().toLowerCase();
 
-    const leadCalls = allCalls.filter((c) => {
+    const rawCalls = allCalls.filter((c) => {
       const cLeadId = String(c.leadId || '').trim().toLowerCase();
       const cPhone = String(c.leadPhone || c.phone || '').replace(/\D/g, '');
       const cLeadName = String(c.leadName || '').trim().toLowerCase();
@@ -844,7 +845,14 @@ export class TelecallingComponent implements OnInit, OnDestroy {
       return false;
     });
 
-    const attended = leadCalls.filter((c) => ['CONNECTED', 'INTERESTED', 'QUALIFIED', 'NOT_INTERESTED', 'FOLLOW_UP', 'WRONG_NUMBER'].includes(c.outcome)).length;
+    const leadCalls: CallActivityItem[] = [];
+    for (const call of rawCalls) {
+      if (!leadCalls.some((existing) => isClientDuplicateCall(existing, call))) {
+        leadCalls.push(call);
+      }
+    }
+
+    const attended = leadCalls.filter((c) => ['CONNECTED', 'INTERESTED', 'QUALIFIED', 'PAID', 'NOT_INTERESTED', 'FOLLOW_UP', 'WRONG_NUMBER'].includes(c.outcome)).length;
     const missed = leadCalls.filter((c) => ['NO_ANSWER', 'BUSY', 'LINE_BUSY'].includes(c.outcome)).length;
     const totalDuration = leadCalls.reduce((acc, c) => acc + (Number(c.durationSeconds) || 0), 0);
     const avgDuration = leadCalls.length > 0 ? Math.round(totalDuration / leadCalls.length) : 0;
@@ -893,15 +901,37 @@ export class TelecallingComponent implements OnInit, OnDestroy {
   }
 
   getLeadCurrentStatus(lead: LeadItem): string {
-    if (!lead) return 'NEW';
+    if (!lead) return 'ASSIGNED';
     const metrics = this.getLeadMetrics(lead);
     if (metrics.calls && metrics.calls.length > 0) {
       const latestCall = metrics.calls[0];
-      const out = String(latestCall.outcome || '').toUpperCase().replace(/\s+/g, '_');
-      return out === 'BUSY' ? 'LINE_BUSY' : out;
+      const rawOut = String(latestCall.outcome || '').toUpperCase().replace(/\s+/g, '_');
+      if (rawOut === 'BUSY' || rawOut === 'LINE_BUSY') return 'LINE_BUSY';
+      if (rawOut === 'NO_ANSWER') return 'NO_ANSWER';
+      if (rawOut === 'WRONG_NUMBER') return 'WRONG_NUMBER';
+      if (rawOut === 'FOLLOW_UP' || rawOut === 'FOLLOW_UP_SCHEDULED') return 'FOLLOW_UP';
+      if (rawOut === 'INTERESTED') return 'INTERESTED';
+      if (rawOut === 'NOT_INTERESTED') return 'NOT_INTERESTED';
+      if (rawOut === 'QUALIFIED' || rawOut === 'CONVERTED' || rawOut === 'PAID') return 'PAID';
+      if (rawOut === 'CONNECTED') {
+        if (latestCall.followUpDate || this.hasScheduledCallback(lead)) {
+          return 'FOLLOW_UP';
+        }
+        return 'ASSIGNED';
+      }
+      return rawOut;
     }
-    const st = (lead.status || 'ASSIGNED').toUpperCase().replace(/\s+/g, '_');
-    return st === 'BUSY' ? 'LINE_BUSY' : st;
+
+    const rawSt = String(lead.status || '').toUpperCase().replace(/\s+/g, '_');
+    if (rawSt === 'QUALIFIED' || rawSt === 'CONVERTED' || rawSt === 'PAID') return 'PAID';
+    if (rawSt === 'INTERESTED') return 'INTERESTED';
+    if (rawSt === 'NOT_INTERESTED') return 'NOT_INTERESTED';
+    if (rawSt === 'BUSY' || rawSt === 'LINE_BUSY') return 'LINE_BUSY';
+    if (rawSt === 'NO_ANSWER') return 'NO_ANSWER';
+    if (rawSt === 'WRONG_NUMBER') return 'WRONG_NUMBER';
+    if (rawSt === 'FOLLOW_UP') return 'FOLLOW_UP';
+
+    return 'ASSIGNED';
   }
 
   isFollowUpDue(lead: LeadItem): boolean {
@@ -1017,8 +1047,9 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     if (!lead) return;
 
     const user = this.authService.currentUser();
-    const outcomeFormatted = String(this.callOutcome || 'CONNECTED').toUpperCase().replace(/\s+/g, '_');
-    const finalOutcome = outcomeFormatted === 'BUSY' ? 'LINE_BUSY' : outcomeFormatted;
+    const outcomeFormatted = String(this.callOutcome || 'BUSY').toUpperCase().replace(/\s+/g, '_');
+    let finalOutcome = outcomeFormatted === 'BUSY' ? 'LINE_BUSY' : outcomeFormatted;
+    if (finalOutcome === 'QUALIFIED') finalOutcome = 'PAID';
     const leadFullName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim();
     const shouldShowDur =
       this.callOutcome !== 'BUSY' &&
@@ -1100,39 +1131,63 @@ export class TelecallingComponent implements OnInit, OnDestroy {
       });
   }
 
+  formatStatusLabel(status?: string): string {
+    const s = (status || '').toUpperCase().trim();
+    switch (s) {
+      case 'PAID':
+      case 'QUALIFIED':
+      case 'CONVERTED':
+        return 'Paid';
+      case 'ASSIGNED':
+      case 'NEW':
+        return 'Assigned';
+      case 'LINE_BUSY':
+      case 'BUSY':
+        return 'Line Busy';
+      case 'NO_ANSWER':
+        return 'No Answer';
+      case 'WRONG_NUMBER':
+        return 'Wrong Number';
+      case 'FOLLOW_UP':
+      case 'FOLLOW_UP_SCHEDULED':
+        return 'Follow Up';
+      case 'INTERESTED':
+        return 'Interested';
+      case 'NOT_INTERESTED':
+        return 'Not Interested';
+      case 'CONNECTED':
+      default:
+        return 'Assigned';
+    }
+  }
+
   getStatusBadgeClass(status?: string): string {
     const s = (status || '').toUpperCase().trim();
     switch (s) {
-      case 'NEW':
-        return 'status-pill-sky';
       case 'ASSIGNED':
-        return 'status-pill-slate';
-      case 'CONTACTED':
-        return 'status-pill-indigo';
+      case 'NEW':
+        return 'status-pill-slate status-pill-assigned';
       case 'FOLLOW_UP':
       case 'FOLLOW_UP_SCHEDULED':
-        return 'status-pill-indigo';
-      case 'CONNECTED':
-        return 'status-pill-blue';
+        return 'status-pill-indigo status-pill-contacted';
       case 'NO_ANSWER':
-        return 'status-pill-amber';
+        return 'status-pill-amber status-pill-no-answer';
       case 'BUSY':
       case 'LINE_BUSY':
-        return 'status-pill-orange';
+        return 'status-pill-orange status-pill-line-busy';
       case 'INTERESTED':
-        return 'status-pill-purple';
+        return 'status-pill-purple status-pill-interested';
       case 'QUALIFIED':
-        return 'status-pill-emerald';
       case 'CONVERTED':
       case 'PAID':
-        return 'status-pill-teal';
+        return 'status-pill-teal status-pill-paid';
       case 'NOT_INTERESTED':
-        return 'status-pill-rose';
+        return 'status-pill-rose status-pill-not-interested';
       case 'WRONG_NUMBER':
-      case 'LOST':
-        return 'status-pill-danger';
+        return 'status-pill-danger status-pill-wrong-number';
+      case 'CONNECTED':
       default:
-        return 'status-pill-slate';
+        return 'status-pill-slate status-pill-assigned';
     }
   }
 }

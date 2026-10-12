@@ -25,7 +25,7 @@
               }
               <span class="sub-dot">&bull;</span>
               <span class="status-mini-pill" [ngClass]="getStatusBadgeClass(lead.status)">
-                {{ (lead.status || '').replace('_', ' ') }}
+                {{ formatStatus(lead.status) }}
               </span>
             </p>
           </div>
@@ -90,7 +90,7 @@
                   </div>
                   <span class="status-pill" [ngClass]="getStatusBadgeClass(call.outcome)">
                     <span class="pill-glow-dot">●</span>
-                    <span class="pill-label">{{ (call.outcome || '').replace('_', ' ') }}</span>
+                    <span class="pill-label">{{ formatStatus(call.outcome) }}</span>
                   </span>
                 </div>
                 @if (call.remarks) {

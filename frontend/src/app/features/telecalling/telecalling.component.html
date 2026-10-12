@@ -63,6 +63,7 @@
     [selectedCampaign]="selectedCampaign()"
     [dateFilter]="dateFilter()"
     [getStatusBadgeClassFn]="getStatusBadgeClassFn"
+    [formatStatusLabelFn]="formatStatusLabelFn"
     [getLeadCurrentStatusFn]="getLeadCurrentStatusFn"
     [hasScheduledCallbackFn]="hasScheduledCallbackFn"
     [getFollowUpTimeLabelFn]="getFollowUpTimeLabelFn"
@@ -89,6 +90,7 @@
     [leadHistoryCalls]="getLeadHistoryCalls(selectedLeadForHistory())"
     [canLogCalls]="canLogCalls()"
     [getStatusBadgeClassFn]="getStatusBadgeClassFn"
+    [formatStatusLabelFn]="formatStatusLabelFn"
     (closeModal)="closeLeadHistory()"
     (openCallDrawer)="openCallDrawer($event)"
   ></app-call-history-modal>

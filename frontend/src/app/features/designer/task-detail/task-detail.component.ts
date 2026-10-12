@@ -154,21 +154,13 @@ export class TaskDetailComponent implements OnInit {
   }
 
   getCleanDescription(t: Task | null): string {
-    if (!t?.description) return '';
-    return t.description.replace(/^Requirement brief for.*?:/i, '').trim();
+    if (!t?.description) return 'No description provided.';
+    return t.description.replace(/^Requirement brief for.*?:/i, '').trim() || t.description;
   }
 
   hasCustomDescription(t: Task | null): boolean {
     if (!t?.description) return false;
-    const clean = this.getCleanDescription(t).trim();
-    if (!clean) return false;
-    const title = (t.title || '').trim().toLowerCase();
-    const cleanLower = clean.toLowerCase();
-    if (cleanLower === title) return false;
-    if (cleanLower === 'no description provided.') return false;
-    if (cleanLower === `requirement brief for ${title}`) return false;
-    if (/^task brief details for .*? package\.?$/i.test(clean)) return false;
-    if (/^requirement brief for .*?$/i.test(clean)) return false;
+    const clean = t.description.replace(/^Requirement brief for.*?:/i, '').trim();
     return clean.length > 0;
   }
 
@@ -759,7 +751,7 @@ export class TaskDetailComponent implements OnInit {
     if (!t) return false;
     const user = this.authService.currentUser();
     if (!user) return false;
-    const isAssignee = user.id === t.assignedTo || user.role === 'DESIGNER' || user.role === 'ADMINISTRATOR';
+    const isAssignee = user.id === t.assignedTo || user.role === 'DESIGNER' ;
     return isAssignee && (t.status === 'IN_PROGRESS' || t.status === 'REVISION_REQUIRED');
   }
 

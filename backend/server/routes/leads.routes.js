@@ -27,6 +27,102 @@ function createNotificationForTelecaller(targetUserId, title, message, targetRou
   }).catch(() => {});
 }
 
+function isSameCallActivity(c1, c2) {
+  if (!c1 || !c2) return false;
+  if (c1.id && c2.id) {
+    if (String(c1.id) === String(c2.id)) return true;
+    const num1 = String(c1.id).replace(/\D/g, '');
+    const num2 = String(c2.id).replace(/\D/g, '');
+    if (num1 && num2 && num1 === num2) return true;
+  }
+
+  const lead1 = String(c1.leadId || '').replace(/\D/g, '') || String(c1.leadId || '').trim();
+  const lead2 = String(c2.leadId || '').replace(/\D/g, '') || String(c2.leadId || '').trim();
+  const phone1 = String(c1.leadPhone || c1.phone || '').replace(/\D/g, '');
+  const phone2 = String(c2.leadPhone || c2.phone || '').replace(/\D/g, '');
+  const sameLead = (lead1 && lead2 && lead1 === lead2) || (phone1 && phone2 && phone1 === phone2);
+  if (!sameLead) return false;
+
+  const out1 = String(c1.outcome || '').toUpperCase().replace(/\s+/g, '_');
+  const out2 = String(c2.outcome || '').toUpperCase().replace(/\s+/g, '_');
+  const sameOutcome = out1 === out2 ||
+    (out1 === 'FOLLOW_UP' && out2 === 'CONNECTED') || (out1 === 'CONNECTED' && out2 === 'FOLLOW_UP') ||
+    (out1 === 'LINE_BUSY' && out2 === 'BUSY') || (out1 === 'BUSY' && out2 === 'LINE_BUSY');
+
+  const rem1 = (c1.remarks || '').trim().toLowerCase();
+  const rem2 = (c2.remarks || '').trim().toLowerCase();
+  const sameRemarks = Boolean(rem1 && rem2 && (rem1 === rem2 || rem1.includes(rem2) || rem2.includes(rem1)));
+
+  const dur1 = Number(c1.durationSeconds !== undefined ? c1.durationSeconds : c1.duration_seconds) || 0;
+  const dur2 = Number(c2.durationSeconds !== undefined ? c2.durationSeconds : c2.duration_seconds) || 0;
+  const sameDuration = dur1 === dur2;
+
+  if (c1.calledAt && c2.calledAt) {
+    const t1 = new Date(c1.calledAt).getTime();
+    const t2 = new Date(c2.calledAt).getTime();
+    if (!isNaN(t1) && !isNaN(t2)) {
+      const diff = Math.abs(t1 - t2);
+      if (diff <= 60000) return true;
+      const istOffsetMs = 5.5 * 3600 * 1000;
+      if (Math.abs(diff - istOffsetMs) <= 60000) return true;
+      if (sameRemarks && sameDuration && diff <= 86400000) return true;
+      if (sameOutcome && sameRemarks && diff <= 86400000) return true;
+    }
+  }
+
+  if (sameOutcome && sameRemarks) {
+    return true;
+  }
+
+  return false;
+}
+
+function reconcileCallActivities(dbRows) {
+  if (!Array.isArray(dbRows)) return dbCallActivitiesStore;
+
+  const seenIds = new Set();
+  const uniqueDbCalls = [];
+  for (const r of dbRows) {
+    const callId = `call_${r.id}`;
+    if (seenIds.has(callId)) continue;
+    seenIds.add(callId);
+    uniqueDbCalls.push({
+      id: callId,
+      leadId: String(r.lead_id || r.leadId || ''),
+      leadPhone: r.lead_phone || '',
+      leadName: `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Lead Customer',
+      telecallerId: String(r.telecaller_id || r.telecallerId || ''),
+      telecallerName: r.telecaller_name || 'Telecaller',
+      telecallerEmail: r.telecaller_email || '',
+      outcome: (r.outcome === 'QUALIFIED' || r.outcome === 'CONVERTED' || r.outcome === 'PAID') ? 'PAID' : r.outcome,
+      durationSeconds: r.duration_seconds !== undefined ? (Number(r.duration_seconds) || 0) : (Number(r.durationSeconds) || 0),
+      remarks: r.remarks || '',
+      nextAction: r.next_action || r.nextAction || '',
+      calledAt: r.called_at ? new Date(r.called_at).toISOString() : (r.calledAt ? new Date(r.calledAt).toISOString() : new Date().toISOString()),
+    });
+  }
+
+  const memoryOnlyCalls = dbCallActivitiesStore.filter((memCall) => {
+    return !uniqueDbCalls.some((dbC) => isSameCallActivity(memCall, dbC));
+  });
+
+  const merged = [...uniqueDbCalls, ...memoryOnlyCalls].sort(
+    (a, b) => new Date(b.calledAt).getTime() - new Date(a.calledAt).getTime()
+  );
+
+  const deduplicatedMerged = [];
+  for (const call of merged) {
+    if (!deduplicatedMerged.some((existing) => isSameCallActivity(existing, call))) {
+      deduplicatedMerged.push(call);
+    }
+  }
+
+  dbCallActivitiesStore.length = 0;
+  dbCallActivitiesStore.push(...deduplicatedMerged);
+
+  return dbCallActivitiesStore;
+}
+
 router.get('/leads', async (req, res) => {
   const currentRole = String(req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
   const currentUserId = req.user?.id ? String(req.user.id) : (req.headers['x-user-id'] ? String(req.headers['x-user-id']) : null);
@@ -82,29 +178,14 @@ router.get('/leads', async (req, res) => {
 
       try {
         const [callRows] = await dbPool.query(`
-          SELECT ca.*, l.phone as lead_phone, l.first_name, l.last_name
+          SELECT ca.*, l.phone as lead_phone, l.first_name, l.last_name, u.full_name as telecaller_name, u.email as telecaller_email
           FROM call_activities ca
           LEFT JOIN leads l ON ca.lead_id = l.id
+          LEFT JOIN users u ON ca.telecaller_id = u.id
           ORDER BY ca.called_at DESC
         `);
         if (Array.isArray(callRows)) {
-          callRows.forEach((r) => {
-            const exists = dbCallActivitiesStore.some((c) => String(c.id) === `call_${r.id}` || (String(c.leadId) === String(r.lead_id) && c.calledAt === (r.called_at ? new Date(r.called_at).toISOString() : '')));
-            if (!exists) {
-              dbCallActivitiesStore.unshift({
-                id: `call_${r.id}`,
-                leadId: String(r.lead_id),
-                leadPhone: r.lead_phone || '',
-                leadName: `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Lead Customer',
-                telecallerId: String(r.telecaller_id),
-                outcome: r.outcome,
-                durationSeconds: r.duration_seconds || 0,
-                remarks: r.remarks || '',
-                nextAction: r.next_action || '',
-                calledAt: r.called_at ? new Date(r.called_at).toISOString() : new Date().toISOString(),
-              });
-            }
-          });
+          reconcileCallActivities(callRows);
         }
       } catch (callErr) {
       }
@@ -126,7 +207,7 @@ router.get('/leads', async (req, res) => {
             email: row.email,
             phone: row.phone,
             source: row.source,
-            status: row.status,
+            status: (row.assigned_to && (!row.status || row.status === 'NEW' || row.status === 'CONNECTED')) ? 'ASSIGNED' : (row.status === 'QUALIFIED' || row.status === 'CONVERTED' ? 'PAID' : row.status),
             assignedTo: row.assigned_to,
             assigned_to: row.assigned_to,
             assigneeName: row.assignee_full_name || (row.assigned_to ? 'Telecaller' : 'Unassigned'),
@@ -170,10 +251,22 @@ router.get('/leads', async (req, res) => {
             if (leadCalls.length > 0) {
               const latestCall = leadCalls[0];
               const out = String(latestCall.outcome || '').toUpperCase().replace(/\s+/g, '_');
-              lead.status = out === 'BUSY' ? 'LINE_BUSY' : out;
+              if (out === 'BUSY' || out === 'LINE_BUSY') {
+                lead.status = 'LINE_BUSY';
+              } else if (out === 'QUALIFIED' || out === 'CONVERTED' || out === 'PAID') {
+                lead.status = 'PAID';
+              } else if (out === 'CONNECTED') {
+                lead.status = (latestCall.followUpDate || latestCall.nextAction) ? 'FOLLOW_UP' : 'ASSIGNED';
+              } else {
+                lead.status = out;
+              }
               if (latestCall.remarks && latestCall.remarks !== '—') {
                 lead.remarks = latestCall.remarks;
                 lead.notes = latestCall.remarks;
+              }
+            } else if (lead.assignedTo || lead.assigned_to) {
+              if (!lead.status || lead.status === 'NEW' || lead.status === 'CONNECTED') {
+                lead.status = 'ASSIGNED';
               }
             }
           });
@@ -222,7 +315,19 @@ router.get('/leads', async (req, res) => {
       if (leadCalls.length > 0) {
         const latestCall = leadCalls[0];
         const out = String(latestCall.outcome || '').toUpperCase().replace(/\s+/g, '_');
-        lead.status = out === 'BUSY' ? 'LINE_BUSY' : out;
+        if (out === 'BUSY' || out === 'LINE_BUSY') {
+          lead.status = 'LINE_BUSY';
+        } else if (out === 'QUALIFIED' || out === 'CONVERTED' || out === 'PAID') {
+          lead.status = 'PAID';
+        } else if (out === 'CONNECTED') {
+          lead.status = (latestCall.followUpDate || latestCall.nextAction) ? 'FOLLOW_UP' : 'ASSIGNED';
+        } else {
+          lead.status = out;
+        }
+      } else if (lead.assignedTo || lead.assigned_to) {
+        if (!lead.status || lead.status === 'NEW' || lead.status === 'CONNECTED') {
+          lead.status = 'ASSIGNED';
+        }
       }
       if (!lead.creatorName && (lead.creatorId || lead.uploaderId || lead.creatorEmail || lead.uploaderEmail)) {
         const uId = String(lead.creatorId || lead.uploaderId || '').toLowerCase();
@@ -860,26 +965,8 @@ router.get('/calls', async (req, res) => {
         LEFT JOIN users u ON ca.telecaller_id = u.id
         ORDER BY ca.called_at DESC
       `);
-      if (Array.isArray(rows) && rows.length > 0) {
-        const mapped = rows.map((r) => ({
-          id: `call_${r.id}`,
-          leadId: String(r.lead_id),
-          leadPhone: r.lead_phone || '',
-          leadName: `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Lead Customer',
-          telecallerId: String(r.telecaller_id),
-          telecallerName: r.telecaller_name || 'Telecaller',
-          telecallerEmail: r.telecaller_email || '',
-          outcome: r.outcome,
-          durationSeconds: r.duration_seconds || 0,
-          remarks: r.remarks || '',
-          nextAction: r.next_action || '',
-          calledAt: r.called_at ? new Date(r.called_at).toISOString() : new Date().toISOString(),
-        }));
-        mapped.forEach((m) => {
-          if (!dbCallActivitiesStore.some((c) => String(c.id) === String(m.id) || (String(c.leadId) === String(m.leadId) && c.calledAt === m.calledAt))) {
-            dbCallActivitiesStore.push(m);
-          }
-        });
+      if (Array.isArray(rows)) {
+        reconcileCallActivities(rows);
       }
     } catch (e) {
       console.log('[MySQL Error] Fetch call_activities failed:', e?.message || e);
@@ -909,18 +996,24 @@ router.post('/calls', async (req, res) => {
   const rawPhone = String(leadPhone || phone || '').replace(/\D/g, '');
   const rawName = String(leadName || `${firstName || ''} ${lastName || ''}` || '').trim().toLowerCase();
 
-  const outcomeUpper = String(outcome || 'CONNECTED').toUpperCase().replace(/\s+/g, '_');
+  const outcomeUpper = String(outcome || 'BUSY').toUpperCase().replace(/\s+/g, '_');
   let newStatus = outcomeUpper === 'BUSY' ? 'LINE_BUSY' : outcomeUpper;
+  if (newStatus === 'QUALIFIED' || newStatus === 'CONVERTED') newStatus = 'PAID';
 
   let lead = null;
   const numId = parseInt(rawLeadId, 10);
 
+  let mysqlLeadStatus = 'CONTACTED';
+  if (newStatus === 'PAID' || newStatus === 'QUALIFIED' || newStatus === 'CONVERTED') mysqlLeadStatus = 'QUALIFIED';
+  else if (newStatus === 'INTERESTED') mysqlLeadStatus = 'INTERESTED';
+  else if (newStatus === 'NOT_INTERESTED') mysqlLeadStatus = 'NOT_INTERESTED';
+
   if (dbPool) {
     try {
       if (!isNaN(numId)) {
-        await dbPool.query('UPDATE leads SET status = ?, updated_at = NOW() WHERE id = ?', [newStatus, numId]);
+        await dbPool.query('UPDATE leads SET status = ?, updated_at = NOW() WHERE id = ?', [mysqlLeadStatus, numId]);
       } else if (rawPhone) {
-        await dbPool.query('UPDATE leads SET status = ?, updated_at = NOW() WHERE phone LIKE ?', [newStatus, `%${rawPhone}%`]);
+        await dbPool.query('UPDATE leads SET status = ?, updated_at = NOW() WHERE phone LIKE ?', [mysqlLeadStatus, `%${rawPhone}%`]);
       }
 
       let fetchSql = `
@@ -1020,29 +1113,14 @@ router.post('/calls', async (req, res) => {
 
   const effectiveCallerId = telecallerId || req.headers['x-user-id'] || 'usr_admin_01';
   const effectiveCallerName = telecallerName || req.headers['x-user-name'] || 'System User';
-
-  const newCall = {
-    id: `call_${Math.random().toString(36).substring(2, 10)}`,
-    leadId: lead ? lead.id : rawLeadId,
-    leadPhone: lead ? lead.phone : (leadPhone || phone || ''),
-    leadName: lead ? `${lead.firstName} ${lead.lastName || ''}`.trim() : (req.body.leadName || 'Lead Customer'),
-    telecallerId: effectiveCallerId,
-    telecallerName: effectiveCallerName,
-    telecallerEmail: telecallerEmail || req.headers['x-user-email'] || '',
-    outcome: outcomeUpper,
-    durationSeconds: Number(durationSeconds) || 120,
-    remarks: remarks || 'Call logged.',
-    nextAction: nextAction || 'Follow up as required',
-    followUpDate: followUpDate || '',
-    followUpTime: followUpTime || '',
-    calledAt: new Date().toISOString(),
-  };
-
-  dbCallActivitiesStore.unshift(newCall);
+  const callTimestamp = new Date();
+  const isoCalledAt = callTimestamp.toISOString();
+  let assignedCallId = `call_${Math.random().toString(36).substring(2, 10)}`;
 
   if (dbPool) {
     try {
-      const numLeadId = parseInt(String(newCall.leadId).replace(/\D/g, ''), 10);
+      const targetLeadId = lead ? lead.id : rawLeadId;
+      const numLeadId = parseInt(String(targetLeadId).replace(/\D/g, ''), 10);
       const numCallerId = parseInt(String(effectiveCallerId).replace(/\D/g, ''), 10) || 1;
       let mysqlOutcome = outcomeUpper;
       if (mysqlOutcome === 'LINE_BUSY') mysqlOutcome = 'BUSY';
@@ -1053,17 +1131,47 @@ router.post('/calls', async (req, res) => {
         mysqlOutcome = 'CONNECTED';
       }
       if (!isNaN(numLeadId)) {
-        await dbPool.query(
+        const [insertRes] = await dbPool.query(
           `INSERT INTO call_activities (lead_id, telecaller_id, outcome, duration_seconds, remarks, next_action, called_at)
-           VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-          [numLeadId, numCallerId, mysqlOutcome, Number(durationSeconds) || 120, remarks || 'Call logged.', nextAction || '']
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [numLeadId, numCallerId, mysqlOutcome, Number(durationSeconds) || 120, remarks || 'Call logged.', nextAction || '', callTimestamp]
         );
-        await dbPool.query(`UPDATE leads SET status = ?, updated_at = NOW() WHERE id = ?`, [mysqlOutcome, numLeadId]).catch(() => {});
+        if (insertRes && insertRes.insertId) {
+          assignedCallId = `call_${insertRes.insertId}`;
+        }
+        let leadMysqlStatus = 'CONTACTED';
+        if (mysqlOutcome === 'QUALIFIED') leadMysqlStatus = 'QUALIFIED';
+        else if (mysqlOutcome === 'INTERESTED') leadMysqlStatus = 'INTERESTED';
+        else if (mysqlOutcome === 'NOT_INTERESTED') leadMysqlStatus = 'NOT_INTERESTED';
+        await dbPool.query(`UPDATE leads SET status = ?, updated_at = NOW() WHERE id = ?`, [leadMysqlStatus, numLeadId]).catch(() => {});
       }
     } catch (dbErr) {
       console.log('[MySQL Error] Insert call_activities failed:', dbErr?.message || dbErr);
     }
   }
+
+  const newCall = {
+    id: assignedCallId,
+    leadId: lead ? lead.id : rawLeadId,
+    leadPhone: lead ? lead.phone : (leadPhone || phone || ''),
+    leadName: lead ? `${lead.firstName} ${lead.lastName || ''}`.trim() : (req.body.leadName || 'Lead Customer'),
+    telecallerId: effectiveCallerId,
+    telecallerName: effectiveCallerName,
+    telecallerEmail: telecallerEmail || req.headers['x-user-email'] || '',
+    outcome: (outcomeUpper === 'QUALIFIED' || outcomeUpper === 'CONVERTED' || outcomeUpper === 'PAID') ? 'PAID' : outcomeUpper,
+    durationSeconds: Number(durationSeconds) || 120,
+    remarks: remarks || 'Call logged.',
+    nextAction: nextAction || 'Follow up as required',
+    followUpDate: followUpDate || '',
+    followUpTime: followUpTime || '',
+    calledAt: isoCalledAt,
+  };
+
+  const existingIdx = dbCallActivitiesStore.findIndex((c) => isSameCallActivity(c, newCall));
+  if (existingIdx !== -1) {
+    dbCallActivitiesStore.splice(existingIdx, 1);
+  }
+  dbCallActivitiesStore.unshift(newCall);
 
   emitRealtimeEvent('call:completed', newCall);
 
@@ -1762,6 +1870,8 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
 }
 
 router.handleBatchImport = handleBatchImport;
+router.reconcileCallActivities = reconcileCallActivities;
+router.isSameCallActivity = isSameCallActivity;
 
 router.post('/leads/batch-import', async (req, res) => {
   return handleBatchImport(req, res);

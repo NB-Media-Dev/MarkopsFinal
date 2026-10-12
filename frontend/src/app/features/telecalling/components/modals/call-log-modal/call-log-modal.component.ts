@@ -53,6 +53,7 @@ export class CallLogModalComponent {
     ) {
       this.toggleReminder(true);
     } else if (
+      this.callOutcome === 'PAID' ||
       this.callOutcome === 'QUALIFIED' ||
       this.callOutcome === 'NOT_INTERESTED' ||
       this.callOutcome === 'CONVERTED' ||
@@ -149,8 +150,9 @@ export class CallLogModalComponent {
         return 'e.g. Highly interested, syllabus & fee details shared on WhatsApp...';
       case 'NOT_INTERESTED':
         return 'e.g. Budget constraint / already enrolled elsewhere / not looking now...';
+      case 'PAID':
       case 'QUALIFIED':
-        return 'e.g. Verified eligibility, high intent lead, ready for onboarding...';
+        return 'e.g. Verified eligibility, high intent lead, payment received...';
       case 'CONNECTED':
       default:
         return 'e.g. Discussion completed, shared product details...';
@@ -172,8 +174,9 @@ export class CallLogModalComponent {
         return ['Very interested, brochure sent', 'Asked for fee structure & discount', 'Ready for demo session', 'Requested syllabus PDF'];
       case 'NOT_INTERESTED':
         return ['Budget constraint', 'Already joined another institute', 'Not looking right now', 'Location too far'];
+      case 'PAID':
       case 'QUALIFIED':
-        return ['High intent lead, ready to pay', 'All prerequisites verified', 'Scheduled enrollment meet', 'Direct conversion lead'];
+        return ['Paid / enrolled', 'High intent lead, payment received', 'Scheduled enrollment meet', 'Direct conversion lead'];
       case 'CONNECTED':
       default:
         return ['Detailed discussion held', 'Provided course overview', 'Customer requested follow-up'];

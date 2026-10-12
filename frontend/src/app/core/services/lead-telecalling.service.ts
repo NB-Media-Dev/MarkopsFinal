@@ -101,6 +101,52 @@ export interface LeadBatchImportResponse {
   leads: LeadItem[];
 }
 
+export function isClientDuplicateCall(c1: CallActivityItem, c2: CallActivityItem): boolean {
+  if (!c1 || !c2) return false;
+  if (c1.id && c2.id) {
+    if (String(c1.id) === String(c2.id)) return true;
+    const num1 = String(c1.id).replace(/\D/g, '');
+    const num2 = String(c2.id).replace(/\D/g, '');
+    if (num1 && num2 && num1 === num2) return true;
+  }
+  const lead1 = String(c1.leadId || '').replace(/\D/g, '') || String(c1.leadId || '').trim();
+  const lead2 = String(c2.leadId || '').replace(/\D/g, '') || String(c2.leadId || '').trim();
+  const phone1 = String(c1.leadPhone || c1.phone || '').replace(/\D/g, '');
+  const phone2 = String(c2.leadPhone || c2.phone || '').replace(/\D/g, '');
+  const sameLead = (lead1 && lead2 && lead1 === lead2) || (phone1 && phone2 && phone1 === phone2);
+  if (!sameLead) return false;
+
+  const out1 = String(c1.outcome || '').toUpperCase().replace(/\s+/g, '_');
+  const out2 = String(c2.outcome || '').toUpperCase().replace(/\s+/g, '_');
+  const sameOutcome = out1 === out2 ||
+    (out1 === 'FOLLOW_UP' && out2 === 'CONNECTED') || (out1 === 'CONNECTED' && out2 === 'FOLLOW_UP') ||
+    (out1 === 'LINE_BUSY' && out2 === 'BUSY') || (out1 === 'BUSY' && out2 === 'LINE_BUSY') ||
+    ((out1 === 'QUALIFIED' || out1 === 'PAID') && (out2 === 'QUALIFIED' || out2 === 'PAID'));
+
+  const rem1 = (c1.remarks || '').trim().toLowerCase();
+  const rem2 = (c2.remarks || '').trim().toLowerCase();
+  const sameRemarks = Boolean(rem1 && rem2 && (rem1 === rem2 || rem1.includes(rem2) || rem2.includes(rem1)));
+
+  const dur1 = Number(c1.durationSeconds) || 0;
+  const dur2 = Number(c2.durationSeconds) || 0;
+  const sameDuration = dur1 === dur2;
+
+  if (c1.calledAt && c2.calledAt) {
+    const t1 = new Date(c1.calledAt).getTime();
+    const t2 = new Date(c2.calledAt).getTime();
+    if (!isNaN(t1) && !isNaN(t2)) {
+      const diff = Math.abs(t1 - t2);
+      if (diff <= 60000) return true;
+      if (Math.abs(diff - 19800000) <= 60000) return true;
+      if (sameRemarks && sameDuration && diff <= 86400000) return true;
+      if (sameOutcome && sameRemarks && diff <= 86400000) return true;
+    }
+  }
+
+  if (sameOutcome && sameRemarks) return true;
+  return false;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -128,19 +174,22 @@ export class LeadTelecallingService {
 
         this.socket.on('lead:status_changed', (data: { leadId: string; status: string }) => {
           if (!data || !data.leadId) return;
+          const status = data.status === 'QUALIFIED' ? 'PAID' : data.status;
           this.leads.update((list) =>
-            list.map((l) => (String(l.id).trim() === String(data.leadId).trim() ? { ...l, status: data.status as any } : l))
+            list.map((l) => (String(l.id).trim() === String(data.leadId).trim() ? { ...l, status: status as any } : l))
           );
         });
 
         this.socket.on('lead:updated', (lead: LeadItem) => {
           if (!lead || !lead.id) return;
+          const status = lead.status === 'QUALIFIED' ? 'PAID' : lead.status;
           this.leads.update((list) =>
             list.map((l) => {
               if (String(l.id).trim() !== String(lead.id).trim()) return l;
               return {
                 ...l,
                 ...lead,
+                status: status as any,
                 campaignName: (lead.campaignName && lead.campaignName !== 'Digital Ad Campaign')
                   ? lead.campaignName
                   : (l.campaignName || lead.campaignName || ''),
@@ -166,9 +215,11 @@ export class LeadTelecallingService {
 
         this.socket.on('call:completed', (call: CallActivityItem) => {
           if (!call || !call.id) return;
+          const normalizedOutcome = (call.outcome === 'QUALIFIED' || call.outcome === 'PAID') ? 'PAID' : call.outcome;
+          const normalizedCall: CallActivityItem = { ...call, outcome: normalizedOutcome };
           this.calls.update((list) => {
-            if (list.some((c) => String(c.id) === String(call.id))) return list;
-            return [call, ...list];
+            if (list.some((c) => String(c.id) === String(normalizedCall.id) || isClientDuplicateCall(c, normalizedCall))) return list;
+            return [normalizedCall, ...list];
           });
         });
       } catch (e) {
@@ -182,7 +233,11 @@ export class LeadTelecallingService {
     return this.http.get<LeadItem[]>('/api/leads').pipe(
       tap({
         next: (data) => {
-          this.leads.set(data);
+          const normalized = (data || []).map((l) => ({
+            ...l,
+            status: l.status === 'QUALIFIED' ? 'PAID' : l.status,
+          }));
+          this.leads.set(normalized);
           this.loading.set(false);
         },
         error: (err) => {
@@ -249,8 +304,9 @@ export class LeadTelecallingService {
       tap({
         next: (res) => {
           const updated = res.lead || payload;
+          const status = updated.status === 'QUALIFIED' ? 'PAID' : updated.status;
           this.leads.update((list) =>
-            list.map((l) => (String(l.id).trim() === String(leadId).trim() ? { ...l, ...updated } : l))
+            list.map((l) => (String(l.id).trim() === String(leadId).trim() ? { ...l, ...updated, ...(status ? { status } : {}) } : l))
           );
           this.loading.set(false);
           this.loadSummary().subscribe();
@@ -283,7 +339,17 @@ export class LeadTelecallingService {
   loadCalls() {
     return this.http.get<CallActivityItem[]>('/api/calls').pipe(
       tap({
-        next: (data) => this.calls.set(data),
+        next: (data) => {
+          const unique: CallActivityItem[] = [];
+          for (const rawItem of (data || [])) {
+            const outcome = (rawItem.outcome === 'QUALIFIED' || rawItem.outcome === 'PAID') ? 'PAID' : rawItem.outcome;
+            const item: CallActivityItem = { ...rawItem, outcome };
+            if (!unique.some((existing) => isClientDuplicateCall(existing, item))) {
+              unique.push(item);
+            }
+          }
+          this.calls.set(unique);
+        },
       })
     );
   }
@@ -292,9 +358,13 @@ export class LeadTelecallingService {
     return this.http.post<{ call: CallActivityItem; lead: LeadItem }>('/api/calls', payload).pipe(
       tap({
         next: (res) => {
-          this.calls.update((c) => [res.call, ...c]);
-          const targetOutcome = String(payload.outcome || 'CONNECTED').toUpperCase().replace(/\s+/g, '_');
-          const finalStatus = targetOutcome === 'BUSY' ? 'LINE_BUSY' : targetOutcome;
+          const rawCall = res.call || ({} as any);
+          const callOutcome = (rawCall.outcome === 'QUALIFIED' || rawCall.outcome === 'PAID' || payload.outcome === 'QUALIFIED' || payload.outcome === 'PAID') ? 'PAID' : rawCall.outcome;
+          const normalizedCall: CallActivityItem = { ...rawCall, outcome: callOutcome };
+          this.calls.update((c) => [normalizedCall, ...c.filter((item) => !isClientDuplicateCall(item, normalizedCall))]);
+          const targetOutcome = String(payload.outcome || 'BUSY').toUpperCase().replace(/\s+/g, '_');
+          let finalStatus = targetOutcome === 'BUSY' ? 'LINE_BUSY' : targetOutcome;
+          if (finalStatus === 'QUALIFIED') finalStatus = 'PAID';
           const targetPhone = String(payload.leadPhone || payload.phone || '').replace(/\D/g, '');
 
           this.leads.update((l) =>

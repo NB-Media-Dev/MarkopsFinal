@@ -167,25 +167,14 @@
                 class="status-pill"
                 [ngClass]="getStatusBadgeClassFn(getLeadCurrentStatusFn(lead))"
               >
-                @if (getLeadCurrentStatusFn(lead) === 'QUALIFIED') {
+                @if (getLeadCurrentStatusFn(lead) === 'QUALIFIED' || getLeadCurrentStatusFn(lead) === 'PAID') {
                   <span class="material-symbols-outlined success-check-icon">verified</span>
                 }
-                @if (getLeadCurrentStatusFn(lead) !== 'QUALIFIED') {
+                @if (getLeadCurrentStatusFn(lead) !== 'QUALIFIED' && getLeadCurrentStatusFn(lead) !== 'PAID') {
                   <span class="pill-glow-dot">●</span>
                 }
-                <span class="pill-label">{{ getLeadCurrentStatusFn(lead).replace('_', ' ') }}</span>
+                <span class="pill-label">{{ formatStatus(getLeadCurrentStatusFn(lead)) }}</span>
               </span>
-
-              @if (hasScheduledCallbackFn(lead) && getFollowUpTimeLabelFn(lead); as fTime) {
-                <div class="scheduled-callback-chip">
-                  <span
-                    class="material-symbols-outlined fs-12 chip-alarm-icon"
-                    [class.icon-ringing-shake]="isFollowUpDueFn(lead)"
-                    >alarm</span
-                  >
-                  <span class="chip-time-txt">{{ fTime }}</span>
-                </div>
-              }
             </td>
 
             <td class="col-creator">

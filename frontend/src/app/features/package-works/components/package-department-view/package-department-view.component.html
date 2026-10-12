@@ -1,6 +1,6 @@
 <div class="works-content-wrapper dept-active-content">
 
-  @if (activeDepartmentTabs.length > 1) {
+  @if (activeDepartmentTabs.length > 1 && currentDept === 'TELECALLING') {
     <nav class="dept-nav-tabs-bar" aria-label="Department operations">
       @for (tab of activeDepartmentTabs; track tab.id) {
         <button
