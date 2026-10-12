@@ -419,23 +419,7 @@
       @if (activeTab() === 'VERSIONS') {
         <div class="tab-pane versions-pane">
 
-          @if (canSubmitWork(t)) {
-            <div class="upload-version-cta-card">
-              <div class="cta-left">
-                <div class="cta-icon-box">
-                  <span class="material-symbols-outlined">add_photo_alternate</span>
-                </div>
-                <div class="cta-text">
-                  <h3>Submit New Creative Version</h3>
-                  <p>Upload revised images, videos, or PDF assets with changelog notes.</p>
-                </div>
-              </div>
-              <button type="button" class="btn-cta-upload" (click)="openUploadModal()">
-                <span class="material-symbols-outlined">cloud_upload</span>
-                <span>Upload Version v{{ (t.versions?.length || 0) + 1 }}.0</span>
-              </button>
-            </div>
-          }
+     
 
           @if (t.versions && t.versions.length > 0) {
             <div class="versions-feed">
