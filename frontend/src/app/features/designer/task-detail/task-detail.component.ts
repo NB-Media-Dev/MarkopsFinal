@@ -154,13 +154,21 @@ export class TaskDetailComponent implements OnInit {
   }
 
   getCleanDescription(t: Task | null): string {
-    if (!t?.description) return 'No description provided.';
-    return t.description.replace(/^Requirement brief for.*?:/i, '').trim() || t.description;
+    if (!t?.description) return '';
+    return t.description.replace(/^Requirement brief for.*?:/i, '').trim();
   }
 
   hasCustomDescription(t: Task | null): boolean {
     if (!t?.description) return false;
-    const clean = t.description.replace(/^Requirement brief for.*?:/i, '').trim();
+    const clean = this.getCleanDescription(t).trim();
+    if (!clean) return false;
+    const title = (t.title || '').trim().toLowerCase();
+    const cleanLower = clean.toLowerCase();
+    if (cleanLower === title) return false;
+    if (cleanLower === 'no description provided.') return false;
+    if (cleanLower === `requirement brief for ${title}`) return false;
+    if (/^task brief details for .*? package\.?$/i.test(clean)) return false;
+    if (/^requirement brief for .*?$/i.test(clean)) return false;
     return clean.length > 0;
   }
 

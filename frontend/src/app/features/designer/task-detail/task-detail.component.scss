@@ -1,8 +1,8 @@
 .task-detail-page {
   display: flex;
   flex-direction: column;
-  gap: 1.75rem;
-  padding: 1.5rem 2.25rem 3.5rem 2.25rem;
+  gap: 0.85rem;
+  padding: 1rem 1.5rem 2rem 1.5rem;
   max-width: 1360px;
   margin: 0 auto;
   width: 100%;
@@ -11,18 +11,24 @@
   font-family: inherit;
 
   @media (max-width: 768px) {
-    padding: 1rem;
-    gap: 1.25rem;
+    padding: 0.75rem;
+    gap: 0.75rem;
   }
+}
+
+.task-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
 }
 
 .top-nav-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.25rem;
+  gap: 1rem;
   flex-wrap: wrap;
-  padding-bottom: 0.85rem;
+  padding-bottom: 0.6rem;
   border-bottom: 1px solid #E2E8F0;
 
   .nav-left {
@@ -309,27 +315,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.75rem;
-  padding: 1.35rem 1.75rem;
+  gap: 1.25rem;
+  padding: 0.85rem 1.35rem;
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
-  border-radius: 16px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
   flex-wrap: wrap;
 
   .hero-left {
     display: flex;
     align-items: center;
-    gap: 1.15rem;
+    gap: 0.9rem;
 
     .hero-squircle-badge {
-      width: 52px;
-      height: 52px;
-      border-radius: 14px;
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.4rem;
+      font-size: 1.25rem;
       font-weight: 800;
       color: #FFFFFF;
       background: linear-gradient(135deg, #6366F1, #4F46E5);
@@ -346,21 +352,21 @@
     .hero-titles {
       display: flex;
       flex-direction: column;
-      gap: 0.45rem;
+      gap: 0.25rem;
 
       .hero-chips-line {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.4rem;
         flex-wrap: wrap;
 
         .status-badge {
           display: inline-flex;
           align-items: center;
           gap: 0.35rem;
-          padding: 0.22rem 0.7rem;
+          padding: 0.15rem 0.55rem;
           border-radius: 999px;
-          font-size: 0.725rem;
+          font-size: 0.7rem;
           font-weight: 700;
           letter-spacing: 0.04em;
 
@@ -373,9 +379,9 @@
         }
 
         .priority-pill {
-          padding: 0.22rem 0.65rem;
+          padding: 0.15rem 0.55rem;
           border-radius: 999px;
-          font-size: 0.725rem;
+          font-size: 0.7rem;
           font-weight: 700;
         }
 
@@ -386,9 +392,9 @@
           background: #F8FAFC;
           color: #334155;
           border: 1px solid #E2E8F0;
-          padding: 0.22rem 0.65rem;
+          padding: 0.15rem 0.55rem;
           border-radius: 999px;
-          font-size: 0.725rem;
+          font-size: 0.7rem;
           font-weight: 600;
 
           .chip-icon {
@@ -400,18 +406,18 @@
         .task-hash-id {
           font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
           color: #94A3B8;
-          font-size: 0.775rem;
+          font-size: 0.75rem;
           font-weight: 600;
         }
       }
 
       .hero-title {
         margin: 0;
-        font-size: 1.5rem;
+        font-size: 1.35rem;
         font-weight: 800;
         color: #0F172A;
         letter-spacing: -0.02em;
-        line-height: 1.25;
+        line-height: 1.2;
       }
     }
   }
@@ -419,14 +425,14 @@
   .hero-right {
     display: flex;
     align-items: center;
-    gap: 0.85rem;
+    gap: 0.65rem;
     flex-wrap: wrap;
 
     .hero-metric-card, .hero-assignee-card, .hero-date-card {
-      padding: 0.65rem 1.15rem;
+      padding: 0.45rem 0.85rem;
       background: #F8FAFC;
       border: 1px solid #E2E8F0;
-      border-radius: 12px;
+      border-radius: 10px;
       transition: all 0.2s ease;
 
       &:hover {
@@ -437,19 +443,19 @@
     }
 
     .hero-metric-card {
-      min-width: 145px;
+      min-width: 125px;
       display: flex;
       flex-direction: column;
-      gap: 0.4rem;
+      gap: 0.25rem;
 
       .metric-top {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 1.25rem;
+        gap: 1rem;
 
         .metric-label {
-          font-size: 0.7rem;
+          font-size: 0.65rem;
           font-weight: 700;
           color: #64748B;
           text-transform: uppercase;
@@ -457,14 +463,14 @@
         }
 
         .metric-val {
-          font-size: 0.95rem;
+          font-size: 0.875rem;
           font-weight: 800;
           color: #0F172A;
         }
       }
 
       .metric-progress-bg {
-        height: 6px;
+        height: 5px;
         background: #E2E8F0;
         border-radius: 999px;
         overflow: hidden;
@@ -481,12 +487,12 @@
     .hero-assignee-card, .hero-date-card {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.6rem;
 
       .assignee-avatar, .date-icon-box {
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -495,7 +501,7 @@
         flex-shrink: 0;
 
         span {
-          font-size: 1.2rem;
+          font-size: 1.05rem;
         }
       }
 
@@ -507,10 +513,10 @@
       .assignee-meta, .date-meta {
         display: flex;
         flex-direction: column;
-        gap: 0.15rem;
+        gap: 0.1rem;
 
         .assignee-label, .date-label {
-          font-size: 0.65rem;
+          font-size: 0.6rem;
           font-weight: 700;
           color: #64748B;
           text-transform: uppercase;
@@ -518,7 +524,7 @@
         }
 
         .assignee-name, .date-val {
-          font-size: 0.875rem;
+          font-size: 0.8125rem;
           font-weight: 700;
           color: #0F172A;
         }
@@ -530,22 +536,22 @@
 .workflow-stepper-card {
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
-  border-radius: 16px;
-  padding: 1.25rem 2rem;
+  border-radius: 12px;
+  padding: 0.75rem 1.25rem;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03);
 
   .stepper-title-row {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
-    font-size: 0.725rem;
+    gap: 0.35rem;
+    font-size: 0.6875rem;
     font-weight: 700;
     color: #64748B;
     letter-spacing: 0.06em;
-    margin-bottom: 1.15rem;
+    margin-bottom: 0.65rem;
 
     .icon-sub {
-      font-size: 1rem;
+      font-size: 0.9rem;
       color: #4F46E5;
     }
   }
@@ -554,25 +560,25 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1.5rem;
+    gap: 1rem;
     position: relative;
 
     @media (max-width: 768px) {
       flex-direction: column;
       align-items: flex-start;
-      gap: 1.25rem;
+      gap: 1rem;
     }
 
     .stepper-node {
       display: flex;
       align-items: center;
-      gap: 0.85rem;
+      gap: 0.65rem;
       flex: 1;
       position: relative;
 
       .node-circle {
-        width: 38px;
-        height: 38px;
+        width: 32px;
+        height: 32px;
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -585,23 +591,23 @@
         z-index: 1;
 
         span {
-          font-size: 1.1rem;
+          font-size: 0.95rem;
         }
       }
 
       .node-text {
         display: flex;
         flex-direction: column;
-        gap: 0.2rem;
+        gap: 0.1rem;
 
         .node-title {
-          font-size: 0.85rem;
+          font-size: 0.8rem;
           font-weight: 700;
           color: #475569;
         }
 
         .node-sub {
-          font-size: 0.725rem;
+          font-size: 0.675rem;
           color: #94A3B8;
           font-weight: 500;
         }
@@ -609,7 +615,7 @@
 
       .node-line {
         position: absolute;
-        top: 19px;
+        top: 16px;
         left: calc(100% - 0.75rem);
         right: 0.75rem;
         height: 2px;
@@ -742,21 +748,21 @@
 .tab-nav-container {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   border-bottom: 2px solid #E2E8F0;
   padding-bottom: 0;
-  margin-top: 0.5rem;
-  margin-bottom: 1.5rem;
+  margin-top: 0.15rem;
+  margin-bottom: 0.65rem;
 
   .tab-btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.35rem;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
     background: transparent;
     border: none;
     border-bottom: 3px solid transparent;
-    font-size: 0.925rem;
+    font-size: 0.85rem;
     font-weight: 600;
     color: #64748B;
     cursor: pointer;
@@ -764,15 +770,15 @@
     margin-bottom: -2px;
 
     span.material-symbols-outlined {
-      font-size: 1.2rem;
+      font-size: 1.05rem;
     }
 
     .tab-badge {
       background: #F1F5F9;
       color: #475569;
-      padding: 0.15rem 0.55rem;
+      padding: 0.12rem 0.5rem;
       border-radius: 999px;
-      font-size: 0.75rem;
+      font-size: 0.725rem;
       font-weight: 700;
     }
 
@@ -795,13 +801,13 @@
 .tab-pane {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0.85rem;
 }
 
 .pane-grid {
   display: grid;
   grid-template-columns: 1fr 310px;
-  gap: 1.5rem;
+  gap: 1rem;
   align-items: start;
 
   @media (max-width: 1024px) {
@@ -812,46 +818,78 @@
 .pane-col-main, .pane-col-side {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0.85rem;
 }
 
 .content-card {
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
-  border-radius: 16px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03);
   overflow: hidden;
 
   .card-header {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    padding: 1rem 1.5rem;
+    gap: 0.5rem;
+    padding: 0.65rem 1.15rem;
     background: #F8FAFC;
     border-bottom: 1px solid #E2E8F0;
 
     .card-header-icon {
-      font-size: 1.25rem;
+      font-size: 1.1rem;
       color: #4F46E5;
     }
 
     .card-title {
       margin: 0;
-      font-size: 0.95rem;
+      font-size: 0.875rem;
       font-weight: 700;
       color: #0F172A;
     }
   }
 
   .card-body {
-    padding: 1.5rem;
+    padding: 0.95rem 1.15rem;
+  }
+}
+
+.brief-notes-box {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 10px;
+  padding: 0.65rem 0.95rem;
+  margin-bottom: 0.85rem;
+
+  .brief-notes-header {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.35rem;
+    color: #4F46E5;
+    font-size: 0.725rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+
+    span.material-symbols-outlined {
+      font-size: 0.95rem;
+    }
+  }
+
+  .description-text {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: #334155;
+    white-space: pre-wrap;
   }
 }
 
 .description-text {
   margin: 0;
-  font-size: 0.9rem;
-  line-height: 1.6;
+  font-size: 0.875rem;
+  line-height: 1.55;
   color: #334155;
   white-space: pre-wrap;
 }
@@ -873,22 +911,22 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem 1.15rem;
+  gap: 0.85rem;
+  padding: 0.65rem 0.95rem;
   background: #F8FAFC;
   border: 1px solid #E2E8F0;
-  border-radius: 12px;
+  border-radius: 10px;
   flex-wrap: wrap;
 
   .req-file-left {
     display: flex;
     align-items: center;
-    gap: 0.85rem;
+    gap: 0.75rem;
 
     .req-icon-badge {
-      width: 40px;
-      height: 40px;
-      border-radius: 9px;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
       background: #EEF2FF;
       color: #4F46E5;
       display: flex;
@@ -901,24 +939,24 @@
       }
 
       span {
-        font-size: 1.35rem;
+        font-size: 1.2rem;
       }
     }
 
     .req-file-meta {
       display: flex;
       flex-direction: column;
-      gap: 0.15rem;
+      gap: 0.1rem;
 
       .req-filename {
         margin: 0;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         font-weight: 700;
         color: #0F172A;
       }
 
       .req-filesub {
-        font-size: 0.725rem;
+        font-size: 0.7rem;
         color: #64748B;
       }
     }
@@ -927,15 +965,15 @@
   .req-file-actions {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.45rem;
 
     .btn-req-action {
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
-      padding: 0.4rem 0.8rem;
-      border-radius: 7px;
-      font-size: 0.8rem;
+      gap: 0.3rem;
+      padding: 0.35rem 0.7rem;
+      border-radius: 6px;
+      font-size: 0.775rem;
       font-weight: 600;
       cursor: pointer;
       border: 1px solid #CBD5E1;
@@ -944,7 +982,7 @@
       transition: all 0.2s ease;
 
       span {
-        font-size: 1rem;
+        font-size: 0.95rem;
       }
 
       &:hover {
@@ -1012,26 +1050,26 @@
 .meta-card-body {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.65rem;
 }
 
 .meta-divider {
   height: 1px;
   background: #E2E8F0;
-  margin: 0.35rem 0;
+  margin: 0.2rem 0;
 }
 
 .meta-list {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.4rem;
 
   .meta-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.85rem;
-    padding: 0.15rem 0;
+    font-size: 0.8rem;
+    padding: 0.1rem 0;
 
     .meta-key {
       color: #64748B;
@@ -1048,22 +1086,22 @@
 .team-list {
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
+  gap: 0.65rem;
 }
 
 .person-box {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-  padding: 0.75rem 1rem;
+  gap: 0.65rem;
+  padding: 0.55rem 0.8rem;
   background: #F8FAFC;
   border: 1px solid #E2E8F0;
-  border-radius: 12px;
+  border-radius: 10px;
 
   .person-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 9px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1071,7 +1109,7 @@
     flex-shrink: 0;
 
     span {
-      font-size: 1.15rem;
+      font-size: 1rem;
     }
 
     &.avatar-creator {
@@ -1179,39 +1217,39 @@
 .versions-feed {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 0.85rem;
 
   .version-entry-card {
     background: #FFFFFF;
     border: 1px solid #E2E8F0;
-    border-radius: 16px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03);
     overflow: hidden;
 
     .ver-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 1rem 1.5rem;
+      padding: 0.65rem 1.15rem;
       background: #F8FAFC;
       border-bottom: 1px solid #E2E8F0;
 
       .ver-header-left {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: 0.65rem;
 
         .ver-chip {
           background: #312E81;
           color: #EEF2FF;
-          padding: 0.25rem 0.65rem;
+          padding: 0.15rem 0.55rem;
           border-radius: 6px;
           font-weight: 800;
-          font-size: 0.8125rem;
+          font-size: 0.75rem;
         }
 
         .ver-date {
-          font-size: 0.8125rem;
+          font-size: 0.775rem;
           color: #64748B;
         }
       }
@@ -1221,12 +1259,12 @@
           display: inline-flex;
           align-items: center;
           gap: 0.35rem;
-          font-size: 0.8125rem;
+          font-size: 0.775rem;
           font-weight: 600;
           color: #334155;
 
           .icon-author {
-            font-size: 1rem;
+            font-size: 0.95rem;
             color: #4F46E5;
           }
         }
@@ -1234,10 +1272,10 @@
     }
 
     .ver-body {
-      padding: 1.5rem;
+      padding: 0.95rem 1.15rem;
       display: grid;
-      grid-template-columns: 280px 1fr;
-      gap: 1.5rem;
+      grid-template-columns: 240px 1fr;
+      gap: 1.15rem;
 
       @media (max-width: 768px) {
         grid-template-columns: 1fr;
@@ -1454,38 +1492,38 @@
 .git-timeline-card {
   background: #FFFFFF;
   border: 1px solid #E2E8F0;
-  border-radius: 16px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03);
   overflow: hidden;
 
   .timeline-header-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1.35rem 2rem;
+    padding: 0.85rem 1.35rem;
     background: #FFFFFF;
     border-bottom: 1px solid #F1F5F9;
 
     .th-left {
       display: flex;
       align-items: center;
-      gap: 0.85rem;
+      gap: 0.65rem;
 
       .th-icon {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
         color: #4F46E5;
       }
 
       .th-title {
         margin: 0;
-        font-size: 1.1rem;
+        font-size: 0.95rem;
         font-weight: 700;
         color: #0F172A;
       }
 
       .th-sub {
-        margin: 0.15rem 0 0 0;
-        font-size: 0.825rem;
+        margin: 0.1rem 0 0 0;
+        font-size: 0.75rem;
         color: #64748B;
       }
     }
@@ -1493,27 +1531,27 @@
     .timeline-count-badge {
       background: #EEF2FF;
       color: #4F46E5;
-      padding: 0.35rem 0.85rem;
+      padding: 0.2rem 0.65rem;
       border-radius: 999px;
-      font-size: 0.775rem;
+      font-size: 0.725rem;
       font-weight: 700;
       border: 1px solid #E0E7FF;
     }
   }
 
   .git-timeline-stream {
-    padding: 2.25rem 2.5rem;
+    padding: 1.25rem 1.75rem;
     display: flex;
     flex-direction: column;
-    gap: 1.75rem;
+    gap: 1.15rem;
     position: relative;
 
     &::before {
       content: '';
       position: absolute;
-      top: 2.5rem;
-      bottom: 2.5rem;
-      left: calc(2.5rem + 17px);
+      top: 1.5rem;
+      bottom: 1.5rem;
+      left: calc(1.75rem + 17px);
       width: 2px;
       background: #E2E8F0;
       z-index: 0;

@@ -7,6 +7,10 @@
   &.embedded-view {
     gap: 1rem;
     padding-bottom: 0.5rem;
+
+    .page-header {
+      justify-content: flex-start;
+    }
   }
 }
 
@@ -205,6 +209,16 @@
     display: flex;
     align-items: center;
   }
+}
+
+.target-error-message {
+  padding: 0.75rem 1rem;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.8125rem;
+  line-height: 1.45;
 }
 
 .kpi-grid {

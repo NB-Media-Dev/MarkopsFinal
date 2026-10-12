@@ -272,27 +272,22 @@
           <div class="pane-grid">
 
             <div class="pane-col-main">
-
-              @if (hasCustomDescription(t)) {
-                <div class="content-card description-card">
-                  <div class="card-header">
-                    <span class="material-symbols-outlined card-header-icon">subject</span>
-                    <h3 class="card-title">Task Description & Creative Brief</h3>
-                  </div>
-                  <div class="card-body">
-                    <p class="description-text">
-                      {{ getCleanDescription(t) }}
-                    </p>
-                  </div>
-                </div>
-              }
-
               <div class="content-card requirement-card">
                 <div class="card-header">
                   <span class="material-symbols-outlined card-header-icon">attachment</span>
                   <h3 class="card-title">Requirement Document & Reference Assets</h3>
                 </div>
                 <div class="card-body">
+                  @if (hasCustomDescription(t)) {
+                    <div class="brief-notes-box">
+                      <div class="brief-notes-header">
+                        <span class="material-symbols-outlined">subject</span>
+                        <span class="brief-notes-label">Creative Brief & Instructions</span>
+                      </div>
+                      <p class="description-text">{{ getCleanDescription(t) }}</p>
+                    </div>
+                  }
+
                   @if (t.attachmentUrl || t.attachmentName || t.content) {
                     <div class="req-file-box">
                       <div class="req-file-left">
@@ -367,10 +362,10 @@
                       </div>
                     </div>
                   }
-                  @if (!t.attachmentUrl && !t.attachmentName && !t.content) {
+                  @if (!t.attachmentUrl && !t.attachmentName && !t.content && !hasCustomDescription(t)) {
                     <div class="empty-desc-box">
                       <span class="material-symbols-outlined">folder_off</span>
-                      <span>No requirement documents attached to this task.</span>
+                      <span>No requirement documents or brief attached to this task.</span>
                     </div>
                   }
                 </div>

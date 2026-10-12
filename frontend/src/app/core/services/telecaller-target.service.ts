@@ -1,6 +1,5 @@
 import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { NotificationService, TELECALLING_PACKAGE_TARGET_ROUTE } from './notification.service';
 import { AuthService } from './auth.service';
 import { safeFetch } from '../utils/api-url.utils';
@@ -45,7 +44,6 @@ export interface TargetProgressStatus {
 export class TelecallerTargetService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
-  private readonly http = inject(HttpClient);
   private readonly notifService = inject(NotificationService);
   private readonly authService = inject(AuthService);
 
@@ -93,7 +91,6 @@ export class TelecallerTargetService {
         localStorage.removeItem('markops_telecaller_targets_store');
         localStorage.removeItem('markops_common_telecaller_target');
       } catch {}
-      this.loadTargets();
     }
   }
 
@@ -101,20 +98,18 @@ export class TelecallerTargetService {
     if (!this.isBrowser) return;
     try {
       const res = await safeFetch('/api/telecaller-targets');
-      if (res.ok) {
-        const data = await res.json();
-        if (data) {
-          if (data.common && typeof data.common.dailyCallsTarget === 'number') {
-            this._commonTarget.set(data.common);
-          }
-          if (Array.isArray(data.targets)) {
-            this._targets.set(data.targets);
-            return;
-          }
-        }
+      if (!res.ok) {
+        throw new Error(`Unable to load telecaller targets (${res.status}): ${await res.text()}`);
       }
+      const data = await res.json();
+      if (!data || !data.common || !Array.isArray(data.targets)) {
+        throw new Error('The telecaller targets response was invalid.');
+      }
+      this._commonTarget.set(data.common);
+      this._targets.set(data.targets);
     } catch (err) {
-      console.log('Error loading telecaller targets from backend:', err);
+      console.error('Error loading telecaller targets from backend:', err);
+      throw err;
     }
   }
 
@@ -128,7 +123,7 @@ export class TelecallerTargetService {
     }
 
     return {
-      id: `tgt_${telecallerId || Math.random().toString(36).substring(2, 9)}`,
+      id: `tgt_${telecallerId}`,
       telecallerId,
       telecallerName: 'Telecaller',
       telecallerEmail: 'telecaller@markops.io',
@@ -141,11 +136,11 @@ export class TelecallerTargetService {
   }
 
   
-  setCommonTarget(dailyCallsTarget: number, dailyInterestedTarget = 5): void {
+  async setCommonTarget(dailyCallsTarget: number, dailyInterestedTarget = 5): Promise<void> {
     const currentUser = this.authService.currentUser();
     const updatedBy = currentUser ? `${currentUser.fullName} (${currentUser.role})` : 'Marketing Manager';
     const callsTarget = Math.max(1, Number(dailyCallsTarget));
-    const interestedTarget = Math.max(1, Number(dailyInterestedTarget));
+    const interestedTarget = Math.max(0, Number(dailyInterestedTarget));
 
     const updatedCommon: CommonTargetQuota = {
       dailyCallsTarget: callsTarget,
@@ -155,33 +150,36 @@ export class TelecallerTargetService {
       updatedAt: new Date().toISOString(),
     };
 
-    this._commonTarget.set(updatedCommon);
-    this.syncTargetsWithCommon(callsTarget, interestedTarget, updatedBy);
-
     if (this.isBrowser) {
-      safeFetch('/api/telecaller-targets/common', {
+      const response = await safeFetch('/api/telecaller-targets/common', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedCommon),
-      }).catch((e: any) => console.log('Error syncing target to backend:', e));
+      });
+      if (!response.ok) {
+        throw new Error(`Unable to save common target (${response.status}): ${await response.text()}`);
+      }
     }
+
+    this._commonTarget.set(updatedCommon);
+    this.syncTargetsWithCommon(callsTarget, interestedTarget, updatedBy);
   }
 
   
-  setTarget(
+  async setTarget(
     telecallerId: string,
     dailyCallsTarget: number,
     dailyInterestedTarget = 5,
     telecallerName?: string,
     telecallerEmail?: string
-  ): void {
+  ): Promise<void> {
     const currentUser = this.authService.currentUser();
     const updatedBy = currentUser ? `${currentUser.fullName} (${currentUser.role})` : 'Marketing Manager';
     const callsTarget = Math.max(1, Number(dailyCallsTarget));
-    const interestedTarget = Math.max(1, Number(dailyInterestedTarget));
+    const interestedTarget = Math.max(0, Number(dailyInterestedTarget));
 
     const userTarget: TelecallerTarget = {
-      id: `tgt_${telecallerId}_${Date.now()}`,
+      id: `tgt_${telecallerId}`,
       telecallerId: String(telecallerId),
       telecallerName: telecallerName || 'Telecaller',
       telecallerEmail: telecallerEmail || '',
@@ -192,6 +190,17 @@ export class TelecallerTargetService {
       updatedAt: new Date().toISOString(),
     };
 
+    if (this.isBrowser) {
+      const response = await safeFetch(`/api/telecaller-targets/${encodeURIComponent(telecallerId)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userTarget),
+      });
+      if (!response.ok) {
+        throw new Error(`Unable to save target (${response.status}): ${await response.text()}`);
+      }
+    }
+
     this._targets.update((list) => {
       const idx = list.findIndex((t) => String(t.telecallerId) === String(telecallerId));
       if (idx !== -1) {
@@ -201,14 +210,6 @@ export class TelecallerTargetService {
       }
       return [...list, userTarget];
     });
-
-    if (this.isBrowser) {
-      safeFetch(`/api/telecaller-targets/${telecallerId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userTarget),
-      }).catch((e: any) => console.log('Error saving individual target to backend:', e));
-    }
   }
 
   private syncTargetsWithCommon(callsTarget: number, interestedTarget: number, updatedBy?: string): void {
@@ -233,20 +234,24 @@ export class TelecallerTargetService {
     callsList: any[],
     usersList: any[]
   ): Promise<{ evaluatedCount: number; alertedCount: number; deficitTelecallers: string[] }> {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const today = new Date();
     const telecallers = usersList.filter((u) => u.role === 'TELECALLER');
     const telecallerList = telecallers.length > 0 ? telecallers : [];
 
     const deficitTelecallers: string[] = [];
-    const common = this._commonTarget();
 
     const adminUser = usersList.find((u) => u.role === 'ADMINISTRATOR') || { id: 'usr_admin_01' };
     const mktgManager = usersList.find((u) => u.role === 'MARKETING_MANAGER') || { id: 'usr_mktg_01' };
 
     for (const tc of telecallerList) {
+      const target = this.getTargetForTelecaller(String(tc.id));
       const todayCalls = callsList.filter((c) => {
         const isCaller = c.telecallerId === tc.id || c.telecallerName === tc.fullName;
-        const isToday = c.calledAt && c.calledAt.startsWith(todayStr);
+        const calledAt = c.calledAt ? new Date(c.calledAt) : null;
+        const isToday = calledAt &&
+          calledAt.getFullYear() === today.getFullYear() &&
+          calledAt.getMonth() === today.getMonth() &&
+          calledAt.getDate() === today.getDate();
         return isCaller && isToday;
       });
 
@@ -258,13 +263,13 @@ export class TelecallerTargetService {
       );
 
       const callsCount = uniqueLeadIds.size;
-      const achievementPct = Math.round((callsCount / common.dailyCallsTarget) * 100);
+      const achievementPct = Math.round((callsCount / target.dailyCallsTarget) * 100);
 
-      if (callsCount < common.dailyCallsTarget) {
+      if (callsCount < target.dailyCallsTarget) {
         deficitTelecallers.push(tc.fullName);
 
         const alertTitle = `Target Deficit Warning: ${tc.fullName}`;
-        const alertMessage = `${tc.fullName} called ${callsCount} / ${common.dailyCallsTarget} unique leads today (${achievementPct}% target achievement). Standard common goal of ${common.dailyCallsTarget} leads/day missed!`;
+        const alertMessage = `${tc.fullName} called ${callsCount} / ${target.dailyCallsTarget} unique leads today (${achievementPct}% target achievement). Their daily call goal was missed.`;
 
         const targetsToNotify = Array.from(new Set([adminUser.id, mktgManager.id]));
 
@@ -280,7 +285,7 @@ export class TelecallerTargetService {
           await this.sendNotification(
             tc.id,
             'Target Achieved! Congratulations!',
-            `Outstanding work, ${tc.fullName}! You have successfully achieved your daily target today (${callsCount} / ${common.dailyCallsTarget} calls, ${achievementPct}% achieved).`,
+            `Outstanding work, ${tc.fullName}! You have successfully achieved your daily target today (${callsCount} / ${target.dailyCallsTarget} calls, ${achievementPct}% achieved).`,
             'SUCCESS'
           );
         } catch (err) {

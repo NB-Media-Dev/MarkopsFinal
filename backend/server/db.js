@@ -75,6 +75,40 @@ async function initDatabase() {
     activePool = pool;
     console.log('[MySQL DB] Successfully connected to MySQL pool.');
 
+    try {
+      await activePool.query(`
+        CREATE TABLE IF NOT EXISTS telecaller_targets (
+          telecaller_id VARCHAR(64) NOT NULL,
+          telecaller_name VARCHAR(100) NOT NULL,
+          telecaller_email VARCHAR(191) NOT NULL DEFAULT '',
+          daily_calls_target INT NOT NULL,
+          daily_interested_target INT NOT NULL,
+          daily_duration_target_seconds INT NOT NULL DEFAULT 3600,
+          updated_by VARCHAR(255) NOT NULL,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (telecaller_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      await activePool.query(`
+        CREATE TABLE IF NOT EXISTS telecaller_common_target (
+          id TINYINT NOT NULL,
+          daily_calls_target INT NOT NULL,
+          daily_interested_target INT NOT NULL,
+          daily_duration_target_seconds INT NOT NULL DEFAULT 3600,
+          updated_by VARCHAR(255) NOT NULL,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          PRIMARY KEY (id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+      await activePool.query(`
+        INSERT IGNORE INTO telecaller_common_target
+          (id, daily_calls_target, daily_interested_target, daily_duration_target_seconds, updated_by)
+        VALUES (1, 30, 5, 3600, 'Marketing Manager')
+      `);
+    } catch (error) {
+      console.error('[MySQL DB Error] Telecaller target table initialization failed:', error?.message || error);
+    }
+
     try { await activePool.query('ALTER TABLE notifications ADD COLUMN target_route VARCHAR(255) DEFAULT NULL'); } catch (e) {}
     try { await activePool.query('ALTER TABLE leads ADD COLUMN package_name VARCHAR(255) DEFAULT NULL'); } catch (e) {}
     try { await activePool.query('ALTER TABLE leads ADD COLUMN product_id VARCHAR(100) DEFAULT NULL'); } catch (e) {}
