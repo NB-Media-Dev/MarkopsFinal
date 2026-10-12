@@ -14,7 +14,7 @@ async function recordAuditLog(dbPool, params) {
     entityId: params.entityId,
     previousState: params.previousState ? JSON.stringify(params.previousState) : null,
     newState: params.newState ? JSON.stringify(params.newState) : null,
-    ipAddress: params.ipAddress || '127.0.0.1',
+    ipAddress: params.ipAddress || 'http://127.0.0.1:3303',
     userAgent: params.userAgent || 'MarkOps API',
     createdAt: now,
   };
@@ -34,7 +34,7 @@ async function recordAuditLog(dbPool, params) {
           String(params.entityId || ''),
           params.previousState ? JSON.stringify(params.previousState) : null,
           params.newState ? JSON.stringify(params.newState) : null,
-          params.ipAddress || '127.0.0.1',
+          params.ipAddress || 'http://127.0.0.1:3303',
           params.userAgent || 'MarkOps API',
         ]
       );
@@ -76,7 +76,7 @@ async function getAuditLogs(dbPool) {
             entityId: r.entityId,
             previousState: r.previousState,
             newState: r.newState,
-            ipAddress: r.ipAddress || '127.0.0.1',
+            ipAddress: r.ipAddress || 'http://127.0.0.1:3303',
             userAgent: r.userAgent || 'MarkOps API',
             createdAt: r.createdAt ? new Date(r.createdAt).toISOString() : new Date().toISOString(),
           });

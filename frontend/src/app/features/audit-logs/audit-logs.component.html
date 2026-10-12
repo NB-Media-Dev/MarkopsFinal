@@ -179,7 +179,7 @@
                   </div>
                 </td>
                 <td class="ip-device-cell">
-                  <span class="ip-tag">{{ log.ipAddress || '127.0.0.1' }}</span>
+                  <span class="ip-tag">{{ log.ipAddress || 'http://127.0.0.1:3303' }}</span>
                   @if (log.userAgent) {
                     <span class="user-agent-str">{{ log.userAgent | slice: 0 : 28 }}...</span>
                   }
