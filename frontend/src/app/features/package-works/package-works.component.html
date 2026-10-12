@@ -124,10 +124,45 @@
   </header>
 
   @if (!activeWorkspacePackage()) {
-    <div class="product-identity-header">
-      <img [src]="productVisual().logo" [alt]="productVisual().title + ' logo'" />
-      <h1>{{ productVisual().title }}</h1>
-    </div>
+    <section
+      class="product-hero-banner"
+      [style.background-image]="'url(' + activeHeroBanner() + ')'"
+    >
+      @if (canEditPackage()) {
+        <input
+          #heroBannerInput
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          aria-label="Choose product hero banner"
+          hidden
+          (change)="onHeroBannerSelected($event)"
+        />
+        <button
+          type="button"
+          class="hero-banner-edit-btn"
+          [disabled]="isSavingHeroBanner()"
+          (click)="heroBannerInput.click()"
+        >
+          <span class="material-symbols-outlined">
+            {{ isSavingHeroBanner() ? 'hourglass_top' : 'edit' }}
+          </span>
+          <span>{{ isSavingHeroBanner() ? 'Saving Banner...' : 'Edit Banner' }}</span>
+        </button>
+      }
+      <div class="product-hero-content">
+        <img
+          [src]="productVisual().logo"
+          [alt]="productVisual().title + ' logo'"
+          class="product-hero-logo"
+        />
+        <div class="product-hero-copy">
+          <h1>{{ productVisual().title }}</h1>
+        </div>
+      </div>
+    </section>
+    @if (heroBannerError()) {
+      <p class="hero-banner-error" role="alert">{{ heroBannerError() }}</p>
+    }
     <section class="catalog-toolbar" aria-label="Package catalog controls">
       <div class="catalog-toolbar-header">
 
@@ -177,59 +212,10 @@
   @if (activeWorkspacePackage(); as selectedPkg) {
 
     @if (!activeDepartment()) {
-      @if (selectedPkg.imageUrl) {
-        <section
-          class="product-hero-banner"
-          [style.background-image]="'url(' + formatAssetUrl(selectedPkg.imageUrl) + ')'"
-        >
-          @if (canEditPackage()) {
-            <button
-              type="button"
-              class="hero-banner-edit-btn"
-              (click)="openEditProductPackageModal(selectedPkg, $event)"
-            >
-              <span class="material-symbols-outlined">edit</span>
-              <span>Edit Package</span>
-            </button>
-          }
-          <div class="product-hero-content">
-            <img
-              [src]="productVisual().logo"
-              [alt]="productVisual().title + ' logo'"
-              class="product-hero-logo"
-            />
-            <div class="product-hero-copy">
-              <h1>{{ selectedPkg.name }}</h1>
-
-            </div>
-          </div>
-        </section>
-      } @else {
-        <section class="product-hero-banner hero-banner-blank">
-          @if (canEditPackage()) {
-            <button
-              type="button"
-              class="hero-banner-edit-btn blank-edit-btn"
-              (click)="openEditProductPackageModal(selectedPkg, $event)"
-            >
-              <span class="material-symbols-outlined">add_photo_alternate</span>
-              <span>Upload Banner</span>
-            </button>
-          }
-          <div class="blank-hero-content">
-            <img
-              [src]="productVisual().logo"
-              [alt]="productVisual().title + ' logo'"
-              class="product-hero-logo blank-hero-logo"
-            />
-            <div class="blank-hero-copy">
-              <h1>{{ selectedPkg.name }}</h1>
-
-            </div>
-          </div>
-        </section>
-      }
-
+      <div class="product-identity-header">
+        <img [src]="productVisual().logo" [alt]="productVisual().title + ' logo'" />
+        <h1>{{ selectedPkg.name }}</h1>
+      </div>
       <app-package-hub-overview
         [packageMetrics]="packageMetrics()"
         [operationDepartments]="operationDepartments()"
@@ -242,6 +228,10 @@
     }
 
     @if (activeDepartment(); as currentDept) {
+      <div class="product-identity-header">
+        <img [src]="productVisual().logo" [alt]="productVisual().title + ' logo'" />
+        <h1>{{ selectedPkg.name }}</h1>
+      </div>
       <app-package-department-view
         [currentDept]="currentDept"
         [activeDepartmentTabs]="activeDepartmentTabs()"
