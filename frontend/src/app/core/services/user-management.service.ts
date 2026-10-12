@@ -42,10 +42,13 @@ export class UserManagementService {
     try {
       const res = await safeFetch('/api/users');
       if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          this._users.set(data);
-          return;
+        const text = await res.text();
+        if (text && text.trim().startsWith('[') || text.trim().startsWith('{')) {
+          const data = JSON.parse(text);
+          if (Array.isArray(data) && data.length > 0) {
+            this._users.set(data);
+            return;
+          }
         }
       }
     } catch (err) {
@@ -82,8 +85,16 @@ export class UserManagementService {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
+
+        const text = await res.text();
+        let data: any = {};
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch {
+          data = {};
+        }
+
         if (res.ok) {
-          const data = await res.json();
           createdUser = {
             id: String(data.id || createdUser.id),
             email: data.email || createdUser.email,
@@ -95,8 +106,10 @@ export class UserManagementService {
             createdAt: data.createdAt || createdUser.createdAt,
           };
         } else {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || `Failed to create user (Status ${res.status})`);
+          const errMsg = data.error || (res.status === 404
+            ? 'Backend server API not found (404). Please ensure the backend server is running on port 4000.'
+            : `Failed to create user (Status ${res.status})`);
+          throw new Error(errMsg);
         }
       } catch (err) {
         console.error('Failed to sync newly created user to backend database:', err);

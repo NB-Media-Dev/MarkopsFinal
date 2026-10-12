@@ -1,12 +1,18 @@
 export function getBackendBaseUrl(): string {
   if (typeof window !== 'undefined' && window.location) {
+    let savedApiUrl: string | null = null;
+    try {
+      savedApiUrl = localStorage.getItem('markops_backend_url');
+    } catch {}
 
-    const injectedUrl = (window as any).__API_URL__ || (window as any).process?.env?.BACKEND_URL;
+    const injectedUrl = (window as any).__API_URL__ || (window as any).process?.env?.BACKEND_URL || savedApiUrl;
     if (injectedUrl) return injectedUrl.replace(/\/$/, '');
 
     const protocol = window.location.protocol || 'http:';
     const hostname = window.location.hostname || 'localhost';
-    if (window.location.port === '4200') {
+
+    // In local development, always route to Node.js backend on port 4000 regardless of frontend dev port
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
       return `${protocol}//${hostname}:4000`;
     }
 
@@ -27,10 +33,14 @@ export function getApiUrl(url: string): string {
   const cleanPath = url.startsWith('/') ? url : `/${url}`;
 
   if (typeof window !== 'undefined' && window.location) {
-    if (window.location.port === '4200') {
-      const baseUrl = getBackendBaseUrl();
+    const hostname = window.location.hostname || 'localhost';
+    const baseUrl = getBackendBaseUrl();
+
+    // In local development (localhost / 127.0.0.1) or if custom backend URL configured
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || (baseUrl && baseUrl !== window.location.origin)) {
       return `${baseUrl}${cleanPath}`;
     }
+
     return cleanPath;
   }
 
