@@ -637,112 +637,12 @@
   }
 </div>
 
-@if (isUploadModalOpen()) {
-  <div class="modal-backdrop" (click)="closeUploadModal()">
-    <div class="modal-window upload-modal-window" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <div class="header-icon-box">
-          <span class="material-symbols-outlined">cloud_upload</span>
-        </div>
-        <div class="header-titles">
-          <h3>Upload Creative Deliverable</h3>
-          <p>Submit artwork version for {{ task()?.title }}</p>
-        </div>
-        <button type="button" class="btn-close" (click)="closeUploadModal()">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-      <form [formGroup]="uploadForm" (ngSubmit)="onSubmitUpload()" class="modal-form">
-        <div class="form-body">
-
-          <input
-            type="file"
-            id="taskDetailCreativeFileInput"
-            style="display: none"
-            accept="image/*,video/*,.pdf"
-            (change)="onFileSelected($event)"
-          />
-
-          <div
-            class="file-dropzone"
-            (click)="triggerFileInput()"
-            [class.has-file]="!!selectedFileObject()"
-          >
-            <span class="material-symbols-outlined dropzone-icon">
-              {{ selectedFileObject() ? 'check_circle' : 'cloud_upload' }}
-            </span>
-            @if (!selectedFileObject()) {
-              <div class="dropzone-text">
-                <strong>Click to upload an image, video, or PDF</strong>
-                <span>Supports images, MP4, WebM, MOV, and PDF (Max 35 MB)</span>
-              </div>
-            }
-            @if (selectedFileObject(); as f) {
-              <div class="dropzone-selected-meta">
-                <strong>{{ f.name }}</strong>
-                <span>{{ (f.size / (1024 * 1024)).toFixed(2) }} MB • Click to change file</span>
-              </div>
-            }
-          </div>
-
-          @if (uploadError()) {
-            <p class="upload-error-message" role="alert">{{ uploadError() }}</p>
-          }
-
-          @if (selectedFileDataUrl()) {
-            <div class="modal-preview-box">
-              @if (isVideo(selectedFileObject()?.type || selectedFileObject()?.name)) {
-                <video
-                  [src]="selectedFileDataUrl()"
-                  controls
-                  preload="metadata"
-                  aria-label="Selected video preview"
-                ></video>
-              } @else if (isImage(selectedFileObject()?.name)) {
-                <img [src]="selectedFileDataUrl()" alt="Upload preview" />
-              } @else {
-                <div class="file-preview-placeholder">
-                  <span class="material-symbols-outlined">picture_as_pdf</span>
-                  <span>{{ selectedFileObject()?.name }}</span>
-                </div>
-              }
-            </div>
-          }
-
-          <div class="form-group">
-            <label for="tdChangelog" class="form-label">
-              <span>Changelog / Deliverable Notes</span>
-              <span class="badge-required">*</span>
-            </label>
-            <div class="quick-snippets-bar">
-              <span class="snippets-label">Quick Snippets:</span>
-              @for (s of quickChangelogSnippets; track s) {
-                <button type="button" class="btn-snippet" (click)="appendChangelog(s)">
-                  {{ s.replace('• ', '') }}
-                </button>
-              }
-            </div>
-            <textarea
-              id="tdChangelog"
-              class="form-textarea"
-              rows="4"
-              formControlName="changelog"
-              (keydown)="onChangelogKeyDown($event)"
-              placeholder="Type bullet notes and press Enter to automatically continue bullets..."
-            ></textarea>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn-cancel" (click)="closeUploadModal()">Cancel</button>
-          <button type="submit" class="btn-submit-upload" [disabled]="uploadForm.invalid">
-            <span class="material-symbols-outlined">publish</span>
-            <span>Submit for Review</span>
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-}
+<app-upload-design-modal
+  [isOpen]="isUploadModalOpen()"
+  [task]="task()"
+  (closeModal)="closeUploadModal()"
+  (submitUpload)="onHandleSubmitUpload($event)"
+></app-upload-design-modal>
 
 @if (isRedesignModalOpen()) {
   <div class="modal-backdrop" (click)="closeRedesignModal()">

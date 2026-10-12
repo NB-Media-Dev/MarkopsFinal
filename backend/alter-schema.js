@@ -17,9 +17,9 @@ async function runAlterTables() {
     } else {
       connection = await mysql.createConnection({
         host: process.env.DB_HOST || 'localhost',
-        port: Number(process.env.DB_PORT) || 3303,
+        port: Number(process.env.DB_PORT),
         user: process.env.DB_USER || 'root',
-        password: process.env.DB_PASSWORD || 'Ratheesh@17',
+        password: process.env.DB_PASSWORD ,
         database: process.env.DB_NAME || 'markops',
       });
     }

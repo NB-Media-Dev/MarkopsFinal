@@ -9,11 +9,12 @@ import { NotificationService } from '../../../core/services/notification.service
 import { UserManagementService } from '../../../core/services/user-management.service';
 import { Task, TaskStatus, TaskPriority, TaskVersion, computeTaskProgressPercent } from '../../../core/models/task.model';
 import { getApiUrl, getBackendBaseUrl } from '../../../core/utils/api-url.utils';
+import { UploadDesignModalComponent } from '../components/modals/upload-design-modal/upload-design-modal.component';
 
 @Component({
   selector: 'app-task-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, UploadDesignModalComponent],
   templateUrl: './task-detail.component.html',
   styleUrl: './task-detail.component.scss',
 })
@@ -986,6 +987,31 @@ export class TaskDetailComponent implements OnInit {
           textarea.selectionStart = textarea.selectionEnd = selectionStart + insert.length;
         }, 0);
       }
+    }
+  }
+
+  async onHandleSubmitUpload(event: {
+    fileName: string;
+    changelog: string;
+    fileSizeMb: number;
+    dataUrl: string;
+    fileContent: string;
+  }): Promise<void> {
+    const t = this.task();
+    if (!t) return;
+
+    const ok = await this.taskService.submitDesign(t.id, {
+      fileName: event.fileName,
+      changelog: event.changelog,
+      fileSize: event.fileSizeMb || 1.5,
+      filePath: event.dataUrl || '',
+      fileContent: event.fileContent || event.changelog,
+    });
+
+    if (ok) {
+      this.notify('Creative Uploaded', 'Creative asset submitted for review.', 'SUCCESS');
+      this.closeUploadModal();
+      await this.loadTaskData(t.id);
     }
   }
 
