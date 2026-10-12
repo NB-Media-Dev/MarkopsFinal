@@ -32,11 +32,15 @@ export class TargetsComponent implements OnInit {
   readonly editingTelecallerId = signal<string | null>(null);
   readonly editingTelecallerName = signal<string>('');
   readonly editingTelecallerEmail = signal<string>('');
+  readonly isSaving = signal<boolean>(false);
+  readonly saveError = signal<string | null>(null);
+  readonly loadError = signal<string | null>(null);
 
   targetInputCalls = 30;
   targetInputInterested = 5;
 
   readonly isEvaluating = signal<boolean>(false);
+  readonly evaluationError = signal<string | null>(null);
   readonly lastEvaluationSummary = signal<{ alertedCount: number; deficitTelecallers: string[] } | null>(null);
 
   readonly isManagerOrAdmin = computed(() => {
@@ -47,9 +51,9 @@ export class TargetsComponent implements OnInit {
 
   readonly telecallerProgressList = computed<TargetProgressStatus[]>(() => {
     const users = this.userService.users();
-    const telecallers = users.filter((u) => u.role === 'TELECALLER');
+    const telecallers = users.filter((u) => u.role === 'TELECALLER' && u.isActive);
     const allCalls = this.leadService.calls();
-    const todayStr = new Date().toISOString().split('T')[0];
+    const today = new Date();
 
     const telecallerList = telecallers.length > 0 ? telecallers : [
       ];
@@ -59,7 +63,11 @@ export class TargetsComponent implements OnInit {
 
       const todayCalls = allCalls.filter((c) => {
         const isCaller = c.telecallerId === tc.id || c.telecallerName === tc.fullName;
-        const isToday = c.calledAt && c.calledAt.startsWith(todayStr);
+        const calledAt = c.calledAt ? new Date(c.calledAt) : null;
+        const isToday = calledAt &&
+          calledAt.getFullYear() === today.getFullYear() &&
+          calledAt.getMonth() === today.getMonth() &&
+          calledAt.getDate() === today.getDate();
         return isCaller && isToday;
       });
 
@@ -79,7 +87,9 @@ export class TargetsComponent implements OnInit {
       const interestedCompletedToday = uniqueInterestedToday.size;
 
       const callsAchievementPct = Math.min(100, Math.round((callsCompletedToday / target.dailyCallsTarget) * 100));
-      const interestedAchievementPct = Math.min(100, Math.round((interestedCompletedToday / target.dailyInterestedTarget) * 100));
+      const interestedAchievementPct = target.dailyInterestedTarget === 0
+        ? 100
+        : Math.min(100, Math.round((interestedCompletedToday / target.dailyInterestedTarget) * 100));
 
       let status: 'ACHIEVED' | 'ON_TRACK' | 'BEHIND_TARGET' | 'CRITICAL_DEFICIT' = 'BEHIND_TARGET';
 
@@ -113,8 +123,12 @@ export class TargetsComponent implements OnInit {
   readonly myTargetProgress = computed(() => {
     const list = this.telecallerProgressList();
     const user = this.authService.currentUser();
-    if (!user) return list[0] || null;
-    return list.find((item) => item.telecallerId === user.id || item.telecallerEmail?.toLowerCase() === user.email?.toLowerCase()) || list[0] || null;
+    if (!user) return null;
+    return list.find(
+      (item) =>
+        String(item.telecallerId) === String(user.id) ||
+        item.telecallerEmail?.toLowerCase() === user.email?.toLowerCase(),
+    ) || null;
   });
 
   readonly filteredProgressList = computed(() => {
@@ -122,20 +136,14 @@ export class TargetsComponent implements OnInit {
     const user = this.authService.currentUser();
 
     if (!this.isManagerOrAdmin()) {
-      if (user) {
-        const uId = String(user.id || '').trim();
-        const uEmail = String(user.email || '').toLowerCase().trim();
-        const uName = String(user.fullName || '').toLowerCase().trim();
-        list = list.filter((item) => {
-          const itemUid = String(item.telecallerId || '').trim();
-          const itemEmail = String(item.telecallerEmail || '').toLowerCase().trim();
-          const itemName = String(item.telecallerName || '').toLowerCase().trim();
-          return (uId && itemUid === uId) ||
-                 (uEmail && itemEmail === uEmail) ||
-                 (uName && itemName === uName) ||
-                 (uName && (itemName.includes(uName) || uName.includes(itemName)));
-        });
-      }
+      if (!user) return [];
+      const userId = String(user.id || '').trim();
+      const userEmail = String(user.email || '').toLowerCase().trim();
+      list = list.filter((item) => {
+        const itemId = String(item.telecallerId || '').trim();
+        const itemEmail = String(item.telecallerEmail || '').toLowerCase().trim();
+        return (userId && itemId === userId) || (userEmail && itemEmail === userEmail);
+      });
     }
 
     const query = this.searchQuery().toLowerCase().trim();
@@ -150,7 +158,9 @@ export class TargetsComponent implements OnInit {
 
       let matchesStatus = true;
       if (filter !== 'ALL') {
-        matchesStatus = item.status === filter;
+        matchesStatus = filter === 'BEHIND_TARGET'
+          ? item.status === 'BEHIND_TARGET' || item.status === 'CRITICAL_DEFICIT'
+          : item.status === filter;
       }
 
       return matchesSearch && matchesStatus;
@@ -178,24 +188,9 @@ export class TargetsComponent implements OnInit {
   ngOnInit(): void {
     this.leadService.loadCalls().subscribe();
     this.userService.loadUsersFromDatabase();
-    this.targetService.loadTargets();
-
-  
-    setTimeout(() => {
-      if (this.isManagerOrAdmin()) {
-        const kpis = this.summaryKpis();
-        if (kpis && kpis.deficitCount > 0) {
-          const list = this.telecallerProgressList();
-          const deficits = list
-            .filter((t) => t.status === 'BEHIND_TARGET' || t.status === 'CRITICAL_DEFICIT')
-            .map((t) => t.telecallerName);
-          this.lastEvaluationSummary.set({
-            alertedCount: deficits.length,
-            deficitTelecallers: deficits,
-          });
-        }
-      }
-    }, 400);
+    this.targetService.loadTargets().catch((error: unknown) => {
+      this.loadError.set(error instanceof Error ? error.message : 'Unable to load telecaller targets.');
+    });
   }
 
   onSearch(event: Event): void {
@@ -214,6 +209,7 @@ export class TargetsComponent implements OnInit {
   }
 
   openCommonModal(): void {
+    this.saveError.set(null);
     this.editingItem.set(null);
     const common = this.targetService.commonTarget();
     this.targetInputCalls = common.dailyCallsTarget;
@@ -222,6 +218,7 @@ export class TargetsComponent implements OnInit {
   }
 
   openEditModal(item?: TargetProgressStatus): void {
+    this.saveError.set(null);
     if (item) {
       this.editingItem.set(item);
       this.targetInputCalls = item.dailyCallsTarget;
@@ -237,35 +234,56 @@ export class TargetsComponent implements OnInit {
     this.editingItem.set(null);
   }
 
-  saveTarget(): void {
-    const item = this.editingItem();
-    if (item && item.telecallerId) {
-      this.targetService.setTarget(
-        item.telecallerId,
-        this.targetInputCalls,
-        this.targetInputInterested,
-        item.telecallerName,
-        item.telecallerEmail
-      );
-    } else {
-      this.targetService.setCommonTarget(
-        this.targetInputCalls,
-        this.targetInputInterested
-      );
+  async saveTarget(): Promise<void> {
+    const dailyCallsTarget = Number(this.targetInputCalls);
+    const dailyInterestedTarget = Number(this.targetInputInterested);
+    if (!Number.isInteger(dailyCallsTarget) || dailyCallsTarget < 1 || dailyCallsTarget > 300) {
+      this.saveError.set('Daily calls target must be a whole number from 1 to 300.');
+      return;
     }
-    this.closeEditModal();
+    if (!Number.isInteger(dailyInterestedTarget) || dailyInterestedTarget < 0 || dailyInterestedTarget > 50) {
+      this.saveError.set('Daily interested leads target must be a whole number from 0 to 50.');
+      return;
+    }
+
+    this.isSaving.set(true);
+    this.saveError.set(null);
+    const item = this.editingItem();
+    try {
+      if (item && item.telecallerId) {
+        await this.targetService.setTarget(
+          item.telecallerId,
+          dailyCallsTarget,
+          dailyInterestedTarget,
+          item.telecallerName,
+          item.telecallerEmail
+        );
+      } else {
+        await this.targetService.setCommonTarget(dailyCallsTarget, dailyInterestedTarget);
+      }
+      this.closeEditModal();
+    } catch (error: unknown) {
+      this.saveError.set(error instanceof Error ? error.message : 'Unable to save the target.');
+    } finally {
+      this.isSaving.set(false);
+    }
   }
 
   async runTargetComplianceCheck(): Promise<void> {
     this.isEvaluating.set(true);
-    const calls = this.leadService.calls();
-    const users = this.userService.users();
-
-    const res = await this.targetService.evaluateTargetsAndBroadcastNotifications(calls, users);
-    this.lastEvaluationSummary.set({
-      alertedCount: res.alertedCount,
-      deficitTelecallers: res.deficitTelecallers,
-    });
-    this.isEvaluating.set(false);
+    this.evaluationError.set(null);
+    try {
+      const calls = this.leadService.calls();
+      const users = this.userService.users();
+      const res = await this.targetService.evaluateTargetsAndBroadcastNotifications(calls, users);
+      this.lastEvaluationSummary.set({
+        alertedCount: res.alertedCount,
+        deficitTelecallers: res.deficitTelecallers,
+      });
+    } catch (error: unknown) {
+      this.evaluationError.set(error instanceof Error ? error.message : 'Unable to check target compliance.');
+    } finally {
+      this.isEvaluating.set(false);
+    }
   }
 }

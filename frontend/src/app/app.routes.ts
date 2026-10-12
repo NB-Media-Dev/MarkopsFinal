@@ -61,7 +61,7 @@ export const routes: Routes = [
       {
         path: 'targets',
         canActivate: [roleGuard],
-        data: { title: 'Targets', icon: 'track_changes', roles: ['ADMINISTRATOR'] },
+        data: { title: 'Targets', icon: 'track_changes', roles: ['ADMINISTRATOR', 'MARKETING_MANAGER', 'TELECALLER'] },
         loadComponent: () =>
           import('./features/targets/targets.component').then((m) => m.TargetsComponent),
       },

@@ -1,11 +1,23 @@
 <div class="targets-page" [class.embedded-view]="embedded">
   <header class="page-header">
-
+    @if (!embedded) {
+      <div class="header-titles-group">
+        <span class="page-meta-track">Telecalling</span>
+        <h1 class="page-heading">{{ isManagerOrAdmin() ? 'Telecaller Targets' : 'My Targets' }}</h1>
+        <p class="page-sub">
+          {{
+            isManagerOrAdmin()
+              ? "Set daily goals and monitor each telecaller's progress."
+              : 'Track your daily call and interested-lead goals.'
+          }}
+        </p>
+      </div>
+    }
     <div class="header-actions">
       @if (isManagerOrAdmin()) {
         <button class="btn-action-primary" (click)="openCommonModal()">
           <span class="material-symbols-outlined icon-glow">tune</span>
-          <span>Set Common Target</span>
+          <span>Set Target for All Telecallers</span>
         </button>
           <button
         class="btn-action-secondary"
@@ -19,6 +31,14 @@
 
     </div>
   </header>
+
+  @if (loadError(); as error) {
+    <div class="target-error-message" role="alert">{{ error }}</div>
+  }
+
+  @if (evaluationError(); as error) {
+    <div class="target-error-message" role="alert">{{ error }}</div>
+  }
 
   @if (isManagerOrAdmin() && lastEvaluationSummary(); as summary) {
     <div class="alert-banner alert-warning">
@@ -337,8 +357,16 @@
                   <div class="empty-icon-squircle">
                     <span class="material-symbols-outlined">track_changes</span>
                   </div>
-                  <h4 class="empty-title">No telecallers found</h4>
-                  <p class="empty-subtitle">Adjust your search query or configure new targets.</p>
+                  <h4 class="empty-title">
+                    {{ isManagerOrAdmin() ? 'No telecallers found' : 'Your target progress is unavailable' }}
+                  </h4>
+                  <p class="empty-subtitle">
+                    {{
+                      isManagerOrAdmin()
+                        ? 'Adjust your search query or configure new targets.'
+                        : 'Your telecaller profile could not be matched. Please contact an administrator.'
+                    }}
+                  </p>
                 </div>
               </td>
             </tr>
@@ -363,9 +391,9 @@
                   Configure individual daily call quota and lead goals for this telecaller
                 </p>
               } @else {
-                <h2>Set Common Target</h2>
+                <h2>Set Target for All Telecallers</h2>
                 <p class="modal-sub">
-                  Configure common daily call volume quotas and lead thresholds for all telecallers
+                  Apply these daily call and interested-lead goals to every telecaller, replacing any individual targets.
                 </p>
               }
             </div>
@@ -381,12 +409,16 @@
               <span>Setting custom target specifically for <strong>{{ item.telecallerName }}</strong> ({{ item.telecallerEmail }})</span>
             </div>
           }
+          @if (saveError(); as error) {
+            <div class="target-error-message" role="alert">{{ error }}</div>
+          }
           <div class="form-group">
             <label class="form-label">Daily Calls Target <span class="required">*</span></label>
             <input
               type="number"
               min="1"
               max="300"
+              required
               [(ngModel)]="targetInputCalls"
               placeholder="e.g. 30"
               class="form-input"
@@ -400,6 +432,7 @@
               type="number"
               min="0"
               max="50"
+              required
               [(ngModel)]="targetInputInterested"
               placeholder="e.g. 5"
               class="form-input"
@@ -408,9 +441,9 @@
         </div>
         <div class="modal-footer">
           <button class="btn-action-secondary" (click)="closeEditModal()">Cancel</button>
-          <button class="btn-action-primary" (click)="saveTarget()">
+          <button class="btn-action-primary" [disabled]="isSaving()" (click)="saveTarget()">
             <span class="material-symbols-outlined icon-glow">save</span>
-            <span>{{ editingItem() ? 'Save User Target' : 'Apply Common Target' }}</span>
+            <span>{{ isSaving() ? 'Saving...' : editingItem() ? 'Save User Target' : 'Apply to All Telecallers' }}</span>
           </button>
         </div>
       </div>

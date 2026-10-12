@@ -51,6 +51,7 @@ export const ROLE_SIDEBAR_MENU: Record<string, NavMenuItem[]> = {
     { label: 'Achievements', route: '/achievements', icon: 'emoji_events', badge: 'Rewards', badgeType: 'warning' },
   ],
   TELECALLER: [
+    { label: 'Targets', route: '/targets', icon: 'track_changes' },
     { label: 'Assigned Leads', route: '/assigned-leads', icon: 'assignment_ind' },
     { label: 'Calls', route: '/calls', icon: 'phone_in_talk' },
     { label: 'Follow-ups', route: '/follow-ups', icon: 'event_repeat' },

@@ -13,6 +13,7 @@ const {
 const { recordAuditLog } = require('../services/audit.service');
 const { emitRealtimeEvent } = require('../events');
 const { dispatchNotification } = require('../services/notification.service');
+const { requireRole } = require('../middleware/auth.middleware');
 const router = express.Router();
 
 function createNotificationForTelecaller(targetUserId, title, message, targetRoute = '') {
@@ -1932,72 +1933,258 @@ router.get('/leads/telecalling-summary', async (req, res) => {
 });
 
 
-router.get('/telecaller-targets/common', (req, res) => {
-  return res.json(dbCommonTargetStore);
+function targetUpdatedAt(value) {
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+function formatTelecallerTarget(row) {
+  return {
+    id: `tgt_${row.telecaller_id}`,
+    telecallerId: String(row.telecaller_id),
+    telecallerName: row.telecaller_name,
+    telecallerEmail: row.telecaller_email || '',
+    dailyCallsTarget: Number(row.daily_calls_target),
+    dailyInterestedTarget: Number(row.daily_interested_target),
+    dailyDurationTargetSeconds: Number(row.daily_duration_target_seconds),
+    updatedBy: row.updated_by,
+    updatedAt: targetUpdatedAt(row.updated_at),
+  };
+}
+
+function formatCommonTarget(row) {
+  return {
+    dailyCallsTarget: Number(row.daily_calls_target),
+    dailyInterestedTarget: Number(row.daily_interested_target),
+    dailyDurationTargetSeconds: Number(row.daily_duration_target_seconds),
+    updatedBy: row.updated_by,
+    updatedAt: targetUpdatedAt(row.updated_at),
+  };
+}
+
+function parseQuota(value, fallback, label, min, max) {
+  if (value === undefined) return fallback;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    throw new Error(`${label} must be a whole number between ${min} and ${max}.`);
+  }
+  return parsed;
+}
+
+async function readCommonTarget() {
+  if (dbPool.isConnected()) {
+    const [rows] = await dbPool.queryStrict(
+      `SELECT daily_calls_target, daily_interested_target, daily_duration_target_seconds, updated_by, updated_at
+       FROM telecaller_common_target WHERE id = 1`
+    );
+    if (rows.length > 0) return formatCommonTarget(rows[0]);
+  }
+  return dbCommonTargetStore;
+}
+
+async function readTelecallerTarget(telecallerId) {
+  if (dbPool.isConnected()) {
+    const [rows] = await dbPool.queryStrict(
+      `SELECT telecaller_id, telecaller_name, telecaller_email, daily_calls_target,
+              daily_interested_target, daily_duration_target_seconds, updated_by, updated_at
+       FROM telecaller_targets WHERE telecaller_id = ?`,
+      [telecallerId]
+    );
+    return rows.length > 0 ? formatTelecallerTarget(rows[0]) : null;
+  }
+  return dbTelecallerTargetsStore.find(
+    (item) => String(item.telecallerId) === String(telecallerId)
+  ) || null;
+}
+
+router.get('/telecaller-targets/common', async (req, res) => {
+  try {
+    return res.json(await readCommonTarget());
+  } catch (error) {
+    console.error('[Telecaller Targets] Failed to load common target:', error);
+    return res.status(500).json({ error: 'Failed to load common telecaller targets.' });
+  }
 });
 
+router.post(
+  '/telecaller-targets/common',
+  requireRole(['ADMINISTRATOR', 'MARKETING_MANAGER']),
+  async (req, res) => {
+    try {
+      const current = await readCommonTarget();
+      const updatedBy = `${req.user.fullName} (${req.user.role})`;
+      const target = {
+        dailyCallsTarget: parseQuota(req.body.dailyCallsTarget, current.dailyCallsTarget, 'Daily calls target', 1, 300),
+        dailyInterestedTarget: parseQuota(req.body.dailyInterestedTarget, current.dailyInterestedTarget, 'Daily interested leads target', 0, 50),
+        dailyDurationTargetSeconds: parseQuota(
+          req.body.dailyDurationTargetSeconds,
+          current.dailyDurationTargetSeconds,
+          'Daily duration target',
+          0,
+          86400
+        ),
+        updatedBy,
+        updatedAt: new Date().toISOString(),
+      };
 
-router.post('/telecaller-targets/common', (req, res) => {
-  const { dailyCallsTarget, dailyInterestedTarget, dailyDurationTargetSeconds, updatedBy } = req.body;
-  if (dailyCallsTarget !== undefined) {
-    dbCommonTargetStore.dailyCallsTarget = Number(dailyCallsTarget) || 30;
-  }
-  if (dailyInterestedTarget !== undefined) {
-    dbCommonTargetStore.dailyInterestedTarget = Number(dailyInterestedTarget) || 5;
-  }
-  if (dailyDurationTargetSeconds !== undefined) {
-    dbCommonTargetStore.dailyDurationTargetSeconds = Number(dailyDurationTargetSeconds) || 3600;
-  }
-  dbCommonTargetStore.updatedBy = updatedBy || 'Marketing Manager';
-  dbCommonTargetStore.updatedAt = new Date().toISOString();
+      if (dbPool.isConnected()) {
+        await dbPool.queryStrict(
+          `INSERT INTO telecaller_common_target
+            (id, daily_calls_target, daily_interested_target, daily_duration_target_seconds, updated_by)
+           VALUES (1, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+            daily_calls_target = VALUES(daily_calls_target),
+            daily_interested_target = VALUES(daily_interested_target),
+            daily_duration_target_seconds = VALUES(daily_duration_target_seconds),
+            updated_by = VALUES(updated_by)`,
+          [
+            target.dailyCallsTarget,
+            target.dailyInterestedTarget,
+            target.dailyDurationTargetSeconds,
+            target.updatedBy,
+          ]
+        );
+        await dbPool.queryStrict(
+          `UPDATE telecaller_targets
+           SET daily_calls_target = ?, daily_interested_target = ?,
+               daily_duration_target_seconds = ?, updated_by = ?`,
+          [
+            target.dailyCallsTarget,
+            target.dailyInterestedTarget,
+            target.dailyDurationTargetSeconds,
+            target.updatedBy,
+          ]
+        );
+      }
 
-  emitRealtimeEvent('telecaller_target:updated', dbCommonTargetStore);
-  return res.json(dbCommonTargetStore);
+      Object.assign(dbCommonTargetStore, target);
+      dbTelecallerTargetsStore.forEach((item) => Object.assign(item, {
+        dailyCallsTarget: target.dailyCallsTarget,
+        dailyInterestedTarget: target.dailyInterestedTarget,
+        dailyDurationTargetSeconds: target.dailyDurationTargetSeconds,
+        updatedBy: target.updatedBy,
+        updatedAt: target.updatedAt,
+      }));
+
+      emitRealtimeEvent('telecaller_target:updated', target);
+      return res.json(target);
+    } catch (error) {
+      if (error.message.includes('must be a whole number')) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error('[Telecaller Targets] Failed to save common target:', error);
+      return res.status(500).json({ error: 'Failed to save common telecaller targets.' });
+    }
+  }
+);
+
+router.get('/telecaller-targets', async (req, res) => {
+  try {
+    const common = await readCommonTarget();
+    const role = String(req.user?.role || '').toUpperCase();
+    let targets = dbTelecallerTargetsStore;
+
+    if (dbPool.isConnected()) {
+      const [rows] = role === 'TELECALLER'
+        ? await dbPool.queryStrict(
+            `SELECT telecaller_id, telecaller_name, telecaller_email, daily_calls_target,
+                    daily_interested_target, daily_duration_target_seconds, updated_by, updated_at
+             FROM telecaller_targets WHERE telecaller_id = ?`,
+            [String(req.user.id)]
+          )
+        : await dbPool.queryStrict(
+            `SELECT telecaller_id, telecaller_name, telecaller_email, daily_calls_target,
+                    daily_interested_target, daily_duration_target_seconds, updated_by, updated_at
+             FROM telecaller_targets`
+          );
+      targets = rows.map(formatTelecallerTarget);
+    } else if (role === 'TELECALLER') {
+      targets = targets.filter((target) => String(target.telecallerId) === String(req.user.id));
+    }
+
+    return res.json({ common, targets });
+  } catch (error) {
+    console.error('[Telecaller Targets] Failed to load targets:', error);
+    return res.status(500).json({ error: 'Failed to load telecaller targets.' });
+  }
 });
 
+router.post(
+  '/telecaller-targets/:telecallerId',
+  requireRole(['ADMINISTRATOR', 'MARKETING_MANAGER']),
+  async (req, res) => {
+    const telecallerId = String(req.params.telecallerId || '').trim();
+    if (!telecallerId || telecallerId.length > 64) {
+      return res.status(400).json({ error: 'A valid telecaller ID is required.' });
+    }
 
-router.get('/telecaller-targets', (req, res) => {
-  return res.json({
-    common: dbCommonTargetStore,
-    targets: dbTelecallerTargetsStore || [],
-  });
-});
+    try {
+      const current = await readTelecallerTarget(telecallerId) || await readCommonTarget();
+      const updatedBy = `${req.user.fullName} (${req.user.role})`;
+      const target = {
+        id: `tgt_${telecallerId}`,
+        telecallerId,
+        telecallerName: String(req.body.telecallerName || current.telecallerName || 'Telecaller').trim(),
+        telecallerEmail: String(req.body.telecallerEmail || current.telecallerEmail || '').trim(),
+        dailyCallsTarget: parseQuota(req.body.dailyCallsTarget, current.dailyCallsTarget, 'Daily calls target', 1, 300),
+        dailyInterestedTarget: parseQuota(
+          req.body.dailyInterestedTarget,
+          current.dailyInterestedTarget,
+          'Daily interested leads target',
+          0,
+          50
+        ),
+        dailyDurationTargetSeconds: parseQuota(
+          req.body.dailyDurationTargetSeconds,
+          current.dailyDurationTargetSeconds,
+          'Daily duration target',
+          0,
+          86400
+        ),
+        updatedBy,
+        updatedAt: new Date().toISOString(),
+      };
 
+      if (dbPool.isConnected()) {
+        await dbPool.queryStrict(
+          `INSERT INTO telecaller_targets
+            (telecaller_id, telecaller_name, telecaller_email, daily_calls_target,
+             daily_interested_target, daily_duration_target_seconds, updated_by)
+           VALUES (?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+            telecaller_name = VALUES(telecaller_name),
+            telecaller_email = VALUES(telecaller_email),
+            daily_calls_target = VALUES(daily_calls_target),
+            daily_interested_target = VALUES(daily_interested_target),
+            daily_duration_target_seconds = VALUES(daily_duration_target_seconds),
+            updated_by = VALUES(updated_by)`,
+          [
+            target.telecallerId,
+            target.telecallerName,
+            target.telecallerEmail,
+            target.dailyCallsTarget,
+            target.dailyInterestedTarget,
+            target.dailyDurationTargetSeconds,
+            target.updatedBy,
+          ]
+        );
+      }
 
-router.post('/telecaller-targets/:telecallerId', (req, res) => {
-  const { telecallerId } = req.params;
-  const { dailyCallsTarget, dailyInterestedTarget, dailyDurationTargetSeconds, updatedBy, telecallerName, telecallerEmail } = req.body;
+      const existingIndex = dbTelecallerTargetsStore.findIndex(
+        (item) => String(item.telecallerId) === telecallerId
+      );
+      if (existingIndex >= 0) dbTelecallerTargetsStore[existingIndex] = target;
+      else dbTelecallerTargetsStore.push(target);
 
-  if (!Array.isArray(dbTelecallerTargetsStore)) {
-    dbTelecallerTargetsStore = [];
+      emitRealtimeEvent('telecaller_target:user_updated', target);
+      return res.json(target);
+    } catch (error) {
+      if (error.message.includes('must be a whole number')) {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error(`[Telecaller Targets] Failed to save target for ${telecallerId}:`, error);
+      return res.status(500).json({ error: 'Failed to save telecaller target.' });
+    }
   }
-
-  let target = dbTelecallerTargetsStore.find((t) => String(t.telecallerId) === String(telecallerId));
-  if (!target) {
-    target = {
-      id: `tgt_${telecallerId}_${Date.now()}`,
-      telecallerId: String(telecallerId),
-      telecallerName: telecallerName || 'Telecaller',
-      telecallerEmail: telecallerEmail || '',
-      dailyCallsTarget: Number(dailyCallsTarget) || 30,
-      dailyInterestedTarget: Number(dailyInterestedTarget) || 5,
-      dailyDurationTargetSeconds: (Number(dailyCallsTarget) || 30) * 120,
-      updatedBy: updatedBy || 'Marketing Manager',
-      updatedAt: new Date().toISOString(),
-    };
-    dbTelecallerTargetsStore.push(target);
-  } else {
-    if (dailyCallsTarget !== undefined) target.dailyCallsTarget = Number(dailyCallsTarget) || 30;
-    if (dailyInterestedTarget !== undefined) target.dailyInterestedTarget = Number(dailyInterestedTarget) || 5;
-    if (dailyDurationTargetSeconds !== undefined) target.dailyDurationTargetSeconds = Number(dailyDurationTargetSeconds) || (target.dailyCallsTarget * 120);
-    if (telecallerName) target.telecallerName = telecallerName;
-    if (telecallerEmail) target.telecallerEmail = telecallerEmail;
-    target.updatedBy = updatedBy || 'Marketing Manager';
-    target.updatedAt = new Date().toISOString();
-  }
-
-  emitRealtimeEvent('telecaller_target:user_updated', target);
-  return res.json(target);
-});
+);
 
 module.exports = router;

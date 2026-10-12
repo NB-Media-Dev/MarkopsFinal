@@ -1,5 +1,22 @@
 <div class="works-content-wrapper dept-active-content">
 
+  @if (activeDepartmentTabs.length > 1) {
+    <nav class="dept-nav-tabs-bar" aria-label="Department operations">
+      @for (tab of activeDepartmentTabs; track tab.id) {
+        <button
+          type="button"
+          class="subtab-pill-btn"
+          [class.active]="activeOperationTab === tab.id"
+          [attr.aria-pressed]="activeOperationTab === tab.id"
+          (click)="selectOperationTab(tab.id)"
+        >
+          <span class="material-symbols-outlined subtab-icon" aria-hidden="true">{{ tab.icon }}</span>
+          <span class="subtab-text">{{ tab.label }}</span>
+        </button>
+      }
+    </nav>
+  }
+
   @if (
     currentDept === 'DESIGNER' ||
     activeOperationTab === 'TASKS' ||
