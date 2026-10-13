@@ -706,6 +706,14 @@
                   >
                     1 Week
                   </button>
+                  <button
+                    type="button"
+                    class="btn-date-filter-pill"
+                    [class.active]="modalDateFilter === 'MONTH'"
+                    (click)="setModalDateFilter('MONTH')"
+                  >
+                    1 Month
+                  </button>
                   <div class="date-range-inputs-cluster">
                     <div class="date-input-field-wrap" [class.field-active]="!!filterStartDate">
                       <label class="date-input-label">START</label>
@@ -770,13 +778,13 @@
 
             <div class="queue-card-header">
               <div class="queue-header-left">
-                <div class="queue-squircle-icon" [ngClass]="selectedPerformanceUser.avatarColor">
+                <div class="queue-squircle-icon avatar-emerald" [ngClass]="selectedPerformanceUser.avatarColor || 'avatar-emerald'">
                   <span class="material-symbols-outlined">person</span>
                 </div>
                 <div class="queue-header-titles">
                   <div class="d-flex align-items-center gap-2 flex-wrap">
                     <h3 class="queue-user-name">{{ selectedPerformanceUser.name }}</h3>
-                    <span class="badge" [ngClass]="selectedPerformanceUser.roleBadgeClass">{{ selectedPerformanceUser.roleLabel }}</span>
+                    <span class="badge badge-telecaller-role" [ngClass]="selectedPerformanceUser.roleBadgeClass">{{ selectedPerformanceUser.roleLabel }}</span>
                   </div>
                 </div>
               </div>
@@ -788,7 +796,7 @@
                     type="text"
                     class="queue-search-input"
                     [(ngModel)]="taskSearchQuery"
-                    [placeholder]="selectedPerformanceUser.role === 'TELECALLER' ? 'Search by lead name, phone, source...' : (selectedPerformanceUser.role === 'DIGITAL_MARKETING' ? 'Search by ad name, campaign, platform...' : 'Search by task title, product...')"
+                    [placeholder]="selectedPerformanceUser.role === 'TELECALLER' ? 'Search by lead name, pho...' : (selectedPerformanceUser.role === 'DIGITAL_MARKETING' ? 'Search by ad name, campaign, platform...' : 'Search by task title, product...')"
                   />
                   @if (taskSearchQuery) {
                     <button type="button" class="btn-clear-search" (click)="taskSearchQuery = ''">
@@ -796,10 +804,27 @@
                     </button>
                   }
                 </div>
-                <div class="queue-count-pill">
-                  <span class="queue-dot"></span>
-                  <span>{{ modalTasksInProgressCount }} {{ selectedPerformanceUser.role === 'TELECALLER' ? 'Pending Calls' : (selectedPerformanceUser.role === 'DIGITAL_MARKETING' ? 'Active Ads' : 'In Queue') }}</span>
-                </div>
+
+                @if (selectedPerformanceUser.role === 'TELECALLER') {
+                  <div class="telecaller-stat-pill pill-target" title="Target Calls">
+                    <span class="material-symbols-outlined fs-15 icon-target">track_changes</span>
+                    <span>Target: {{ telecallerTargetCalls }} Calls</span>
+                  </div>
+                  <div class="telecaller-stat-pill pill-calls" title="Calls Made">
+                    <span class="material-symbols-outlined fs-15 icon-calls">call</span>
+                    <span>Calls: {{ telecallerTotalCalls }}</span>
+                  </div>
+                  <div class="telecaller-stat-pill pill-pending" title="Pending Calls">
+                    <span class="queue-dot"></span>
+                    <span>{{ telecallerPendingCalls }} Pending Calls</span>
+                  </div>
+                } @else {
+                  <div class="queue-count-pill">
+                    <span class="queue-dot"></span>
+                    <span>{{ modalTasksInProgressCount }} {{ selectedPerformanceUser.role === 'DIGITAL_MARKETING' ? 'Active Ads' : 'In Queue' }}</span>
+                  </div>
+                }
+
                 <button
                   type="button"
                   class="btn-download-sheet"
@@ -814,123 +839,122 @@
 
             <div class="table-responsive detail-tasks-table-wrap">
               @if (selectedPerformanceUser.role === 'TELECALLER') {
-                <table class="data-table detail-tasks-table telecaller-record-table">
+                <table class="data-table detail-tasks-table telecaller-campaign-summary-table">
                   <thead>
                     <tr>
                       <th class="col-sno text-center">S.NO</th>
-                      <th class="col-lead text-left">LEAD NAME</th>
-                      <th class="col-phone text-left">PHONE</th>
-                      <th class="col-ad text-center">ADS</th>
-                      <th class="col-source text-center">SOURCE</th>
-                      <th class="col-product text-center">PRODUCT</th>
-                      <th class="col-assigned text-center">ASSIGNED</th>
-                      <th class="col-call-date text-center">CALLED AT</th>
-                      <th class="col-duration text-center">DURATION</th>
-                      <th class="col-outcome text-center">STATUS</th>
-                      <th class="col-attempts text-center">ATTEMPTS</th>
-                      <th class="col-followup text-center">FOLLOW-UP</th>
-                      <th class="col-remarks text-left">REMARKS</th>
+                      <th class="col-campaigns text-left">CAMPAIGNS</th>
+                      <th class="col-assigned-date text-center">ASSIGNED DATE</th>
+                      <th class="col-leads-count text-center">TOTAL COUNT LEADS</th>
+                      <th class="col-total-calls text-center">TOTAL CALLS</th>
+                      <th class="col-avg-calls text-center">AVERAGE CALLS</th>
+                      <th class="col-interested text-center">INTERESTED</th>
+                      <th class="col-targets text-center">TARGETS</th>
+                      <th class="col-caller-ratio text-center">CALLER RATIO</th>
+                      <th class="col-paid text-center">PAID</th>
                     </tr>
                   </thead>
                   <tbody>
-                    @for (t of paginatedTasks; track t.id || t.leadId || t.title; let idx = $index) {
-                      <tr>
+                    @for (row of paginatedCampaignReports; track row.sNo || row.assignedDate; let idx = $index) {
+                      <tr
+                        class="campaign-summary-row"
+                        [class.row-expanded]="expandedCampaignRows.has(row.sNo)"
+                        (click)="toggleExpandCampaignRow(row.sNo)"
+                        [title]="row.leads.length > 0 ? 'Click to view assigned leads for this campaign' : ''"
+                      >
                         <td class="col-sno text-center text-muted font-bold fs-12">{{ (currentPage - 1) * pageSize + idx + 1 }}</td>
-                        <td class="col-lead text-left">
-                          <div class="lead-name-text font-bold text-slate-900 fs-13">{{ t.leadName || t.title }}</div>
-                          <div class="lead-campaign-text text-indigo-600 fs-11 mt-0.5 font-semibold" [title]="'Campaign: ' + (t.campaignName || 'General Campaign')">
-                            {{ t.campaignName || 'General Campaign' }}
-                          </div>
+                        <td class="col-campaigns text-left">
+                          <div class="campaign-name-title font-bold text-slate-900 fs-13">{{ row.campaignName }}</div>
+                          <div class="campaign-ad-subtitle text-slate-500 fs-11 mt-0.5">Ad: {{ row.adName }}</div>
                         </td>
-                        <td class="col-phone text-left whitespace-nowrap">
-                          @if (t.leadPhone && t.leadPhone !== '—' && !t.leadPhone.includes('@')) {
-                            <a [href]="'tel:' + t.leadPhone" class="lead-phone-link text-slate-800 font-semibold fs-12" title="Click to call">
-                              {{ t.leadPhone }}
-                            </a>
-                          } @else {
-                            <span class="text-subtle fs-12">—</span>
-                          }
+                        <td class="col-assigned-date text-center whitespace-nowrap">
+                          <span class="assigned-date-text">{{ row.assignedDate }}</span>
                         </td>
-                        <td class="col-ad text-center whitespace-nowrap">
-                          @if (t.adName && t.adName !== '—') {
-                            <span class="badge-ad-pill" [title]="'Ad: ' + t.adName">
-                              {{ t.adName }}
-                            </span>
-                          } @else {
-                            <span class="text-subtle fs-12">—</span>
-                          }
+                        <td class="col-leads-count text-center">
+                          <span class="badge-num-circle badge-circle-lavender">{{ row.totalCountLeads }}</span>
                         </td>
-                        <td class="col-source text-center">
-                          @if (t.source) {
-                            <span class="badge-source-pill" [title]="t.source">
-                              {{ t.source }}
-                            </span>
-                          } @else {
-                            <span class="text-subtle fs-12">—</span>
-                          }
+                        <td class="col-total-calls text-center">
+                          <span class="badge-num-circle badge-circle-green">{{ row.totalCalls }}</span>
                         </td>
-                        <td class="col-product text-center whitespace-nowrap">
-                          <span class="badge-mini-product" [title]="formatProductName(t.productName, t)">{{ formatProductName(t.productName, t) }}</span>
+                        <td class="col-avg-calls text-center font-semibold text-slate-700 fs-12">
+                          {{ row.averageCalls }}
                         </td>
-                        <td class="col-assigned text-center fs-12 text-slate-600 whitespace-nowrap">
-                          {{ t.createdAt ? (t.createdAt | date: 'dd MMM yyyy') : '—' }}
+                        <td class="col-interested text-center">
+                          <span class="badge-num-circle badge-circle-green">{{ row.interested }}</span>
                         </td>
-                        <td class="col-call-date text-center whitespace-nowrap">
-                          @if (t.calledAt) {
-                            <div class="call-datetime-stack">
-                              <span class="call-date-text">{{ t.calledAt | date: 'dd MMM yyyy' }}</span>
-                              <span class="call-time-text">{{ t.calledAt | date: 'hh:mm a' }}</span>
-                            </div>
-                          } @else {
-                            <span class="text-subtle fs-12">—</span>
-                          }
+                        <td class="col-targets text-center">
+                          <span class="badge-pill-capsule badge-pill-blue">{{ row.targets }}</span>
                         </td>
-                        <td class="col-duration text-center whitespace-nowrap">
-                          @if (t.callDurationText && t.callDurationText !== '—') {
-                            <span class="badge-duration-pill" [title]="'Call Duration: ' + t.callDurationText">
-                              <span class="material-symbols-outlined fs-13">timer</span>
-                              <span class="leading-none">{{ t.callDurationText.replace('00m ', '') }}</span>
-                            </span>
-                          } @else {
-                            <span class="text-subtle fs-12">—</span>
-                          }
+                        <td class="col-caller-ratio text-center">
+                          <span class="badge-pill-capsule badge-pill-purple">{{ row.callerRatio }}</span>
                         </td>
-                        <td class="col-outcome text-center whitespace-nowrap">
-                          @if (t.callOutcome || t.status) {
-                            <span class="badge" [ngClass]="getLeadStatusBadgeClass(t.callOutcome || t.status)">
-                              {{ t.callOutcome || t.status }}
-                            </span>
-                          } @else {
-                            <span class="text-subtle fs-12">—</span>
-                          }
-                        </td>
-                        <td class="col-attempts text-center whitespace-nowrap">
-                          <span class="badge-attempts-pill">
-                            {{ t.callAttemptsText || '0 Attempts' }}
-                          </span>
-                        </td>
-                        <td class="col-followup text-center fs-12 text-slate-600 whitespace-nowrap">
-                          @if (t.followUpDate) {
-                            <span class="text-indigo-600 font-semibold">{{ t.followUpDate | date: 'dd MMM yyyy' }}</span>
-                          } @else {
-                            <span class="text-muted">—</span>
-                          }
-                        </td>
-                        <td class="col-remarks text-left telecaller-notes-cell">
-                          <div class="telecaller-remark-text" [title]="(t.remarks && t.remarks !== '—') ? t.remarks : ((t.notes && t.notes !== '—') ? t.notes : '—')">
-                            {{ (t.remarks && t.remarks !== '—') ? t.remarks : ((t.notes && t.notes !== '—') ? t.notes : '—') }}
-                          </div>
+                        <td class="col-paid text-center">
+                          <span class="badge-num-circle badge-circle-amber">{{ row.paid }}</span>
                         </td>
                       </tr>
+
+                      @if (expandedCampaignRows.has(row.sNo) && row.leads.length > 0) {
+                        <tr class="campaign-leads-detail-row">
+                          <td colspan="10" class="p-0">
+                            <div class="campaign-leads-accordion-inner">
+                              <div class="accordion-sub-header">
+                                <span class="material-symbols-outlined fs-16 text-indigo">groups</span>
+                                <span class="font-bold text-slate-800 fs-12">Assigned Leads ({{ row.leads.length }}) — {{ row.campaignName }} [{{ row.assignedDate }}]</span>
+                              </div>
+                              <div class="table-responsive">
+                                <table class="table nested-leads-table mb-0">
+                                  <thead>
+                                    <tr>
+                                      <th class="col-nest-sno">#</th>
+                                      <th>LEAD NAME</th>
+                                      <th>PHONE</th>
+                                      <th>SOURCE</th>
+                                      <th>CALL DURATION</th>
+                                      <th>OUTCOME / STATUS</th>
+                                      <th>ATTEMPTS</th>
+                                      <th>REMARKS</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    @for (lead of row.leads; track lead.id || lead.leadId; let lIdx = $index) {
+                                      <tr>
+                                        <td class="text-muted font-bold fs-11">{{ lIdx + 1 }}</td>
+                                        <td class="font-bold text-slate-900 fs-12">{{ lead.leadName || lead.title }}</td>
+                                        <td class="whitespace-nowrap fs-12 font-medium">
+                                          @if (lead.leadPhone && lead.leadPhone !== '—' && !lead.leadPhone.includes('@')) {
+                                            <a [href]="'tel:' + lead.leadPhone" class="lead-phone-link" (click)="$event.stopPropagation()">{{ lead.leadPhone }}</a>
+                                          } @else {
+                                            <span class="text-subtle">—</span>
+                                          }
+                                        </td>
+                                        <td class="text-center"><span class="badge-source-pill">{{ lead.source }}</span></td>
+                                        <td class="text-center fs-12 font-medium">{{ lead.callDurationText || '—' }}</td>
+                                        <td class="text-center">
+                                          <span class="badge" [ngClass]="getLeadStatusBadgeClass(lead.callOutcome || lead.status)">
+                                            {{ lead.callOutcome || lead.status }}
+                                          </span>
+                                        </td>
+                                        <td class="text-center fs-12">{{ lead.callAttemptsText || '0 Attempts' }}</td>
+                                        <td class="fs-12 text-slate-600">{{ lead.remarks || lead.notes || '—' }}</td>
+                                      </tr>
+                                    }
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      }
                     }
-                    @if (filteredModalTasks.length === 0) {
+
+                    @if (telecallerCampaignReports.length === 0) {
                       <tr>
-                        <td colspan="13" class="p-5 text-center text-muted fs-13">
+                        <td colspan="10" class="p-5 text-center text-muted fs-13">
                           <div class="empty-state-cell-content">
                             <span class="material-symbols-outlined empty-state-icon">inventory_2</span>
                             <div class="empty-state-title">
                               @if (modalDateFilter !== 'ALL' || taskSearchQuery) {
-                                No telecaller lead records match the active date or search criteria.
+                                No telecaller campaign records match the active date or search criteria.
                               } @else {
                                 No leads currently assigned to this telecaller in this package.
                               }

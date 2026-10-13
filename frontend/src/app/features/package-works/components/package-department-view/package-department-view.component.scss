@@ -1634,6 +1634,62 @@
           }
         }
 
+        .badge-telecaller-role {
+          background: #DCFCE7 !important;
+          color: #166534 !important;
+          border: 1px solid #BBF7D0 !important;
+          border-radius: 999px !important;
+          font-size: 0.75rem !important;
+          font-weight: 700 !important;
+          padding: 0.22rem 0.65rem !important;
+          line-height: 1 !important;
+        }
+
+        .telecaller-stat-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.45rem;
+          padding: 0.38rem 0.85rem;
+          border-radius: 999px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          white-space: nowrap;
+          line-height: 1;
+
+          &.pill-target {
+            background: #EEF2FF;
+            border: 1px solid #E0E7FF;
+            color: #4F46E5;
+
+            .icon-target {
+              color: #6366F1;
+            }
+          }
+
+          &.pill-calls {
+            background: #DCFCE7;
+            border: 1px solid #BBF7D0;
+            color: #16A34A;
+
+            .icon-calls {
+              color: #16A34A;
+            }
+          }
+
+          &.pill-pending {
+            background: #ECFDF5;
+            border: 1px solid #A7F3D0;
+            color: #047857;
+
+            .queue-dot {
+              width: 6px;
+              height: 6px;
+              border-radius: 50%;
+              background: #10B981;
+            }
+          }
+        }
+
         .queue-count-pill {
           display: inline-flex;
           align-items: center;
@@ -1692,7 +1748,8 @@
       scrollbar-width: thin;
       scrollbar-color: #CBD5E1 transparent;
 
-      &:has(.telecaller-record-table) {
+      &:has(.telecaller-record-table),
+      &:has(.telecaller-campaign-summary-table) {
         overflow-x: auto;
       }
 
@@ -2138,6 +2195,209 @@
             overflow: hidden;
             text-overflow: ellipsis;
             max-width: 175px;
+          }
+        }
+
+        &.telecaller-campaign-summary-table {
+          table-layout: auto;
+          width: 100%;
+          min-width: 100%;
+          border-collapse: separate;
+          border-spacing: 0;
+
+          th, td {
+            padding: 0.75rem 0.65rem;
+            vertical-align: middle;
+            font-size: 0.775rem;
+            border-bottom: 1px solid #F1F5F9;
+          }
+
+          th {
+            background: #F8FAFC;
+            font-size: 0.675rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: #64748B;
+            white-space: nowrap;
+            border-bottom: 1.5px solid #E2E8F0;
+          }
+
+          tr.campaign-summary-row {
+            cursor: pointer;
+            transition: background 0.15s ease;
+
+            &:hover {
+              background: #F8FAFC;
+            }
+
+            &.row-expanded {
+              background: #F1F5F9;
+            }
+          }
+
+          .col-sno {
+            width: 44px;
+            min-width: 36px;
+            text-align: center;
+            color: #94A3B8;
+            font-weight: 700;
+          }
+
+          .col-campaigns {
+            min-width: 170px;
+            max-width: 260px;
+            text-align: left;
+
+            .campaign-name-title {
+              font-size: 0.84rem;
+              font-weight: 800;
+              color: #0F172A;
+              line-height: 1.25;
+            }
+
+            .campaign-ad-subtitle {
+              font-size: 0.72rem;
+              color: #64748B;
+              font-weight: 500;
+              margin-top: 0.15rem;
+            }
+          }
+
+          .col-assigned-date {
+            min-width: 105px;
+            text-align: center;
+            white-space: nowrap;
+
+            .assigned-date-text {
+              font-size: 0.775rem;
+              font-weight: 600;
+              color: #475569;
+            }
+          }
+
+          .col-leads-count,
+          .col-total-calls,
+          .col-interested,
+          .col-paid {
+            width: 85px;
+            text-align: center;
+          }
+
+          .col-avg-calls {
+            width: 80px;
+            text-align: center;
+            font-size: 0.8125rem;
+            font-weight: 700;
+            color: #334155;
+          }
+
+          .col-targets,
+          .col-caller-ratio {
+            min-width: 85px;
+            text-align: center;
+          }
+
+          .badge-num-circle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            font-size: 0.78125rem;
+            font-weight: 800;
+            line-height: 1;
+
+            &.badge-circle-lavender {
+              background: #EEF2FF;
+              color: #4338CA;
+            }
+
+            &.badge-circle-green {
+              background: #DCFCE7;
+              color: #15803D;
+            }
+
+            &.badge-circle-amber {
+              background: #FEF3C7;
+              color: #B45309;
+            }
+          }
+
+          .badge-pill-capsule {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 44px;
+            padding: 0.22rem 0.65rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            line-height: 1;
+
+            &.badge-pill-blue {
+              background: #EEF2FF;
+              color: #3730A3;
+            }
+
+            &.badge-pill-purple {
+              background: #EDE9FE;
+              color: #5B21B6;
+            }
+          }
+
+          .campaign-leads-detail-row {
+            background: #F8FAFC;
+
+            .campaign-leads-accordion-inner {
+              padding: 0.85rem 1.25rem 1.15rem 1.25rem;
+              border-top: 1px dashed #E2E8F0;
+              border-bottom: 1.5px solid #E2E8F0;
+              background: #F8FAFC;
+
+              .accordion-sub-header {
+                display: flex;
+                align-items: center;
+                gap: 0.45rem;
+                margin-bottom: 0.65rem;
+              }
+
+              .nested-leads-table {
+                background: #FFFFFF;
+                border-radius: 8px;
+                overflow: hidden;
+                border: 1px solid #E2E8F0;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+                width: 100%;
+
+                th {
+                  background: #F1F5F9;
+                  font-size: 0.65rem;
+                  padding: 0.5rem 0.6rem;
+                  text-transform: uppercase;
+                  color: #475569;
+                  font-weight: 800;
+                }
+
+                td {
+                  padding: 0.55rem 0.6rem;
+                  font-size: 0.75rem;
+                  border-bottom: 1px solid #F1F5F9;
+                }
+
+                .lead-phone-link {
+                  color: #1E293B;
+                  text-decoration: none;
+                  font-weight: 600;
+
+                  &:hover {
+                    color: #4F46E5;
+                    text-decoration: underline;
+                  }
+                }
+              }
+            }
           }
         }
 
