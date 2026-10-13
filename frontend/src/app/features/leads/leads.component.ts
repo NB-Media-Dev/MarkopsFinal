@@ -156,7 +156,15 @@ export class LeadsComponent implements OnInit {
     const list: { id: string; name: string }[] = [];
     const seenNames = new Set<string>();
 
-    const all = this.campaignService.campaigns();
+    const pkg = this.packageFilterSignal()?.trim();
+    const prod = this.productFilterSignal()?.trim();
+    const dbPkgs = this.packageService.packages();
+
+    let all = this.campaignService.campaigns();
+    if ((pkg && pkg.toLowerCase() !== 'all') || (prod && prod.toLowerCase() !== 'all')) {
+      all = all.filter((c) => isItemForPackage(c, pkg, prod, dbPkgs));
+    }
+
     if (all && all.length > 0) {
       all.forEach((c) => {
         const name = (c.name || '').trim();
@@ -167,21 +175,18 @@ export class LeadsComponent implements OnInit {
       });
     }
 
-
-    const allLeads = this.leadService.leads();
-    allLeads.forEach((l) => {
-      const name = (l.campaignName || (l as any).campaign_name || '').trim();
-      if (name && !seenNames.has(name.toLowerCase())) {
-        seenNames.add(name.toLowerCase());
-        list.push({ id: String(l.campaignId || (l as any).campaign_id || name), name });
-      }
-    });
-
     return list;
   });
 
   readonly availableAds = computed(() => {
-    const allAds = this.campaignService.ads() || [];
+    let allAds = this.campaignService.ads() || [];
+    const pkg = this.packageFilterSignal()?.trim();
+    const prod = this.productFilterSignal()?.trim();
+    const dbPkgs = this.packageService.packages();
+    if ((pkg && pkg.toLowerCase() !== 'all') || (prod && prod.toLowerCase() !== 'all')) {
+      allAds = allAds.filter((a) => isItemForPackage(a, pkg, prod, dbPkgs));
+    }
+
     const selCmpId = String(this.newCampaignId || '').trim().toLowerCase();
     const selCmpName = String(this.newCampaignName || '').trim().toLowerCase();
 
@@ -203,8 +208,7 @@ export class LeadsComponent implements OnInit {
       );
     });
 
-    const finalAds = filtered.length > 0 ? filtered : allAds;
-    return finalAds.map((a) => ({
+    return filtered.map((a) => ({
       id: String(a.id),
       name: a.name,
       platform: a.platform,
@@ -244,13 +248,13 @@ export class LeadsComponent implements OnInit {
 
   onCampaignSelectChange(event: Event) {
     const selectedVal = (event.target as HTMLSelectElement).value;
-    const found = this.campaignService.campaigns().find((c) => c.id === selectedVal);
+    const found = this.availableCampaigns().find((c) => String(c.id) === String(selectedVal) || c.id === selectedVal);
     if (found) {
-      this.newCampaignId = found.id;
+      this.newCampaignId = String(found.id);
       this.newCampaignName = found.name;
     } else {
       this.newCampaignId = '';
-      this.newCampaignName = selectedVal;
+      this.newCampaignName = selectedVal || 'General Ad Campaign';
     }
 
     if (this.newAdId) {
@@ -289,6 +293,7 @@ export class LeadsComponent implements OnInit {
     this.leadService.loadCalls().subscribe();
     this.leadService.loadSummary().subscribe();
     this.campaignService.loadCampaigns().subscribe();
+    this.campaignService.loadAds().subscribe();
     this.packageService.loadPackages().subscribe();
   }
 
