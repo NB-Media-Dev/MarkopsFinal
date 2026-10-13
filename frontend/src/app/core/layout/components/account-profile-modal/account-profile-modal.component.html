@@ -1,0 +1,317 @@
+<div class="mo-modal-backdrop" (click)="onBackdropClick($event)">
+  <div class="account-profile-modal" role="dialog" aria-modal="true" aria-labelledby="modal-profile-title">
+
+    <!-- Modal Header -->
+    <div class="modal-header-row">
+      <div class="header-title-group">
+        <div class="header-icon-box">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#CA8A04" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+            <circle cx="12" cy="7" r="4"></circle>
+          </svg>
+        </div>
+        <div class="header-text-group">
+          <h2 id="modal-profile-title" class="modal-title">My Account Profile</h2>
+          <p class="modal-subtitle">Update your profile picture and change password</p>
+        </div>
+      </div>
+
+      <button type="button" class="modal-close-circle-btn" (click)="onCloseModal()" title="Close dialog">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <div class="header-divider-line"></div>
+
+    <!-- Profile Summary Card -->
+    <div class="profile-summary-card">
+      <div class="summary-avatar-wrap">
+        <div class="summary-avatar">
+          @if (previewUrl() || currentUser()?.avatarUrl) {
+            <img [src]="previewUrl() || currentUser()?.avatarUrl" alt="Profile" class="avatar-img-round" />
+          } @else {
+            <span class="avatar-letter">{{ userInitial() }}</span>
+          }
+        </div>
+        <button
+          type="button"
+          class="camera-badge-btn"
+          (click)="triggerFileInput()"
+          title="Select new profile picture"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+        </button>
+      </div>
+
+      <div class="summary-user-details">
+        <h3 class="summary-fullname">{{ displayName() }}</h3>
+        <div>
+          <span class="summary-role-badge">{{ roleBadgeLabel() }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Segmented Tab Switcher -->
+    <div class="segmented-tabs-bar">
+      <button
+        type="button"
+        class="segment-tab-btn"
+        [class.active]="activeTab() === 'PICTURE'"
+        (click)="setTab('PICTURE')"
+      >
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        <span>Profile Picture</span>
+      </button>
+
+      <button
+        type="button"
+        class="segment-tab-btn"
+        [class.active]="activeTab() === 'PASSWORD'"
+        (click)="setTab('PASSWORD')"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <span>Change Password</span>
+      </button>
+    </div>
+
+    <!-- Tab 1: Profile Picture View -->
+    @if (activeTab() === 'PICTURE') {
+      <div class="tab-content-panel profile-picture-panel">
+        <input
+          type="file"
+          #fileInput
+          (change)="onFileSelected($event)"
+          accept="image/png,image/jpeg,image/jpg,image/webp"
+          style="display: none;"
+        />
+
+        <div
+          class="upload-dropzone"
+          [class.drag-over]="isDragging()"
+          (click)="triggerFileInput()"
+          (dragover)="onDragOver($event)"
+          (dragleave)="onDragLeave($event)"
+          (drop)="onDrop($event)"
+          tabindex="0"
+          role="button"
+          aria-label="Upload profile picture"
+        >
+          @if (isUploading()) {
+            <div class="upload-loader-wrap">
+              <div class="upload-spinner"></div>
+              <span class="uploading-text">Uploading profile picture...</span>
+            </div>
+          } @else {
+            <div class="dropzone-icon-wrap">
+              <svg class="dropzone-upload-icon" width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <div class="dropzone-main-text">Click to select new profile picture</div>
+            <div class="dropzone-sub-text">Supports PNG, JPG, JPEG or WEBP (Max 5MB)</div>
+          }
+        </div>
+
+        @if (uploadError()) {
+          <div class="feedback-alert error-alert">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <span>{{ uploadError() }}</span>
+          </div>
+        }
+
+        @if (uploadSuccess()) {
+          <div class="feedback-alert success-alert">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+            <span>{{ uploadSuccess() }}</span>
+          </div>
+        }
+
+        @if (currentUser()?.avatarUrl && !isUploading()) {
+          <div class="remove-picture-row">
+            <button type="button" class="btn-remove-avatar" (click)="removeCurrentPicture()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+              <span>Remove profile picture</span>
+            </button>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Tab 2: Change Password View -->
+    @if (activeTab() === 'PASSWORD') {
+      <div class="tab-content-panel password-panel">
+        <form class="password-form" (ngSubmit)="onUpdatePassword()" autocomplete="off">
+
+          <!-- Current Password -->
+          <div class="form-field-group">
+            <label class="field-label" for="curr-pass-input">CURRENT PASSWORD</label>
+            <div class="password-input-wrapper">
+              <input
+                id="curr-pass-input"
+                [type]="showCurrentPassword() ? 'text' : 'password'"
+                class="password-pill-input"
+                placeholder="Enter current password"
+                [value]="currentPassword()"
+                (input)="currentPassword.set($any($event.target).value)"
+                required
+              />
+              <button
+                type="button"
+                class="password-toggle-btn"
+                (click)="toggleCurrentPasswordVisibility()"
+                title="Toggle password visibility"
+              >
+                @if (showCurrentPassword()) {
+                  <!-- Eye Off -->
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
+                } @else {
+                  <!-- Eye Open -->
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                }
+              </button>
+            </div>
+          </div>
+
+          <!-- New Password -->
+          <div class="form-field-group">
+            <label class="field-label" for="new-pass-input">NEW PASSWORD</label>
+            <div class="password-input-wrapper">
+              <input
+                id="new-pass-input"
+                [type]="showNewPassword() ? 'text' : 'password'"
+                class="password-pill-input"
+                placeholder="Enter new password (min. 8 chars)"
+                [value]="newPassword()"
+                (input)="newPassword.set($any($event.target).value)"
+                required
+              />
+              <button
+                type="button"
+                class="password-toggle-btn"
+                (click)="toggleNewPasswordVisibility()"
+                title="Toggle password visibility"
+              >
+                @if (showNewPassword()) {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
+                } @else {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                }
+              </button>
+            </div>
+          </div>
+
+          <!-- Confirm New Password -->
+          <div class="form-field-group">
+            <label class="field-label" for="confirm-pass-input">CONFIRM NEW PASSWORD</label>
+            <div class="password-input-wrapper">
+              <input
+                id="confirm-pass-input"
+                [type]="showConfirmPassword() ? 'text' : 'password'"
+                class="password-pill-input"
+                placeholder="Confirm new password"
+                [value]="confirmPassword()"
+                (input)="confirmPassword.set($any($event.target).value)"
+                required
+              />
+              <button
+                type="button"
+                class="password-toggle-btn"
+                (click)="toggleConfirmPasswordVisibility()"
+                title="Toggle password visibility"
+              >
+                @if (showConfirmPassword()) {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
+                } @else {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                }
+              </button>
+            </div>
+          </div>
+
+          @if (passwordError()) {
+            <div class="feedback-alert error-alert">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span>{{ passwordError() }}</span>
+            </div>
+          }
+
+          @if (passwordSuccess()) {
+            <div class="feedback-alert success-alert">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+              </svg>
+              <span>{{ passwordSuccess() }}</span>
+            </div>
+          }
+
+          <!-- Action Buttons -->
+          <div class="form-actions-row">
+            <button type="button" class="btn-cancel" (click)="cancelPasswordForm()">
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="btn-update-password"
+              [disabled]="isSubmittingPassword()"
+            >
+              @if (isSubmittingPassword()) {
+                <span class="btn-spinner"></span>
+                <span>Updating...</span>
+              } @else {
+                <span>Update Password</span>
+              }
+            </button>
+          </div>
+        </form>
+      </div>
+    }
+
+  </div>
+</div>

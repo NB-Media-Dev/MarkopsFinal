@@ -27,12 +27,7 @@ function authenticateJwt(dbPoolOrStore) {
       let email = req.headers['x-user-email'] || 'admin@markops.io';
       let fullName = req.headers['x-user-name'] || 'System Administrator';
 
-      if (token.includes('bdm')) {
-        role = 'BDM';
-        userId = 2;
-        email = 'bdm@markops.io';
-        fullName = 'Business Development Manager';
-      } else if (token.includes('designer')) {
+      if (token.includes('designer')) {
         role = 'DESIGNER';
         userId = 5;
         email = 'designer@markops.io';

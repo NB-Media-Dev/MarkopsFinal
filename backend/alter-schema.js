@@ -59,6 +59,8 @@ async function runAlterTables() {
       { table: 'campaigns', col: 'target_cpl', type: 'DECIMAL(10,2) DEFAULT 0.00' },
 
       { table: 'notifications', col: 'target_route', type: 'VARCHAR(255) DEFAULT NULL' },
+      { table: 'users', col: 'avatar_url', type: 'VARCHAR(255) DEFAULT NULL' }
+
     ];
 
     for (const item of columnsToAdd) {

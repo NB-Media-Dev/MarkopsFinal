@@ -68,11 +68,12 @@ export const ROLE_SIDEBAR_MENU: Record<string, NavMenuItem[]> = {
 };
 
 import { NotificationService } from '../services/notification.service';
+import { AccountProfileModalComponent } from './components/account-profile-modal/account-profile-modal.component';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink],
+  imports: [CommonModule, RouterOutlet, RouterLink, AccountProfileModalComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
 })
@@ -85,6 +86,15 @@ export class MainLayoutComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly isNotificationFlyoutOpen = signal<boolean>(false);
+  readonly isProfileModalOpen = signal<boolean>(false);
+
+  openProfileModal(): void {
+    this.isProfileModalOpen.set(true);
+  }
+
+  closeProfileModal(): void {
+    this.isProfileModalOpen.set(false);
+  }
 
   readonly activeRole = computed<UserRole>(() => {
     return this.authService.currentUser()?.role || 'ADMINISTRATOR';

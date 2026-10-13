@@ -10,7 +10,7 @@ router.get('/users', async (req, res) => {
   if (dbPool) {
     try {
       const [rows] = await dbPool.query(`
-        SELECT u.id, u.email, u.full_name as fullName, COALESCE(r.code, 'ADMINISTRATOR') as role, u.department, u.is_active as isActive, u.last_login_at as lastLoginAt, u.created_at as createdAt
+        SELECT u.id, u.email, u.full_name as fullName, COALESCE(r.code, 'ADMINISTRATOR') as role, u.department, u.is_active as isActive, u.last_login_at as lastLoginAt, u.created_at as createdAt, u.avatar_url as avatarUrl
         FROM users u
         LEFT JOIN roles r ON u.role_id = r.id
         ORDER BY u.id ASC
@@ -23,6 +23,7 @@ router.get('/users', async (req, res) => {
           role: r.role,
           department: r.department || 'General Operations',
           isActive: Boolean(r.isActive),
+          avatarUrl: r.avatarUrl || undefined,
           lastLoginAt: r.lastLoginAt ? String(r.lastLoginAt) : 'Never',
           createdAt: r.createdAt ? String(r.createdAt).split('T')[0] : '2026-01-10',
         }));

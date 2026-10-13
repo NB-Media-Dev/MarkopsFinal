@@ -110,6 +110,7 @@ async function initDatabase() {
     }
 
     try { await activePool.query('ALTER TABLE notifications ADD COLUMN target_route VARCHAR(255) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query("DELETE FROM users WHERE LOWER(email) = 'bdm@markops.io'"); } catch (e) {}
     try { await activePool.query('ALTER TABLE leads ADD COLUMN package_name VARCHAR(255) DEFAULT NULL'); } catch (e) {}
     try { await activePool.query('ALTER TABLE leads ADD COLUMN product_id VARCHAR(100) DEFAULT NULL'); } catch (e) {}
     try { await activePool.query('ALTER TABLE leads ADD COLUMN product_name VARCHAR(255) DEFAULT NULL'); } catch (e) {}

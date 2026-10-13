@@ -125,9 +125,19 @@
 
         <div class="navbar-divider-vertical"></div>
 
-        <div class="header-user-pill">
+        <div
+          class="header-user-pill clickable-user-pill"
+          (click)="openProfileModal()"
+          role="button"
+          tabindex="0"
+          title="Click to view and update account profile"
+        >
           <div class="user-avatar-navy">
-            {{ userInitials() }}
+            @if (authService.currentUser()?.avatarUrl) {
+              <img [src]="authService.currentUser()?.avatarUrl" class="user-avatar-img" alt="Profile" />
+            } @else {
+              {{ userInitials() }}
+            }
           </div>
           <div class="user-info-text">
             <span class="user-fullname">{{
@@ -190,4 +200,8 @@
       <router-outlet></router-outlet>
     </div>
   </main>
+
+  @if (isProfileModalOpen()) {
+    <app-account-profile-modal (close)="closeProfileModal()"></app-account-profile-modal>
+  }
 </div>

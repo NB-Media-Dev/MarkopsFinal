@@ -26,18 +26,6 @@ export const DEMO_ACCOUNTS: Record<string, { email: string; pass: string; user: 
       isActive: true,
     },
   },
-  BDM: {
-    email: 'bdm@markops.io',
-    pass: 'admin123',
-    user: {
-      id: '2',
-      email: 'bdm@markops.io',
-      fullName: 'Business Development Manager',
-      role: 'BDM',
-      department: 'Business Development',
-      isActive: true,
-    },
-  },
 };
 
 @Injectable({
@@ -148,6 +136,7 @@ export class AuthService {
                 role: data.user.role || (cachedUser ? cachedUser.role : 'ADMINISTRATOR'),
                 department: data.user.department || (cachedUser ? cachedUser.department : 'Operations'),
                 isActive: data.user.isActive !== false,
+                avatarUrl: data.user.avatarUrl || cachedUser?.avatarUrl,
               };
 
               this._currentUser.set(liveUser);
@@ -216,7 +205,6 @@ export class AuthService {
   private parseUserFromJwt(token: string): User | null {
     try {
       if (!token || !token.includes('.')) {
-        if (token.includes('bdm')) return DEMO_ACCOUNTS['BDM'].user;
         return DEMO_ACCOUNTS['ADMINISTRATOR'].user;
       }
       const parts = token.split('.');
@@ -237,7 +225,6 @@ export class AuthService {
     return null;
   }
 
-
   async login(credentials: LoginCredentials): Promise<boolean> {
     this._isLoading.set(true);
     this._authError.set(null);
@@ -249,65 +236,29 @@ export class AuthService {
         throw new Error('Please enter both email address and password.');
       }
 
-      let authenticatedUser: User | null = null;
-      let token = '';
+      const response = await safeFetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: normalizedEmail, password: credentials.password }),
+      });
 
+      const data = await response.json();
 
-      try {
-        const response = await safeFetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ email: normalizedEmail, password: credentials.password }),
-        });
-
-        const data = await response.json();
-
-        if (response.status === 403) {
-          throw new Error(data.error || 'Account is inactive. Access denied.');
-        }
-
-        if (response.ok && data.user) {
-          if (data.user.isActive === false) {
-            throw new Error('Account is inactive. Access denied by authentication policy.');
-          }
-          authenticatedUser = data.user;
-          token = data.accessToken;
-        } else if (!response.ok && data.error) {
-          throw new Error(data.error);
-        }
-      } catch (apiErr: any) {
-        if (apiErr.message && (apiErr.message.includes('inactive') || apiErr.message.includes('Access denied'))) {
-          throw apiErr;
-        }
-        console.log('Backend API connection check fallback to client accounts:', apiErr);
+      if (response.status === 403) {
+        throw new Error(data.error || 'Account is inactive. Access denied.');
       }
 
-  
-      if (!authenticatedUser) {
-        const matchedDemo = Object.values(DEMO_ACCOUNTS).find(
-          (acc) =>
-            acc.email.toLowerCase() === normalizedEmail ||
-            (acc.email.startsWith('admin') && (normalizedEmail === 'admin@markops.com' || normalizedEmail === 'admin')) ||
-            (acc.email.startsWith('mktg') && normalizedEmail === 'manager@markops.io')
-        );
-
-        if (matchedDemo && credentials.password) {
-          if (matchedDemo.user.isActive === false) {
-            throw new Error('Account is inactive. Access denied.');
-          }
-          authenticatedUser = matchedDemo.user;
-          token = `mo_jwt_${matchedDemo.user.role.toLowerCase()}_${Date.now()}`;
+      if (response.ok && data.user) {
+        if (data.user.isActive === false) {
+          throw new Error('Account is inactive. Access denied by authentication policy.');
         }
-
-        if (!authenticatedUser) {
-          throw new Error('Invalid credentials. Please check email address and password.');
-        }
+        this.setSession(data.user, data.accessToken);
+        this._isLoading.set(false);
+        return true;
       }
 
-      this.setSession(authenticatedUser, token);
-      this._isLoading.set(false);
-      return true;
+      throw new Error(data.error || 'Invalid credentials. Please check email address and password.');
     } catch (err: any) {
       this._authError.set(err.message || 'Authentication failed. Please check your credentials.');
       this._isLoading.set(false);
@@ -360,6 +311,90 @@ export class AuthService {
       isActive: true,
     };
     this.setSession(updatedUser, token);
+  }
+
+  async updateProfileAvatar(avatarDataUrl: string): Promise<{ success: boolean; avatarUrl?: string; error?: string }> {
+    try {
+      const token = this._accessToken() || getAuthToken();
+      let newAvatarUrl = avatarDataUrl;
+
+      try {
+        const res = await safeFetch('/api/auth/profile/avatar', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ avatarDataUrl }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.avatarUrl) {
+            newAvatarUrl = data.avatarUrl;
+          }
+        }
+      } catch (apiErr) {
+        console.log('[Auth] Profile avatar API fallback notice:', apiErr);
+      }
+
+      const current = this._currentUser();
+      if (current) {
+        const updatedUser: User = { ...current, avatarUrl: newAvatarUrl };
+        this.setSession(updatedUser, this._accessToken() || 'mo_jwt_default');
+      }
+
+      return { success: true, avatarUrl: newAvatarUrl };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to update avatar' };
+    }
+  }
+
+  async removeProfileAvatar(): Promise<{ success: boolean; error?: string }> {
+    try {
+      const token = this._accessToken() || getAuthToken();
+      try {
+        await safeFetch('/api/auth/profile/avatar', {
+          method: 'DELETE',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+      } catch (apiErr) {
+        console.log('[Auth] Remove avatar API fallback notice:', apiErr);
+      }
+
+      const current = this._currentUser();
+      if (current) {
+        const updatedUser: User = { ...current, avatarUrl: undefined };
+        this.setSession(updatedUser, this._accessToken() || 'mo_jwt_default');
+      }
+
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to remove avatar' };
+    }
+  }
+
+  async changePassword(currentPassword: string, newPassword: string, confirmPassword?: string): Promise<{ success: boolean; message?: string; error?: string }> {
+    try {
+      const token = this._accessToken() || getAuthToken();
+      const res = await safeFetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || 'Failed to change password.' };
+      }
+
+      return { success: true, message: data.message || 'Password updated successfully.' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Network error occurred. Please try again.' };
+    }
   }
 
   private setSession(user: User, token: string): void {
