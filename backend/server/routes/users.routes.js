@@ -1,10 +1,47 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const bcrypt = require('bcryptjs');
 const { dbPool, dbUsersStore, ROLE_MAP } = require('../db');
 const { recordAuditLog } = require('../services/audit.service');
 
 const router = express.Router();
 
+function saveAvatarImage(avatarDataUrl, userId) {
+  if (!avatarDataUrl || typeof avatarDataUrl !== 'string') return null;
+  if (!avatarDataUrl.startsWith('data:image/')) {
+    return avatarDataUrl;
+  }
+  try {
+    const matches = avatarDataUrl.match(/^data:image\/([a-zA-Z0-9+]+);base64,(.+)$/);
+    if (!matches) return null;
+    const rawExt = matches[1].toLowerCase();
+    const ext = rawExt === 'jpeg' ? 'jpg' : rawExt === 'svg+xml' ? 'svg' : rawExt;
+    const imageBuffer = Buffer.from(matches[2], 'base64');
+    const fileName = `avatar_${String(userId).replace(/[^a-zA-Z0-9_-]/g, '_')}_${Date.now()}.${ext}`;
+    const relativeUrl = `/uploads/avatars/${fileName}`;
+
+    const targetDirs = [
+      path.resolve(__dirname, '../../frontend/public/uploads/avatars'),
+      path.resolve(__dirname, '../uploads/avatars'),
+      path.resolve('public/uploads/avatars'),
+      path.resolve('uploads/avatars'),
+    ];
+
+    for (const dir of targetDirs) {
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(path.join(dir, fileName), imageBuffer);
+      } catch (e) {
+        console.log('Avatar write notice:', e?.message || e);
+      }
+    }
+    return relativeUrl;
+  } catch (err) {
+    console.error('Failed to save avatar image:', err);
+    return null;
+  }
+}
 
 router.get('/users', async (req, res) => {
   if (dbPool) {
@@ -60,7 +97,7 @@ function resolveRoleId(role) {
 }
 
 router.post('/users', async (req, res) => {
-  const { email, fullName, role, department, isActive, password } = req.body;
+  const { email, fullName, role, department, isActive, password, avatarUrl, avatarDataUrl } = req.body;
   if (!email || !fullName || !role) {
     return res.status(400).json({ error: 'Email, Full Name, and Role are required fields.' });
   }
@@ -69,12 +106,11 @@ router.post('/users', async (req, res) => {
   const userDept = String(department || 'General Operations').trim();
   const userActive = isActive !== undefined ? Boolean(isActive) : true;
   const targetRoleId = resolveRoleId(role);
-
+  const savedAvatar = saveAvatarImage(avatarDataUrl, normalizedEmail.split('@')[0]) || avatarUrl || null;
 
   if (normalizedEmail === 'admin@markops.io') {
     return res.status(400).json({ error: 'Cannot create a user with the System Administrator email (admin@markops.io).' });
   }
-
 
   if (dbPool) {
     try {
@@ -86,7 +122,6 @@ router.post('/users', async (req, res) => {
       console.error('[MySQL DB Error] Check existing user query failed:', e?.message || e);
     }
   }
-
 
   if (dbUsersStore.some((u) => u.email && u.email.toLowerCase() === normalizedEmail)) {
     return res.status(409).json({ error: `A user with email "${normalizedEmail}" already exists. Please use a unique email address.` });
@@ -100,9 +135,9 @@ router.post('/users', async (req, res) => {
   if (dbPool) {
     try {
       const [insertRes] = await dbPool.query(
-        `INSERT INTO users (email, password_hash, full_name, role_id, department, is_active)
+        `INSERT INTO users (email, password_hash, full_name, role_id, is_active, avatar_url)
          VALUES (?, ?, ?, ?, ?, ?)`,
-        [normalizedEmail, hashedPassword, String(fullName).trim(), targetRoleId, userDept, userActive ? 1 : 0]
+        [normalizedEmail, hashedPassword, String(fullName).trim(), targetRoleId, userActive ? 1 : 0, savedAvatar]
       );
       
       if (insertRes && insertRes.insertId) {
@@ -144,6 +179,7 @@ router.post('/users', async (req, res) => {
     role: String(role),
     department: userDept,
     isActive: userActive,
+    avatarUrl: savedAvatar || undefined,
     lastLoginAt: 'Never',
     createdAt: new Date().toISOString().split('T')[0],
   };
@@ -257,10 +293,11 @@ router.patch('/users/:id/status', async (req, res) => {
 
 router.put('/users/:id', async (req, res) => {
   const userId = req.params.id;
-  const { email, fullName, role, department, isActive, password } = req.body;
+  const { email, fullName, role, department, isActive, password, avatarUrl, avatarDataUrl } = req.body;
 
   const user = dbUsersStore.find((u) => String(u.id) === String(userId));
   const previousState = user ? { ...user } : null;
+  const savedAvatar = saveAvatarImage(avatarDataUrl, userId) || (avatarUrl !== undefined ? avatarUrl : undefined);
 
   if (user) {
     if (email) user.email = String(email).toLowerCase().trim();
@@ -268,6 +305,7 @@ router.put('/users/:id', async (req, res) => {
     if (role) user.role = String(role);
     if (department) user.department = String(department).trim();
     if (isActive !== undefined) user.isActive = Boolean(isActive);
+    if (savedAvatar !== undefined) user.avatarUrl = savedAvatar;
     if (password && String(password).length >= 1) {
       user.rawPassword = String(password);
       user.passwordHash = await bcrypt.hash(String(password), 10);
@@ -280,6 +318,11 @@ router.put('/users/:id', async (req, res) => {
       const targetRoleId = resolveRoleId(role);
       let sql = 'UPDATE users SET full_name = ?, email = ?, role_id = ?, department = ?, is_active = ?';
       const params = [fullName, email, targetRoleId, department, isActive ? 1 : 0];
+
+      if (savedAvatar !== undefined) {
+        sql += ', avatar_url = ?';
+        params.push(savedAvatar);
+      }
 
       if (password && password.length >= 6) {
         const hash = await bcrypt.hash(password, 10);

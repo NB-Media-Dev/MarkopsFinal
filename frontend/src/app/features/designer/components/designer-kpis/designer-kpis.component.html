@@ -1,38 +1,56 @@
 <section class="kpi-grid">
-  <div class="kpi-card card-designers card-purple">
+  <!-- Card 1: Active Designers -->
+  <div class="kpi-card card-purple">
+    <div class="kpi-info-cluster">
+      <span class="kpi-title">ACTIVE DESIGNERS</span>
+      <div class="kpi-value">{{ totalDesigners }}</div>
+    </div>
     <div class="kpi-squircle-icon icon-purple">
       <span class="material-symbols-outlined">group</span>
     </div>
-    <div class="kpi-info-cluster">
-      <span class="kpi-title">Active Designers</span>
-      <div class="kpi-value">{{ totalDesigners }}</div>
-    </div>
   </div>
-  <div class="kpi-card card-totaltasks card-amber">
-    <div class="kpi-squircle-icon icon-amber">
-      <span class="material-symbols-outlined">folder_open</span>
-    </div>
+
+  <!-- Card 2: Assigned Tasks -->
+  <div class="kpi-card card-amber">
     <div class="kpi-info-cluster">
-      <span class="kpi-title">Total Assigned Tasks</span>
+      <span class="kpi-title">ASSIGNED TASKS</span>
       <div class="kpi-value">{{ totalTasks }}</div>
     </div>
-  </div>
-  <div class="kpi-card card-pending card-blue">
-    <div class="kpi-squircle-icon icon-blue">
-      <span class="material-symbols-outlined">pending_actions</span>
+    <div class="kpi-squircle-icon icon-amber">
+      <span class="material-symbols-outlined">folder</span>
     </div>
+  </div>
+
+  <!-- Card 3: Pending Tasks -->
+  <div class="kpi-card card-rose">
     <div class="kpi-info-cluster">
-      <span class="kpi-title">Pending & In-Progress</span>
+      <span class="kpi-title">PENDING TASKS</span>
       <div class="kpi-value">{{ totalPending }}</div>
     </div>
-  </div>
-  <div class="kpi-card card-completed card-emerald">
-    <div class="kpi-squircle-icon icon-emerald">
-      <span class="material-symbols-outlined">task_alt</span>
+    <div class="kpi-squircle-icon icon-rose">
+      <span class="material-symbols-outlined">pending_actions</span>
     </div>
+  </div>
+
+  <!-- Card 4: In-Progress Tasks -->
+  <div class="kpi-card card-blue">
     <div class="kpi-info-cluster">
-      <span class="kpi-title">Completed Creatives</span>
+      <span class="kpi-title">IN-PROGRESS TASKS</span>
+      <div class="kpi-value">{{ totalInProgress }}</div>
+    </div>
+    <div class="kpi-squircle-icon icon-blue">
+      <span class="material-symbols-outlined">assignment</span>
+    </div>
+  </div>
+
+  <!-- Card 5: Completed Tasks -->
+  <div class="kpi-card card-emerald">
+    <div class="kpi-info-cluster">
+      <span class="kpi-title">COMPLETED TASKS</span>
       <div class="kpi-value">{{ totalCompleted }}</div>
+    </div>
+    <div class="kpi-squircle-icon icon-emerald">
+      <span class="material-symbols-outlined">check_circle</span>
     </div>
   </div>
 </section>

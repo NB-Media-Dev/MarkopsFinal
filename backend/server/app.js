@@ -201,11 +201,11 @@ app.use((err, req, res, next) => {
 function setupSocketIO(httpServer) {
   const io = new SocketIOServer(httpServer, {
     cors: {
-      origin: (origin, callback) => callback(null, origin || true),
+      origin: "*",
       credentials: true,
       methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
     },
-    transports: ['polling', 'websocket'],
+    transports: ['websocket'],
     allowEIO3: true,
   });
 

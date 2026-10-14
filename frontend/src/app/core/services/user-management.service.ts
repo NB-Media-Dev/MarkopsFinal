@@ -20,6 +20,7 @@ export class UserManagementService {
     isActive: true,
     lastLoginAt: 'Just now',
     createdAt: '2026-01-10',
+    avatarUrl: '/uploads/avatars/avatar_1_1791895994639.png',
   };
 
   private readonly _users = signal<ManagedUser[]>([this.PRIMARY_ADMIN]);
@@ -65,6 +66,8 @@ export class UserManagementService {
       department: req.department.trim() || 'General Operations',
       isActive: req.isActive !== undefined ? req.isActive : true,
       password: req.password,
+      avatarUrl: req.avatarUrl,
+      avatarDataUrl: req.avatarDataUrl,
     };
 
     let createdUser: ManagedUser = {
@@ -74,6 +77,7 @@ export class UserManagementService {
       role: payload.role,
       department: payload.department,
       isActive: payload.isActive,
+      avatarUrl: payload.avatarUrl,
       lastLoginAt: 'Never',
       createdAt: new Date().toISOString().split('T')[0],
     };
@@ -102,6 +106,7 @@ export class UserManagementService {
             role: data.role || createdUser.role,
             department: data.department || createdUser.department,
             isActive: data.isActive !== undefined ? Boolean(data.isActive) : createdUser.isActive,
+            avatarUrl: data.avatarUrl || createdUser.avatarUrl,
             lastLoginAt: data.lastLoginAt || 'Never',
             createdAt: data.createdAt || createdUser.createdAt,
           };
@@ -123,7 +128,6 @@ export class UserManagementService {
     return createdUser;
   }
 
- 
   async toggleUserStatus(userId: string): Promise<void> {
     this._users.update((list) =>
       list.map((u) => (u.id === userId ? { ...u, isActive: !u.isActive } : u))
@@ -139,14 +143,12 @@ export class UserManagementService {
     }
   }
 
-  
   updateUserRole(userId: string, newRole: UserRole): void {
     this._users.update((list) =>
       list.map((u) => (u.id === userId ? { ...u, role: newRole } : u))
     );
   }
 
- 
   async updateUser(userId: string, updatedData: Partial<CreateUserRequest>): Promise<ManagedUser | null> {
     let updatedUser: ManagedUser | null = null;
 
@@ -160,6 +162,7 @@ export class UserManagementService {
             role: updatedData.role || user.role,
             department: updatedData.department ? updatedData.department.trim() : user.department,
             isActive: updatedData.isActive !== undefined ? updatedData.isActive : user.isActive,
+            avatarUrl: updatedData.avatarUrl !== undefined ? updatedData.avatarUrl : user.avatarUrl,
           };
           return updatedUser;
         }
@@ -172,7 +175,11 @@ export class UserManagementService {
         await safeFetch(`/api/users/${userId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...(updatedUser as ManagedUser), password: updatedData.password }),
+          body: JSON.stringify({
+            ...(updatedUser as ManagedUser),
+            password: updatedData.password,
+            avatarDataUrl: updatedData.avatarDataUrl,
+          }),
         });
         await this.loadUsersFromDatabase();
       } catch (err) {

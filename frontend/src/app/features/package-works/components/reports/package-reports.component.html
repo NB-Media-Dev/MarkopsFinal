@@ -1,0 +1,560 @@
+<div class="team-perf-matrix-wrapper">
+
+  @if (!selectedPerformanceUser) {
+    <!-- TOP TOOLBAR -->
+
+
+    <!-- MAIN REPORTS SECTION -->
+    <div class="team-reports-content-wrap">
+
+      <!-- WHEN 'ALL' IS SELECTED: DISPLAY FIRST IMAGE ROLE CARDS -->
+      @if (selectedRoleFilter === 'ALL' && !teamSearchQuery) {
+        <div class="profile-cards-section-header">
+          <div>
+            <h3 class="profile-cards-main-title">Team Member Reports</h3>
+          </div>
+        </div>
+
+        <div class="team-reports-role-grid">
+          @for (card of roleTeamCards; track card.roleCode) {
+            <div class="role-report-card">
+              <div class="role-card-top">
+                <h4 class="role-card-title">{{ card.title }}</h4>
+
+                <div class="role-avatar-stack">
+                  @for (av of card.avatars; track av.name) {
+                    @if (av.avatarUrl) {
+                      <img
+                        [src]="getAvatarUrl(av.avatarUrl)"
+                        [alt]="av.name"
+                        [title]="av.name"
+                        class="stack-avatar-item"
+                        (error)="av.avatarUrl = undefined"
+                      />
+                    }
+                  }
+                  @if (card.overflowCount > 0) {
+                    <span class="stack-overflow-badge">+{{ card.overflowCount }}</span>
+                  }
+                </div>
+              </div>
+
+              <div class="role-card-action">
+                <button
+                  type="button"
+                  class="btn-role-card-view"
+                  (click)="viewRoleTeam(card.roleCode)"
+                >
+                  View
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <!-- WHEN FILTERED BY ROLE OR SEARCH QUERY: DISPLAY FILTERED MEMBERS LIST -->
+        <div class="profile-cards-section-header with-back">
+          <div class="header-left-cluster">
+            <button
+              type="button"
+              class="btn-back-pill"
+              (click)="backToAllRoles()"
+              title="Back to All Teams"
+            >
+              <span class="material-symbols-outlined fs-15">arrow_back</span>
+              <span>All Teams</span>
+            </button>
+            <h3 class="profile-cards-main-title">
+              {{ getActiveRoleLabel() }} Reports
+            </h3>
+          </div>
+          <div class="showing-count-pill">
+            Showing {{ filteredTeamMembers.length }} of {{ reportEligibleMembers.length }} Members
+          </div>
+        </div>
+
+        <div class="user-profile-cards-grid">
+          @for (u of filteredTeamMembers; track u.userId || u.email) {
+            <div class="user-profile-card">
+              <div class="user-profile-card-top">
+                @if (u.user?.avatarUrl) {
+                  <img
+                    [src]="getAvatarUrl(u.user?.avatarUrl)"
+                    [alt]="u.name"
+                    class="profile-avatar-circle avatar-img"
+                    (error)="onMemberAvatarError(u)"
+                  />
+                } @else {
+                  <div class="profile-avatar-circle" [ngClass]="u.avatarColor || 'avatar-purple'">
+                    {{ u.name ? u.name.charAt(0).toUpperCase() : '' }}
+                  </div>
+                }
+                <div class="profile-meta-content">
+                  <h4 class="profile-user-name" [title]="u.name">{{ u.name }}</h4>
+                  <div class="profile-user-role-wrap">
+                    <span class="role-text-label">Role:</span>
+                    <span class="role-badge-text" [ngClass]="u.roleBadgeClass">{{ u.roleLabel }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="user-profile-card-footer">
+                <button
+                  type="button"
+                  class="btn-profile-card-view"
+                  (click)="openUserDetailModal(u)"
+                  [title]="'View detailed records for ' + u.name"
+                >
+                  <span class="material-symbols-outlined fs-16">visibility</span>
+                  <span>View</span>
+                </button>
+              </div>
+            </div>
+          }
+
+          @if (filteredTeamMembers.length === 0) {
+            <div class="profile-cards-empty-state">
+              <span class="material-symbols-outlined fs-28 text-muted mb-1">person_off</span>
+              <h4 class="empty-title fs-14">No users found</h4>
+              <p class="empty-subtitle fs-12 text-muted">No team members match the selected role or search filter.</p>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  } @else {
+    <!-- USER DETAILED PERFORMANCE REPORT -->
+    <div
+      class="user-detail-page-container mt-2"
+      [class.digital-marketing-report]="selectedPerformanceUser?.role === 'DIGITAL_MARKETING'"
+    >
+      <div class="detail-top-nav-bar">
+        <div class="detail-top-nav-left">
+          <div class="date-filter-group">
+            <span class="filter-group-label">
+              <span class="material-symbols-outlined fs-14 text-purple">calendar_month</span>
+              DATE:
+            </span>
+            <div class="date-chips-cluster">
+              <button
+                type="button"
+                class="btn-date-filter-pill"
+                [class.active]="modalDateFilter === 'ALL' && !filterStartDate && !filterEndDate"
+                (click)="setModalDateFilter('ALL')"
+              >
+                All Date
+              </button>
+              <button
+                type="button"
+                class="btn-date-filter-pill"
+                [class.active]="modalDateFilter === 'TODAY'"
+                (click)="setModalDateFilter('TODAY')"
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                class="btn-date-filter-pill"
+                [class.active]="modalDateFilter === 'YESTERDAY'"
+                (click)="setModalDateFilter('YESTERDAY')"
+              >
+                Yesterday
+              </button>
+              <button
+                type="button"
+                class="btn-date-filter-pill"
+                [class.active]="modalDateFilter === 'WEEK'"
+                (click)="setModalDateFilter('WEEK')"
+              >
+                1 Week
+              </button>
+              <button
+                type="button"
+                class="btn-date-filter-pill"
+                [class.active]="modalDateFilter === 'MONTH'"
+                (click)="setModalDateFilter('MONTH')"
+              >
+                1 Month
+              </button>
+              <div class="date-range-inputs-cluster">
+                <div class="date-input-field-wrap" [class.field-active]="!!filterStartDate">
+                  <label class="date-input-label">START</label>
+                  <input
+                    type="date"
+                    class="range-date-input"
+                    [max]="todayDateString"
+                    [ngModel]="filterStartDate"
+                    (ngModelChange)="onStartDateChange($event)"
+                    title="Start Date"
+                  />
+                </div>
+                <span class="date-sep-dash">—</span>
+                <div class="date-input-field-wrap" [class.field-active]="!!filterEndDate">
+                  <label class="date-input-label">END</label>
+                  <input
+                    type="date"
+                    class="range-date-input"
+                    [max]="todayDateString"
+                    [min]="filterStartDate"
+                    [ngModel]="filterEndDate"
+                    (ngModelChange)="onEndDateChange($event)"
+                    title="End Date"
+                  />
+                </div>
+              </div>
+              @if (modalDateFilter !== 'ALL' || filterStartDate || filterEndDate) {
+                <button
+                  type="button"
+                  class="btn-date-clear-pill"
+                  (click)="clearDateRange()"
+                  title="Reset to all dates"
+                >
+                  <span class="material-symbols-outlined fs-12">close</span>
+                  Clear
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="active-pkg-badge-pill">
+            <span class="material-symbols-outlined fs-14 text-amber">campaign</span>
+            <span class="text-muted fs-12 font-bold">PACKAGE:</span>
+            <span class="pkg-name-text">{{ activePackageDisplayName() }}</span>
+          </div>
+        </div>
+
+        <div class="top-nav-right-cluster">
+          <button
+            type="button"
+            class="btn-back-to-team"
+            (click)="closeUserDetailModal()"
+            title="Return to Team Members Directory"
+          >
+            <span class="material-symbols-outlined fs-16">arrow_back</span>
+            <span>Back to Team</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="detail-queue-card">
+        <div class="queue-card-header">
+          <div class="queue-header-left">
+            @if (selectedPerformanceUser.user?.avatarUrl) {
+              <img
+                [src]="getAvatarUrl(selectedPerformanceUser.user?.avatarUrl)"
+                [alt]="selectedPerformanceUser.name"
+                class="queue-squircle-icon avatar-img-fit"
+                (error)="onMemberAvatarError(selectedPerformanceUser)"
+              />
+            } @else {
+              <div class="queue-squircle-icon avatar-emerald" [ngClass]="selectedPerformanceUser.avatarColor || 'avatar-emerald'">
+                <span class="material-symbols-outlined">person</span>
+              </div>
+            }
+            <div class="queue-header-titles">
+              <div class="d-flex align-items-center gap-2 flex-wrap">
+                <h3 class="queue-user-name">{{ selectedPerformanceUser.name }}</h3>
+                <span class="badge badge-telecaller-role" [ngClass]="selectedPerformanceUser.roleBadgeClass">{{ selectedPerformanceUser.roleLabel }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="queue-header-right">
+            <div class="queue-search-wrap">
+              <span class="material-symbols-outlined search-icon">search</span>
+              <input
+                type="text"
+                class="queue-search-input"
+                [(ngModel)]="taskSearchQuery"
+                [placeholder]="selectedPerformanceUser.role === 'TELECALLER' ? 'Search by lead name, phone...' : (selectedPerformanceUser.role === 'DIGITAL_MARKETING' ? 'Search by ad name, campaign, platform...' : 'Search by task title, product...')"
+              />
+              @if (taskSearchQuery) {
+                <button type="button" class="btn-clear-search" (click)="taskSearchQuery = ''">
+                  <span class="material-symbols-outlined fs-14">close</span>
+                </button>
+              }
+            </div>
+
+            @if (selectedPerformanceUser.role === 'TELECALLER') {
+              <div class="telecaller-stat-pill pill-target" title="Target Calls">
+                <span class="material-symbols-outlined fs-15 icon-target">track_changes</span>
+                <span>Target: {{ telecallerTargetCalls }} Calls</span>
+              </div>
+              <div class="telecaller-stat-pill pill-calls" title="Calls Made">
+                <span class="material-symbols-outlined fs-15 icon-calls">call</span>
+                <span>Calls: {{ telecallerTotalCalls }}</span>
+              </div>
+              <div class="telecaller-stat-pill pill-pending" title="Pending Calls">
+                <span class="queue-dot"></span>
+                <span>{{ telecallerPendingCalls }} Pending Calls</span>
+              </div>
+            }
+
+            @if (selectedPerformanceUser.role !== 'TELECALLER') {
+              <div class="task-status-sub-filter-bar">
+                <button
+                  type="button"
+                  class="btn-task-sub-filter"
+                  [class.active]="taskStatusSubFilter === 'ALL'"
+                  (click)="setTaskStatusSubFilter('ALL')"
+                >
+                  All ({{ packageScopedTasks.length }})
+                </button>
+                <button
+                  type="button"
+                  class="btn-task-sub-filter"
+                  [class.active]="taskStatusSubFilter === 'IN_QUEUE'"
+                  (click)="setTaskStatusSubFilter('IN_QUEUE')"
+                >
+                  Queue ({{ modalTasksInProgressCount }})
+                </button>
+                <button
+                  type="button"
+                  class="btn-task-sub-filter"
+                  [class.active]="taskStatusSubFilter === 'COMPLETED'"
+                  (click)="setTaskStatusSubFilter('COMPLETED')"
+                >
+                  Completed ({{ modalTasksCompletedCount }})
+                </button>
+                <button
+                  type="button"
+                  class="btn-task-sub-filter"
+                  [class.active]="taskStatusSubFilter === 'REVISIONS'"
+                  (click)="setTaskStatusSubFilter('REVISIONS')"
+                >
+                  Revisions ({{ modalTasksRevisionCount }})
+                </button>
+              </div>
+            }
+
+            <button
+              type="button"
+              class="btn-export-csv"
+              (click)="downloadUserReport(selectedPerformanceUser)"
+              title="Download tasks performance report as CSV"
+            >
+              <span class="material-symbols-outlined fs-15">download</span>
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="queue-card-body">
+          @if (selectedPerformanceUser.role === 'TELECALLER') {
+            <!-- TELECALLER REPORT TABLE -->
+            <div class="table-responsive detail-tasks-table-wrap">
+              <table class="data-table detail-tasks-table telecaller-campaign-summary-table">
+                <thead>
+                  <tr>
+                    <th style="width: 50px">S.No</th>
+                    <th>Campaign Name</th>
+                    <th>Ad Name</th>
+                    <th>Assigned Date</th>
+                    <th>Total Leads</th>
+                    <th>Total Calls</th>
+                    <th>Average Calls</th>
+                    <th>Interested</th>
+                    <th>Targets</th>
+                    <th>Caller Ratio</th>
+                    <th>Paid</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of paginatedCampaignReports; track row.sNo) {
+                    <tr class="campaign-summary-master-row" (click)="toggleExpandCampaignRow(row.sNo)">
+                      <td class="font-bold text-slate-500">{{ row.sNo }}</td>
+                      <td class="font-semibold text-slate-800">
+                        <div class="d-flex align-items-center gap-1">
+                          <span class="material-symbols-outlined fs-14 text-indigo">campaign</span>
+                          <span>{{ row.campaignName }}</span>
+                        </div>
+                      </td>
+                      <td class="text-slate-700">{{ row.adName }}</td>
+                      <td class="text-slate-600">{{ row.assignedDate }}</td>
+                      <td class="font-bold text-slate-800">{{ row.totalCountLeads }}</td>
+                      <td class="font-bold text-indigo">{{ row.totalCalls }}</td>
+                      <td class="text-slate-700">{{ row.averageCalls }}</td>
+                      <td>
+                        <span class="badge badge-green font-bold">{{ row.interested }}</span>
+                      </td>
+                      <td class="text-slate-700 font-bold">{{ row.targets }}</td>
+                      <td class="font-bold text-amber">{{ row.callerRatio }}</td>
+                      <td>
+                        <span class="badge badge-emerald font-bold">{{ row.paid }}</span>
+                      </td>
+                    </tr>
+                  }
+                  @if (telecallerCampaignReports.length === 0) {
+                    <tr>
+                      <td colspan="11" class="text-center py-4 text-muted">
+                        No campaign records found for this telecaller.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else if (selectedPerformanceUser.role === 'DIGITAL_MARKETING') {
+            <!-- DIGITAL MARKETING REPORT TABLE -->
+            <div class="table-responsive detail-tasks-table-wrap">
+              <table class="data-table detail-tasks-table dm-record-table">
+                <thead>
+                  <tr>
+                    <th style="width: 50px">S.No</th>
+                    <th>Ad Name</th>
+                    <th>Campaign Name</th>
+                    <th>Product</th>
+                    <th>Package</th>
+                    <th>Platform</th>
+                    <th>Date</th>
+                    <th>Leads Generated</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (t of paginatedTasks; track t.id || $index) {
+                    <tr>
+                      <td class="font-bold text-slate-500">{{ paginationStartIndex + $index }}</td>
+                      <td class="font-semibold text-slate-800">{{ t.adName || t.title || '—' }}</td>
+                      <td class="text-slate-700">{{ t.campaignName || '—' }}</td>
+                      <td class="text-slate-600">{{ formatProductName(t.productName, t) }}</td>
+                      <td class="text-slate-600">{{ formatPackageName(t.packageName, t) }}</td>
+                      <td>
+                        <span class="badge" [ngClass]="getPlatformBadgeClass(t.platform)">{{ t.platform || 'Meta Ads' }}</span>
+                      </td>
+                      <td class="text-slate-600">{{ t.launchDate ? (t.launchDate | date: 'mediumDate') : (t.createdAt | date: 'mediumDate') }}</td>
+                      <td class="font-bold text-indigo">{{ t.leadsCount !== undefined ? t.leadsCount : 0 }}</td>
+                      <td>
+                        <span class="badge" [ngClass]="getAdStatusBadgeClass(t.status)">{{ t.status || 'ACTIVE' }}</span>
+                      </td>
+                    </tr>
+                  }
+                  @if (filteredModalTasks.length === 0) {
+                    <tr>
+                      <td colspan="9" class="text-center py-4 text-muted">
+                        No digital marketing records found.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <!-- GENERAL / DESIGNER REPORT TABLE -->
+            <div class="table-responsive detail-tasks-table-wrap">
+              <table class="data-table detail-tasks-table">
+                <thead>
+                  <tr>
+                    <th style="width: 50px">S.No</th>
+                    <th>Task Title</th>
+                    <th>Product</th>
+                    <th>Package</th>
+                    <th>Assigned By</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Due Date</th>
+                    <th>Duration</th>
+                    <th>Revisions</th>
+                    <th>Deliverable</th>
+                    <th>Feedback / Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (t of paginatedTasks; track t.id || $index) {
+                    <tr>
+                      <td class="font-bold text-slate-500">{{ paginationStartIndex + $index }}</td>
+                      <td class="font-semibold text-slate-800">{{ t.title }}</td>
+                      <td class="text-slate-600">{{ formatProductName(t.productName || t.productId, t) }}</td>
+                      <td class="text-slate-600">{{ formatPackageName(t.packageName || t.packageId, t) }}</td>
+                      <td class="text-slate-600">{{ t.creatorRole || 'Administrator' }}</td>
+                      <td>
+                        <span class="badge" [ngClass]="getTaskStatusBadgeClass(t.status)">{{ t.status }}</span>
+                      </td>
+                      <td>
+                        <span class="priority-pill" [ngClass]="'priority-' + (t.priority || 'medium').toLowerCase()">{{ t.priority || 'MEDIUM' }}</span>
+                      </td>
+                      <td class="text-slate-600">{{ t.dueDate ? (t.dueDate | date: 'mediumDate') : 'Ongoing' }}</td>
+                      <td class="text-slate-600">{{ getTaskDuration(t) }}</td>
+                      <td class="text-center font-bold text-rose">{{ getTaskRevisionsCount(t) }}</td>
+                      <td>
+                        @if (t.attachmentUrl || t.attachmentName) {
+                          <button
+                            type="button"
+                            class="btn-view-doc-matrix"
+                            (click)="onPreviewTaskDoc(t, $event)"
+                            [title]="t.attachmentName || 'View Deliverable'"
+                          >
+                            <span class="material-symbols-outlined fs-15 text-indigo">visibility</span>
+                            <span class="doc-btn-text">{{ t.attachmentName || 'View' }}</span>
+                          </button>
+                        } @else {
+                          <span class="text-muted fs-12">None</span>
+                        }
+                      </td>
+                      <td class="text-slate-600 max-w-xs truncate" [title]="t.reviewerFeedback || t.remarks || '—'">
+                        {{ t.reviewerFeedback || t.remarks || '—' }}
+                      </td>
+                    </tr>
+                  }
+                  @if (filteredModalTasks.length === 0) {
+                    <tr>
+                      <td colspan="12" class="text-center py-4 text-muted">
+                        No tasks match the active filters.
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+
+        <!-- PAGINATION BAR -->
+        @if (totalPages > 1) {
+          <div class="pagination-footer-bar">
+            <div class="pagination-stats-text">
+              Showing {{ paginationStartIndex }} - {{ paginationEndIndex }} of {{ totalTaskCount }} entries
+            </div>
+
+            <div class="pagination-buttons-cluster">
+              <button
+                type="button"
+                class="btn-pagination-nav"
+                [disabled]="currentPage === 1"
+                (click)="prevPage()"
+                title="Previous Page"
+              >
+                <span class="material-symbols-outlined fs-15">chevron_left</span>
+                <span>Prev</span>
+              </button>
+
+              <div class="pagination-pages-list">
+                @for (p of pageNumbers; track p) {
+                  <button
+                    type="button"
+                    class="btn-page-number"
+                    [class.active]="currentPage === p"
+                    (click)="goToPage(p)"
+                  >
+                    {{ p }}
+                  </button>
+                }
+              </div>
+
+              <button
+                type="button"
+                class="btn-pagination-nav"
+                [disabled]="currentPage === totalPages"
+                (click)="nextPage()"
+                title="Next Page"
+              >
+                <span>Next</span>
+                <span class="material-symbols-outlined fs-15">chevron_right</span>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

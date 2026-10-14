@@ -1,14 +1,9 @@
 <div class="table-card designers-table-card">
-  <div class="card-title-bar card-search-only-bar">
+
+  <!-- Search Filter Header -->
+  <div class="card-search-header">
     <div class="table-search-wrapper">
-      <span class="material-symbols-outlined search-icon">search</span>
-      <input
-        type="text"
-        class="designer-search-input"
-        placeholder="Search designers by name, email, or department..."
-        [ngModel]="searchQuery"
-        (input)="onSearch($event)"
-      />
+    
       @if (searchQuery) {
         <button
           type="button"
@@ -21,28 +16,43 @@
       }
     </div>
   </div>
+
+  <!-- Table View matching Design Reference -->
   <div class="table-responsive">
     <table class="data-table">
       <thead>
         <tr>
-          <th>DESIGNER</th>
-          <th class="text-center">COMPLETED TASKS</th>
-          <th class="text-center">PENDING TASKS</th>
-          <th class="text-center">TOTAL TASKS</th>
-          <th class="text-right">ACTION</th>
+          <th class="col-th-designer">DESIGNER</th>
+          <th class="col-th-active">ACTIVE TASKS</th>
+          <th class="col-th-completed">COMPLETED</th>
+          <th class="col-th-total">TOTAL TASKS</th>
+          <th class="col-th-status">WORKLOAD STATUS</th>
+          <th class="col-th-action text-right">ACTION</th>
         </tr>
       </thead>
       <tbody>
-        @for (designer of designers; track designer.id) {
+        @for (designer of paginatedDesigners(); track designer.id) {
           <tr class="clickable-row" (click)="onSelect(designer.id)">
 
-            <td class="col-designer-profile">
+            <!-- Column 1: Designer -->
+            <td class="col-td-designer">
               <div class="designer-user-cell">
-                <div
-                  class="designer-avatar-circle"
-                  [style.backgroundColor]="designer.avatarColor || '#7C3AED'"
-                >
-                  {{ getInitials(designer.name) }}
+                <div class="designer-avatar-wrap">
+                  @if (designer.avatarUrl) {
+                    <img [src]="getAvatarUrl(designer.avatarUrl)" [alt]="designer.name" class="avatar-img-round" (error)="$any($event.target).style.display='none'" />
+                  } @else {
+                    <div
+                      class="designer-avatar-circle"
+                      [style.backgroundColor]="designer.avatarColor || '#EA580C'"
+                    >
+                      {{ getInitials(designer.name) }}
+                    </div>
+                  }
+                  <span
+                    class="avatar-status-dot"
+                    [class.dot-amber]="getStatusDotTone(designer.inProgressCount ?? designer.pendingCount) === 'amber'"
+                    [class.dot-green]="getStatusDotTone(designer.inProgressCount ?? designer.pendingCount) === 'green'"
+                  ></span>
                 </div>
                 <div class="designer-text-meta">
                   <span class="designer-name-strong">{{ designer.name }}</span>
@@ -51,30 +61,62 @@
               </div>
             </td>
 
-            <td class="text-center col-count">
-              <span class="stat-pill pill-completed" title="Completed Tasks">
-                {{ designer.completedCount }}
+            <!-- Column 2: Active Tasks + Progress Bar -->
+            <td class="col-td-active">
+              <div class="active-tasks-cell">
+                <span class="active-count-num">{{ designer.inProgressCount ?? designer.pendingCount }}</span>
+                <div class="task-progress-track" title="{{ designer.inProgressCount ?? designer.pendingCount }} active task(s)">
+                  <div
+                    class="task-progress-fill"
+                    [style.width.%]="getProgressBarWidth(designer.inProgressCount ?? designer.pendingCount)"
+                  ></div>
+                </div>
+              </div>
+            </td>
+
+            <!-- Column 3: Completed with Green Checkmark Icon -->
+            <td class="col-td-completed">
+              <div class="completed-cell">
+                <span class="completed-count-num">{{ designer.completedCount }}</span>
+                <span class="completed-check-badge" title="Completed creatives">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="9 12 11.5 14.5 15.5 9.5"></polyline>
+                  </svg>
+                </span>
+              </div>
+            </td>
+
+            <!-- Column 4: Total Tasks -->
+            <td class="col-td-total">
+              <div class="total-tasks-cell">
+                <span class="total-count-num">{{ designer.totalCount }}</span>
+                <span class="total-task-badge" title="Total Assigned Tasks">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EA580C" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                  </svg>
+                </span>
+              </div>
+            </td>
+
+            <!-- Column 5: Workload Status Pill Badge -->
+            <td class="col-td-status">
+              @let status = getWorkloadStatus(designer.inProgressCount ?? designer.pendingCount);
+              <span class="workload-pill" [ngClass]="'tone-' + status.tone">
+                <span class="pill-dot"></span>
+                <span class="pill-text">{{ status.label }}</span>
               </span>
             </td>
 
-            <td class="text-center col-count">
-              <span class="stat-pill pill-pending" title="Pending Tasks">
-                {{ designer.pendingCount }}
-              </span>
-            </td>
-
-            <td class="text-center col-count">
-              <span class="stat-pill pill-total" title="Total Assigned Tasks">
-                {{ designer.totalCount }}
-              </span>
-            </td>
-
-            <td class="text-right col-actions" (click)="$event.stopPropagation()">
+            <!-- Column 6: Action (Trash, Pencil, View) -->
+            <td class="col-td-action text-right" (click)="$event.stopPropagation()">
               <div class="action-btn-group">
                 <button
-                  class="btn-action-view"
+                  type="button"
+                  class="btn-action-view-pill"
                   (click)="onSelect(designer.id)"
-                  title="View all tasks for {{ designer.name }}"
+                  title="View all tasks"
                 >
                   <span class="material-symbols-outlined icon-xs">visibility</span>
                   <span>View</span>
@@ -83,16 +125,17 @@
             </td>
           </tr>
         }
+
         @if (designers.length === 0) {
           <tr>
-            <td colspan="5" class="empty-state-cell">
+            <td colspan="6" class="empty-state-cell">
               <div class="empty-state-box">
                 <div class="empty-icon-squircle">
                   <span class="material-symbols-outlined">person_search</span>
                 </div>
                 <h4 class="empty-title">No Designers Found</h4>
                 <p class="empty-subtitle">
-                  No designers match your search query "{{ searchQuery }}".
+                  No active designers match your search query "{{ searchQuery }}".
                 </p>
               </div>
             </td>
@@ -101,4 +144,42 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Table Footer with Pagination matching Image 1 -->
+  @if (designers.length > 0) {
+    <div class="table-footer-bar">
+      <div class="footer-count-text">
+        Showing <strong>{{ paginatedDesigners().length }}</strong> of <strong>{{ designers.length }}</strong> active designers on shift
+      </div>
+      <div class="footer-pagination">
+        <button
+          type="button"
+          class="page-nav-btn prev-btn"
+          [disabled]="currentPage() === 1"
+          (click)="prevPage()"
+        >
+          Previous
+        </button>
+        @for (p of pageNumbers(); track p) {
+          <button
+            type="button"
+            class="page-number-btn"
+            [class.active]="p === currentPage()"
+            (click)="setPage(p)"
+          >
+            {{ p }}
+          </button>
+        }
+        <button
+          type="button"
+          class="page-nav-btn next-btn"
+          [disabled]="currentPage() === totalPages()"
+          (click)="nextPage()"
+        >
+          Next
+        </button>
+      </div>
+    </div>
+  }
+
 </div>

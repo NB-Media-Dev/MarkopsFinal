@@ -58,7 +58,6 @@ CREATE TABLE `users` (
   `full_name` VARCHAR(100) NOT NULL,
   `role_id` INT NOT NULL,
   `team_id` INT DEFAULT NULL,
-  `department` VARCHAR(100) DEFAULT NULL,
   `is_active` TINYINT(1) NOT NULL DEFAULT 1,
   `last_login_at` DATETIME DEFAULT NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -529,13 +528,12 @@ INSERT INTO `teams` (`id`, `name`, `description`) VALUES
 (1, 'System Administration', 'Core administrative operations')
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `description` = VALUES(`description`);
 
-INSERT INTO `users` (`id`, `email`, `password_hash`, `full_name`, `role_id`, `team_id`, `department`, `is_active`) VALUES
-(1, 'admin@markops.io', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3BoB6tK3y/G', 'System Administrator', 1, 1, 'Executive Operations', 1)
+INSERT INTO `users` (`id`, `email`, `password_hash`, `full_name`, `role_id`, `team_id`, `is_active`) VALUES
+(1, 'admin@markops.io', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3BoB6tK3y/G', 'System Administrator', 1, 1, 1)
 ON DUPLICATE KEY UPDATE
   `password_hash` = VALUES(`password_hash`),
   `full_name` = VALUES(`full_name`),
   `role_id` = VALUES(`role_id`),
-  `department` = VALUES(`department`),
   `is_active` = VALUES(`is_active`);
 
 SET FOREIGN_KEY_CHECKS = 1;

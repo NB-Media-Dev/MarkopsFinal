@@ -9,6 +9,8 @@ import { NotificationService } from '../../../core/services/notification.service
 import { UserManagementService } from '../../../core/services/user-management.service';
 import { Task, TaskStatus, TaskPriority, TaskVersion, computeTaskProgressPercent } from '../../../core/models/task.model';
 import { getApiUrl, getBackendBaseUrl } from '../../../core/utils/api-url.utils';
+import { PackageService } from '../../../core/services/package.service';
+import { resolveTaskProductAndPackage } from '../../../core/models/package.model';
 import { UploadDesignModalComponent } from '../components/modals/upload-design-modal/upload-design-modal.component';
 
 @Component({
@@ -29,12 +31,66 @@ export class TaskDetailComponent implements OnInit {
   readonly authService = inject(AuthService);
   readonly userService = inject(UserManagementService);
   readonly notifService = inject(NotificationService);
+  readonly packageService = inject(PackageService);
 
   readonly task = signal<Task | null>(null);
   readonly isLoading = signal<boolean>(true);
   readonly error = signal<string | null>(null);
   readonly activeTab = signal<'DETAIL' | 'VERSIONS' | 'HISTORY'>('DETAIL');
-  readonly returnUrl = signal<string>('/package-works');
+  readonly returnUrl = signal<string>('');
+
+  readonly isDesignerRole = computed<boolean>(() => {
+    return this.authService.currentUser()?.role === 'DESIGNER';
+  });
+
+  readonly resolvedScope = computed<{ productName: string; packageName: string }>(() => {
+    const t = this.task();
+    if (!t) return { productName: 'Careermate', packageName: '' };
+    const packages = this.packageService.packages();
+    const scope = resolveTaskProductAndPackage(t, packages);
+    return {
+      productName: scope.productName || t.productName || 'Careermate',
+      packageName: scope.packageName || t.packageName || '',
+    };
+  });
+
+  readonly resolvedDeptCode = computed<string>(() => {
+    const ret = this.returnUrl();
+    if (ret) {
+      try {
+        const url = new URL(ret, 'http://localhost');
+        const deptParam = url.searchParams.get('dept');
+        if (deptParam) {
+          return deptParam.toUpperCase();
+        }
+      } catch {}
+    }
+    const t = this.task();
+    const role = (t?.creatorRole || '').toUpperCase();
+    if (role.includes('MARKETING')) return 'DIGITAL_MARKETING';
+    if (role.includes('TELECALL')) return 'TELECALLING';
+    if (role.includes('ANALYT')) return 'ANALYTICS';
+    return 'DESIGNER';
+  });
+
+  readonly resolvedDept = computed<string>(() => {
+    const code = this.resolvedDeptCode();
+    if (code === 'DESIGNER') return 'Designer';
+    if (code === 'DIGITAL_MARKETING') return 'Digital Marketing';
+    if (code === 'TELECALLING') return 'Telecalling';
+    if (code === 'ANALYTICS') return 'Analytics';
+    return 'Designer';
+  });
+
+  readonly breadcrumbOrigin = computed<'designer' | 'package-works' | 'tasks'>(() => {
+    if (this.isDesignerRole()) return 'designer';
+    const ret = (this.returnUrl() || '').toLowerCase();
+    if (ret.includes('designer-tasks')) return 'designer';
+    if (ret.includes('package-works')) return 'package-works';
+    if (ret.includes('/tasks') && !ret.includes('/tasks/')) return 'tasks';
+    if (this.resolvedScope().packageName) return 'package-works';
+    return 'tasks';
+  });
 
 
   readonly isUploadModalOpen = signal<boolean>(false);
@@ -140,12 +196,40 @@ export class TaskDetailComponent implements OnInit {
   }
 
   goBack(): void {
-    const ret = this.returnUrl();
-    if (ret && ret !== this.router.url) {
-      this.router.navigateByUrl(ret);
-    } else {
-      this.location.back();
+    if (this.breadcrumbOrigin() === 'designer') {
+      this.router.navigate(['/designer-tasks']);
+      return;
     }
+
+    if (this.breadcrumbOrigin() === 'tasks') {
+      this.router.navigate(['/tasks']);
+      return;
+    }
+
+    const scope = this.resolvedScope();
+    if (scope.packageName || this.breadcrumbOrigin() === 'package-works') {
+      const deptCode = this.resolvedDeptCode();
+      this.router.navigate(['/package-works'], {
+        queryParams: {
+          package: scope.productName || 'Careermate',
+          workspace: scope.packageName,
+          dept: deptCode,
+        },
+      });
+      return;
+    }
+
+    const ret = this.returnUrl();
+    if (ret && ret !== this.router.url && ret !== '/package-works') {
+      this.router.navigateByUrl(ret);
+      return;
+    }
+
+    if (window.history.length > 1) {
+      this.location.back();
+      return;
+    }
+    this.router.navigate(['/tasks']);
   }
 
   getShortId(id?: string): string {
@@ -178,6 +262,104 @@ export class TaskDetailComponent implements OnInit {
     if (!t) return '';
     const name = this.getAssigneeName(t);
     return `${name.toLowerCase().replace(/\s+/g, '.')}@markops.io`;
+  }
+
+  getAssigneeUser(t: Task | null): any {
+    if (!t) return undefined;
+    const assignedTo = String(t.assignedTo || '').trim().toLowerCase();
+    const assigneeName = String(t.assigneeName || '').trim().toLowerCase();
+    const users = this.userService.users();
+    return users.find((u) => {
+      const uId = String(u.id || '').trim().toLowerCase();
+      const uEmail = String(u.email || '').trim().toLowerCase();
+      const uName = String(u.fullName || '').trim().toLowerCase();
+      return (
+        (assignedTo && (uId === assignedTo || uEmail === assignedTo)) ||
+        (assigneeName && (uName === assigneeName || uName.includes(assigneeName) || assigneeName.includes(uName)))
+      );
+    });
+  }
+
+  getAssigneeDisplayName(t: Task | null): string {
+    const user = this.getAssigneeUser(t);
+    if (user?.fullName) return user.fullName;
+    const raw = t?.assigneeName;
+    if (raw && raw !== 'Assigned Designer' && raw !== 'Assigned User' && raw !== 'Unassigned') {
+      return raw.charAt(0).toUpperCase() + raw.slice(1);
+    }
+    return 'Surya';
+  }
+
+  getAssigneeRole(t: Task | null): string {
+    const user = this.getAssigneeUser(t);
+    if (user?.department && user.department !== 'General') return user.department;
+    if (user?.role === 'DESIGNER') return 'UIUX Designer';
+    if (user?.role) return this.getRolePrefix(user.role);
+    return 'UIUX Designer';
+  }
+
+  getAssigneeAvatarUrl(t: Task | null): string | undefined {
+    const raw = this.getAssigneeUser(t)?.avatarUrl;
+    return raw ? getApiUrl(raw) : undefined;
+  }
+
+  getAssigneeAvatarColor(t: Task | null): string {
+    const name = this.getAssigneeDisplayName(t);
+    const colors = ['#F59E0B', '#EA580C', '#D97706', '#7C3AED', '#2563EB', '#059669', '#0891B2'];
+    let hash = 0;
+    for (let i = 0; i < (name || '').length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  }
+
+  getAssigneeInitials(t: Task | null): string {
+    const name = this.getAssigneeDisplayName(t);
+    if (!name || name === 'Unassigned') return 'D';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  getCreatorUser(t: Task | null): any {
+    if (!t) return undefined;
+    const createdBy = String(t.createdBy || (t as any).created_by || '').trim().toLowerCase();
+    const creatorEmail = String(t.creatorEmail || (t as any).creator_email || '').trim().toLowerCase();
+    const creatorName = String(t.creatorName || '').trim().toLowerCase();
+    const users = this.userService.users();
+    return users.find((u) => {
+      const uId = String(u.id || '').trim().toLowerCase();
+      const uEmail = String(u.email || '').trim().toLowerCase();
+      const uName = String(u.fullName || '').trim().toLowerCase();
+      return (
+        (createdBy && (uId === createdBy || uEmail === createdBy)) ||
+        (creatorEmail && uEmail === creatorEmail) ||
+        (creatorName && (uName === creatorName || uName.includes(creatorName) || creatorName.includes(uName)))
+      );
+    });
+  }
+
+  getCreatorAvatarUrl(t: Task | null): string | undefined {
+    const raw = this.getCreatorUser(t)?.avatarUrl;
+    return raw ? getApiUrl(raw) : undefined;
+  }
+
+  getCreatorAvatarColor(t: Task | null): string {
+    const name = this.getCreatorName(t);
+    const colors = ['#2563EB', '#7C3AED', '#059669', '#D97706', '#DC2626', '#0891B2'];
+    let hash = 0;
+    for (let i = 0; i < (name || '').length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  }
+
+  getCreatorInitials(t: Task | null): string {
+    const name = this.getCreatorName(t);
+    if (!name) return 'A';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
   getTaskProgress(t: Task | null): number {

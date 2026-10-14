@@ -4,6 +4,7 @@ import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router
 import { AuthService } from '../services/auth.service';
 import { UserRole } from '../models/auth.model';
 import { SYSTEM_ROLES_METADATA } from '../models/user-management.model';
+import { getApiUrl } from '../utils/api-url.utils';
 import { filter } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -94,6 +95,11 @@ export class MainLayoutComponent {
 
   closeProfileModal(): void {
     this.isProfileModalOpen.set(false);
+  }
+
+  getAvatarUrl(avatarUrl?: string): string {
+    if (!avatarUrl) return '';
+    return getApiUrl(avatarUrl);
   }
 
   readonly activeRole = computed<UserRole>(() => {

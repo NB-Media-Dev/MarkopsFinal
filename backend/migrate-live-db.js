@@ -136,8 +136,8 @@ async function run(conn, sql, label) {
   console.log('\n🌱 Seeding admin user...');
 
   await run(conn, `
-    INSERT INTO users (id, email, password_hash, full_name, role_id, team_id, department, is_active) VALUES
-    (1, 'admin@markops.io', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3BoB6tK3y/G', 'System Administrator', 1, 1, 'Executive Operations', 1)
+    INSERT INTO users (id, email, password_hash, full_name, role_id, team_id, is_active) VALUES
+    (1, 'admin@markops.io', '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3BoB6tK3y/G', 'System Administrator', 1, 1, 1)
     ON DUPLICATE KEY UPDATE
       password_hash = VALUES(password_hash),
       full_name = VALUES(full_name),

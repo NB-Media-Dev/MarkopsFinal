@@ -134,7 +134,7 @@
         >
           <div class="user-avatar-navy">
             @if (authService.currentUser()?.avatarUrl) {
-              <img [src]="authService.currentUser()?.avatarUrl" class="user-avatar-img" alt="Profile" />
+              <img [src]="getAvatarUrl(authService.currentUser()?.avatarUrl)" class="user-avatar-img" alt="Profile" (error)="$any($event.target).style.display='none'" />
             } @else {
               {{ userInitials() }}
             }

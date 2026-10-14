@@ -27,6 +27,7 @@ import { TargetsComponent } from '../../../targets/targets.component';
 import { LeadsComponent } from '../../../leads/leads.component';
 import { CampaignsComponent } from '../../../campaigns/campaigns.component';
 import { AdsComponent } from '../../../ads/ads.component';
+import { PackageReportsComponent } from '../reports/package-reports.component';
 
 @Component({
   selector: 'app-package-department-view',
@@ -42,6 +43,7 @@ import { AdsComponent } from '../../../ads/ads.component';
     LeadsComponent,
     CampaignsComponent,
     AdsComponent,
+    PackageReportsComponent,
   ],
   templateUrl: './package-department-view.component.html',
   styleUrl: './package-department-view.component.scss',

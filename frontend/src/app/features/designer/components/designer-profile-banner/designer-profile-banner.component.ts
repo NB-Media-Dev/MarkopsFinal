@@ -1,5 +1,6 @@
 import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { getApiUrl } from '../../../../core/utils/api-url.utils';
 
 @Component({
   selector: 'app-designer-profile-banner',
@@ -16,5 +17,10 @@ export class DesignerProfileBannerComponent {
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  getAvatarUrl(avatarUrl?: string): string {
+    if (!avatarUrl) return '';
+    return getApiUrl(avatarUrl);
   }
 }

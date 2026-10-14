@@ -24,7 +24,7 @@ router.post('/login', async (req, res) => {
     if (dbPool) {
       try {
         const [rows] = await dbPool.query(
-          `SELECT u.id, u.email, u.password_hash as passwordHash, u.full_name as fullName, COALESCE(r.code, 'ADMINISTRATOR') as role, u.department, u.is_active as isActive, u.avatar_url as avatarUrl
+          `SELECT u.id, u.email, u.password_hash as passwordHash, u.full_name as fullName, COALESCE(r.code, 'ADMINISTRATOR') as role, u.is_active as isActive, u.avatar_url as avatarUrl
            FROM users u
            LEFT JOIN roles r ON u.role_id = r.id
            WHERE LOWER(u.email) = ?`,
@@ -37,7 +37,6 @@ router.post('/login', async (req, res) => {
             passwordHash: rows[0].passwordHash,
             fullName: rows[0].fullName,
             role: rows[0].role,
-            department: rows[0].department,
             isActive: Boolean(rows[0].isActive),
             avatarUrl: rows[0].avatarUrl,
           };
@@ -57,7 +56,6 @@ router.post('/login', async (req, res) => {
         passwordHash: defaultAdminHash,
         fullName: 'System Administrator',
         role: 'ADMINISTRATOR',
-        department: 'Executive Operations',
         isActive: true,
       };
     }
@@ -121,7 +119,6 @@ router.post('/login', async (req, res) => {
         email: foundUser.email,
         fullName: foundUser.fullName,
         role: foundUser.role,
-        department: foundUser.department,
         isActive: foundUser.isActive,
         iss: 'markops_auth_service',
       },
@@ -152,7 +149,7 @@ router.post('/login', async (req, res) => {
       action: 'LOGIN_SUCCESS',
       entityType: 'User',
       entityId: foundUser.id,
-      newState: { role: foundUser.role, department: foundUser.department },
+      newState: { role: foundUser.role },
       ipAddress: req.ip || req.socket.remoteAddress,
       userAgent: req.headers['user-agent'],
     });
@@ -165,7 +162,6 @@ router.post('/login', async (req, res) => {
         email: foundUser.email,
         fullName: foundUser.fullName,
         role: foundUser.role,
-        department: foundUser.department,
         isActive: foundUser.isActive,
         avatarUrl: foundUser.avatarUrl,
       },
@@ -190,7 +186,6 @@ router.post('/refresh', (req, res) => {
       email: 'admin@markops.io',
       fullName: 'System Administrator',
       role: 'ADMINISTRATOR',
-      department: 'Executive Operations',
       isActive: true,
     };
 
@@ -204,7 +199,7 @@ router.post('/refresh', (req, res) => {
         email: user.email,
         fullName: user.fullName || 'System Administrator',
         role: user.role,
-        department: user.department || 'Executive Operations',
+
         isActive: user.isActive,
         iss: 'markops_auth_service',
       },
@@ -269,13 +264,12 @@ router.get('/me', async (req, res) => {
     let userId = '1';
     let email = 'admin@markops.io';
     let fullName = 'System Administrator';
-    let department = 'Executive Operations';
     if (token.includes('designer')) {
       role = 'DESIGNER';
       userId = '3';
       email = 'designer@markops.io';
       fullName = 'Creative Designer';
-      department = 'Creative Design';
+
     } else if (token.includes('marketing_manager')) {
       role = 'MARKETING_MANAGER';
       userId = '2';

@@ -4,60 +4,72 @@
   (click)="onView($event)"
 >
 
-  <div class="task-card-header">
-    <div class="task-header-left">
-      <div
-        class="task-squircle-badge"
-        [ngClass]="'badge-status-' + (task.status | lowercase)"
-      >
-        {{ (task.title || task.packageName || 'T')[0].toUpperCase() }}
+  <!-- Top Header: Designer Avatar & Role matching Image 1 + Priority & Status Badges -->
+  <div class="card-designer-header">
+    <div class="designer-profile-left">
+      <div class="designer-avatar-ring">
+        @if (getAssigneeAvatarUrl()) {
+          <img [src]="getAssigneeAvatarUrl()" [alt]="getAssigneeDisplayName()" class="designer-avatar-img" />
+        } @else {
+          <div
+            class="designer-avatar-initials"
+            [style.backgroundColor]="getAssigneeAvatarColor()"
+          >
+            {{ getAssigneeInitials() }}
+          </div>
+        }
       </div>
-      @if (getTaskTypeLabel()) {
-        <span class="task-type-pill">
-          <span class="material-symbols-outlined icon-type">{{ getTaskTypeIcon() }}</span>
-          <span>{{ getTaskTypeLabel() }}</span>
-        </span>
+      <div class="designer-info-meta">
+        <h4 class="designer-name">{{ getAssigneeDisplayName() }}</h4>
+      </div>
+    </div>
+
+    <div class="card-badges-right">
+      <span class="priority-pill" [ngClass]="getPriorityBadgeClass(task.priority)">
+        {{ task.priority }}
+      </span>
+  
+       @if (canDeleteTask()) {
+        <button
+          type="button"
+          class="btn-icon-trash"
+          (click)="onDelete($event)"
+          title="Delete Task"
+        >
+          <span class="material-symbols-outlined icon-xs">delete</span>
+        </button>
       }
     </div>
-    <div class="task-badges-right">
-      <span class="priority-pill" [ngClass]="getPriorityBadgeClass(task.priority)">{{
-        task.priority
-      }}</span>
-      <span class="status-badge" [ngClass]="getStatusBadgeClass(task.status)">{{
-        task.status
-      }}</span>
-    </div>
   </div>
 
-  <div class="task-title-section">
-    <h3 class="task-title" [title]="task.title">{{ task.title }}</h3>
-    <div class="task-flow-line">
-      <span class="flow-pill flow-creator" title="Creator">
-        <span class="material-symbols-outlined icon-4xs">person</span>
-        <span>{{ getShortCreator() }}</span>
+  <!-- Category & Task Squircle Badge Row (from Image 2) -->
+  <div class="task-category-row">
+    @if (getTaskTypeLabel()) {
+      <span class="task-type-pill">
+        <span class="material-symbols-outlined icon-type">{{ getTaskTypeIcon() }}</span>
+        <span>{{ getTaskTypeLabel() }}</span>
+            <span class="status-badge" [ngClass]="getStatusBadgeClass(task.status)">
       </span>
-      <span class="material-symbols-outlined flow-arrow">arrow_forward</span>
-      <span class="flow-pill flow-assignee" title="Assigned Designer">
-        <span class="material-symbols-outlined icon-4xs">brush</span>
-        <span>{{ getShortAssignee() }}</span>
       </span>
-    </div>
-  </div>
-
-  @if (task.attachmentName || task.attachmentUrl || task.content) {
-    <div
-      class="requirement-chip"
-      (click)="onOpenDoc($event)"
-      [title]="'View requirement: ' + (task.attachmentName || 'Content Brief')"
-    >
-      <span class="material-symbols-outlined req-icon">description</span>
-      <span class="req-name">{{
-        task.attachmentName || task.content || 'Content_Brief.pdf'
-      }}</span>
-      <span class="material-symbols-outlined open-icon">open_in_new</span>
-    </div>
+     <span class="status-badge" >{{ task.status }}</span>
   }
 
+  </div>
+
+  <!-- Task Title & Created by Creator Name -->
+  <div class="task-title-section">
+    <h3 class="task-title" [title]="task.title">{{ task.title }}</h3>
+    <div class="task-creator-line">
+      <span class="creator-label">Created by :</span>
+      <span class="creator-name">{{ getCreatorDisplayName() }}</span>
+    </div>
+  </div>
+
+  <!-- Attachment / Requirement Chip (from Image 2) -->
+
+
+
+  <!-- Revision Feedback Alert (if applicable) -->
   @if (task.status === 'REVISION_REQUIRED' && task.reviewerFeedback) {
     <div class="revision-feedback-alert">
       <span class="material-symbols-outlined alert-icon">rate_review</span>
@@ -65,13 +77,20 @@
     </div>
   }
 
-  <div class="progress-container">
-    <div class="progress-bar-bg">
-      <div class="progress-fill" [style.width.%]="getTaskProgress()"></div>
+  <!-- Over All Task Status & Progress Bar (matching Image 1) -->
+  <div class="task-progress-block">
+    <div class="progress-title-row">
+      <span class="progress-title-text">Task Status</span>
+      <span class="progress-pct-text">{{ getTaskProgress() }}%</span>
     </div>
-    <span class="progress-pct">{{ getTaskProgress() }}%</span>
+    <div class="progress-bar-container">
+      <div class="progress-bar-bg">
+        <div class="progress-fill" [style.width.%]="getTaskProgress()"></div>
+      </div>
+    </div>
   </div>
 
+  <!-- Footer Row: Due Date, Version, Preview & Action Buttons (matching Image 1) -->
   <div class="task-card-footer">
     <div class="footer-meta-left">
       <span class="meta-due-date">
@@ -82,12 +101,38 @@
         <span class="version-chip"> v{{ task.versions[0].versionNumber }}.0 </span>
       }
     </div>
+
     <div class="task-card-actions" (click)="$event.stopPropagation()">
+      <!-- Image 1 Style: Soft Green Pill for Preview / View Detail -->
+      <button
+        type="button"
+        class="btn-card-action btn-card-download"
+        (click)="onView($event)"
+        title="Preview Task Details"
+      >
+        <span class="material-symbols-outlined icon-xs">menu_book</span>
+        <span>Preview</span>
+      </button>
+
+      <!-- Image 1 Style: Solid Green Pill for Download if Attachment -->
+      <!-- @if (task.attachmentUrl) {
+        <a
+          [href]="task.attachmentUrl"
+          target="_blank"
+          download
+          class="btn-card-action btn-card-download"
+          (click)="$event.stopPropagation()"
+          title="Download Creative"
+        >
+          <span>Download</span>
+          <span class="material-symbols-outlined icon-xs">arrow_downward</span>
+        </a>
+      } -->
 
       @if (canStartWork()) {
         <button
           type="button"
-          class="btn-card-action btn-card-start"
+          class="btn-card-action btn-card-solid-action"
           (click)="onStartWork()"
           title="Start Canvas Work"
         >
@@ -99,7 +144,7 @@
       @if (canUploadDesign()) {
         <button
           type="button"
-          class="btn-card-action btn-card-upload"
+          class="btn-card-action btn-card-solid-action"
           (click)="onUploadDesign()"
           title="Upload Design Creative + Message"
         >
@@ -111,7 +156,7 @@
       @if (canStartRedesign()) {
         <button
           type="button"
-          class="btn-card-action btn-card-start"
+          class="btn-card-action btn-card-solid-action"
           (click)="onStartRedesign()"
           title="Start Working on Requested Redesign"
         >
@@ -123,7 +168,7 @@
       @if (canReview()) {
         <button
           type="button"
-          class="btn-card-action btn-card-start text-success"
+          class="btn-card-action btn-card-solid-action"
           (click)="onApprove()"
           title="Approve Design Creative"
         >
@@ -132,7 +177,7 @@
         </button>
         <button
           type="button"
-          class="btn-card-action btn-card-review text-danger"
+          class="btn-card-action btn-card-review-action"
           (click)="onOpenRedesign()"
           title="Request Redesign with Feedback"
         >
@@ -141,26 +186,7 @@
         </button>
       }
 
-      <button
-        type="button"
-        class="btn-card-action btn-card-view"
-        (click)="onView($event)"
-        title="View Details"
-      >
-        <span class="material-symbols-outlined icon-xs">visibility</span>
-        <span>View Detail</span>
-      </button>
 
-      @if (canDeleteTask()) {
-        <button
-          type="button"
-          class="btn-icon-trash"
-          (click)="onDelete($event)"
-          title="Delete Task"
-        >
-          <span class="material-symbols-outlined icon-xs">delete</span>
-        </button>
-      }
     </div>
   </div>
 </div>

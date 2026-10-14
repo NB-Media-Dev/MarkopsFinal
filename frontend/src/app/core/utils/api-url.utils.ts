@@ -31,7 +31,7 @@ export function getBackendBaseUrl(): string {
 
 export function getApiUrl(url: string): string {
   if (!url) return url;
-  if (url.startsWith('http://') || url.startsWith('https://')) {
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
     return url;
   }
 

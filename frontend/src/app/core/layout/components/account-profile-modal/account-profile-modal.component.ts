@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { NotificationService } from '../../../services/notification.service';
 import { SYSTEM_ROLES_METADATA } from '../../../models/user-management.model';
+import { getApiUrl } from '../../../utils/api-url.utils';
 
 @Component({
   selector: 'app-account-profile-modal',
@@ -20,6 +21,11 @@ export class AccountProfileModalComponent {
   private readonly notifService = inject(NotificationService);
 
   readonly activeTab = signal<'PICTURE' | 'PASSWORD'>('PICTURE');
+
+  getAvatarUrl(url?: string): string {
+    if (!url) return '';
+    return getApiUrl(url);
+  }
 
   // Profile info display
   readonly currentUser = computed(() => this.authService.currentUser());

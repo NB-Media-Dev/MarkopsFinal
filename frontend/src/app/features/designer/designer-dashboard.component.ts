@@ -251,6 +251,7 @@ export class DesignerDashboardComponent implements OnInit {
       name: u.fullName,
       email: u.email,
       department: u.department || 'Creative Design',
+      avatarUrl: u.avatarUrl,
     }));
   });
 
@@ -271,6 +272,7 @@ export class DesignerDashboardComponent implements OnInit {
         email: dEmailStr,
         department: d.department || 'Creative Design',
         avatarColor: this.getAvatarColor(dNameStr),
+        avatarUrl: d.avatarUrl,
         totalCount: 0,
         completedCount: 0,
         pendingCount: 0,
@@ -362,17 +364,25 @@ export class DesignerDashboardComponent implements OnInit {
         entry.totalCount++;
 
         const isCompleted = t.status === 'APPROVED' || t.status === 'PUBLISHED' || t.status === 'COMPLETED';
-        const isInProgress = t.status === 'IN_PROGRESS' || t.status === 'ACCEPTED';
+        const isInProgress =
+          t.status === 'IN_PROGRESS' ||
+          t.status === 'ACCEPTED' ||
+          t.status === 'SUBMITTED' ||
+          t.status === 'RESUBMITTED' ||
+          t.status === 'UNDER_REVIEW' ||
+          t.status === 'REVISION_REQUIRED' ||
+          t.status === 'REDESIGN_REQUIRED';
         const isReview = t.status === 'SUBMITTED' || t.status === 'RESUBMITTED' || t.status === 'UNDER_REVIEW';
-        const isRevision = t.status === 'REVISION_REQUIRED';
+        const isRevision = t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED';
 
         if (isCompleted) {
           entry.completedCount++;
+        } else if (isInProgress) {
+          entry.inProgressCount = (entry.inProgressCount || 0) + 1;
         } else {
           entry.pendingCount++;
         }
 
-        if (isInProgress) entry.inProgressCount = (entry.inProgressCount || 0) + 1;
         if (isReview) entry.submittedCount = (entry.submittedCount || 0) + 1;
         if (isRevision) entry.revisionCount = (entry.revisionCount || 0) + 1;
       }
@@ -409,6 +419,7 @@ export class DesignerDashboardComponent implements OnInit {
   readonly totalAllDesigners = computed(() => this.designersSummaryList().length);
   readonly totalAllTasks = computed(() => this.designersSummaryList().reduce((acc, d) => acc + d.totalCount, 0));
   readonly totalAllPending = computed(() => this.designersSummaryList().reduce((acc, d) => acc + d.pendingCount, 0));
+  readonly totalAllInProgress = computed(() => this.designersSummaryList().reduce((acc, d) => acc + (d.inProgressCount || 0), 0));
   readonly totalAllCompleted = computed(() => this.designersSummaryList().reduce((acc, d) => acc + d.completedCount, 0));
   readonly totalMyTasks = computed(() => {
     const pkgFilter = this.packageFilterSignal();
@@ -434,6 +445,26 @@ export class DesignerDashboardComponent implements OnInit {
     this.selectedDesignerId.set(String(designerId));
     this.showDesignersDirectory.set(false);
     this.taskService.closeTaskDetail();
+  }
+
+  handleDeleteDesigner(designerId: string | number): void {
+    const designer = this.designersSummaryList().find((d) => String(d.id) === String(designerId));
+    const name = designer?.name || 'this designer';
+    if (confirm(`Are you sure you want to remove ${name} from this view?`)) {
+      this.notifService.triggerToast({
+        id: `notif_${Date.now()}`,
+        userId: String(this.authService.currentUser()?.id || ''),
+        title: 'Designer Roster',
+        message: `Designer ${name} removed from current view.`,
+        type: 'INFO',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  handleEditDesigner(designer: DesignerSummary): void {
+    this.viewDesignerTasks(designer.id);
   }
 
   clearDesignerFilter(): void {
@@ -815,8 +846,15 @@ export class DesignerDashboardComponent implements OnInit {
       event.stopPropagation();
     }
     this.taskService.closeTaskDetail();
-    this.router.navigate(['/tasks', task.id], {
-      queryParams: { returnUrl: this.router.url },
+    const baseRoute = this.isDesigner() ? '/designer-tasks' : '/tasks';
+    let returnUrl = this.router.url;
+    if (this.embedded) {
+      const prod = this.productFilter || 'Careermate';
+      const pkg = this.packageFilter || task.packageName || '';
+      returnUrl = `/package-works?package=${encodeURIComponent(prod)}&workspace=${encodeURIComponent(pkg)}&dept=DESIGNER`;
+    }
+    this.router.navigate([baseRoute, task.id], {
+      queryParams: { returnUrl },
     });
   }
 
@@ -835,8 +873,19 @@ export class DesignerDashboardComponent implements OnInit {
   }
 
   navigateBack(): void {
+    if (this.selectedDesignerId()) {
+      this.selectedDesignerId.set(null);
+      this.showDesignersDirectory.set(true);
+      return;
+    }
+    if (this.selectedDateFilter()) {
+      this.clearDateFilter();
+      return;
+    }
     if (window.history.length > 1) {
       window.history.back();
+    } else if (this.isDesigner()) {
+      this.router.navigate(['/designer-tasks']);
     } else {
       this.router.navigate(['/dashboard']);
     }

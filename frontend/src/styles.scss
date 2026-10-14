@@ -197,6 +197,123 @@ html, body {
   .bc-active { font-weight: 600; color: var(--mo-text-main); }
 }
 
+.clean-breadcrumbs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.28rem 0.65rem 0.28rem 0.35rem;
+  background: #FFFFFF;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: nowrap;
+
+  .btn-back {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: #64748B;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    padding: 0;
+    flex-shrink: 0;
+
+    .icon-back {
+      font-size: 1.1rem;
+      transition: transform 0.15s ease;
+    }
+
+    &:hover {
+      background: #F1F5F9;
+      color: #0F172A;
+
+      .icon-back {
+        transform: translateX(-2px);
+      }
+    }
+  }
+
+  .bc-bar-divider {
+    width: 1px;
+    height: 16px;
+    background: #E2E8F0;
+    margin: 0 0.15rem;
+    flex-shrink: 0;
+  }
+
+  .breadcrumbs-list {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+
+    .bc-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.22rem 0.5rem;
+      border-radius: 6px;
+      color: #64748B;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 0.8125rem;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      line-height: 1.25;
+      transition: all 0.15s ease;
+
+      &:hover {
+        background: #F8FAFC;
+        color: #0F172A;
+      }
+
+      &.bc-link:hover {
+        color: #2563EB;
+      }
+
+      &.bc-package {
+        background: #EFF6FF;
+        color: #1D4ED8;
+        font-weight: 700;
+        font-size: 0.78rem;
+        letter-spacing: 0.02em;
+
+        &:hover {
+          background: #DBEAFE;
+          color: #1E40AF;
+        }
+      }
+
+      &.bc-current,
+      &.active {
+        background: #F1F5F9;
+        color: #0F172A;
+        font-weight: 700;
+        cursor: default;
+      }
+    }
+
+    .bc-sep,
+    .bc-sep-icon {
+      font-size: 0.85rem;
+      color: #94A3B8;
+      display: inline-flex;
+      align-items: center;
+      margin: 0 0.1rem;
+      user-select: none;
+    }
+  }
+}
+
 .btn, .btn-primary, .btn-secondary, .btn-outline {
   display: inline-flex;
   align-items: center;

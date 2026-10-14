@@ -156,9 +156,14 @@
     gap: 1.75rem;
     width: 100%;
 
-    @media (max-width: 1024px) {
-      grid-template-columns: 1fr;
+    @media (max-width: 1140px) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 1.5rem;
+    }
+
+    @media (max-width: 680px) {
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
     }
   }
 }
@@ -231,6 +236,11 @@
       left: 20px;
       z-index: 5;
 
+      @media (max-width: 640px) {
+        bottom: 6px;
+        left: 14px;
+      }
+
       .emblem-outer-ring {
         width: 84px;
         height: 84px;
@@ -242,6 +252,11 @@
         align-items: center;
         justify-content: center;
         box-shadow: 0 4px 14px rgba(245, 158, 11, 0.22);
+
+        @media (max-width: 640px) {
+          width: 72px;
+          height: 72px;
+        }
       }
 
       .emblem-inner-circle {
@@ -259,142 +274,10 @@
           width: 56px;
           height: 56px;
           object-fit: contain;
-        }
-      }
 
-      .dashboard-page-wrapper {
-        padding: 1.35rem 1.5rem 4rem;
-        overflow: visible;
-
-        @media (max-width: 640px) {
-          padding: 1rem 0.85rem 2.5rem;
-        }
-      }
-
-      .dashboard-content-container {
-        max-width: 1088px;
-        gap: 1.6rem;
-      }
-
-      .dashboard-hero-header {
-        margin: 0;
-
-        .header-left {
-          .hero-main-title {
-            font-size: 2.45rem;
-            margin: 0;
-
-            @media (max-width: 640px) {
-              font-size: 2rem;
-            }
-          }
-
-          .hero-description {
-            display: none;
-          }
-        }
-      }
-
-      .products-grid-section {
-        .products-grid {
-          gap: 1.25rem;
-
-          @media (max-width: 1024px) {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-          }
-
-          @media (max-width: 680px) {
-            grid-template-columns: minmax(0, 1fr);
-          }
-        }
-      }
-
-      .product-card {
-        border-radius: 17px;
-        border-width: 1px;
-        box-shadow: 0 8px 20px rgba(245, 158, 11, 0.07);
-
-        .card-visual-banner {
-          height: 116px;
-
-          .banner-photo-bg {
-            width: 100%;
-            opacity: 0.8;
-            mix-blend-mode: normal;
-            -webkit-mask-image: none;
-            mask-image: none;
-            filter: saturate(0.88);
-          }
-
-          .banner-glow-reveal {
-            z-index: 3;
-            opacity: 0.3;
-          }
-
-          .banner-wave-mask {
-            height: 32px;
-          }
-
-          .product-emblem-badge {
-            bottom: -8px;
-            left: 16px;
-
-            .emblem-outer-ring {
-              width: 68px;
-              height: 68px;
-              border: 3px solid #fff;
-              background: #fff;
-              padding: 3px;
-              box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
-            }
-
-            .emblem-inner-circle .emblem-logo-img {
-              width: 54px;
-              height: 54px;
-            }
-          }
-        }
-
-        .card-body-content {
-          padding: 23px 20px 12px;
-
-          .card-product-title {
-            font-size: 1.12rem;
-            margin: 0;
-          }
-
-          .card-product-tagline,
-          .card-product-desc {
-            display: none;
-          }
-        }
-
-        .card-footer-row {
-          padding: 10px 20px 14px;
-          border-top-color: #fff3e6;
-
-          .package-inventory-stat {
-            gap: 8px;
-
-            .inventory-box-icon {
-              width: 19px;
-              height: 19px;
-            }
-
-            .inventory-text-block {
-              .inventory-count-bold {
-                font-size: 0.7rem;
-              }
-
-              .inventory-status-subtle {
-                font-size: 0.64rem;
-              }
-            }
-          }
-
-          .explore-pill-btn {
-            padding: 0.45rem 1rem;
-            font-size: 0.72rem;
+          @media (max-width: 640px) {
+            width: 48px;
+            height: 48px;
           }
         }
       }
@@ -423,6 +306,10 @@
     flex-direction: column;
     flex: 1;
 
+    @media (max-width: 640px) {
+      padding: 1rem 1.25rem 0.8rem 1.25rem;
+    }
+
     .card-product-title {
       font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
       font-size: 1.38rem;
@@ -431,6 +318,10 @@
       margin: 0 0 0.35rem 0;
       line-height: 1.25;
       letter-spacing: -0.01em;
+
+      @media (max-width: 640px) {
+        font-size: 1.22rem;
+      }
     }
 
     .card-product-tagline {
@@ -461,6 +352,10 @@
     gap: 1rem;
     border-top: 1px solid #FFF3E6;
     margin-top: auto;
+
+    @media (max-width: 640px) {
+      padding: 0.85rem 1.15rem 1.15rem 1.15rem;
+    }
 
     .package-inventory-stat {
       display: flex;

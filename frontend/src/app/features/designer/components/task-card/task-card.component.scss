@@ -1,113 +1,126 @@
 .task-card {
-  background-color: #F4FAF7;
-  border: 1.5px solid #10B981;
-  border-radius: 16px;
-  padding: 0.95rem 1.15rem;
+  background-color: #FFFFFF;
+  border: 1.5px solid #F3EAE0;
+  border-radius: 18px;
+  padding: 0.85rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.55rem;
+  gap: 0.42rem;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.03), 0 2px 6px rgba(0, 0, 0, 0.02);
   position: relative;
+  box-sizing: border-box;
+  width: 100%;
 
   &:hover {
-    border-color: #059669;
+    border-color: #F97316;
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.12), 0 2px 6px rgba(0, 0, 0, 0.03);
+    box-shadow: 0 10px 24px rgba(249, 115, 22, 0.1), 0 3px 8px rgba(0, 0, 0, 0.03);
 
-    .task-squircle-badge {
+    .designer-avatar-ring {
       transform: scale(1.04);
+      border-color: #EA580C;
     }
   }
 
   &.selected {
-    border-color: #047857;
-    background: #EDF9F2;
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.3), 0 8px 22px rgba(16, 185, 129, 0.14);
+    border-color: #EA580C;
+    background-color: #FFFAF5;
+    box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.22), 0 10px 24px rgba(234, 88, 12, 0.12);
   }
 
-  .task-card-header {
+  /* 1. Designer Profile Header Matching Image 1 */
+  .card-designer-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.6rem;
+    gap: 0.5rem;
 
-    .task-header-left {
+    .designer-profile-left {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.65rem;
       min-width: 0;
       flex: 1;
 
-      .task-squircle-badge {
-        width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        background-color: #059669;
-        color: #FFFFFF;
-        font-weight: 800;
-        font-size: 0.95rem;
+      .designer-avatar-ring {
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+        border-radius: 50%;
+        padding: 2px;
+        border: 2px solid #FDBA74;
+        background: #FFF7ED;
         display: flex;
         align-items: center;
         justify-content: center;
+        overflow: hidden;
         flex-shrink: 0;
-        box-shadow: 0 2px 6px rgba(5, 150, 105, 0.2);
-        transition: transform 0.2s ease;
+        box-shadow: 0 2px 5px rgba(249, 115, 22, 0.15);
+        transition: transform 0.2s ease, border-color 0.2s ease;
 
-        &.badge-status-submitted,
-        &.badge-status-resubmitted,
-        &.badge-status-under_review {
-          background-color: #059669;
+        .designer-avatar-img {
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          object-fit: cover;
         }
-        &.badge-status-assigned,
-        &.badge-status-accepted {
-          background-color: #F59E0B;
-        }
-        &.badge-status-in_progress {
-          background-color: #0284C7;
-        }
-        &.badge-status-revision_required {
-          background-color: #DC2626;
-        }
-        &.badge-status-completed,
-        &.badge-status-approved,
-        &.badge-status-published {
-          background-color: #10B981;
+
+        .designer-avatar-initials {
+          width: 100%;
+          height: 100%;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #FFFFFF;
+          font-weight: 800;
+          font-size: 0.88rem;
         }
       }
 
-      .task-type-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 3px;
-        padding: 2px 8px;
-        background: #EFF6FF;
-        color: #1D4ED8;
-        border-radius: 999px;
-        font-size: 0.68rem;
-        font-weight: 700;
-        border: 1px solid #BFDBFE;
-        white-space: nowrap;
+      .designer-info-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        min-width: 0;
 
-        .icon-type {
-          font-size: 13px;
-          color: #2563EB;
+        .designer-name {
+          font-size: 0.98rem;
+          font-weight: 800;
+          color: #F59E0B;
+          margin: 0;
+          line-height: 1.15;
+          letter-spacing: -0.01em;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .designer-role {
+          font-size: 0.74rem;
+          font-weight: 500;
+          color: #64748B;
+          line-height: 1.15;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
       }
     }
 
-    .task-badges-right {
+    .card-badges-right {
       display: flex;
       align-items: center;
-      gap: 0.45rem;
+      gap: 0.35rem;
       flex-shrink: 0;
 
       .priority-pill {
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         font-weight: 800;
-        padding: 0.2rem 0.6rem;
-        border-radius: 6px;
+        padding: 0.15rem 0.5rem;
+        border-radius: 5px;
         text-transform: uppercase;
         letter-spacing: 0.04em;
         white-space: nowrap;
@@ -130,16 +143,66 @@
         }
       }
 
-      .status-badge {
+     
+
+      .btn-icon-trash {
+        background: transparent;
+        border: none;
+        color: #94A3B8;
+        padding: 0.15rem;
+        border-radius: 5px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+
+        &:hover {
+          color: #EF4444;
+          background: #FEE2E2;
+        }
+
+        .icon-xs {
+          font-size: 16px;
+        }
+      }
+    }
+  }
+
+  /* 2. Category & Brand Pill Row */
+  .task-category-row {
+    display: flex;
+    align-items: center;
+    gap: 11.35rem;
+    flex-wrap: wrap;
+    margin-top: -0.1rem;
+
+    .task-type-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 7px;
+      background: #EFF6FF;
+      color: #1D4ED8;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      border: 1px solid #BFDBFE;
+      white-space: nowrap;
+
+      .icon-type {
+        font-size: 12px;
+        color: #2563EB;
+      }
+    }
+     .status-badge {
         font-size: 0.72rem;
         font-weight: 800;
-        padding: 0.15rem 0.35rem;
-        border-radius: 5px;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.04em;
         white-space: nowrap;
         background: transparent;
-        color: #1E293B;
+        color: #0F172A;
 
         &.status-assigned {
           color: #1D4ED8;
@@ -147,102 +210,81 @@
         &.status-in_progress {
           color: #C2410C;
         }
-        &.status-submitted {
-          color: #1E293B;
+        &.status-submitted,
+        &.status-resubmitted,
+        &.status-under_review {
+          color: #0F172A;
         }
         &.status-revision_required {
           color: #DC2626;
         }
         &.status-completed,
-        &.status-approved {
+        &.status-approved,
+        &.status-published {
           color: #047857;
         }
       }
-    }
   }
 
+  /* 3. Task Title & Creator Section (Compact) */
   .task-title-section {
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
+    gap: 0.2rem;
 
     .task-title {
-      font-size: 1.02rem;
+      font-size: 0.96rem;
       font-weight: 800;
       color: #0F172A;
       margin: 0;
-      line-height: 1.3;
+      line-height: 1.25;
       letter-spacing: -0.01em;
       word-break: break-word;
     }
 
-    .task-flow-line {
+    .task-creator-line {
       display: flex;
       align-items: center;
-      gap: 0.35rem;
-      font-size: 0.76rem;
-      color: #64748B;
-      font-weight: 600;
-      flex-wrap: wrap;
+      gap: 0.3rem;
+      font-size: 0.74rem;
+      line-height: 1.2;
 
-      .flow-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-        padding: 0.18rem 0.55rem;
-        border-radius: 999px;
-        font-size: 0.74rem;
-        font-weight: 700;
-        white-space: nowrap;
-
-        .icon-4xs {
-          font-size: 13px;
-        }
-
-        &.flow-creator {
-          background: #FEF3C7;
-          color: #92400E;
-          border: none;
-        }
-
-        &.flow-assignee {
-          background: #D1FAE5;
-          color: #047857;
-          border: none;
-        }
+      .creator-label {
+        color: #64748B;
+        font-weight: 500;
       }
 
-      .flow-arrow {
-        font-size: 13px;
-        color: #94A3B8;
-        flex-shrink: 0;
+      .creator-name {
+        color: #0F172A;
+        font-weight: 700;
       }
     }
   }
 
+  /* 4. Requirement Chip (Compact) */
   .requirement-chip {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
-    background: #FFFFFF;
+    gap: 0.45rem;
+    background: #F8FAFC;
     border: 1px solid #E2E8F0;
-    border-radius: 10px;
+    border-radius: 8px;
     padding: 0.35rem 0.65rem;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     color: #334155;
     width: 100%;
     box-sizing: border-box;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.18s ease;
 
     &:hover {
       background: #FFFFFF;
-      border-color: #10B981;
-      box-shadow: 0 2px 6px rgba(16, 185, 129, 0.1);
+      border-color: #F97316;
+      box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);
 
       .open-icon {
-        color: #10B981;
+        color: #EA580C;
       }
     }
 
@@ -269,19 +311,20 @@
     }
   }
 
+  /* 5. Revision Alert */
   .revision-feedback-alert {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.35rem;
     background: #FEF2F2;
     border: 1px solid #FCA5A5;
-    border-radius: 9px;
-    padding: 0.4rem 0.75rem;
-    font-size: 0.78rem;
+    border-radius: 7px;
+    padding: 0.3rem 0.6rem;
+    font-size: 0.74rem;
     color: #991B1B;
 
     .alert-icon {
-      font-size: 15px;
+      font-size: 14px;
       color: #DC2626;
       flex-shrink: 0;
     }
@@ -295,185 +338,155 @@
     }
   }
 
-  .progress-container {
+  /* 6. Overall Task Status Block Matching Image 1 (Tightened) */
+  .task-progress-block {
     display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin: 0;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-top: 0.1rem;
 
-    .progress-bar-bg {
-      height: 5px;
-      background: #E2E8F0;
-      border-radius: 999px;
-      overflow: hidden;
-      flex: 1;
+    .progress-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
 
-      .progress-fill {
-        height: 100%;
-        background: #059669;
-        border-radius: 999px;
-        transition: width 0.3s ease;
+      .progress-title-text {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #334155;
+        letter-spacing: -0.01em;
+      }
+
+      .progress-pct-text {
+        font-size: 0.84rem;
+        font-weight: 800;
+        color: #0F172A;
       }
     }
 
-    .progress-pct {
-      font-size: 0.85rem;
-      font-weight: 800;
-      color: #059669;
-      min-width: 36px;
-      text-align: right;
+    .progress-bar-container {
+      .progress-bar-bg {
+        height: 6px;
+        background: #F1F5F9;
+        border-radius: 999px;
+        overflow: hidden;
+
+        .progress-fill {
+          height: 100%;
+          border-radius: 999px;
+          background: linear-gradient(90deg, #F97316 0%, #EA580C 100%);
+          transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+      }
     }
   }
 
+  /* 7. Footer: Due Date, Version, & Image 1 Style Action Buttons (Guaranteed Single Row) */
   .task-card-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-top: 0.4rem;
-    border-top: 1px solid rgba(226, 232, 240, 0.7);
-    gap: 0.5rem;
-    flex-wrap: wrap;
+    padding-top: 0.55rem;
+    border-top: 1px solid rgba(243, 234, 224, 0.8);
+    gap: 0.35rem;
+    flex-wrap: nowrap;
 
     .footer-meta-left {
       display: flex;
       align-items: center;
-      gap: 0.55rem;
+      gap: 0.4rem;
+      min-width: 0;
+      flex-shrink: 1;
 
       .meta-due-date {
         display: inline-flex;
         align-items: center;
-        gap: 0.35rem;
-        font-size: 0.78rem;
+        gap: 0.25rem;
+        font-size: 0.72rem;
         font-weight: 600;
         color: #64748B;
+        white-space: nowrap;
 
         .icon-xs {
-          font-size: 16px;
+          font-size: 14px;
           color: #94A3B8;
         }
       }
 
       .version-chip {
-        font-size: 0.72rem;
+        font-size: 0.68rem;
         font-weight: 700;
         background: #F1F5F9;
         color: #64748B;
-        padding: 0.12rem 0.5rem;
-        border-radius: 6px;
+        padding: 0.1rem 0.4rem;
+        border-radius: 5px;
+        white-space: nowrap;
       }
     }
 
     .task-card-actions {
       display: flex;
       align-items: center;
-      gap: 0.45rem;
-      flex-wrap: wrap;
+      gap: 0.35rem;
+      flex-shrink: 0;
+      flex-wrap: nowrap;
 
       .btn-card-action {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        padding: 0.35rem 0.85rem;
         border-radius: 999px;
-        font-size: 0.76rem;
+        font-size: 0.72rem;
         font-weight: 700;
-        cursor: pointer;
-        border: 1.5px solid transparent;
-        transition: all 0.2s ease;
-
-        .icon-xs {
-          font-size: 16px;
-        }
-
-        &.btn-card-start {
-          background: #ECFDF5;
-          color: #047857;
-          border-color: #A7F3D0;
-
-          &:hover {
-            background: #D1FAE5;
-            transform: translateY(-1px);
-          }
-        }
-
-        &.btn-card-upload {
-          background: #0284C7;
-          color: #FFFFFF;
-          border-color: #38BDF8;
-          box-shadow: 0 2px 6px rgba(2, 132, 199, 0.25);
-
-          &:hover {
-            background: #0369A1;
-            transform: translateY(-1px);
-          }
-        }
-
-        &.btn-card-review {
-          background: #FEF2F2;
-          color: #DC2626;
-          border-color: #FECACA;
-
-          &:hover {
-            background: #FEE2E2;
-            transform: translateY(-1px);
-          }
-        }
-
-        &.btn-card-view {
-          background: #F8FAFC;
-          color: #334155;
-          border: 1.5px solid #E2E8F0;
-
-          &:hover {
-            background: #F1F5F9;
-            color: #0F172A;
-            border-color: #CBD5E1;
-            transform: translateY(-1px);
-          }
-        }
-
-        &.text-success {
-          background: #ECFDF5;
-          color: #047857;
-          border-color: #A7F3D0;
-
-          &:hover {
-            background: #D1FAE5;
-            transform: translateY(-1px);
-          }
-        }
-
-        &.text-danger {
-          background: #FEF2F2;
-          color: #DC2626;
-          border-color: #FECACA;
-
-          &:hover {
-            background: #FEE2E2;
-            transform: translateY(-1px);
-          }
-        }
-      }
-
-      .btn-icon-trash {
-        background: transparent;
-        border: none;
-        color: #94A3B8;
-        padding: 0.25rem;
-        border-radius: 6px;
-        cursor: pointer;
         display: inline-flex;
         align-items: center;
-        justify-content: center;
-        transition: all 0.15s ease;
-
-        &:hover {
-          color: #EF4444;
-          background: #FEE2E2;
-        }
+        gap: 0.25rem;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        text-decoration: none;
+        border: none;
+        box-sizing: border-box;
+        white-space: nowrap;
 
         .icon-xs {
-          font-size: 16px;
+          font-size: 14px;
+        }
+
+        /* Image 1: Light Mint/Green Pill for Preview */
+        &.btn-card-preview {
+          background: #E8F5E9;
+          color: #059669;
+          padding: 0.32rem 0.7rem;
+
+          &:hover {
+            background: #DCFCE7;
+            color: #047857;
+            transform: translateY(-1px);
+          }
+        }
+
+        /* Image 1: Solid Emerald Green Pill for Download & Primary Actions */
+        &.btn-card-download,
+        &.btn-card-solid-action {
+          background: #059669;
+          color: #FFFFFF;
+          padding: 0.32rem 0.8rem;
+          box-shadow: 0 2px 8px rgba(5, 150, 105, 0.22);
+
+          &:hover {
+            background: #047857;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(5, 150, 105, 0.32);
+          }
+        }
+
+        &.btn-card-review-action {
+          background: #FEF2F2;
+          color: #DC2626;
+          border: 1px solid #FECACA;
+          padding: 0.32rem 0.7rem;
+
+          &:hover {
+            background: #FEE2E2;
+            transform: translateY(-1px);
+          }
         }
       }
     }

@@ -212,10 +212,6 @@
   @if (activeWorkspacePackage(); as selectedPkg) {
 
     @if (!activeDepartment()) {
-      <div class="product-identity-header">
-        <img [src]="productVisual().logo" [alt]="productVisual().title + ' logo'" />
-        <h1>{{ selectedPkg.name }}</h1>
-      </div>
       <app-package-hub-overview
         [packageMetrics]="packageMetrics()"
         [operationDepartments]="operationDepartments()"
@@ -228,10 +224,6 @@
     }
 
     @if (activeDepartment(); as currentDept) {
-      <div class="product-identity-header">
-        <img [src]="productVisual().logo" [alt]="productVisual().title + ' logo'" />
-        <h1>{{ selectedPkg.name }}</h1>
-      </div>
       <app-package-department-view
         [currentDept]="currentDept"
         [activeDepartmentTabs]="activeDepartmentTabs()"

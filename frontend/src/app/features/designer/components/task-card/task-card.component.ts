@@ -1,6 +1,9 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Task, TaskStatus, TaskPriority, computeTaskProgressPercent } from '../../../../core/models/task.model';
+import { UserManagementService } from '../../../../core/services/user-management.service';
+import { ManagedUser } from '../../../../core/models/user-management.model';
+import { getApiUrl } from '../../../../core/utils/api-url.utils';
 
 @Component({
   selector: 'app-task-card',
@@ -10,6 +13,8 @@ import { Task, TaskStatus, TaskPriority, computeTaskProgressPercent } from '../.
   styleUrl: './task-card.component.scss',
 })
 export class TaskCardComponent {
+  private userService = inject(UserManagementService);
+
   @Input({ required: true }) task!: Task;
   @Input() isSelected = false;
   @Input() currentUser: any = null;
@@ -80,9 +85,82 @@ export class TaskCardComponent {
     return this.task.creatorName || 'Manager';
   }
 
+  getCreatorDisplayName(): string {
+    const raw = this.task?.creatorName;
+    if (raw && raw !== 'System Administrator' && raw !== 'admin@markops.io' && !raw.toLowerCase().includes('admin')) {
+      if (raw.includes('@')) return raw.split('@')[0];
+      return raw;
+    }
+    const prefix = this.getRolePrefix(this.task?.creatorRole);
+    return prefix || 'Admin';
+  }
+
   getAssigneeName(): string {
     if (!this.task) return 'Unassigned';
     return this.task.assigneeName || 'Designer';
+  }
+
+  getAssigneeUser(): ManagedUser | undefined {
+    if (!this.task) return undefined;
+    const assignedTo = String(this.task.assignedTo || '').trim().toLowerCase();
+    const assigneeName = String(this.task.assigneeName || '').trim().toLowerCase();
+    const users = this.userService.users();
+    return users.find((u) => {
+      const uId = String(u.id || '').trim().toLowerCase();
+      const uEmail = String(u.email || '').trim().toLowerCase();
+      const uName = String(u.fullName || '').trim().toLowerCase();
+      return (
+        (assignedTo && (uId === assignedTo || uEmail === assignedTo)) ||
+        (assigneeName && (uName === assigneeName || uName.includes(assigneeName) || assigneeName.includes(uName)))
+      );
+    });
+  }
+
+  getAssigneeDisplayName(): string {
+    const user = this.getAssigneeUser();
+    if (user?.fullName) return user.fullName;
+    const raw = this.task?.assigneeName;
+    if (raw && raw !== 'Assigned Designer' && raw !== 'Assigned User' && raw !== 'Unassigned') {
+      return raw.charAt(0).toUpperCase() + raw.slice(1);
+    }
+    return 'Surya';
+  }
+
+  getAssigneeRole(): string {
+    const user = this.getAssigneeUser();
+    if (user?.department && user.department !== 'General') {
+      return user.department;
+    }
+    if (user?.role === 'DESIGNER') {
+      return 'UIUX Designer';
+    }
+    if (user?.role) {
+      return this.getRolePrefix(user.role);
+    }
+    return 'UIUX Designer';
+  }
+
+  getAssigneeAvatarUrl(): string | undefined {
+    const raw = this.getAssigneeUser()?.avatarUrl;
+    return raw ? getApiUrl(raw) : undefined;
+  }
+
+  getAssigneeAvatarColor(): string {
+    const name = this.getAssigneeDisplayName();
+    const colors = ['#F59E0B', '#EA580C', '#D97706', '#7C3AED', '#2563EB', '#059669', '#0891B2'];
+    let hash = 0;
+    for (let i = 0; i < (name || '').length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  }
+
+  getAssigneeInitials(): string {
+    const name = this.getAssigneeDisplayName();
+    if (!name) return 'S';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
 
   getShortCreator(): string {

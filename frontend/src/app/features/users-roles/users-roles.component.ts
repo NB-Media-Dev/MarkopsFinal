@@ -5,8 +5,8 @@ import { AuthService } from '../../core/services/auth.service';
 import { UserManagementService } from '../../core/services/user-management.service';
 import { UserRole } from '../../core/models/auth.model';
 import { ManagedUser, SYSTEM_ROLES_METADATA } from '../../core/models/user-management.model';
-
 import { RouterModule } from '@angular/router';
+import { getApiUrl } from '../../core/utils/api-url.utils';
 
 @Component({
   selector: 'app-users-roles',
@@ -29,12 +29,18 @@ export class UsersRolesComponent {
     return user.id;
   }
 
+  getAvatarUrl(avatarUrl?: string): string {
+    if (!avatarUrl) return '';
+    return getApiUrl(avatarUrl);
+  }
 
   readonly isCreateUserModalOpen = signal<boolean>(false);
   readonly createFormSubmitted = signal<boolean>(false);
   readonly showCreatePassword = signal<boolean>(false);
   readonly userSuccessMsg = signal<string | null>(null);
   readonly userErrorMsg = signal<string | null>(null);
+  readonly createAvatarPreview = signal<string | null>(null);
+  readonly createAvatarDataUrl = signal<string | null>(null);
 
   readonly createUserForm: FormGroup = this.fb.group({
     fullName: ['', [Validators.required, Validators.minLength(2)]],
@@ -45,11 +51,12 @@ export class UsersRolesComponent {
     isActive: [true],
   });
 
-
   readonly isEditUserModalOpen = signal<boolean>(false);
   readonly editFormSubmitted = signal<boolean>(false);
   readonly editingUserId = signal<string | null>(null);
   readonly showEditPassword = signal<boolean>(false);
+  readonly editAvatarPreview = signal<string | null>(null);
+  readonly editAvatarDataUrl = signal<string | null>(null);
 
   readonly editUserForm: FormGroup = this.fb.group({
     fullName: ['', [Validators.required, Validators.minLength(2)]],
@@ -77,25 +84,43 @@ export class UsersRolesComponent {
     });
   });
 
-
   openCreateUserModal(): void {
     this.createUserForm.reset({
       fullName: '',
       email: '',
       role: 'BDM',
-      department: 'Growth Operations',
       password: '',
       isActive: true,
     });
     this.createFormSubmitted.set(false);
     this.showCreatePassword.set(false);
     this.userErrorMsg.set(null);
+    this.createAvatarPreview.set(null);
+    this.createAvatarDataUrl.set(null);
     this.isCreateUserModalOpen.set(true);
   }
 
   closeCreateUserModal(): void {
     this.isCreateUserModalOpen.set(false);
     this.userErrorMsg.set(null);
+  }
+
+  onSelectCreateAvatar(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      this.createAvatarPreview.set(result);
+      this.createAvatarDataUrl.set(result);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removeCreateAvatar(): void {
+    this.createAvatarPreview.set(null);
+    this.createAvatarDataUrl.set(null);
   }
 
   toggleCreatePasswordVisibility(): void {
@@ -112,7 +137,11 @@ export class UsersRolesComponent {
     }
 
     try {
-      const newUser = await this.userMgmtService.createUser(this.createUserForm.value);
+      const payload = {
+        ...this.createUserForm.value,
+        avatarDataUrl: this.createAvatarDataUrl() || undefined,
+      };
+      const newUser = await this.userMgmtService.createUser(payload);
       this.userSuccessMsg.set(`User "${newUser.fullName}" (${newUser.email}) created successfully!`);
       this.closeCreateUserModal();
       setTimeout(() => {
@@ -127,7 +156,6 @@ export class UsersRolesComponent {
     }
   }
 
-
   openEditUserModal(user: ManagedUser): void {
     this.editingUserId.set(user.id);
     this.editUserForm.patchValue({
@@ -138,6 +166,8 @@ export class UsersRolesComponent {
       password: '',
       isActive: user.isActive,
     });
+    this.editAvatarPreview.set(user.avatarUrl ? this.getAvatarUrl(user.avatarUrl) : null);
+    this.editAvatarDataUrl.set(null);
     this.editFormSubmitted.set(false);
     this.showEditPassword.set(false);
     this.isEditUserModalOpen.set(true);
@@ -146,6 +176,24 @@ export class UsersRolesComponent {
   closeEditUserModal(): void {
     this.isEditUserModalOpen.set(false);
     this.editingUserId.set(null);
+  }
+
+  onSelectEditAvatar(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      this.editAvatarPreview.set(result);
+      this.editAvatarDataUrl.set(result);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  removeEditAvatar(): void {
+    this.editAvatarPreview.set(null);
+    this.editAvatarDataUrl.set(null);
   }
 
   toggleEditPasswordVisibility(): void {
@@ -164,7 +212,12 @@ export class UsersRolesComponent {
     if (!id) return;
 
     try {
-      const updated = await this.userMgmtService.updateUser(id, this.editUserForm.value);
+      const payload = {
+        ...this.editUserForm.value,
+        avatarDataUrl: this.editAvatarDataUrl() || undefined,
+        avatarUrl: !this.editAvatarPreview() ? '' : undefined,
+      };
+      const updated = await this.userMgmtService.updateUser(id, payload);
       if (updated) {
         this.userSuccessMsg.set(`User "${updated.fullName}" account updated successfully!`);
       }

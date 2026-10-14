@@ -2,12 +2,21 @@
   <div class="designer-profile-banner">
     <div class="banner-left">
       <div class="banner-avatar" [style.backgroundColor]="designer.avatarColor">
-        {{ getInitials(designer.name) }}
+        @if (designer.avatarUrl) {
+          <img
+            [src]="getAvatarUrl(designer.avatarUrl)"
+            [alt]="designer.name"
+            class="banner-avatar-img"
+            (error)="$any($event.target).style.display='none'"
+          />
+        } @else {
+          {{ getInitials(designer.name) }}
+        }
       </div>
       <div class="banner-info">
         <div class="banner-title-row">
           <h2>{{ designer.name }}</h2>
-          <span class="dept-badge">{{ designer.department }}</span>
+      
         </div>
         <span class="banner-email">{{ designer.email }}</span>
       </div>

@@ -26,12 +26,15 @@
 
     <div class="header-divider-line"></div>
 
-    <!-- Profile Summary Card -->
+    <!-- Scrollable Modal Body for all desktop, tablet, and mobile viewports -->
+    <div class="modal-body-scroll">
+
+      <!-- Profile Summary Card -->
     <div class="profile-summary-card">
       <div class="summary-avatar-wrap">
         <div class="summary-avatar">
           @if (previewUrl() || currentUser()?.avatarUrl) {
-            <img [src]="previewUrl() || currentUser()?.avatarUrl" alt="Profile" class="avatar-img-round" />
+            <img [src]="previewUrl() || getAvatarUrl(currentUser()?.avatarUrl)" alt="Profile" class="avatar-img-round" (error)="$any($event.target).style.display='none'" />
           } @else {
             <span class="avatar-letter">{{ userInitial() }}</span>
           }
@@ -313,5 +316,6 @@
       </div>
     }
 
+    </div>
   </div>
 </div>

@@ -2,23 +2,76 @@
 
   <div class="top-nav-bar">
     <div class="nav-left">
-      <button type="button" class="btn-back" (click)="goBack()" title="Back">
-        <span class="material-symbols-outlined icon-back">arrow_back</span>
-        <span>Back</span>
-      </button>
-      <div class="breadcrumbs">
-        <a routerLink="/dashboard" class="bc-item">Dashboard</a>
-        <span class="bc-sep">/</span>
-        <a routerLink="/package-works" class="bc-item">Package Works</a>
-        @if (task()?.packageName) {
-          <span class="bc-sep">/</span>
-        }
-        @if (task()?.packageName) {
-          <span class="bc-item bc-package">{{ task()?.packageName }}</span>
-        }
-        <span class="bc-sep">/</span>
-        <span class="bc-item active">{{ task()?.title || 'Task Details' }}</span>
-      </div>
+      <nav class="clean-breadcrumbs" aria-label="Breadcrumb">
+        <button type="button" class="btn-back" (click)="goBack()" title="Back">
+          <span class="material-symbols-outlined icon-back">arrow_back</span>
+        </button>
+        <span class="bc-bar-divider" aria-hidden="true"></span>
+
+        <div class="breadcrumbs-list">
+          @if (breadcrumbOrigin() === 'designer') {
+            <a routerLink="/designer-tasks" class="bc-item bc-link" title="Own Tasks">
+              <span class="material-symbols-outlined bc-home-icon">task_alt</span>
+              <span>Own Tasks</span>
+            </a>
+            <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
+            <span class="bc-item bc-current">{{ task()?.title || 'Task Details' }}</span>
+          } @else if (breadcrumbOrigin() === 'package-works' || resolvedScope().packageName) {
+            <a routerLink="/dashboard" class="bc-item bc-link" title="Dashboard">
+              <span class="material-symbols-outlined bc-home-icon">home</span>
+              <span>Dashboard</span>
+            </a>
+            <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
+
+            <a
+              routerLink="/package-works"
+              [queryParams]="{ package: resolvedScope().productName }"
+              class="bc-item"
+              [title]="'Back to ' + resolvedScope().productName + ' Products'"
+            >
+              <span>{{ resolvedScope().productName }}</span>
+            </a>
+            <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
+
+            @if (resolvedScope().packageName) {
+              <a
+                routerLink="/package-works"
+                [queryParams]="{ package: resolvedScope().productName, workspace: resolvedScope().packageName }"
+                class="bc-item"
+                [title]="'Back to ' + resolvedScope().packageName + ' Overview'"
+              >
+                <span>{{ resolvedScope().packageName }}</span>
+              </a>
+              <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
+
+              <a
+                routerLink="/package-works"
+                [queryParams]="{ package: resolvedScope().productName, workspace: resolvedScope().packageName, dept: resolvedDeptCode() }"
+                class="bc-item"
+                [title]="'Back to ' + resolvedDept() + ' Department'"
+              >
+                <span>{{ resolvedDept() }}</span>
+              </a>
+              <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
+            }
+
+            <span class="bc-item bc-current">{{ task()?.title || 'Task Details' }}</span>
+          } @else {
+            <a routerLink="/dashboard" class="bc-item bc-link" title="Dashboard">
+              <span class="material-symbols-outlined bc-home-icon">home</span>
+              <span>Dashboard</span>
+            </a>
+            <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
+
+            <a routerLink="/tasks" class="bc-item" title="Back to Tasks">
+              <span>Tasks</span>
+            </a>
+            <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
+
+            <span class="bc-item bc-current">{{ task()?.title || 'Task Details' }}</span>
+          }
+        </div>
+      </nav>
     </div>
 
     @if (task(); as t) {
@@ -118,27 +171,43 @@
   @if (!isLoading() && task(); as t) {
     <div class="task-content-wrapper">
 
+      <!-- 1. Floating Workflow Stepper Grid at the VERY TOP matching Image 2 -->
+      <div class="workflow-stepper-floating-grid">
+        @for (step of getWorkflowSteps(t); track step.id; let i = $index) {
+          <div class="workflow-floating-card" [ngClass]="'state-' + step.state">
+            <div class="step-icon-circle">
+              <span class="material-symbols-outlined">{{ step.icon }}</span>
+            </div>
+            <div class="step-meta">
+              <span class="step-title">{{ step.title }}</span>
+              <span class="step-subtitle">{{ step.subtitle }}</span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- 2. Hero Header Card matching Image 2 -->
       <div class="hero-header-card">
         <div class="hero-left">
-          <div class="hero-squircle-badge" [ngClass]="'badge-status-' + (t.status | lowercase)">
-            {{ (t.packageName || t.title || 'T')[0].toUpperCase() }}
+          <div class="hero-designer-avatar-ring">
+            @if (getAssigneeAvatarUrl(t)) {
+              <img [src]="getAssigneeAvatarUrl(t)" [alt]="getAssigneeDisplayName(t)" class="hero-avatar-img" />
+            } @else {
+              <div class="hero-avatar-initials" [style.backgroundColor]="getAssigneeAvatarColor(t)">
+                {{ getAssigneeInitials(t) }}
+              </div>
+            }
           </div>
-          <div class="hero-titles">
-            <div class="hero-chips-line">
-           
-              <span class="priority-pill" [ngClass]="getPriorityBadgeClass(t.priority)">{{
-                t.priority
-              }}</span>
-              <span class="task-hash-id">#{{ getShortId(t.id) }}</span>
-            </div>
-            <h1 class="hero-title">{{ t.title }}</h1>
+          <div class="hero-designer-meta">
+            <h2 class="hero-designer-name">{{ getAssigneeDisplayName(t) }}</h2>
+            <span class="hero-designer-role">{{ getAssigneeRole(t) }}</span>
           </div>
         </div>
-        <div class="hero-right">
 
+        <div class="hero-right">
           <div class="hero-metric-card">
             <div class="metric-top">
-              <span class="metric-label">Completion</span>
+              <span class="metric-label">COMPLETION</span>
               <span class="metric-val">{{ getTaskProgress(t) }}%</span>
             </div>
             <div class="metric-progress-bg">
@@ -148,10 +217,10 @@
 
           <div class="hero-assignee-card">
             <div class="assignee-avatar">
-              <span class="material-symbols-outlined">brush</span>
+              <span class="material-symbols-outlined">edit</span>
             </div>
             <div class="assignee-meta">
-              <span class="assignee-label">Assigned Designer</span>
+              <span class="assignee-label">ASSIGNED DESIGNER</span>
               <strong class="assignee-name">{{ getAssigneeName(t) }}</strong>
             </div>
           </div>
@@ -159,35 +228,12 @@
           @if (t.dueDate) {
             <div class="hero-date-card">
               <div class="date-icon-box">
-                <span class="material-symbols-outlined">event</span>
+                <span class="material-symbols-outlined">calendar_today</span>
               </div>
               <div class="date-meta">
-                <span class="date-label">Due Date</span>
+                <span class="date-label">DUE DATE</span>
                 <strong class="date-val">{{ formatDate(t.dueDate) }}</strong>
               </div>
-            </div>
-          }
-        </div>
-      </div>
-
-      <div class="workflow-stepper-card">
-        <div class="stepper-title-row">
-          <span class="material-symbols-outlined icon-sub">route</span>
-          <span class="stepper-title">WORKFLOW PIPELINE</span>
-        </div>
-        <div class="stepper-track">
-          @for (step of getWorkflowSteps(t); track step; let i = $index) {
-            <div class="stepper-node" [ngClass]="'state-' + step.state">
-              <div class="node-circle">
-                <span class="material-symbols-outlined">{{ step.icon }}</span>
-              </div>
-              <div class="node-text">
-                <span class="node-title">{{ step.title }}</span>
-                <span class="node-sub">{{ step.subtitle }}</span>
-              </div>
-              @if (i < getWorkflowSteps(t).length - 1) {
-                <div class="node-line"></div>
-              }
             </div>
           }
         </div>
@@ -222,6 +268,7 @@
         </div>
       }
 
+      <!-- 3. Clean Text Tabs matching Image 2 -->
       <div class="tab-nav-container">
         <button
           type="button"
@@ -229,7 +276,6 @@
           [class.active]="activeTab() === 'DETAIL'"
           (click)="activeTab.set('DETAIL')"
         >
-          <span class="material-symbols-outlined">description</span>
           <span>Task Brief & Specs</span>
         </button>
         <button
@@ -238,7 +284,6 @@
           [class.active]="activeTab() === 'VERSIONS'"
           (click)="activeTab.set('VERSIONS')"
         >
-          <span class="material-symbols-outlined">collections</span>
           <span>Creative Versions</span>
           @if (t.versions && t.versions.length > 0) {
             <span class="tab-badge">{{ t.versions.length }}</span>
@@ -250,7 +295,6 @@
           [class.active]="activeTab() === 'HISTORY'"
           (click)="activeTab.set('HISTORY')"
         >
-          <span class="material-symbols-outlined">history_edu</span>
           <span>Task History</span>
           @if (getGitCommitTimeline(t).length > 0) {
             <span class="tab-badge">{{ getGitCommitTimeline(t).length }}</span>
@@ -267,7 +311,6 @@
               @if (hasCustomDescription(t)) {
                 <div class="content-card description-card">
                   <div class="card-header">
-                    <span class="material-symbols-outlined card-header-icon">subject</span>
                     <h3 class="card-title">Task Description & Creative Brief</h3>
                   </div>
                   <div class="card-body">
@@ -278,26 +321,17 @@
                 </div>
               }
 
+              <!-- Requirement Document & Reference Assets Card matching Image 2 -->
               <div class="content-card requirement-card">
                 <div class="card-header">
-                  <span class="material-symbols-outlined card-header-icon">attachment</span>
                   <h3 class="card-title">Requirement Document & Reference Assets</h3>
                 </div>
                 <div class="card-body">
                   @if (t.attachmentUrl || t.attachmentName || t.content) {
                     <div class="req-file-box">
                       <div class="req-file-left">
-                        <div
-                          class="req-icon-badge"
-                          [class.is-pdf]="isPdf(t.attachmentName || t.attachmentUrl)"
-                        >
-                          <span class="material-symbols-outlined">
-                            {{
-                              isPdf(t.attachmentName || t.attachmentUrl)
-                                ? 'picture_as_pdf'
-                                : 'description'
-                            }}
-                          </span>
+                        <div class="req-icon-badge">
+                          <span class="material-symbols-outlined">folder</span>
                         </div>
                         <div class="req-file-meta">
                           <h4 class="req-filename">
@@ -305,10 +339,10 @@
                               t.attachmentName ||
                                 (t.title
                                   ? (t.title | lowercase) + '-brief.png'
-                                  : 'Creative_Brief.pdf')
+                                  : 'CA-Brief.png')
                             }}
                           </h4>
-                          <span class="req-filesub">Task Requirement Brief • Attached Asset</span>
+                          <span class="req-filesub">Task Requirements Brief • Attached Asset</span>
                         </div>
                       </div>
                       <div class="req-file-actions">
@@ -318,7 +352,7 @@
                           (click)="openDocViewer(t.attachmentUrl, t.attachmentName, t.content)"
                           title="Preview Requirement File"
                         >
-                          <span class="material-symbols-outlined">visibility</span>
+                          <span class="material-symbols-outlined icon-xs">menu_book</span>
                           <span>Preview</span>
                         </button>
                         @if (t.attachmentUrl) {
@@ -333,31 +367,15 @@
                             "
                             title="Download Requirement File"
                           >
-                            <span class="material-symbols-outlined">download</span>
                             <span>Download</span>
+                            <span class="material-symbols-outlined icon-xs">arrow_downward</span>
                           </button>
                         }
                       </div>
                     </div>
                   }
 
-                  @if (t.attachmentUrl && isImage(t.attachmentUrl)) {
-                    <div class="image-preview-card">
-                      <div
-                        class="img-wrapper"
-                        (click)="openImageViewer(t.attachmentUrl, t.attachmentName || t.title)"
-                      >
-                        <img
-                          [src]="t.attachmentUrl"
-                          [alt]="t.attachmentName || 'Requirement Asset'"
-                        />
-                        <div class="img-overlay">
-                          <span class="material-symbols-outlined">zoom_in</span>
-                          <span>Click to Expand</span>
-                        </div>
-                      </div>
-                    </div>
-                  }
+              
                   @if (!t.attachmentUrl && !t.attachmentName && !t.content) {
                     <div class="empty-desc-box">
                       <span class="material-symbols-outlined">folder_off</span>
@@ -368,22 +386,29 @@
               </div>
             </div>
 
+            <!-- Task Information Card matching Image 2 -->
             <div class="pane-col-side">
               <div class="content-card meta-card">
                 <div class="card-header">
-                  <span class="material-symbols-outlined card-header-icon">info</span>
+                  <span class="material-symbols-outlined card-header-icon-purple">info</span>
                   <h3 class="card-title">Task Information</h3>
                 </div>
                 <div class="card-body meta-card-body">
 
                   <div class="person-box">
-                    <div class="person-avatar avatar-creator">
-                      <span class="material-symbols-outlined">person</span>
+                    <div class="person-avatar-circle">
+                      @if (getCreatorAvatarUrl(t)) {
+                        <img [src]="getCreatorAvatarUrl(t)" [alt]="getCreatorName(t)" class="person-avatar-img" />
+                      } @else {
+                        <div class="person-avatar-init" [style.backgroundColor]="getCreatorAvatarColor(t)">
+                          {{ getCreatorInitials(t) }}
+                        </div>
+                      }
                     </div>
                     <div class="person-meta">
-                      <span class="person-role-tag">Task Creator</span>
+                      <span class="person-role-tag">TASK CREATOR</span>
                       <strong class="person-name">{{ getCreatorName(t) }}</strong>
-                      <span class="person-role-desc">{{ t.creatorRole || 'Administrator' }}</span>
+                      <span class="person-role-desc">{{ t.creatorRole || 'ADMINISTRATOR' }}</span>
                     </div>
                   </div>
                   <div class="meta-divider"></div>

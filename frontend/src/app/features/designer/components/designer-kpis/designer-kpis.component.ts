@@ -12,5 +12,6 @@ export class DesignerKpisComponent {
   @Input() totalDesigners: number = 0;
   @Input() totalTasks: number = 0;
   @Input() totalPending: number = 0;
+  @Input() totalInProgress: number = 0;
   @Input() totalCompleted: number = 0;
 }

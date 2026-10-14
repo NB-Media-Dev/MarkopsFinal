@@ -578,12 +578,22 @@ export class PackageWorksComponent implements OnInit {
       }
     }
     this.scrollToPageTop();
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { dept: deptId },
+      queryParamsHandling: 'merge',
+    });
   }
 
   backToPackageHub(): void {
     this.activeDepartment.set(null);
     this.activeOperationTab.set('');
     this.scrollToPageTop();
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { dept: null, tab: null, subtab: null },
+      queryParamsHandling: 'merge',
+    });
   }
 
   getDepartmentIcon(deptId: string | null): string {
@@ -1525,6 +1535,8 @@ export class PackageWorksComponent implements OnInit {
         }
       } else if (requestedTab === 'TELECALLER_MEMBERS' || requestedTab === 'TARGETS' || requestedTab === 'TELECALLING') {
         this.activeDepartment.set('TELECALLING');
+      } else {
+        this.activeDepartment.set(null);
       }
 
       if (requestedTab) {
@@ -1536,6 +1548,17 @@ export class PackageWorksComponent implements OnInit {
         } else {
           this.selectOperationTab('TELECALLING');
         }
+      } else if (this.activeDepartment() === 'DESIGNER') {
+        this.selectOperationTab('TASKS');
+      } else if (this.activeDepartment() === 'DIGITAL_MARKETING') {
+        this.selectOperationTab('MARKETING_OVERVIEW');
+      } else if (this.activeDepartment() === 'ANALYTICS') {
+        this.selectOperationTab('ANALYTICS_OVERVIEW');
+      }
+    } else {
+      if (!requestedWorkspace) {
+        this.activeWorkspacePackage.set(null);
+        this.activeDepartment.set(null);
       }
     }
   }
@@ -1772,6 +1795,11 @@ export class PackageWorksComponent implements OnInit {
     this.scrollToPageTop();
     this.fetchAuditLogs();
     this.taskService.loadTasks();
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { package: this.activePackageName(), workspace: pkg.name, dept: null, tab: null, subtab: null },
+      queryParamsHandling: 'merge',
+    });
   }
 
   closePackageWorkspace(): void {
@@ -1779,6 +1807,11 @@ export class PackageWorksComponent implements OnInit {
     this.activeDepartment.set(null);
     this.activeOperationTab.set('PACKAGES');
     this.scrollToPageTop();
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { workspace: null, dept: null, tab: null, subtab: null },
+      queryParamsHandling: 'merge',
+    });
   }
 
   onBreadcrumbBack(): void {
@@ -1915,11 +1948,12 @@ export class PackageWorksComponent implements OnInit {
       this.loadProductHeroBanner(selectedProduct.id);
     }
     this.activeWorkspacePackage.set(null);
+    this.activeDepartment.set(null);
     this.activeOperationTab.set('PACKAGES');
     this.scrollToPageTop();
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { package: pkgName },
+      queryParams: { package: pkgName, workspace: null, dept: null, tab: null, subtab: null },
       queryParamsHandling: 'merge',
     });
     this.fetchAuditLogs();

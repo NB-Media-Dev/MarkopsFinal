@@ -7,6 +7,7 @@ export interface ManagedUser {
   role: UserRole;
   department: string;
   isActive: boolean;
+  avatarUrl?: string;
   lastLoginAt?: string;
   createdAt: string;
 }
@@ -18,6 +19,8 @@ export interface CreateUserRequest {
   department: string;
   password?: string;
   isActive: boolean;
+  avatarUrl?: string;
+  avatarDataUrl?: string;
 }
 
 export interface RoleMetadata {
