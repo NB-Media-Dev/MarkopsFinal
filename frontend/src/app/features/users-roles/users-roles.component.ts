@@ -39,8 +39,6 @@ export class UsersRolesComponent {
   readonly showCreatePassword = signal<boolean>(false);
   readonly userSuccessMsg = signal<string | null>(null);
   readonly userErrorMsg = signal<string | null>(null);
-  readonly createAvatarPreview = signal<string | null>(null);
-  readonly createAvatarDataUrl = signal<string | null>(null);
 
   readonly createUserForm: FormGroup = this.fb.group({
     fullName: ['', [Validators.required, Validators.minLength(2)]],
@@ -96,32 +94,12 @@ export class UsersRolesComponent {
     this.createFormSubmitted.set(false);
     this.showCreatePassword.set(false);
     this.userErrorMsg.set(null);
-    this.createAvatarPreview.set(null);
-    this.createAvatarDataUrl.set(null);
     this.isCreateUserModalOpen.set(true);
   }
 
   closeCreateUserModal(): void {
     this.isCreateUserModalOpen.set(false);
     this.userErrorMsg.set(null);
-  }
-
-  onSelectCreateAvatar(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) return;
-    const file = input.files[0];
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      this.createAvatarPreview.set(result);
-      this.createAvatarDataUrl.set(result);
-    };
-    reader.readAsDataURL(file);
-  }
-
-  removeCreateAvatar(): void {
-    this.createAvatarPreview.set(null);
-    this.createAvatarDataUrl.set(null);
   }
 
   toggleCreatePasswordVisibility(): void {
@@ -142,7 +120,6 @@ export class UsersRolesComponent {
       const payload = {
         ...formValue,
         department: formValue.department || 'General Operations',
-        avatarDataUrl: this.createAvatarDataUrl() || undefined,
       };
       const newUser = await this.userMgmtService.createUser(payload);
       this.userSuccessMsg.set(`User "${newUser.fullName}" (${newUser.email}) created successfully!`);
