@@ -89,6 +89,7 @@ export class UsersRolesComponent {
       fullName: '',
       email: '',
       role: 'BDM',
+      department: 'General Operations',
       password: '',
       isActive: true,
     });
@@ -137,8 +138,10 @@ export class UsersRolesComponent {
     }
 
     try {
+      const formValue = this.createUserForm.value;
       const payload = {
-        ...this.createUserForm.value,
+        ...formValue,
+        department: formValue.department || 'General Operations',
         avatarDataUrl: this.createAvatarDataUrl() || undefined,
       };
       const newUser = await this.userMgmtService.createUser(payload);

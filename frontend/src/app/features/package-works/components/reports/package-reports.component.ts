@@ -34,6 +34,7 @@ export interface TeamAvatarItem {
   avatarUrl?: string;
   initial: string;
   bgColorClass: string;
+  roleClass: string;
 }
 
 export interface RoleTeamCard {
@@ -165,6 +166,14 @@ export class PackageReportsComponent implements OnInit {
     if (u.user) {
       u.user.avatarUrl = undefined;
     }
+    (u as any).avatarUrl = undefined;
+  }
+
+  getRoleSquircleClass(role?: string): string {
+    if (!role) return 'telecaller';
+    const normalized = String(role).toLowerCase().replace(/[\s-]+/g, '_');
+    if (normalized === 'digital') return 'digital_marketing';
+    return normalized;
   }
 
   get roleTeamCards(): RoleTeamCard[] {
@@ -191,15 +200,16 @@ export class PackageReportsComponent implements OnInit {
       const maxDisplay = 4;
       const visibleMembers = roleMembers.slice(0, maxDisplay);
 
-      // ONLY REAL members are included
       for (const m of visibleMembers) {
         const rawUrl = m.user?.avatarUrl || (m as any).avatarUrl || (m.user as any)?.avatar_url;
         const resolvedUrl = rawUrl ? this.getAvatarUrl(rawUrl) : undefined;
+        const roleStr = m.user?.role || m.role || cfg.code;
         avatars.push({
-          name: m.name,
+          name: m.name || m.user?.fullName || 'User',
           avatarUrl: resolvedUrl,
-          initial: m.name ? m.name.charAt(0).toUpperCase() : '',
+          initial: (m.name || m.user?.fullName || 'U').charAt(0).toUpperCase(),
           bgColorClass: m.avatarColor || 'avatar-purple',
+          roleClass: this.getRoleSquircleClass(roleStr),
         });
       }
 

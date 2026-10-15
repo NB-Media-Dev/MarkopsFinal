@@ -31,6 +31,14 @@
                         class="stack-avatar-item"
                         (error)="av.avatarUrl = undefined"
                       />
+                    } @else {
+                      <div
+                        class="stack-avatar-item"
+                        [ngClass]="av.roleClass"
+                        [title]="av.name"
+                      >
+                        <span class="avatar-initial-char">{{ av.initial }}</span>
+                      </div>
                     }
                   }
                   @if (card.overflowCount > 0) {
@@ -81,12 +89,15 @@
                   <img
                     [src]="getAvatarUrl(u.user?.avatarUrl)"
                     [alt]="u.name"
-                    class="profile-avatar-circle avatar-img"
+                    class="profile-avatar-squircle avatar-img-fit"
                     (error)="onMemberAvatarError(u)"
                   />
                 } @else {
-                  <div class="profile-avatar-circle" [ngClass]="u.avatarColor || 'avatar-purple'">
-                    {{ u.name ? u.name.charAt(0).toUpperCase() : '' }}
+                  <div
+                    class="profile-avatar-squircle"
+                    [ngClass]="getRoleSquircleClass(u.role)"
+                  >
+                    <span class="avatar-initial-char">{{ u.name ? u.name.charAt(0).toUpperCase() : '' }}</span>
                   </div>
                 }
                 <div class="profile-meta-content">
@@ -247,8 +258,11 @@
                 (error)="onMemberAvatarError(selectedPerformanceUser)"
               />
             } @else {
-              <div class="queue-squircle-icon avatar-emerald" [ngClass]="selectedPerformanceUser.avatarColor || 'avatar-emerald'">
-                <span class="material-symbols-outlined">person</span>
+              <div
+                class="queue-squircle-icon"
+                [ngClass]="getRoleSquircleClass(selectedPerformanceUser.role)"
+              >
+                <span class="avatar-initial-char">{{ selectedPerformanceUser.name ? selectedPerformanceUser.name.charAt(0).toUpperCase() : '' }}</span>
               </div>
             }
             <div class="queue-header-titles">

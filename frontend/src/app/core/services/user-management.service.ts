@@ -60,10 +60,10 @@ export class UserManagementService {
 
   async createUser(req: CreateUserRequest): Promise<ManagedUser> {
     const payload = {
-      email: req.email.toLowerCase().trim(),
-      fullName: req.fullName.trim(),
+      email: String(req.email || '').toLowerCase().trim(),
+      fullName: String(req.fullName || '').trim(),
       role: req.role,
-      department: req.department.trim() || 'General Operations',
+      department: String(req.department || 'General Operations').trim() || 'General Operations',
       isActive: req.isActive !== undefined ? req.isActive : true,
       password: req.password,
       avatarUrl: req.avatarUrl,
@@ -157,10 +157,10 @@ export class UserManagementService {
         if (user.id === userId) {
           updatedUser = {
             ...user,
-            fullName: updatedData.fullName ? updatedData.fullName.trim() : user.fullName,
-            email: updatedData.email ? updatedData.email.toLowerCase().trim() : user.email,
+            fullName: updatedData.fullName ? String(updatedData.fullName).trim() : user.fullName,
+            email: updatedData.email ? String(updatedData.email).toLowerCase().trim() : user.email,
             role: updatedData.role || user.role,
-            department: updatedData.department ? updatedData.department.trim() : user.department,
+            department: updatedData.department ? String(updatedData.department).trim() : user.department,
             isActive: updatedData.isActive !== undefined ? updatedData.isActive : user.isActive,
             avatarUrl: updatedData.avatarUrl !== undefined ? updatedData.avatarUrl : user.avatarUrl,
           };

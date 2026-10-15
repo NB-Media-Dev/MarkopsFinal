@@ -9,7 +9,7 @@ import {
   DesignerDashboardMetrics,
   computeTaskProgressPercent,
 } from '../models/task.model';
-import { safeFetch, getBackendBaseUrl } from '../utils/api-url.utils';
+import { safeFetch, getBackendBaseUrl, getAuthToken } from '../utils/api-url.utils';
 import { AuthService } from './auth.service';
 
 @Injectable({
@@ -53,10 +53,23 @@ export class TaskManagementService {
   private initRealtimeSocket(): void {
     try {
       const backendUrl = getBackendBaseUrl();
+      const token = this.authService.accessToken() || getAuthToken();
+      const user = this.authService.currentUser();
       this.socket = io(backendUrl, {
-        transports: ['polling', 'websocket'],
+        auth: {
+          token: token || undefined,
+          userId: user?.id,
+          role: user?.role,
+          email: user?.email,
+          fullName: user?.fullName,
+        },
+        transports: ['websocket', 'polling'],
         reconnectionAttempts: 5,
         timeout: 10000,
+      });
+
+      this.socket.on('connect_error', (error) => {
+        console.warn('[TaskManagementService] Realtime connection notice:', error.message);
       });
 
       this.socket.on('task:assigned', (data?: any) => {
