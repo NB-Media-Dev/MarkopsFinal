@@ -30,7 +30,6 @@
     box-shadow: 0 0 0 2px rgba(234, 88, 12, 0.22), 0 10px 24px rgba(234, 88, 12, 0.12);
   }
 
-  /* 1. Designer Profile Header Matching Image 1 */
   .card-designer-header {
     display: flex;
     align-items: center;
@@ -169,7 +168,6 @@
     }
   }
 
-  /* 2. Category & Brand Pill Row */
   .task-category-row {
     display: flex;
     align-items: center;
@@ -226,7 +224,6 @@
       }
   }
 
-  /* 3. Task Title & Creator Section (Compact) */
   .task-title-section {
     display: flex;
     flex-direction: column;
@@ -261,7 +258,6 @@
     }
   }
 
-  /* 4. Requirement Chip (Compact) */
   .requirement-chip {
     display: flex;
     align-items: center;
@@ -311,7 +307,6 @@
     }
   }
 
-  /* 5. Revision Alert */
   .revision-feedback-alert {
     display: flex;
     align-items: center;
@@ -338,7 +333,6 @@
     }
   }
 
-  /* 6. Overall Task Status Block Matching Image 1 (Tightened) */
   .task-progress-block {
     display: flex;
     flex-direction: column;
@@ -381,7 +375,6 @@
     }
   }
 
-  /* 7. Footer: Due Date, Version, & Image 1 Style Action Buttons (Guaranteed Single Row) */
   .task-card-footer {
     display: flex;
     justify-content: space-between;
@@ -449,7 +442,6 @@
           font-size: 14px;
         }
 
-        /* Image 1: Light Mint/Green Pill for Preview */
         &.btn-card-preview {
           background: #E8F5E9;
           color: #059669;
@@ -462,7 +454,6 @@
           }
         }
 
-        /* Image 1: Solid Emerald Green Pill for Download & Primary Actions */
         &.btn-card-download,
         &.btn-card-solid-action {
           background: #059669;

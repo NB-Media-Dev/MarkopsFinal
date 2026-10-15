@@ -6,7 +6,6 @@
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
   margin-bottom: 2rem;
 
-  /* Table Title Header Bar (Image 1) */
   .table-title-header-bar {
     padding: 1.1rem 1.45rem;
     border-bottom: 1.5px solid #F6EDE4;
@@ -50,7 +49,7 @@
       align-items: center;
       gap: 0.5rem;
 
-      
+
     }
   }
 
@@ -67,14 +66,14 @@
     font-size: 0.85rem;
 
     thead {
-      background: #FFF8F5; /* Matches peach/cream header banner in Image 1 */
+      background: #FFF8F5;
       border-bottom: 1.5px solid #F6EDE4;
 
       th {
         padding: 0.95rem 1.35rem;
         font-size: 0.72rem;
         font-weight: 800;
-        color: #EA580C; /* Terracotta orange header text */
+        color: #EA580C;
         text-transform: uppercase;
         letter-spacing: 0.05em;
         white-space: nowrap;
@@ -140,7 +139,6 @@
     }
   }
 
-  /* Footer matching Image 1 */
   .table-footer-bar {
     background: #FFF8F5;
     border-top: 1.5px solid #F6EDE4;
@@ -210,7 +208,7 @@
         }
 
         &.active {
-          background: #F97316; /* Bright orange square matching Image 1 */
+          background: #F97316;
           color: #FFFFFF;
           box-shadow: 0 2px 6px rgba(249, 115, 22, 0.35);
         }
@@ -219,7 +217,6 @@
   }
 }
 
-/* Designer Profile Cell */
 .col-td-designer {
   .designer-user-cell {
     display: flex;
@@ -303,7 +300,6 @@
   }
 }
 
-/* Active Tasks Cell with Horizontal Progress Bar */
 .col-td-active {
   .active-tasks-cell {
     display: flex;
@@ -337,7 +333,6 @@
   }
 }
 
-/* Completed Creatives Cell with Green Checkmark Icon */
 .col-td-completed {
   .completed-cell {
     display: flex;
@@ -361,7 +356,6 @@
   }
 }
 
-/* Total Tasks Cell */
 .col-td-total {
   .total-tasks-cell {
     display: flex;
@@ -385,7 +379,6 @@
   }
 }
 
-/* Workload Status Pill Badge */
 .col-td-status {
   .workload-pill {
     display: inline-flex;
@@ -436,7 +429,6 @@
   }
 }
 
-/* Action Icons and View Pill */
 .col-td-action {
   .action-btn-group {
     display: flex;
@@ -507,7 +499,6 @@
   }
 }
 
-/* Empty State */
 .empty-state-cell {
   padding: 3rem 1.5rem !important;
   text-align: center;
@@ -550,7 +541,6 @@
   }
 }
 
-/* Responsive Breakpoints */
 @media (max-width: 768px) {
   .designers-table-card {
     border-radius: 16px;

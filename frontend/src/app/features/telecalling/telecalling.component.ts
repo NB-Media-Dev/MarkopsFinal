@@ -33,7 +33,7 @@ export function isLeadAssignedToUser(l: any, user: any): boolean {
     if (!isNaN(numUId) && !isNaN(numLId) && numUId === numLId) return true;
   }
 
- 
+
   if (uEmail && (lAssignedTo.toLowerCase() === uEmail || lAssigneeEmail === uEmail || lAssigneeName === uEmail)) {
     return true;
   }
@@ -86,7 +86,7 @@ export function isLeadInCampaign(lead: any, campaign: any): boolean {
 export function isLeadBelongsToUser(l: any, user: any): boolean {
   if (!l || !user) return false;
 
- 
+
   if (isLeadAssignedToUser(l, user)) return true;
 
   if (user.role === 'TELECALLER') return false;
@@ -344,7 +344,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     if (user.role === 'TELECALLER') {
       const assigned = all.filter((l) => isLeadAssignedToUser(l, user));
       if (assigned.length > 0) return assigned;
-    
+
       return all;
     }
     const directAssigned = all.filter((l) => isLeadAssignedToUser(l, user));
@@ -587,7 +587,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     return list.slice(start, start + size);
   });
 
- 
+
   readonly getStatusBadgeClassFn = (status?: string) => this.getStatusBadgeClass(status);
   readonly getLeadCurrentStatusFn = (lead: LeadItem) => this.getLeadCurrentStatus(lead);
   readonly hasScheduledCallbackFn = (lead: LeadItem) => this.hasScheduledCallback(lead);
@@ -869,17 +869,13 @@ export class TelecallingComponent implements OnInit, OnDestroy {
       const cPhone = String(c.leadPhone || c.phone || '').replace(/\D/g, '');
       const cLeadName = String(c.leadName || '').trim().toLowerCase();
 
-      // 1. Direct ID match
       if (cLeadId && lId && cLeadId === lId) return true;
-      // 2. Numeric ID match (only when both have digits)
       if (cNum && lNum && cNum === lNum) return true;
-      // 3. Phone matching (full string, last 10 digits, or suffix)
       if (lPhone && cPhone) {
         if (lPhone === cPhone) return true;
         if (lPhone.length >= 10 && cPhone.length >= 10 && lPhone.slice(-10) === cPhone.slice(-10)) return true;
         if (lPhone.length >= 7 && (lPhone.endsWith(cPhone) || cPhone.endsWith(lPhone))) return true;
       }
-      // 4. Full name matching
       if (cLeadName && lName && lName.length >= 3 && (cLeadName === lName || cLeadName.includes(lName) || lName.includes(cLeadName))) return true;
       return false;
     });

@@ -33,7 +33,6 @@ function isSameCallActivity(c1, c2) {
     return true;
   }
 
-  // If both have IDs, compare them
   if (c1.id && c2.id) {
     const num1 = String(c1.id).replace(/\D/g, '');
     const num2 = String(c2.id).replace(/\D/g, '');
@@ -103,7 +102,6 @@ function reconcileCallActivities(dbRows) {
     });
   }
 
-  // Preserve followUpDate, followUpTime, and outcome from memory if DB row didn't have it
   for (const dbC of uniqueDbCalls) {
     const memMatch = dbCallActivitiesStore.find((memCall) => isSameCallActivity(memCall, dbC));
     if (memMatch) {

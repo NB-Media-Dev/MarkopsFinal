@@ -15,7 +15,6 @@
   -webkit-overflow-scrolling: touch;
   animation: fadeIn 0.2s ease-out;
 
-  /* On short viewports (laptops, rotated mobile/tablets), ensure top is not cut off */
   @media (max-height: 650px) {
     align-items: flex-start;
     padding-top: 1rem;
@@ -63,7 +62,6 @@
   }
 }
 
-/* Modal Header */
 .modal-header-row {
   display: flex;
   align-items: center;
@@ -181,7 +179,6 @@
   }
 }
 
-/* Scrollable Modal Body */
 .modal-body-scroll {
   flex: 1 1 auto;
   overflow-y: auto;
@@ -190,7 +187,6 @@
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 
-  /* Sleek custom scrollbar */
   scrollbar-width: thin;
   scrollbar-color: #FDE68A transparent;
 
@@ -212,7 +208,6 @@
   }
 }
 
-/* Profile Summary Card */
 .profile-summary-card {
   border-radius: 16px;
   border: 1.5px solid #FDE68A;
@@ -353,7 +348,6 @@
   }
 }
 
-/* Segmented Tabs Bar */
 .segmented-tabs-bar {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -411,7 +405,6 @@
   }
 }
 
-/* Tab 1: Profile Picture Dropzone */
 .profile-picture-panel {
   display: flex;
   flex-direction: column;
@@ -514,7 +507,6 @@
   }
 }
 
-/* Tab 2: Password Form */
 .password-panel {
   .password-form {
     display: flex;
@@ -550,7 +542,7 @@
         border-radius: 9999px;
         background-color: #FFFFFF;
         padding: 0 2.5rem 0 1.15rem;
-        font-size: 16px; /* 16px prevents iOS Safari automatic zoom on focus */
+        font-size: 16px;
         color: #0F172A;
         box-sizing: border-box;
         transition: all 0.2s ease;
@@ -683,7 +675,6 @@
   }
 }
 
-/* Feedback Alerts */
 .feedback-alert {
   display: flex;
   align-items: center;
@@ -708,7 +699,6 @@
   }
 }
 
-/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }

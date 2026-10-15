@@ -107,7 +107,6 @@ export function isClientDuplicateCall(c1: CallActivityItem, c2: CallActivityItem
     return true;
   }
 
-  // If both have IDs, compare them
   if (c1.id && c2.id) {
     const num1 = String(c1.id).replace(/\D/g, '');
     const num2 = String(c2.id).replace(/\D/g, '');
