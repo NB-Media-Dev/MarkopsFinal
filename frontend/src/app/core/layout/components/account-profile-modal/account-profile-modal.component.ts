@@ -27,7 +27,6 @@ export class AccountProfileModalComponent {
     return getApiUrl(url);
   }
 
-  // Profile info display
   readonly currentUser = computed(() => this.authService.currentUser());
 
   readonly displayName = computed<string>(() => {
@@ -62,7 +61,6 @@ export class AccountProfileModalComponent {
     return (name.trim().charAt(0) || 'A').toUpperCase();
   });
 
-  // Tab 1: Profile picture state
   readonly selectedFile = signal<File | null>(null);
   readonly previewUrl = signal<string | null>(null);
   readonly isUploading = signal<boolean>(false);
@@ -70,7 +68,6 @@ export class AccountProfileModalComponent {
   readonly uploadError = signal<string | null>(null);
   readonly uploadSuccess = signal<string | null>(null);
 
-  // Tab 2: Change password state
   readonly currentPassword = signal<string>('');
   readonly newPassword = signal<string>('');
   readonly confirmPassword = signal<string>('');
@@ -160,7 +157,6 @@ export class AccountProfileModalComponent {
     reader.onload = () => {
       const dataUrl = reader.result as string;
       this.previewUrl.set(dataUrl);
-      // Automatically upload or let user confirm
       this.autoUploadPicture(dataUrl);
     };
     reader.onerror = () => {

@@ -349,7 +349,6 @@ export class PackageDepartmentViewComponent {
     const targetInfo = this.targetService.getTargetForTelecaller(this.selectedPerformanceUser.userId || '5');
     const baseDailyTarget = targetInfo?.dailyCallsTarget || 50;
 
-    // Baseline reference records when no leads exist in the database for this telecaller (matching reference specification)
     if (tasks.length === 0 && (!this.selectedPerformanceUser.tasks || this.selectedPerformanceUser.tasks.length === 0)) {
       const mockRows: TelecallerCampaignReport[] = [
         {
@@ -411,7 +410,6 @@ export class PackageDepartmentViewComponent {
       return mockRows;
     }
 
-    // Group real leads by campaign, ad name, and assigned date
     const groups = new Map<string, any[]>();
     for (const t of tasks) {
       const campName = t.campaignName && t.campaignName !== '—' ? t.campaignName : pkgDisplayName;

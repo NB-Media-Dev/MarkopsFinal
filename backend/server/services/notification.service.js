@@ -117,7 +117,7 @@ async function dispatchNotification({ userIds = [], title, message, type = 'INFO
         notifObj.id = String(res.insertId);
       } catch (error) {
         console.error(`[Notification Service] Persistence failed for recipient ${numericUserId}:`, error?.message || error);
-        // Do not crash the business operation (e.g. logging a call) if notification persistence fails
+
       }
     }
 

@@ -81,7 +81,6 @@ export class DesignersTableComponent {
 
   getProgressBarWidth(activeCount: number): number {
     if (activeCount <= 0) return 0;
-    // Scale 1 to 5+ tasks to 20% - 100%
     return Math.min(100, Math.max(18, Math.round((activeCount / 5) * 100)));
   }
 

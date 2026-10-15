@@ -144,7 +144,6 @@ test('reconcileCallActivities prevents duplicate call logs across consecutive fe
   try {
     dbCallActivitiesStore.length = 0;
 
-    // Simulate call logged in memory before MySQL read
     const nowIso = new Date().toISOString();
     dbCallActivitiesStore.push({
       id: 'call_mem_123',
@@ -160,7 +159,6 @@ test('reconcileCallActivities prevents duplicate call logs across consecutive fe
       calledAt: nowIso,
     });
 
-    // DB row representing the same call saved into MySQL (id: 42)
     const dbRow = {
       id: 42,
       lead_id: 10,
@@ -177,16 +175,13 @@ test('reconcileCallActivities prevents duplicate call logs across consecutive fe
       called_at: new Date(nowIso),
     };
 
-    // First reconciliation (e.g. first GET /calls)
     leadsRoutes.reconcileCallActivities([dbRow]);
     assert.equal(dbCallActivitiesStore.length, 1);
     assert.equal(dbCallActivitiesStore[0].id, 'call_42');
 
-    // Second reconciliation (e.g. second GET /calls or GET /leads)
     leadsRoutes.reconcileCallActivities([dbRow]);
     assert.equal(dbCallActivitiesStore.length, 1, 'Repeated fetch should not duplicate calls');
 
-    // Reconcile with another distinct DB call
     const dbRow2 = {
       id: 43,
       lead_id: 11,
@@ -205,7 +200,6 @@ test('reconcileCallActivities prevents duplicate call logs across consecutive fe
     leadsRoutes.reconcileCallActivities([dbRow2, dbRow]);
     assert.equal(dbCallActivitiesStore.length, 2);
 
-    // Call again with same rows
     leadsRoutes.reconcileCallActivities([dbRow2, dbRow]);
     assert.equal(dbCallActivitiesStore.length, 2, 'Consecutive syncs must remain deduplicated');
   } finally {
@@ -218,8 +212,7 @@ test('reconcileCallActivities deduplicates timezone offset (5.5hr) and mapped ou
   try {
     dbCallActivitiesStore.length = 0;
 
-    // Memory call created with local IST time (e.g. 5:18 PM)
-    const localUtcIso = '2026-10-12T11:48:00.000Z'; // formats to 5:18 PM in +05:30
+    const localUtcIso = '2026-10-12T11:48:00.000Z';
     dbCallActivitiesStore.push({
       id: 'call_mem_random999',
       leadId: '5',
@@ -233,8 +226,7 @@ test('reconcileCallActivities deduplicates timezone offset (5.5hr) and mapped ou
       calledAt: localUtcIso,
     });
 
-    // DB row inserted by MySQL with NOW() (server recorded 11:48 AM, converted by Node to 06:18:00.000Z)
-    const dbUtcIso = '2026-10-12T06:18:00.000Z'; // 5.5 hours earlier in UTC representation
+    const dbUtcIso = '2026-10-12T06:18:00.000Z'; 
     const dbRow = {
       id: 37,
       lead_id: 5,
@@ -243,7 +235,7 @@ test('reconcileCallActivities deduplicates timezone offset (5.5hr) and mapped ou
       last_name: 'Singh',
       telecaller_id: 5,
       telecaller_name: 'thava vishwa',
-      outcome: 'CONNECTED', // MySQL outcome mapping
+      outcome: 'CONNECTED', 
       duration_seconds: 120,
       remarks: 'Call logged.',
       called_at: new Date(dbUtcIso),
@@ -251,7 +243,6 @@ test('reconcileCallActivities deduplicates timezone offset (5.5hr) and mapped ou
 
     leadsRoutes.reconcileCallActivities([dbRow]);
 
-    // Must be reconciled to exactly 1 call, not duplicated!
     assert.equal(dbCallActivitiesStore.length, 1, '5.5h timezone offset and mapped outcome must be deduplicated into 1 record');
     assert.equal(dbCallActivitiesStore[0].id, 'call_37');
   } finally {

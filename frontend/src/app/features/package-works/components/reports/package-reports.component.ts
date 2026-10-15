@@ -70,10 +70,8 @@ export class PackageReportsComponent implements OnInit, OnChanges {
   selectedPerformanceUser: UserPerformanceRecord | null = null;
   expandedCampaignRows = new Set<number>();
 
-  // Accordion state: set of expanded userIds
   expandedUserIds = new Set<string>();
 
-  // Dropdown states for User, Filter & Date controls in header
   isFilterDropdownOpen: boolean = false;
   isDateDropdownOpen: boolean = false;
   isUserDropdownOpen: boolean = false;
