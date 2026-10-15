@@ -44,13 +44,24 @@ export class TaskDetailComponent implements OnInit {
   });
 
   readonly resolvedScope = computed<{ productName: string; packageName: string }>(() => {
+    let prodFromUrl = '';
+    let pkgFromUrl = '';
+    const ret = this.returnUrl();
+    if (ret) {
+      try {
+        const url = new URL(ret, 'http://localhost');
+        prodFromUrl = url.searchParams.get('package') || url.searchParams.get('product') || '';
+        pkgFromUrl = url.searchParams.get('workspace') || url.searchParams.get('packageFilter') || '';
+      } catch {}
+    }
+
     const t = this.task();
-    if (!t) return { productName: 'Careermate', packageName: '' };
+    if (!t) return { productName: prodFromUrl || 'Careermate', packageName: pkgFromUrl || 'Test' };
     const packages = this.packageService.packages();
     const scope = resolveTaskProductAndPackage(t, packages);
     return {
-      productName: scope.productName || t.productName || 'Careermate',
-      packageName: scope.packageName || t.packageName || '',
+      productName: prodFromUrl || scope.productName || t.productName || 'Careermate',
+      packageName: pkgFromUrl || scope.packageName || t.packageName || 'Test',
     };
   });
 
@@ -82,15 +93,48 @@ export class TaskDetailComponent implements OnInit {
     return 'Designer';
   });
 
-  readonly breadcrumbOrigin = computed<'designer' | 'package-works' | 'tasks'>(() => {
-    if (this.isDesignerRole()) return 'designer';
-    const ret = (this.returnUrl() || '').toLowerCase();
-    if (ret.includes('designer-tasks')) return 'designer';
-    if (ret.includes('package-works')) return 'package-works';
-    if (ret.includes('/tasks') && !ret.includes('/tasks/')) return 'tasks';
-    if (this.resolvedScope().packageName) return 'package-works';
-    return 'tasks';
-  });
+  goToProduct(event?: Event): void {
+    if (event) event.preventDefault();
+    const scope = this.resolvedScope();
+    this.router.navigate(['/package-works'], {
+      queryParams: { package: scope.productName || 'Careermate' },
+    });
+  }
+
+  goToAvailablePackage(event?: Event): void {
+    if (event) event.preventDefault();
+    const scope = this.resolvedScope();
+    this.router.navigate(['/package-works'], {
+      queryParams: { package: scope.productName || 'Careermate' },
+    });
+  }
+
+  goToDepartmentOperations(event?: Event): void {
+    if (event) event.preventDefault();
+    const scope = this.resolvedScope();
+    this.router.navigate(['/package-works'], {
+      queryParams: scope.packageName
+        ? { package: scope.productName || 'Careermate', workspace: scope.packageName }
+        : { package: scope.productName || 'Careermate', workspace: 'Test' },
+    });
+  }
+
+  goToDesignerDepartment(event?: Event): void {
+    if (event) event.preventDefault();
+    const ret = this.returnUrl();
+    if (ret && ret !== this.router.url) {
+      this.router.navigateByUrl(ret);
+      return;
+    }
+    const scope = this.resolvedScope();
+    this.router.navigate(['/package-works'], {
+      queryParams: {
+        package: scope.productName || 'Careermate',
+        workspace: scope.packageName || 'Test',
+        dept: this.resolvedDeptCode(),
+      },
+    });
+  }
 
 
   readonly isUploadModalOpen = signal<boolean>(false);
@@ -146,9 +190,15 @@ export class TaskDetailComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    const queryReturn = this.route.snapshot.queryParams['returnUrl'];
-    if (queryReturn) {
-      this.returnUrl.set(queryReturn);
+    this.route.queryParams.subscribe((params) => {
+      const queryReturn = params['returnUrl'];
+      if (queryReturn) {
+        this.returnUrl.set(queryReturn);
+      }
+    });
+
+    if (this.packageService.packages().length === 0) {
+      this.packageService.loadAllPackages().subscribe();
     }
 
     const taskId = this.route.snapshot.paramMap.get('id');
@@ -196,40 +246,7 @@ export class TaskDetailComponent implements OnInit {
   }
 
   goBack(): void {
-    if (this.breadcrumbOrigin() === 'designer') {
-      this.router.navigate(['/designer-tasks']);
-      return;
-    }
-
-    if (this.breadcrumbOrigin() === 'tasks') {
-      this.router.navigate(['/tasks']);
-      return;
-    }
-
-    const scope = this.resolvedScope();
-    if (scope.packageName || this.breadcrumbOrigin() === 'package-works') {
-      const deptCode = this.resolvedDeptCode();
-      this.router.navigate(['/package-works'], {
-        queryParams: {
-          package: scope.productName || 'Careermate',
-          workspace: scope.packageName,
-          dept: deptCode,
-        },
-      });
-      return;
-    }
-
-    const ret = this.returnUrl();
-    if (ret && ret !== this.router.url && ret !== '/package-works') {
-      this.router.navigateByUrl(ret);
-      return;
-    }
-
-    if (window.history.length > 1) {
-      this.location.back();
-      return;
-    }
-    this.router.navigate(['/tasks']);
+    this.goToDesignerDepartment();
   }
 
   getShortId(id?: string): string {
@@ -377,7 +394,8 @@ export class TaskDetailComponent implements OnInit {
       case 'SUBMITTED':
       case 'RESUBMITTED':
       case 'UNDER_REVIEW': return 'status-review';
-      case 'REVISION_REQUIRED': return 'status-revision';
+      case 'REVISION_REQUIRED':
+      case 'REDESIGN_REQUIRED': return 'status-revision';
       case 'APPROVED':
       case 'PUBLISHED':
       case 'COMPLETED': return 'status-completed';
@@ -562,7 +580,7 @@ export class TaskDetailComponent implements OnInit {
       stage1State = 'completed';
       stage2State = 'completed';
       stage3State = 'current';
-    } else if (status === 'REVISION_REQUIRED') {
+    } else if (status === 'REVISION_REQUIRED' || status === 'REDESIGN_REQUIRED') {
       stage1State = 'completed';
       stage2State = 'completed';
       stage3State = 'completed';
@@ -934,7 +952,7 @@ export class TaskDetailComponent implements OnInit {
     const user = this.authService.currentUser();
     if (!user) return false;
     const isAssignee = user.id === t.assignedTo || user.role === 'DESIGNER' ;
-    return isAssignee && (t.status === 'IN_PROGRESS' || t.status === 'REVISION_REQUIRED');
+    return isAssignee && (t.status === 'IN_PROGRESS' || t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED');
   }
 
   isTaskCreator(t: Task | null): boolean {

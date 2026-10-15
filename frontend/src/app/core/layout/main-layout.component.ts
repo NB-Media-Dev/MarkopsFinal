@@ -44,7 +44,7 @@ export const ROLE_SIDEBAR_MENU: Record<string, NavMenuItem[]> = {
     { label: 'Lead Source', route: '/lead-source', icon: 'share' },
   ],
   DESIGNER: [
-    { label: 'Own Tasks', route: '/designer-tasks', icon: 'task_alt' },
+    { label: 'Designer', route: '/designer-tasks', icon: 'palette' },
     { label: 'Submissions', route: '/submissions', icon: 'upload_file' },
     { label: 'Revisions', route: '/revisions', icon: 'edit_note' },
     { label: 'Comments', route: '/comments', icon: 'chat' },

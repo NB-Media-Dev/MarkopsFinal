@@ -26,9 +26,9 @@
 
 .kpi-card {
   background: #FFFFFF;
-  border-radius: 18px;
+  border-radius: 20px;
   border: 1.5px solid #F3EAE0;
-  padding: 1rem 1.15rem;
+  padding: 1.5rem 1.15rem;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -83,7 +83,7 @@
 
   /* Card 1: Purple (Active Designers) */
   &.card-purple {
-    border: 2px solid #DDD6FE;
+    border: 2px solid #ffb35b;
 
     .kpi-title {
       color: #7C3AED;
@@ -97,7 +97,7 @@
 
   /* Card 2: Amber (Assigned Tasks) */
   &.card-amber {
-    border: 2px solid #FDE68A;
+    border: 2px solid #ffb35b;
 
     .kpi-title {
       color: #B45309;
@@ -111,7 +111,7 @@
 
   /* Card 3: Rose (Pending Tasks) */
   &.card-rose {
-    border: 2px solid #FECDD3;
+    border: 2px solid #ffb35b;
 
     .kpi-title {
       color: #E11D48;
@@ -125,7 +125,7 @@
 
   /* Card 4: Blue (In-Progress Tasks) */
   &.card-blue {
-    border: 2px solid #BAE6FD;
+    border: 2px solid #ffb35b;
 
     .kpi-title {
       color: #0284C7;
@@ -139,7 +139,7 @@
 
   /* Card 5: Emerald (Completed Tasks) */
   &.card-emerald {
-    border: 2px solid #BBF7D0;
+    border: 2px solid #ffb35b;
 
     .kpi-title {
       color: #059669;

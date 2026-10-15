@@ -60,54 +60,6 @@
               }
             }
           </div>
-
-          <div class="form-group-block mb-3">
-            <label class="custom-form-label">
-              Package Banner Image <span class="optional-label">(Optional)</span>
-            </label>
-
-            @if (!imagePreview && !form.get('imageUrl')?.value) {
-              <div class="pkg-image-uploader-area">
-                <input
-                  type="file"
-                  id="pkg-image-file-input"
-                  accept="image/*"
-                  class="pkg-file-hidden-input"
-                  (change)="onFileSelected($event)"
-                />
-                <label for="pkg-image-file-input" class="pkg-upload-dropzone">
-                  <span class="material-symbols-outlined upload-cloud-icon"
-                    >add_photo_alternate</span
-                  >
-                  <span class="upload-prompt-text"
-                    ><strong>Click to upload</strong> or drag & drop banner image</span
-                  >
-                  <span class="upload-sub-text">Supports PNG, JPG, JPEG, WebP</span>
-                </label>
-              </div>
-            }
-
-            @if (imagePreview || form.get('imageUrl')?.value) {
-              <div class="pkg-active-image-preview">
-                <div class="preview-img-container">
-                  <img
-                    [src]="imagePreview || form.get('imageUrl')?.value"
-                    alt="Package Banner Preview"
-                    class="preview-banner-thumbnail"
-                  />
-                  <button
-                    type="button"
-                    class="remove-preview-btn"
-                    (click)="onRemoveImage()"
-                    title="Remove image"
-                  >
-                    <span class="material-symbols-outlined">delete</span>
-                    <span>Remove</span>
-                  </button>
-                </div>
-              </div>
-            }
-          </div>
         </div>
 
         <div class="custom-modal-footer">

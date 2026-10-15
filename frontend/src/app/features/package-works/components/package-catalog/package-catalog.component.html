@@ -9,19 +9,8 @@
           [attr.data-package-id]="pkg.id"
         >
 
-          <div class="package-display-banner" [class.is-blank]="!pkg.imageUrl">
-            @if (pkg.imageUrl) {
-              <img
-                [src]="formatAssetUrl(pkg.imageUrl)"
-                [alt]="pkg.name"
-                class="package-banner-image"
-              />
-            } @else {
-              <div class="package-banner-blank">
-                <span class="material-symbols-outlined blank-icon">image</span>
-              </div>
-            }
-
+          <!-- Discreet Menu for Admin Edit/Delete -->
+          @if (canEditPackage || canDeletePackage) {
             <div class="package-card-menu-wrapper" (click)="$event.stopPropagation()">
               <button
                 type="button"
@@ -54,80 +43,60 @@
                 </div>
               }
             </div>
-          </div>
+          }
 
           <div class="package-display-info">
-
-            <div class="package-header-row">
-              <div class="package-squircle-icon">
-                <span class="material-symbols-outlined">{{ getPackageSquircleIcon(pkg.name) }}</span>
-              </div>
-              <div class="package-title-desc-box">
-                <h3 class="package-display-title" [title]="pkg.name">{{ pkg.name }}</h3>
-
-              </div>
-            </div>
-
-            <div class="package-card-footer">
-
-              <button
-                type="button"
-                class="package-open-pill-btn"
-                (click)="onOpenPackage(pkg); $event.stopPropagation()"
-                [attr.id]="'btn-view-pkg-' + pkg.id"
-              >
-                <span>Open</span>
-                <span class="material-symbols-outlined">arrow_forward</span>
-              </button>
-            </div>
+            <h3 class="package-display-title" [title]="pkg.name">{{ pkg.name }}</h3>
           </div>
+
+          <button
+            type="button"
+            class="package-open-pill-btn"
+            (click)="onOpenPackage(pkg); $event.stopPropagation()"
+            [attr.id]="'btn-view-pkg-' + pkg.id"
+          >
+            <span>Open &rarr;</span>
+          </button>
         </div>
       }
     </div>
 
-    <div class="catalog-bottom-bar">
-
-      <div class="bottom-decorative-motif" aria-hidden="true">
-        <svg width="60" height="60" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M10 90C10 60 30 30 60 20C60 50 40 80 10 90Z" fill="#FED7AA" opacity="0.7"/>
-          <path d="M0 70C15 45 45 35 75 35C65 65 35 75 0 70Z" fill="#FDBA74" opacity="0.6"/>
-          <path d="M25 95C35 70 65 65 95 70C75 90 45 100 25 95Z" fill="#FED7AA" opacity="0.5"/>
-        </svg>
-      </div>
-
-      <div class="catalog-pagination">
-        <button
-          type="button"
-          class="pagination-nav-btn"
-          [disabled]="currentPage === 1"
-          (click)="selectPage(currentPage - 1)"
-          aria-label="Previous page"
-        >
-          <span class="material-symbols-outlined">chevron_left</span>
-        </button>
-
-        @for (page of pageNumbers; track page) {
+    @if (totalPages > 1) {
+      <div class="catalog-bottom-bar">
+        <div class="catalog-pagination">
           <button
             type="button"
-            class="pagination-num-btn"
-            [class.active]="currentPage === page"
-            (click)="selectPage(page)"
+            class="pagination-nav-btn"
+            [disabled]="currentPage === 1"
+            (click)="selectPage(currentPage - 1)"
+            aria-label="Previous page"
           >
-            {{ page }}
+            <span class="material-symbols-outlined">chevron_left</span>
           </button>
-        }
 
-        <button
-          type="button"
-          class="pagination-nav-btn"
-          [disabled]="currentPage === totalPages"
-          (click)="selectPage(currentPage + 1)"
-          aria-label="Next page"
-        >
-          <span class="material-symbols-outlined">chevron_right</span>
-        </button>
+          @for (page of pageNumbers; track page) {
+            <button
+              type="button"
+              class="pagination-num-btn"
+              [class.active]="currentPage === page"
+              (click)="selectPage(page)"
+            >
+              {{ page }}
+            </button>
+          }
+
+          <button
+            type="button"
+            class="pagination-nav-btn"
+            [disabled]="currentPage === totalPages"
+            (click)="selectPage(currentPage + 1)"
+            aria-label="Next page"
+          >
+            <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
       </div>
-    </div>
+    }
   }
 
   @if (filteredProductPackages.length === 0) {

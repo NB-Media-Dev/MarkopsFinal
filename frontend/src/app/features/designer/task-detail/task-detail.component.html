@@ -1,77 +1,19 @@
 <div class="task-detail-page">
 
-  <div class="top-nav-bar">
-    <div class="nav-left">
-      <nav class="clean-breadcrumbs" aria-label="Breadcrumb">
-        <button type="button" class="btn-back" (click)="goBack()" title="Back">
-          <span class="material-symbols-outlined icon-back">arrow_back</span>
-        </button>
-        <span class="bc-bar-divider" aria-hidden="true"></span>
-
-        <div class="breadcrumbs-list">
-          @if (breadcrumbOrigin() === 'designer') {
-            <a routerLink="/designer-tasks" class="bc-item bc-link" title="Own Tasks">
-              <span class="material-symbols-outlined bc-home-icon">task_alt</span>
-              <span>Own Tasks</span>
-            </a>
-            <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
-            <span class="bc-item bc-current">{{ task()?.title || 'Task Details' }}</span>
-          } @else if (breadcrumbOrigin() === 'package-works' || resolvedScope().packageName) {
-            <a routerLink="/dashboard" class="bc-item bc-link" title="Dashboard">
-              <span class="material-symbols-outlined bc-home-icon">home</span>
-              <span>Dashboard</span>
-            </a>
-            <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
-
-            <a
-              routerLink="/package-works"
-              [queryParams]="{ package: resolvedScope().productName }"
-              class="bc-item"
-              [title]="'Back to ' + resolvedScope().productName + ' Products'"
-            >
-              <span>{{ resolvedScope().productName }}</span>
-            </a>
-            <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
-
-            @if (resolvedScope().packageName) {
-              <a
-                routerLink="/package-works"
-                [queryParams]="{ package: resolvedScope().productName, workspace: resolvedScope().packageName }"
-                class="bc-item"
-                [title]="'Back to ' + resolvedScope().packageName + ' Overview'"
-              >
-                <span>{{ resolvedScope().packageName }}</span>
-              </a>
-              <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
-
-              <a
-                routerLink="/package-works"
-                [queryParams]="{ package: resolvedScope().productName, workspace: resolvedScope().packageName, dept: resolvedDeptCode() }"
-                class="bc-item"
-                [title]="'Back to ' + resolvedDept() + ' Department'"
-              >
-                <span>{{ resolvedDept() }}</span>
-              </a>
-              <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
-            }
-
-            <span class="bc-item bc-current">{{ task()?.title || 'Task Details' }}</span>
-          } @else {
-            <a routerLink="/dashboard" class="bc-item bc-link" title="Dashboard">
-              <span class="material-symbols-outlined bc-home-icon">home</span>
-              <span>Dashboard</span>
-            </a>
-            <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
-
-            <a routerLink="/tasks" class="bc-item" title="Back to Tasks">
-              <span>Tasks</span>
-            </a>
-            <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
-
-            <span class="bc-item bc-current">{{ task()?.title || 'Task Details' }}</span>
-          }
-        </div>
-      </nav>
+  <header class="page-clean-branding-header">
+    <div class="header-titles-block">
+      <h1 class="page-main-orange-title">{{ task()?.title || 'Task Details' }}</h1>
+      <div class="page-breadcrumb-subrow">
+        <a (click)="goToProduct($event)" class="bc-link" href="javascript:void(0)">{{ resolvedScope().productName }}</a>
+        <span class="bc-sep">&gt;</span>
+        <a (click)="goToAvailablePackage($event)" class="bc-link" href="javascript:void(0)">Available Package</a>
+        <span class="bc-sep">&gt;</span>
+        <a (click)="goToDepartmentOperations($event)" class="bc-link" href="javascript:void(0)">Department Operations</a>
+        <span class="bc-sep">&gt;</span>
+        <a (click)="goToDesignerDepartment($event)" class="bc-link" href="javascript:void(0)">{{ resolvedDept() }}</a>
+        <span class="bc-sep">&gt;</span>
+        <span class="bc-current">{{ task()?.title || 'Task Details' }}</span>
+      </div>
     </div>
 
     @if (task(); as t) {
@@ -92,7 +34,7 @@
             <span>Start Working</span>
           </button>
         }
-        @if (t.status === 'REVISION_REQUIRED' && canSubmitWork(t)) {
+        @if ((t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED') && canSubmitWork(t)) {
           <button
             type="button"
             class="btn-action btn-start-redesign"
@@ -148,7 +90,7 @@
         }
       </div>
     }
-  </div>
+  </header>
 
   @if (isLoading()) {
     <div class="loading-state-box">
@@ -239,7 +181,7 @@
         </div>
       </div>
 
-      @if (t.status === 'REVISION_REQUIRED' && t.reviewerFeedback) {
+      @if ((t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED') && t.reviewerFeedback) {
         <div class="revision-feedback-banner">
           <div class="banner-icon-squircle">
             <span class="material-symbols-outlined">rate_review</span>

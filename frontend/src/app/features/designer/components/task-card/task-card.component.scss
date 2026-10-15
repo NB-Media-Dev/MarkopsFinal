@@ -1,6 +1,6 @@
 .task-card {
   background-color: #FFFFFF;
-  border: 1.5px solid #F3EAE0;
+  border: 1.5px solid #ff8600;
   border-radius: 18px;
   padding: 0.85rem 1rem;
   display: flex;
@@ -143,12 +143,12 @@
         }
       }
 
-     
+
 
       .btn-icon-trash {
-        background: transparent;
         border: none;
-        color: #94A3B8;
+        color: #EF4444;
+        background: #FEE2E2;
         padding: 0.15rem;
         border-radius: 5px;
         cursor: pointer;

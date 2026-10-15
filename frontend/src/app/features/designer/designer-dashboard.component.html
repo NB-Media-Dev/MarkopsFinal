@@ -1,28 +1,42 @@
 <div class="designer-dashboard" [class.embedded-mode]="embedded">
 
   @if (!embedded) {
-    <header class="page-header mb-3">
-      <div class="header-titles-group">
-        <nav class="clean-breadcrumbs" aria-label="Breadcrumb">
-          <button type="button" class="btn-back" (click)="navigateBack()" title="Back">
-            <span class="material-symbols-outlined icon-back">arrow_back</span>
-          </button>
-          <div class="breadcrumbs-list">
-            @if (isDesigner()) {
-              <span class="bc-item active">My Tasks</span>
-            } @else if (packageFilter) {
-              <a routerLink="/dashboard" class="bc-item">Dashboard</a>
-              <span class="bc-sep">/</span>
-              <a routerLink="/package-works" class="bc-item bc-package">Package Works</a>
-              <span class="bc-sep">/</span>
-              <span class="bc-item active">{{ packageFilter }} - Tasks</span>
-            } @else {
-              <a routerLink="/dashboard" class="bc-item">Dashboard</a>
-              <span class="bc-sep">/</span>
-              <span class="bc-item active">Tasks</span>
-            }
-          </div>
-        </nav>
+    <header class="page-clean-branding-header mb-3">
+      <div class="header-titles-block">
+        <h1 class="page-main-orange-title">{{ pageHeaderTitle() }}</h1>
+        <div class="page-breadcrumb-subrow">
+          <a
+            routerLink="/package-works"
+            [queryParams]="{ package: activeProductName() }"
+            class="bc-link"
+          >{{ activeProductName() }}</a>
+          <span class="bc-sep">&gt;</span>
+          <a
+            routerLink="/package-works"
+            [queryParams]="{ package: activeProductName() }"
+            class="bc-link"
+          >Available Package</a>
+          <span class="bc-sep">&gt;</span>
+
+          <a
+            routerLink="/package-works"
+            [queryParams]="packageFilter ? { package: activeProductName(), workspace: packageFilter } : { package: activeProductName(), workspace: 'Test' }"
+            class="bc-link"
+          >Department Operations</a>
+          <span class="bc-sep">&gt;</span>
+
+          @if (selectedDesigner()) {
+            <a
+              type="button"
+              class="bc-link"
+              (click)="clearDesignerFilter()"
+            >Designer</a>
+            <span class="bc-sep">&gt;</span>
+            <span class="bc-current">{{ selectedDesigner()?.name }}</span>
+          } @else {
+            <span class="bc-current">Designer</span>
+          }
+        </div>
       </div>
     </header>
   }
@@ -199,7 +213,7 @@
               <span class="material-symbols-outlined search-icon">search</span>
               <input
                 type="text"
-                placeholder="Search {{ activeTaskView() === 'my' ? 'my' : 'all' }} tasks..."
+                placeholder="Search all tasks..."
                 (input)="onSearch($event)"
               />
             </div>

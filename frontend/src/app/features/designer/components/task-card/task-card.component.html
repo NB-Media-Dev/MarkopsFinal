@@ -48,12 +48,9 @@
       <span class="task-type-pill">
         <span class="material-symbols-outlined icon-type">{{ getTaskTypeIcon() }}</span>
         <span>{{ getTaskTypeLabel() }}</span>
-            <span class="status-badge" [ngClass]="getStatusBadgeClass(task.status)">
       </span>
-      </span>
-     <span class="status-badge" >{{ task.status }}</span>
-  }
-
+    }
+    <span class="status-badge" [ngClass]="getStatusBadgeClass(task.status)">{{ task.status }}</span>
   </div>
 
   <!-- Task Title & Created by Creator Name -->
@@ -65,12 +62,8 @@
     </div>
   </div>
 
-  <!-- Attachment / Requirement Chip (from Image 2) -->
-
-
-
   <!-- Revision Feedback Alert (if applicable) -->
-  @if (task.status === 'REVISION_REQUIRED' && task.reviewerFeedback) {
+  @if ((task.status === 'REVISION_REQUIRED' || task.status === 'REDESIGN_REQUIRED') && task.reviewerFeedback) {
     <div class="revision-feedback-alert">
       <span class="material-symbols-outlined alert-icon">rate_review</span>
       <span class="alert-body">"{{ task.reviewerFeedback }}"</span>

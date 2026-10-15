@@ -1,96 +1,29 @@
 <div class="dashboard-page-wrapper">
-
   <div class="dashboard-content-container">
 
     <header class="dashboard-hero-header">
-      <div class="header-left">
-        <h1 class="hero-main-title">Our Products</h1>
-      </div>
-
+      <h1 class="hero-main-title">OUR PRODUCTS</h1>
     </header>
 
     <section class="products-grid-section" aria-label="MarkOps Products">
       <div class="products-grid">
-        @for (pkg of fixedPackages(); track pkg.id){
+        @for (pkg of fixedPackages(); track pkg.id) {
           <article
             class="product-card"
-            [ngClass]="'theme-' + pkg.cardTheme"
             (click)="openPackage(pkg.shortName || pkg.name)"
-            [attr.aria-label]="'Explore ' + pkg.name"
+            [attr.aria-label]="'Explore ' + getCardTitle(pkg)"
           >
-
-            <div class="card-visual-banner">
-
-              <div class="banner-glow-reveal"></div>
-
-              <div
-                class="banner-photo-bg"
-                [style.background-image]="'url(' + pkg.bgImage + ')'"
-              ></div>
-
-              <svg class="banner-wave-mask" viewBox="0 0 400 140" preserveAspectRatio="none" fill="none">
-                <path
-                  d="M0,80 C110,130 220,50 400,100 L400,140 L0,140 Z"
-                  fill="#FFE8C2"
-                  opacity="0.45"
-                />
-                <path
-                  d="M0,95 C120,135 230,70 400,110 L400,140 L0,140 Z"
-                  fill="#FFFFFF"
-                />
-              </svg>
-
-              <div class="product-emblem-badge">
-                <div class="emblem-outer-ring">
-                  <div class="emblem-inner-circle">
-                    <img [src]="pkg.image" [alt]="pkg.name + ' Logo'" class="emblem-logo-img" />
-                  </div>
-                </div>
-              </div>
-
+            <div class="product-emblem-badge">
+              <img [src]="pkg.image" [alt]="getCardTitle(pkg) + ' Logo'" class="emblem-logo-img" />
             </div>
 
             <div class="card-body-content">
-              <h2 class="card-product-title">{{ pkg.name }}</h2>
-              <span class="card-product-tagline">{{ pkg.tagline }}</span>
-
+              <h2 class="card-product-title">{{ getCardTitle(pkg) }}</h2>
             </div>
-
-            <footer class="card-footer-row">
-              <div class="package-inventory-stat">
-
-                <svg
-                  class="inventory-box-icon"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#F59E0B"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                  <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                </svg>
-                <div class="inventory-text-block">
-                  <span class="inventory-count-bold">{{ pkg.packageCount }} Packages</span>
-                  <span class="inventory-status-subtle">Available</span>
-                </div>
-              </div>
-
-              <a
-                [routerLink]="['/package-works']"
-                [queryParams]="{ package: pkg.shortName || pkg.name }"
-                (click)="$event.stopPropagation()"
-                class="explore-pill-btn"
-              >
-                <span>Explore</span>
-                <span class="btn-arrow-icon">&rarr;</span>
-              </a>
-            </footer>
           </article>
         }
       </div>
     </section>
+
   </div>
 </div>

@@ -1,318 +1,76 @@
 .dept-operations-container {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
   width: 100%;
-  margin-top: 1rem;
-}
-
-.dept-operations-header {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  margin-bottom: 0.25rem;
-
-  .dept-operations-title {
-    margin: 0;
-    font-size: 1.55rem;
-    font-weight: 800;
-    color: #0F172A;
-    letter-spacing: -0.02em;
-    line-height: 1.2;
-  }
-
-  .dept-operations-accent-bar {
-    width: 32px;
-    height: 3px;
-    background: #EA580C;
-    border-radius: 2px;
-    margin-top: 6px;
-  }
 }
 
 .dept-operations-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
   width: 100%;
+
+  @media (max-width: 480px) {
+    gap: 1.5rem;
+  }
 }
 
 .dept-operation-card {
   position: relative;
-  overflow: hidden;
-  border-radius: 22px;
-  padding: 22px 20px;
+  background: #FFFFFF;
+  border-radius: 24px;
+  border: 1.5px solid transparent;
+  background: linear-gradient(#FFFFFF, #FFFFFF) padding-box,
+              linear-gradient(180deg, #FDBA74 0%, #F87171 100%) border-box;
+  box-shadow: 0 10px 24px -4px rgba(239, 68, 68, 0.22), 0 3px 8px rgba(0, 0, 0, 0.04);
+  width: 360px;
+  flex: 0 0 360px;
+  height: 110px;
   display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  min-height: 220px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02), 0 1px 3px rgba(0, 0, 0, 0.03);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  align-items: center;
+  gap: 20px;
+  padding: 0 28px;
+  box-sizing: border-box;
   cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+  @media (max-width: 480px) {
+    width: 100%;
+    flex: 1 1 100%;
+  }
 
   &:hover {
     transform: translateY(-4px);
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 16px 32px -4px rgba(239, 68, 68, 0.32), 0 4px 14px rgba(0, 0, 0, 0.06);
+  }
 
-    .dept-open-btn {
-      transform: scale(1.03);
+  .dept-icon-squircle {
+    width: 60px;
+    height: 60px;
+    border-radius: 18px;
+    background: #F59E0B;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 
-      .material-symbols-outlined {
-        transform: translateX(2px);
-      }
+    .dept-svg-icon {
+      width: 34px;
+      height: 34px;
+      display: block;
     }
   }
 
-  .dept-card-watermark {
-    position: absolute;
-    bottom: -6px;
-    right: -6px;
-    width: 110px;
-    height: 110px;
-    pointer-events: none;
-    z-index: 1;
+  .dept-title {
+    font-family: var(--mo-font-sans);
+    font-size: 1.42rem;
+    font-weight: 800;
+    color: #F59E0B;
+    margin: 0;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
     overflow: hidden;
-
-    .watermark-svg {
-      width: 100%;
-      height: 100%;
-    }
-  }
-
-  .dept-card-top-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    z-index: 2;
-    position: relative;
-
-    .dept-icon-squircle {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #FFFFFF;
-
-      .material-symbols-outlined {
-        font-size: 22px;
-      }
-    }
-
-    .dept-badge-pill {
-      padding: 4px 12px;
-      border-radius: 9999px;
-      font-size: 0.72rem;
-      font-weight: 700;
-      letter-spacing: 0.01em;
-    }
-  }
-
-  .dept-card-content {
-    margin: 16px 0 14px;
-    z-index: 2;
-    position: relative;
-
-    .dept-title {
-      font-size: 1.15rem;
-      font-weight: 800;
-      color: #0F172A;
-      margin: 0 0 5px 0;
-      letter-spacing: -0.01em;
-      line-height: 1.3;
-    }
-
-    .dept-desc {
-      font-size: 0.78rem;
-      color: #64748B;
-      line-height: 1.4;
-      margin: 0;
-      min-height: 36px;
-    }
-  }
-
-  .dept-card-footer {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: auto;
-    z-index: 2;
-    position: relative;
-    padding-top: 8px;
-
-    .dept-metrics-meta {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      font-size: 0.74rem;
-      color: #64748B;
-      font-weight: 600;
-
-      .metric-divider {
-        color: #CBD5E1;
-        font-weight: 400;
-      }
-
-      .metric-active {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-
-        .active-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-        }
-      }
-    }
-
-    .dept-open-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      padding: 7px 18px;
-      border-radius: 9999px;
-      font-size: 0.78rem;
-      font-weight: 700;
-      color: #FFFFFF;
-      border: none;
-      cursor: pointer;
-      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-
-      .material-symbols-outlined {
-        font-size: 15px;
-        transition: transform 0.2s ease;
-      }
-    }
-  }
-
-  &.dept-theme-designer {
-    background: linear-gradient(145deg, #FFFFFF 0%, #FFF7ED 100%);
-    border: 1.5px solid #FED7AA;
-
-    .dept-icon-squircle {
-      background: linear-gradient(135deg, #FB923C 0%, #EA580C 100%);
-      box-shadow: 0 4px 14px rgba(234, 88, 12, 0.32);
-    }
-
-    .dept-badge-pill {
-      background: #FFEDD5;
-      color: #EA580C;
-    }
-
-    .active-dot {
-      background: #EA580C;
-    }
-
-    .dept-open-btn {
-      background: linear-gradient(135deg, #FB923C 0%, #EA580C 100%);
-      box-shadow: 0 4px 12px rgba(234, 88, 12, 0.35);
-
-      &:hover {
-        background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%);
-        box-shadow: 0 6px 16px rgba(234, 88, 12, 0.45);
-      }
-    }
-  }
-
-  &.dept-theme-digital_marketing {
-    background: linear-gradient(145deg, #FFFFFF 0%, #FFFBEB 100%);
-    border: 1.5px solid #FDE68A;
-
-    .dept-icon-squircle {
-      background: linear-gradient(135deg, #FBBF24 0%, #D97706 100%);
-      box-shadow: 0 4px 14px rgba(217, 119, 6, 0.32);
-    }
-
-    .dept-badge-pill {
-      background: #FEF3C7;
-      color: #D97706;
-    }
-
-    .active-dot {
-      background: #D97706;
-    }
-
-    .dept-open-btn {
-      background: linear-gradient(135deg, #FBBF24 0%, #D97706 100%);
-      box-shadow: 0 4px 12px rgba(217, 119, 6, 0.35);
-
-      &:hover {
-        background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
-        box-shadow: 0 6px 16px rgba(217, 119, 6, 0.45);
-      }
-    }
-  }
-
-  &.dept-theme-telecalling {
-    background: linear-gradient(145deg, #FFFFFF 0%, #FAF5FF 100%);
-    border: 1.5px solid #E9D5FF;
-
-    .dept-icon-squircle {
-      background: linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%);
-      box-shadow: 0 4px 14px rgba(124, 58, 237, 0.32);
-    }
-
-    .dept-badge-pill {
-      background: #F3E8FF;
-      color: #7C3AED;
-    }
-
-    .active-dot {
-      background: #7C3AED;
-    }
-
-    .dept-open-btn {
-      background: linear-gradient(135deg, #A78BFA 0%, #7C3AED 100%);
-      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.35);
-
-      &:hover {
-        background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%);
-        box-shadow: 0 6px 16px rgba(124, 58, 237, 0.45);
-      }
-    }
-  }
-
-  &.dept-theme-analytics {
-    background: linear-gradient(145deg, #FFFFFF 0%, #F0FDF4 100%);
-    border: 1.5px solid #BBF7D0;
-
-    .dept-icon-squircle {
-      background: linear-gradient(135deg, #34D399 0%, #059669 100%);
-      box-shadow: 0 4px 14px rgba(5, 150, 105, 0.32);
-    }
-
-    .dept-badge-pill {
-      background: #DCFCE7;
-      color: #059669;
-    }
-
-    .active-dot {
-      background: #059669;
-    }
-
-    .dept-open-btn {
-      background: linear-gradient(135deg, #34D399 0%, #059669 100%);
-      box-shadow: 0 4px 12px rgba(5, 150, 105, 0.35);
-
-      &:hover {
-        background: linear-gradient(135deg, #059669 0%, #047857 100%);
-        box-shadow: 0 6px 16px rgba(5, 150, 105, 0.45);
-      }
-    }
-  }
-}
-
-@media (max-width: 1100px) {
-  .dept-operations-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 640px) {
-  .dept-operations-grid {
-    grid-template-columns: 1fr;
+    text-overflow: ellipsis;
   }
 }

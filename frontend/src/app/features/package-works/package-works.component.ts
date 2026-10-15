@@ -90,21 +90,21 @@ export class PackageWorksComponent implements OnInit {
         return {
           banner: '/classmate-hero-banner.jpg',
           logo: '/vidhvaa-class-img.png',
-  
+
           title: 'Classmate',
         };
       case 'pkg_jesus_messanger':
         return {
           banner: '/jesus-hero-banner.jpg',
           logo: '/jesus-img.png',
-      
+
           title: 'Jesus the Messenger',
         };
       default:
         return {
           banner: '/careermate-hero-banner.jpg',
           logo: '/vidhvaa-career-img.png',
-     
+
           title: 'CareerMate',
         };
     }
@@ -532,7 +532,7 @@ export class PackageWorksComponent implements OnInit {
     }
 
 
-    if (role === 'ADMINISTRATOR' || role === 'MARKETING_MANAGER' || role === 'BDM') {
+    if (role === 'ADMINISTRATOR') {
       const mgmtTabs: RoleOperationTab[] = [];
       mgmtTabs.push({ id: 'ANALYTICS_OVERVIEW', label: 'Overview', icon: 'grid_view' });
       mgmtTabs.push({ id: 'TRANSACTIONS', label: 'Transactions', icon: 'payments' });
@@ -999,7 +999,7 @@ export class PackageWorksComponent implements OnInit {
     const allCalls = this.leadService.calls();
     const allAds = this.campaignService.ads();
 
-   
+
     const scopedTasks = this.taskService.tasks().filter((t) =>
       isTaskForPackage(t, targetFilter, allPkgs, expectedProductId)
     );
