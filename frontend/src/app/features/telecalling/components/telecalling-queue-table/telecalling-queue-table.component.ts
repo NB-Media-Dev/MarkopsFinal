@@ -54,6 +54,11 @@ export class TelecallingQueueTableComponent {
     this.queueFilterChange.emit(filter);
   }
 
+  get dueRemindersCount(): number {
+    if (!this.isFollowUpDueFn) return 0;
+    return (this.filteredAssignedLeads || []).filter((l) => this.isFollowUpDueFn(l)).length;
+  }
+
   setSearchQuery(q: string) {
     this.searchQueryChange.emit(q);
   }

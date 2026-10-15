@@ -1,10 +1,145 @@
 .package-works-page {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding-bottom: 2.5rem;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0;
+  padding: 2rem 3rem 4rem 3rem;
+  box-sizing: border-box;
+  background-color: #FFFFFF;
+
+  @media (max-width: 1024px) {
+    padding: 1.5rem 1.5rem 3rem 1.5rem;
+    gap: 1.25rem;
+  }
+
+  @media (max-width: 768px) {
+    padding: 1.25rem 1rem 2.5rem 1rem;
+    gap: 1rem;
+  }
+
+  @media (max-width: 480px) {
+    padding: 1rem 0.75rem 2rem 0.75rem;
+  }
+}
+
+.page-clean-branding-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.85rem;
+  }
+
+  .header-titles-block {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .page-main-orange-title {
+      font-family: var(--mo-font-sans);
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #F59E0B;
+      margin: 0;
+      letter-spacing: -0.01em;
+      line-height: 1.2;
+
+      @media (max-width: 768px) {
+        font-size: 1.25rem;
+      }
+    }
+
+    .page-breadcrumb-subrow {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      row-gap: 5px;
+      column-gap: 6px;
+      line-height: 1.45;
+      font-family: var(--mo-font-sans);
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #1E293B;
+
+      @media (max-width: 768px) {
+        font-size: 0.78rem;
+      }
+
+      .bc-link {
+        color: #1E293B;
+        text-decoration: none;
+        cursor: pointer;
+
+        &:hover {
+          color: #F59E0B;
+          text-decoration: underline;
+        }
+      }
+
+      .bc-link-btn {
+        background: none;
+        border: none;
+        padding: 0;
+        font-family: inherit;
+        font-size: inherit;
+        font-weight: inherit;
+        color: #1E293B;
+        cursor: pointer;
+
+        &:hover {
+          color: #F59E0B;
+          text-decoration: underline;
+        }
+      }
+
+      .bc-sep {
+        color: #1E293B;
+        font-size: 0.82rem;
+        user-select: none;
+      }
+
+      .bc-current {
+        color: #1E293B;
+      }
+    }
+  }
+
+  .catalog-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    .catalog-create-package-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background-color: #F59E0B;
+      color: #FFFFFF;
+      font-size: 0.82rem;
+      font-weight: 700;
+      padding: 7px 16px;
+      border-radius: 9999px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(245, 158, 11, 0.25);
+      transition: all 0.2s ease;
+
+      &:hover {
+        background-color: #D97706;
+      }
+
+      .material-symbols-outlined {
+        font-size: 18px;
+      }
+    }
+  }
 }
 
 .package-works-page > .page-header .page-title-block {

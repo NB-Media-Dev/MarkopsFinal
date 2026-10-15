@@ -9,6 +9,12 @@
   gap: 0.75rem;
   transition: all 0.2s ease;
 
+  @media (max-width: 768px) {
+    padding: 0.75rem 0.85rem;
+    border-radius: 14px;
+    gap: 0.65rem;
+  }
+
   .pipeline-top-filter-bar {
     display: flex;
     justify-content: space-between;
@@ -17,6 +23,12 @@
     gap: 1rem;
     padding-bottom: 0;
     border-bottom: none;
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.75rem;
+    }
 
     .filter-cluster {
       display: flex;
@@ -132,6 +144,15 @@
       position: relative;
       display: inline-flex;
       align-items: center;
+
+      @media (max-width: 768px) {
+        width: 100%;
+
+        .campaign-styled-select {
+          width: 100% !important;
+          min-width: 0 !important;
+        }
+      }
 
       .campaign-styled-select {
         appearance: none;

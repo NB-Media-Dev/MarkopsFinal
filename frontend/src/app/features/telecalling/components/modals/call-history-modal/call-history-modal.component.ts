@@ -15,6 +15,24 @@ export class CallHistoryModalComponent {
   @Input() canLogCalls = false;
   @Input() getStatusBadgeClassFn!: (status?: string) => string;
   @Input() formatStatusLabelFn?: (status?: string) => string;
+  @Input() getLeadCurrentStatusFn?: (lead: LeadItem) => string;
+
+  getLeadStatus(): string {
+    if (this.lead && this.getLeadCurrentStatusFn) {
+      const computedStatus = this.getLeadCurrentStatusFn(this.lead);
+      if (computedStatus && computedStatus !== 'ASSIGNED') {
+        return computedStatus;
+      }
+    }
+    if (this.leadHistoryCalls && this.leadHistoryCalls.length > 0) {
+      const latestOutcome = this.leadHistoryCalls[0].outcome;
+      if (latestOutcome) return latestOutcome;
+    }
+    if (this.lead && this.getLeadCurrentStatusFn) {
+      return this.getLeadCurrentStatusFn(this.lead);
+    }
+    return this.lead?.status || 'ASSIGNED';
+  }
 
   formatStatus(status?: string): string {
     if (this.formatStatusLabelFn) return this.formatStatusLabelFn(status);
@@ -42,8 +60,9 @@ export class CallHistoryModalComponent {
       case 'NOT_INTERESTED':
         return 'Not Interested';
       case 'CONNECTED':
+        return 'Connected';
       default:
-        return 'Assigned';
+        return s ? (s.charAt(0).toUpperCase() + s.slice(1).toLowerCase().replace(/_/g, ' ')) : 'Assigned';
     }
   }
 

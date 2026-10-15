@@ -70,10 +70,8 @@ export class PackageReportsComponent implements OnInit, OnChanges {
   selectedPerformanceUser: UserPerformanceRecord | null = null;
   expandedCampaignRows = new Set<number>();
 
-  // Accordion state: set of expanded userIds
   expandedUserIds = new Set<string>();
 
-  // Dropdown states for User, Filter & Date controls in header
   isFilterDropdownOpen: boolean = false;
   isDateDropdownOpen: boolean = false;
   isUserDropdownOpen: boolean = false;
@@ -414,24 +412,39 @@ export class PackageReportsComponent implements OnInit, OnChanges {
       const [cName, aName, dateRaw] = key.split('___');
       const groupLeads = groups.get(key) || [];
       const totalLeads = groupLeads.length;
-      let totalCalls = 0;
-      let interested = 0;
-      let paid = 0;
+      const calledLeadIds = new Set<string>();
+      const interestedLeadIds = new Set<string>();
+      const paidLeadIds = new Set<string>();
 
       for (const lead of groupLeads) {
-        const callsCount = Array.isArray(lead.calls) && lead.calls.length > 0
-          ? lead.calls.length
-          : lead.callAttempts && lead.callAttempts > 0 ? lead.callAttempts : lead.calledAt ? 1 : 0;
-        totalCalls += callsCount;
+        const leadId = String(lead.id || lead.leadId || '').trim().toLowerCase();
+        const leadPhone = String(lead.phone || lead.leadPhone || '').replace(/\D/g, '');
+        const leadKey = leadPhone ? `p_${leadPhone}` : (leadId ? `id_${leadId}` : `ref_${Math.random()}`);
+
+        const hasBeenCalled =
+          (Array.isArray(lead.calls) && lead.calls.length > 0) ||
+          (lead.callAttempts && lead.callAttempts > 0) ||
+          Boolean(lead.calledAt) ||
+          Boolean(lead.lastCalledAt) ||
+          (lead.callOutcome && String(lead.callOutcome).trim().length > 0) ||
+          (lead.status && !['NEW', 'UNASSIGNED', 'ASSIGNED'].includes(String(lead.status).toUpperCase()));
+
+        if (hasBeenCalled) {
+          calledLeadIds.add(leadKey);
+        }
 
         const outcome = (lead.callOutcome || lead.status || '').toUpperCase();
-        if (['INTERESTED', 'QUALIFIED', 'HOT'].includes(outcome)) {
-          interested++;
-        } else if (['PAID', 'CONVERTED'].includes(outcome) || lead.isPaid || lead.paidAmount > 0) {
-          paid++;
-          interested++;
+        if (['PAID', 'CONVERTED'].includes(outcome) || lead.isPaid || lead.paidAmount > 0) {
+          paidLeadIds.add(leadKey);
+          interestedLeadIds.add(leadKey);
+        } else if (['INTERESTED', 'QUALIFIED', 'HOT'].includes(outcome)) {
+          interestedLeadIds.add(leadKey);
         }
       }
+
+      const totalCalls = calledLeadIds.size;
+      const interested = interestedLeadIds.size;
+      const paid = paidLeadIds.size;
 
       const avgCalls = totalLeads > 0 ? Number((totalCalls / totalLeads).toFixed(1)) : 0;
       const rowTarget = baseDailyTarget > 0 ? baseDailyTarget : 50;
@@ -851,26 +864,41 @@ export class PackageReportsComponent implements OnInit, OnChanges {
     for (const key of sortedKeys) {
       const [cName, aName, dateRaw] = key.split('___');
       const groupLeads = groups.get(key) || [];
-
       const totalLeads = groupLeads.length;
-      let totalCalls = 0;
-      let interested = 0;
-      let paid = 0;
+
+      const calledLeadIds = new Set<string>();
+      const interestedLeadIds = new Set<string>();
+      const paidLeadIds = new Set<string>();
 
       for (const lead of groupLeads) {
-        const callsCount = Array.isArray(lead.calls) && lead.calls.length > 0
-          ? lead.calls.length
-          : lead.callAttempts && lead.callAttempts > 0 ? lead.callAttempts : lead.calledAt ? 1 : 0;
-        totalCalls += callsCount;
+        const leadId = String(lead.id || lead.leadId || '').trim().toLowerCase();
+        const leadPhone = String(lead.phone || lead.leadPhone || '').replace(/\D/g, '');
+        const leadKey = leadPhone ? `p_${leadPhone}` : (leadId ? `id_${leadId}` : `ref_${Math.random()}`);
+
+        const hasBeenCalled =
+          (Array.isArray(lead.calls) && lead.calls.length > 0) ||
+          (lead.callAttempts && lead.callAttempts > 0) ||
+          Boolean(lead.calledAt) ||
+          Boolean(lead.lastCalledAt) ||
+          (lead.callOutcome && String(lead.callOutcome).trim().length > 0) ||
+          (lead.status && !['NEW', 'UNASSIGNED', 'ASSIGNED'].includes(String(lead.status).toUpperCase()));
+
+        if (hasBeenCalled) {
+          calledLeadIds.add(leadKey);
+        }
 
         const outcome = (lead.callOutcome || lead.status || '').toUpperCase();
-        if (['INTERESTED', 'QUALIFIED', 'HOT'].includes(outcome)) {
-          interested++;
-        } else if (['PAID', 'CONVERTED'].includes(outcome) || lead.isPaid || lead.paidAmount > 0) {
-          paid++;
-          interested++;
+        if (['PAID', 'CONVERTED'].includes(outcome) || lead.isPaid || lead.paidAmount > 0) {
+          paidLeadIds.add(leadKey);
+          interestedLeadIds.add(leadKey);
+        } else if (['INTERESTED', 'QUALIFIED', 'HOT'].includes(outcome)) {
+          interestedLeadIds.add(leadKey);
         }
       }
+
+      const totalCalls = calledLeadIds.size;
+      const interested = interestedLeadIds.size;
+      const paid = paidLeadIds.size;
 
       const avgCalls = totalLeads > 0 ? Number((totalCalls / totalLeads).toFixed(1)) : 0;
       const rowTarget = baseDailyTarget > 0 ? baseDailyTarget : 50;

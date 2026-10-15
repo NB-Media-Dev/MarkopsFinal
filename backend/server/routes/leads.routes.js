@@ -29,49 +29,44 @@ function createNotificationForTelecaller(targetUserId, title, message, targetRou
 
 function isSameCallActivity(c1, c2) {
   if (!c1 || !c2) return false;
+  if (c1.id && c2.id && String(c1.id).trim() === String(c2.id).trim()) {
+    return true;
+  }
+
+  // If both have IDs, compare them
   if (c1.id && c2.id) {
-    if (String(c1.id) === String(c2.id)) return true;
     const num1 = String(c1.id).replace(/\D/g, '');
     const num2 = String(c2.id).replace(/\D/g, '');
-    if (num1 && num2 && num1 === num2) return true;
+    if (num1 && num2) {
+      return num1 === num2;
+    }
+    return false;
   }
 
   const lead1 = String(c1.leadId || '').replace(/\D/g, '') || String(c1.leadId || '').trim();
   const lead2 = String(c2.leadId || '').replace(/\D/g, '') || String(c2.leadId || '').trim();
   const phone1 = String(c1.leadPhone || c1.phone || '').replace(/\D/g, '');
   const phone2 = String(c2.leadPhone || c2.phone || '').replace(/\D/g, '');
-  const sameLead = (lead1 && lead2 && lead1 === lead2) || (phone1 && phone2 && phone1 === phone2);
+  const sameLead = (lead1 && lead2 && lead1 === lead2) || (phone1 && phone2 && (phone1 === phone2 || (phone1.length >= 7 && phone2.length >= 7 && (phone1.endsWith(phone2) || phone2.endsWith(phone1)))));
   if (!sameLead) return false;
 
   const out1 = String(c1.outcome || '').toUpperCase().replace(/\s+/g, '_');
   const out2 = String(c2.outcome || '').toUpperCase().replace(/\s+/g, '_');
   const sameOutcome = out1 === out2 ||
     (out1 === 'FOLLOW_UP' && out2 === 'CONNECTED') || (out1 === 'CONNECTED' && out2 === 'FOLLOW_UP') ||
-    (out1 === 'LINE_BUSY' && out2 === 'BUSY') || (out1 === 'BUSY' && out2 === 'LINE_BUSY');
+    (out1 === 'LINE_BUSY' && out2 === 'BUSY') || (out1 === 'BUSY' && out2 === 'LINE_BUSY') ||
+    ((out1 === 'QUALIFIED' || out1 === 'PAID') && (out2 === 'QUALIFIED' || out2 === 'PAID'));
 
-  const rem1 = (c1.remarks || '').trim().toLowerCase();
-  const rem2 = (c2.remarks || '').trim().toLowerCase();
-  const sameRemarks = Boolean(rem1 && rem2 && (rem1 === rem2 || rem1.includes(rem2) || rem2.includes(rem1)));
-
-  const dur1 = Number(c1.durationSeconds !== undefined ? c1.durationSeconds : c1.duration_seconds) || 0;
-  const dur2 = Number(c2.durationSeconds !== undefined ? c2.durationSeconds : c2.duration_seconds) || 0;
-  const sameDuration = dur1 === dur2;
+  if (!sameOutcome) return false;
 
   if (c1.calledAt && c2.calledAt) {
     const t1 = new Date(c1.calledAt).getTime();
     const t2 = new Date(c2.calledAt).getTime();
     if (!isNaN(t1) && !isNaN(t2)) {
       const diff = Math.abs(t1 - t2);
-      if (diff <= 60000) return true;
-      const istOffsetMs = 5.5 * 3600 * 1000;
-      if (Math.abs(diff - istOffsetMs) <= 60000) return true;
-      if (sameRemarks && sameDuration && diff <= 86400000) return true;
-      if (sameOutcome && sameRemarks && diff <= 86400000) return true;
+      if (diff <= 5000) return true;
+      return false;
     }
-  }
-
-  if (sameOutcome && sameRemarks) {
-    return true;
   }
 
   return false;
@@ -86,20 +81,42 @@ function reconcileCallActivities(dbRows) {
     const callId = `call_${r.id}`;
     if (seenIds.has(callId)) continue;
     seenIds.add(callId);
+    let out = r.outcome;
+    if (out === 'QUALIFIED' || out === 'CONVERTED' || out === 'PAID') out = 'PAID';
+    else if (out === 'BUSY') out = 'LINE_BUSY';
+
     uniqueDbCalls.push({
       id: callId,
       leadId: String(r.lead_id || r.leadId || ''),
       leadPhone: r.lead_phone || '',
-      leadName: `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Lead Customer',
+      leadName: `${r.first_name || ''} ${r.last_name || ''}`.trim() || r.lead_name || 'Lead Customer',
       telecallerId: String(r.telecaller_id || r.telecallerId || ''),
       telecallerName: r.telecaller_name || 'Telecaller',
       telecallerEmail: r.telecaller_email || '',
-      outcome: (r.outcome === 'QUALIFIED' || r.outcome === 'CONVERTED' || r.outcome === 'PAID') ? 'PAID' : r.outcome,
+      outcome: out,
       durationSeconds: r.duration_seconds !== undefined ? (Number(r.duration_seconds) || 0) : (Number(r.durationSeconds) || 0),
       remarks: r.remarks || '',
       nextAction: r.next_action || r.nextAction || '',
+      followUpDate: r.follow_up_date || r.followUpDate || '',
+      followUpTime: r.follow_up_time || r.followUpTime || '',
       calledAt: r.called_at ? new Date(r.called_at).toISOString() : (r.calledAt ? new Date(r.calledAt).toISOString() : new Date().toISOString()),
     });
+  }
+
+  // Preserve followUpDate, followUpTime, and outcome from memory if DB row didn't have it
+  for (const dbC of uniqueDbCalls) {
+    const memMatch = dbCallActivitiesStore.find((memCall) => isSameCallActivity(memCall, dbC));
+    if (memMatch) {
+      if (!dbC.followUpDate && memMatch.followUpDate) {
+        dbC.followUpDate = memMatch.followUpDate;
+      }
+      if (!dbC.followUpTime && memMatch.followUpTime) {
+        dbC.followUpTime = memMatch.followUpTime;
+      }
+      if (memMatch.outcome === 'FOLLOW_UP' && dbC.outcome === 'CONNECTED') {
+        dbC.outcome = 'FOLLOW_UP';
+      }
+    }
   }
 
   const memoryOnlyCalls = dbCallActivitiesStore.filter((memCall) => {
@@ -110,15 +127,8 @@ function reconcileCallActivities(dbRows) {
     (a, b) => new Date(b.calledAt).getTime() - new Date(a.calledAt).getTime()
   );
 
-  const deduplicatedMerged = [];
-  for (const call of merged) {
-    if (!deduplicatedMerged.some((existing) => isSameCallActivity(existing, call))) {
-      deduplicatedMerged.push(call);
-    }
-  }
-
   dbCallActivitiesStore.length = 0;
-  dbCallActivitiesStore.push(...deduplicatedMerged);
+  dbCallActivitiesStore.push(...merged);
 
   return dbCallActivitiesStore;
 }
@@ -242,11 +252,11 @@ router.get('/leads', async (req, res) => {
               const cLeadId = String(c.leadId || '').trim().toLowerCase();
               const cPhone = String(c.leadPhone || c.phone || '').replace(/\D/g, '');
               const cLeadName = String(c.leadName || '').trim().toLowerCase();
-              if (cLeadId && lId && cLeadId === lId) return true;
-              if (lPhone && cPhone && lPhone === cPhone) return true;
-              if (cLeadName && lName && (cLeadName === lName || cLeadName.includes(lName) || lName.includes(cLeadName))) return true;
+              if (cLeadId && lId && (cLeadId === lId || cLeadId.replace(/\D/g, '') === lId.replace(/\D/g, ''))) return true;
+              if (lPhone && cPhone && lPhone.length >= 7 && (lPhone === cPhone || lPhone.endsWith(cPhone) || cPhone.endsWith(lPhone))) return true;
+              if (!lPhone && !cPhone && cLeadName && lName && cLeadName === lName) return true;
               return false;
-            });
+            }).sort((a, b) => new Date(b.calledAt || 0).getTime() - new Date(a.calledAt || 0).getTime());
 
             if (leadCalls.length > 0) {
               const latestCall = leadCalls[0];
@@ -255,9 +265,11 @@ router.get('/leads', async (req, res) => {
                 lead.status = 'LINE_BUSY';
               } else if (out === 'QUALIFIED' || out === 'CONVERTED' || out === 'PAID') {
                 lead.status = 'PAID';
+              } else if (out === 'FOLLOW_UP' || out === 'FOLLOW_UP_SCHEDULED') {
+                lead.status = 'FOLLOW_UP';
               } else if (out === 'CONNECTED') {
-                lead.status = (latestCall.followUpDate || latestCall.nextAction) ? 'FOLLOW_UP' : 'ASSIGNED';
-              } else {
+                lead.status = (latestCall.followUpDate || latestCall.nextAction) ? 'FOLLOW_UP' : (lead.status || 'ASSIGNED');
+              } else if (out) {
                 lead.status = out;
               }
               if (latestCall.remarks && latestCall.remarks !== '—') {
@@ -306,11 +318,11 @@ router.get('/leads', async (req, res) => {
         const cLeadId = String(c.leadId || '').trim().toLowerCase();
         const cPhone = String(c.leadPhone || c.phone || '').replace(/\D/g, '');
         const cLeadName = String(c.leadName || '').trim().toLowerCase();
-        if (cLeadId && lId && cLeadId === lId) return true;
-        if (lPhone && cPhone && lPhone === cPhone) return true;
-        if (cLeadName && lName && (cLeadName === lName || cLeadName.includes(lName) || lName.includes(cLeadName))) return true;
+        if (cLeadId && lId && (cLeadId === lId || cLeadId.replace(/\D/g, '') === lId.replace(/\D/g, ''))) return true;
+        if (lPhone && cPhone && lPhone.length >= 7 && (lPhone === cPhone || lPhone.endsWith(cPhone) || cPhone.endsWith(lPhone))) return true;
+        if (!lPhone && !cPhone && cLeadName && lName && cLeadName === lName) return true;
         return false;
-      });
+      }).sort((a, b) => new Date(b.calledAt || 0).getTime() - new Date(a.calledAt || 0).getTime());
 
       if (leadCalls.length > 0) {
         const latestCall = leadCalls[0];
@@ -319,9 +331,11 @@ router.get('/leads', async (req, res) => {
           lead.status = 'LINE_BUSY';
         } else if (out === 'QUALIFIED' || out === 'CONVERTED' || out === 'PAID') {
           lead.status = 'PAID';
+        } else if (out === 'FOLLOW_UP' || out === 'FOLLOW_UP_SCHEDULED') {
+          lead.status = 'FOLLOW_UP';
         } else if (out === 'CONNECTED') {
-          lead.status = (latestCall.followUpDate || latestCall.nextAction) ? 'FOLLOW_UP' : 'ASSIGNED';
-        } else {
+          lead.status = (latestCall.followUpDate || latestCall.nextAction) ? 'FOLLOW_UP' : (lead.status || 'ASSIGNED');
+        } else if (out) {
           lead.status = out;
         }
       } else if (lead.assignedTo || lead.assigned_to) {
@@ -999,21 +1013,19 @@ router.post('/calls', async (req, res) => {
   const outcomeUpper = String(outcome || 'BUSY').toUpperCase().replace(/\s+/g, '_');
   let newStatus = outcomeUpper === 'BUSY' ? 'LINE_BUSY' : outcomeUpper;
   if (newStatus === 'QUALIFIED' || newStatus === 'CONVERTED') newStatus = 'PAID';
+  if (newStatus === 'FOLLOW_UP_SCHEDULED') newStatus = 'FOLLOW_UP';
 
   let lead = null;
   const numId = parseInt(rawLeadId, 10);
 
-  let mysqlLeadStatus = 'CONTACTED';
-  if (newStatus === 'PAID' || newStatus === 'QUALIFIED' || newStatus === 'CONVERTED') mysqlLeadStatus = 'QUALIFIED';
-  else if (newStatus === 'INTERESTED') mysqlLeadStatus = 'INTERESTED';
-  else if (newStatus === 'NOT_INTERESTED') mysqlLeadStatus = 'NOT_INTERESTED';
+  let mysqlLeadStatus = newStatus;
 
   if (dbPool) {
     try {
       if (!isNaN(numId)) {
-        await dbPool.query('UPDATE leads SET status = ?, updated_at = NOW() WHERE id = ?', [mysqlLeadStatus, numId]);
+        await dbPool.query('UPDATE leads SET status = ?, remarks = ?, notes = ?, updated_at = NOW() WHERE id = ?', [mysqlLeadStatus, remarks || 'Call logged.', remarks || 'Call logged.', numId]);
       } else if (rawPhone) {
-        await dbPool.query('UPDATE leads SET status = ?, updated_at = NOW() WHERE phone LIKE ?', [mysqlLeadStatus, `%${rawPhone}%`]);
+        await dbPool.query('UPDATE leads SET status = ?, remarks = ?, notes = ?, updated_at = NOW() WHERE phone LIKE ?', [mysqlLeadStatus, remarks || 'Call logged.', remarks || 'Call logged.', `%${rawPhone}%`]);
       }
 
       let fetchSql = `
@@ -1122,28 +1134,40 @@ router.post('/calls', async (req, res) => {
       const targetLeadId = lead ? lead.id : rawLeadId;
       const numLeadId = parseInt(String(targetLeadId).replace(/\D/g, ''), 10);
       const numCallerId = parseInt(String(effectiveCallerId).replace(/\D/g, ''), 10) || 1;
-      let mysqlOutcome = outcomeUpper;
-      if (mysqlOutcome === 'LINE_BUSY') mysqlOutcome = 'BUSY';
-      if (mysqlOutcome === 'FOLLOW_UP') mysqlOutcome = 'CONNECTED';
-      if (mysqlOutcome === 'CONVERTED' || mysqlOutcome === 'PAID') mysqlOutcome = 'QUALIFIED';
-      if (mysqlOutcome === 'LOST') mysqlOutcome = 'NOT_INTERESTED';
-      if (!['CONNECTED', 'NO_ANSWER', 'BUSY', 'WRONG_NUMBER', 'INTERESTED', 'NOT_INTERESTED', 'QUALIFIED'].includes(mysqlOutcome)) {
-        mysqlOutcome = 'CONNECTED';
-      }
+      let mysqlOutcome = newStatus;
+      const effectiveLeadPhone = lead ? (lead.phone || '') : (leadPhone || phone || '');
+      const effectiveLeadName = lead ? `${lead.firstName || ''} ${lead.lastName || ''}`.trim() : (leadName || `${firstName || ''} ${lastName || ''}`.trim() || 'Lead Customer');
+
       if (!isNaN(numLeadId)) {
-        const [insertRes] = await dbPool.query(
-          `INSERT INTO call_activities (lead_id, telecaller_id, outcome, duration_seconds, remarks, next_action, called_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [numLeadId, numCallerId, mysqlOutcome, Number(durationSeconds) || 120, remarks || 'Call logged.', nextAction || '', callTimestamp]
-        );
+        let insertRes = null;
+        try {
+          const [res] = await dbPool.query(
+            `INSERT INTO call_activities (lead_id, telecaller_id, outcome, duration_seconds, remarks, next_action, follow_up_date, follow_up_time, called_at, lead_phone, lead_name)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [numLeadId, numCallerId, mysqlOutcome, Number(durationSeconds) || 120, remarks || 'Call logged.', nextAction || '', followUpDate || null, followUpTime || null, callTimestamp, effectiveLeadPhone, effectiveLeadName]
+          );
+          insertRes = res;
+        } catch (colErr) {
+          try {
+            const [res] = await dbPool.query(
+              `INSERT INTO call_activities (lead_id, telecaller_id, outcome, duration_seconds, remarks, next_action, follow_up_date, follow_up_time, called_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [numLeadId, numCallerId, mysqlOutcome, Number(durationSeconds) || 120, remarks || 'Call logged.', nextAction || '', followUpDate || null, followUpTime || null, callTimestamp]
+            );
+            insertRes = res;
+          } catch (colErr2) {
+            const [res] = await dbPool.query(
+              `INSERT INTO call_activities (lead_id, telecaller_id, outcome, duration_seconds, remarks, next_action, called_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)`,
+              [numLeadId, numCallerId, mysqlOutcome, Number(durationSeconds) || 120, remarks || 'Call logged.', nextAction || '', callTimestamp]
+            );
+            insertRes = res;
+          }
+        }
         if (insertRes && insertRes.insertId) {
           assignedCallId = `call_${insertRes.insertId}`;
         }
-        let leadMysqlStatus = 'CONTACTED';
-        if (mysqlOutcome === 'QUALIFIED') leadMysqlStatus = 'QUALIFIED';
-        else if (mysqlOutcome === 'INTERESTED') leadMysqlStatus = 'INTERESTED';
-        else if (mysqlOutcome === 'NOT_INTERESTED') leadMysqlStatus = 'NOT_INTERESTED';
-        await dbPool.query(`UPDATE leads SET status = ?, updated_at = NOW() WHERE id = ?`, [leadMysqlStatus, numLeadId]).catch(() => {});
+        await dbPool.query(`UPDATE leads SET status = ?, remarks = ?, notes = ?, updated_at = NOW() WHERE id = ?`, [newStatus, remarks || 'Call logged.', remarks || 'Call logged.', numLeadId]).catch(() => {});
       }
     } catch (dbErr) {
       console.log('[MySQL Error] Insert call_activities failed:', dbErr?.message || dbErr);
@@ -1214,14 +1238,15 @@ router.post('/calls', async (req, res) => {
 
   if (dbPool) {
     try {
-      await dbPool.query("UPDATE lead_follow_ups SET status = 'COMPLETED' WHERE (lead_id = ? OR lead_phone LIKE ?) AND status = 'PENDING'", [targetLeadId, `%${targetPhone}%`]);
-    } catch (e) {
-      
-    }
+      const numLeadId = parseInt(String(targetLeadId).replace(/\D/g, ''), 10);
+      if (!isNaN(numLeadId)) {
+        await dbPool.query("UPDATE follow_ups SET status = 'COMPLETED', completed_at = NOW() WHERE lead_id = ? AND status = 'PENDING'", [numLeadId]).catch(() => {});
+      }
+    } catch (e) {}
   }
 
   if (followUpDate) {
-    dbFollowUpsStore.unshift({
+    const followUpItem = {
       id: `fol_${Math.random().toString(36).substring(2, 10)}`,
       leadId: newCall.leadId,
       leadName: newCall.leadName,
@@ -1231,9 +1256,30 @@ router.post('/calls', async (req, res) => {
       dueDate: followUpDate,
       dueTime: followUpTime || '10:00',
       status: 'PENDING',
-      notes: remarks,
+      notes: remarks || '',
       createdAt: new Date().toISOString(),
-    });
+    };
+    dbFollowUpsStore.unshift(followUpItem);
+
+    if (dbPool) {
+      try {
+        const numLeadId = parseInt(String(targetLeadId).replace(/\D/g, ''), 10);
+        const numCallerId = parseInt(String(effectiveCallerId).replace(/\D/g, ''), 10) || 1;
+        if (!isNaN(numLeadId)) {
+          let mysqlDueDate = followUpDate;
+          if (followUpDate.includes('T')) {
+            mysqlDueDate = new Date(followUpDate).toISOString().slice(0, 19).replace('T', ' ');
+          } else {
+            const timePart = (followUpTime && followUpTime.includes(':')) ? (followUpTime.length === 5 ? `${followUpTime}:00` : followUpTime) : '10:00:00';
+            mysqlDueDate = `${followUpDate.split(' ')[0]} ${timePart}`;
+          }
+          await dbPool.query(
+            "INSERT INTO follow_ups (lead_id, telecaller_id, due_date, status, notes, created_at) VALUES (?, ?, ?, 'PENDING', ?, NOW())",
+            [numLeadId, numCallerId, mysqlDueDate, remarks || '']
+          ).catch((e) => console.log('[MySQL Notice] Insert into follow_ups failed:', e?.message || e));
+        }
+      } catch (e) {}
+    }
   }
 
   await recordAuditLog(dbPool, {
@@ -1243,7 +1289,7 @@ router.post('/calls', async (req, res) => {
     entityType: 'CallActivity',
     entityId: newCall.id,
     newState: { outcome: outcomeUpper, leadId: finalLead.id, newStatus },
-    ipAddress: req.ip || req.socket.remoteAddress,
+    ipAddress: req.ip || req.socket?.remoteAddress || '127.0.0.1',
     userAgent: req.headers['user-agent'],
   });
 
@@ -1508,7 +1554,49 @@ router.patch('/leads/:id/status', async (req, res) => {
   return res.json(lead);
 });
 
-router.get('/followups', (req, res) => {
+router.get('/followups', async (req, res) => {
+  if (dbPool) {
+    try {
+      const [rows] = await dbPool.query(`
+        SELECT fu.*, l.first_name, l.last_name, l.phone as lead_phone,
+               u.full_name as telecaller_name
+        FROM follow_ups fu
+        LEFT JOIN leads l ON fu.lead_id = l.id
+        LEFT JOIN users u ON fu.telecaller_id = u.id
+        ORDER BY fu.due_date ASC
+      `);
+      if (Array.isArray(rows) && rows.length > 0) {
+        const dbFollowUps = rows.map((r) => {
+          const d = r.due_date ? new Date(r.due_date) : null;
+          const dueStr = d && !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : '';
+          const dueTimeStr = d && !isNaN(d.getTime()) ? d.toTimeString().slice(0, 5) : '10:00';
+          return {
+            id: `fol_${r.id}`,
+            leadId: String(r.lead_id || ''),
+            leadName: `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Lead Customer',
+            leadPhone: r.lead_phone || '',
+            telecallerId: String(r.telecaller_id || ''),
+            telecallerName: r.telecaller_name || 'Telecaller',
+            dueDate: dueStr,
+            dueTime: dueTimeStr,
+            status: r.status || 'PENDING',
+            notes: r.notes || '',
+            createdAt: r.created_at ? new Date(r.created_at).toISOString() : new Date().toISOString(),
+          };
+        });
+
+        const merged = [...dbFollowUps];
+        for (const mem of dbFollowUpsStore) {
+          if (!merged.some((f) => String(f.leadId) === String(mem.leadId) && f.status === mem.status)) {
+            merged.push(mem);
+          }
+        }
+        return res.json(merged);
+      }
+    } catch (e) {
+      console.error('[MySQL Error] Fetch follow_ups failed:', e?.message || e);
+    }
+  }
   return res.json(dbFollowUpsStore);
 });
 

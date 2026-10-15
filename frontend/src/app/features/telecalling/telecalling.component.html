@@ -86,11 +86,12 @@
   ></app-telecalling-queue-table>
 
   <app-call-history-modal
-    [lead]="selectedLeadForHistory()"
-    [leadHistoryCalls]="getLeadHistoryCalls(selectedLeadForHistory())"
+    [lead]="currentLeadForHistory()"
+    [leadHistoryCalls]="currentLeadHistoryCalls()"
     [canLogCalls]="canLogCalls()"
     [getStatusBadgeClassFn]="getStatusBadgeClassFn"
     [formatStatusLabelFn]="formatStatusLabelFn"
+    [getLeadCurrentStatusFn]="getLeadCurrentStatusFn"
     (closeModal)="closeLeadHistory()"
     (openCallDrawer)="openCallDrawer($event)"
   ></app-call-history-modal>

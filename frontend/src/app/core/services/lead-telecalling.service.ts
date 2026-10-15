@@ -103,17 +103,25 @@ export interface LeadBatchImportResponse {
 
 export function isClientDuplicateCall(c1: CallActivityItem, c2: CallActivityItem): boolean {
   if (!c1 || !c2) return false;
+  if (c1.id && c2.id && String(c1.id).trim() === String(c2.id).trim()) {
+    return true;
+  }
+
+  // If both have IDs, compare them
   if (c1.id && c2.id) {
-    if (String(c1.id) === String(c2.id)) return true;
     const num1 = String(c1.id).replace(/\D/g, '');
     const num2 = String(c2.id).replace(/\D/g, '');
-    if (num1 && num2 && num1 === num2) return true;
+    if (num1 && num2) {
+      return num1 === num2;
+    }
+    return false;
   }
+
   const lead1 = String(c1.leadId || '').replace(/\D/g, '') || String(c1.leadId || '').trim();
   const lead2 = String(c2.leadId || '').replace(/\D/g, '') || String(c2.leadId || '').trim();
   const phone1 = String(c1.leadPhone || c1.phone || '').replace(/\D/g, '');
   const phone2 = String(c2.leadPhone || c2.phone || '').replace(/\D/g, '');
-  const sameLead = (lead1 && lead2 && lead1 === lead2) || (phone1 && phone2 && phone1 === phone2);
+  const sameLead = (lead1 && lead2 && lead1 === lead2) || (phone1 && phone2 && (phone1 === phone2 || (phone1.length >= 7 && phone2.length >= 7 && (phone1.endsWith(phone2) || phone2.endsWith(phone1)))));
   if (!sameLead) return false;
 
   const out1 = String(c1.outcome || '').toUpperCase().replace(/\s+/g, '_');
@@ -122,28 +130,18 @@ export function isClientDuplicateCall(c1: CallActivityItem, c2: CallActivityItem
     (out1 === 'FOLLOW_UP' && out2 === 'CONNECTED') || (out1 === 'CONNECTED' && out2 === 'FOLLOW_UP') ||
     (out1 === 'LINE_BUSY' && out2 === 'BUSY') || (out1 === 'BUSY' && out2 === 'LINE_BUSY') ||
     ((out1 === 'QUALIFIED' || out1 === 'PAID') && (out2 === 'QUALIFIED' || out2 === 'PAID'));
-
-  const rem1 = (c1.remarks || '').trim().toLowerCase();
-  const rem2 = (c2.remarks || '').trim().toLowerCase();
-  const sameRemarks = Boolean(rem1 && rem2 && (rem1 === rem2 || rem1.includes(rem2) || rem2.includes(rem1)));
-
-  const dur1 = Number(c1.durationSeconds) || 0;
-  const dur2 = Number(c2.durationSeconds) || 0;
-  const sameDuration = dur1 === dur2;
+  if (!sameOutcome) return false;
 
   if (c1.calledAt && c2.calledAt) {
     const t1 = new Date(c1.calledAt).getTime();
     const t2 = new Date(c2.calledAt).getTime();
     if (!isNaN(t1) && !isNaN(t2)) {
       const diff = Math.abs(t1 - t2);
-      if (diff <= 60000) return true;
-      if (Math.abs(diff - 19800000) <= 60000) return true;
-      if (sameRemarks && sameDuration && diff <= 86400000) return true;
-      if (sameOutcome && sameRemarks && diff <= 86400000) return true;
+      if (diff <= 5000) return true;
+      return false;
     }
   }
 
-  if (sameOutcome && sameRemarks) return true;
   return false;
 }
 

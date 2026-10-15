@@ -141,6 +141,29 @@ async function initDatabase() {
     try { await activePool.query('ALTER TABLE campaigns ADD COLUMN leads_count INT DEFAULT 0'); } catch (e) {}
     try { await activePool.query('ALTER TABLE campaigns ADD COLUMN spend DECIMAL(12,2) DEFAULT 0.00'); } catch (e) {}
     try { await activePool.query('ALTER TABLE campaigns ADD COLUMN target_cpl DECIMAL(10,2) DEFAULT 0.00'); } catch (e) {}
+    try { await activePool.query("ALTER TABLE leads MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'NEW'"); } catch (e) {}
+    try { await activePool.query("ALTER TABLE call_activities MODIFY COLUMN outcome VARCHAR(50) NOT NULL"); } catch (e) {}
+    try { await activePool.query('ALTER TABLE call_activities ADD COLUMN follow_up_date VARCHAR(100) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE call_activities ADD COLUMN follow_up_time VARCHAR(50) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE call_activities ADD COLUMN lead_phone VARCHAR(30) DEFAULT NULL'); } catch (e) {}
+    try { await activePool.query('ALTER TABLE call_activities ADD COLUMN lead_name VARCHAR(150) DEFAULT NULL'); } catch (e) {}
+    try {
+      await activePool.query(`
+        CREATE TABLE IF NOT EXISTS follow_ups (
+          id INT NOT NULL AUTO_INCREMENT,
+          lead_id INT NOT NULL,
+          telecaller_id INT NOT NULL,
+          due_date DATETIME NOT NULL,
+          status ENUM('PENDING', 'COMPLETED', 'OVERDUE', 'CANCELLED') NOT NULL DEFAULT 'PENDING',
+          notes TEXT DEFAULT NULL,
+          completed_at DATETIME DEFAULT NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (id),
+          KEY idx_fu_lead (lead_id),
+          KEY idx_fu_caller (telecaller_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+    } catch (e) {}
   } catch (err) {
     console.log('[MySQL DB Notice] MySQL unreachable, operating in high-performance memory store mode:', err?.message || err);
     activePool = null;

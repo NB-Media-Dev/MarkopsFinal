@@ -84,6 +84,37 @@
     flex-wrap: wrap;
     gap: 0.75rem;
 
+    @media (max-width: 768px) {
+      padding: 0.75rem 0.85rem;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.65rem;
+
+      .title-with-badge {
+        width: 100%;
+     
+      }
+
+      .card-action-meta {
+        width: 100%;
+        justify-content: space-between;
+
+        .queue-search-field-wrap {
+          width: 100%;
+          flex: 1;
+
+          .queue-search-input {
+            width: 100% !important;
+            min-width: 0 !important;
+
+            &:focus {
+              min-width: 0 !important;
+            }
+          }
+        }
+      }
+    }
+
     .title-with-badge {
       display: flex;
       align-items: center;
@@ -234,7 +265,7 @@
   }
 
   table.data-table.unified-queue-table {
-    width: max-content !important;
+
     min-width: 1080px !important;
     max-width: none !important;
     table-layout: auto !important;
@@ -386,6 +417,13 @@
           line-height: 1.25;
         }
 
+        .lead-tags-row {
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          flex-wrap: wrap;
+        }
+
         .lead-source-chip {
           font-size: 0.625rem;
           font-weight: 600;
@@ -399,6 +437,32 @@
           width: fit-content;
           max-width: 120px;
           line-height: 1.2;
+        }
+
+        .lead-followup-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.2rem;
+          font-size: 0.625rem;
+          font-weight: 700;
+          color: #92400E;
+          background: #FEF3C7;
+          border: 1px solid #FDE68A;
+          padding: 0.08rem 0.45rem;
+          border-radius: 4px;
+          line-height: 1.2;
+          white-space: nowrap;
+
+          .fs-12 {
+            font-size: 12px;
+          }
+
+          &.due-alert {
+            background: #FEE2E2;
+            color: #B91C1C;
+            border-color: #FCA5A5;
+            animation: badge-pulse-alert 1.5s infinite;
+          }
         }
       }
     }
@@ -1015,4 +1079,108 @@
   animation: callBtnPulseShake 1.6s infinite ease-in-out !important;
   background: linear-gradient(135deg, #DC2626 0%, #EF4444 100%) !important;
   color: #FFFFFF !important;
+}
+
+.reminder-due-alert-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: linear-gradient(135deg, #FEF2F2 0%, #FFF1F2 100%);
+  border: 1.5px solid #FCA5A5;
+  border-radius: 12px;
+  padding: 0.75rem 1.15rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.12);
+  animation: banner-slide-in 0.3s ease-out;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+    padding: 0.65rem 0.85rem;
+
+    .btn-filter-followups {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+
+  .alert-icon-ring {
+    width: 38px;
+    height: 38px;
+    min-width: 38px;
+    border-radius: 50%;
+    background: #EF4444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+
+    .icon-bell-pulse {
+      font-size: 20px;
+      animation: bell-swing 1s ease-in-out infinite;
+    }
+  }
+
+  .alert-msg-wrap {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+
+    .alert-title {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: #991B1B;
+      line-height: 1.2;
+    }
+
+    .alert-sub {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #B91C1C;
+    }
+  }
+
+  .btn-filter-followups {
+    all: unset;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    background: #DC2626;
+    color: #ffffff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.45rem 0.95rem;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+    transition: all 0.18s ease;
+    white-space: nowrap;
+
+    &:hover {
+      background: #B91C1C;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4);
+    }
+  }
+}
+
+@keyframes bell-swing {
+  0%, 100% { transform: rotate(0); }
+  20%, 60% { transform: rotate(14deg); }
+  40%, 80% { transform: rotate(-14deg); }
+}
+
+@keyframes badge-pulse-alert {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.15); }
+}
+
+@keyframes banner-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }

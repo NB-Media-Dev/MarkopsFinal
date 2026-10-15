@@ -23,6 +23,19 @@
   </div>
 }
 
+@if (dueRemindersCount > 0) {
+  <div class="reminder-due-alert-banner">
+    <div class="alert-icon-ring">
+      <span class="material-symbols-outlined icon-bell-pulse">notifications_active</span>
+    </div>
+    <div class="alert-msg-wrap">
+      <strong class="alert-title">{{ dueRemindersCount }} Scheduled Follow-up {{ dueRemindersCount === 1 ? 'Reminder is' : 'Reminders are' }} Due Now!</strong>
+      <span class="alert-sub">Leads are waiting for their scheduled callback. Click to prioritize.</span>
+    </div>
+
+  </div>
+}
+
 <div class="table-card card-full-queue">
   <div class="card-title-bar">
     <div class="title-with-badge">
@@ -144,9 +157,23 @@
                 </div>
                 <div class="lead-identity">
                   <span class="lead-fullname">{{ lead.firstName }} {{ lead.lastName }}</span>
-                  @if (lead.source) {
-                    <span class="lead-source-chip">{{ lead.source }}</span>
-                  }
+                  <div class="lead-tags-row">
+                    @if (lead.source) {
+                      <span class="lead-source-chip">{{ lead.source }}</span>
+                    }
+                    @if (getFollowUpTimeLabelFn(lead); as fuTime) {
+                      <span
+                        class="lead-followup-badge"
+                        [class.due-alert]="isFollowUpDueFn(lead)"
+                        [title]="isFollowUpDueFn(lead) ? 'Scheduled Call Reminder Alert! Due Now' : 'Scheduled Follow-up Callback'"
+                      >
+                        <span class="material-symbols-outlined fs-12 align-middle">
+                          {{ isFollowUpDueFn(lead) ? 'alarm_on' : 'alarm' }}
+                        </span>
+                        <span>{{ isFollowUpDueFn(lead) ? 'Due: ' : 'Reminder: ' }}{{ fuTime }}</span>
+                      </span>
+                    }
+                  </div>
                 </div>
               </div>
             </td>

@@ -22,16 +22,24 @@
   border: 1px solid rgba(226, 232, 240, 0.8);
 
   @media (max-width: 640px) {
-    max-width: 100% !important;
-    width: 100% !important;
+    max-width: 95vw !important;
+    width: 95vw !important;
     border-radius: 16px !important;
+    padding: 0;
   }
 
   &.lead-history-modal {
-    max-width: 520px;
+    max-width: 540px;
+    width: 100%;
     display: flex;
     flex-direction: column;
-    max-height: 85vh;
+    max-height: 88vh;
+
+    @media (max-width: 640px) {
+      max-width: 95vw !important;
+      width: 95vw !important;
+      max-height: 92vh;
+    }
   }
 }
 
@@ -468,6 +476,7 @@
   }
 
   &.status-pill-emerald,
+  &.status-pill-connected,
   &.status-pill-qualified {
     background-color: #D1FAE5;
     color: #065F46;

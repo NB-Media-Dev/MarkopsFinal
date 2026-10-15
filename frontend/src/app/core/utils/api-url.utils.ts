@@ -12,12 +12,10 @@ export function getBackendBaseUrl(): string {
     const hostname = window.location.hostname || 'localhost';
     const port = window.location.port;
 
-    // When deployed on Render (e.g. markopsfinal-1.onrender.com), connect to live backend service
     if (hostname.includes('onrender.com') || hostname.includes('markops')) {
       return 'https://markopsfinal.onrender.com';
     }
 
-    // In local development or LAN testing (e.g. port 4200, localhost, 127.0.0.1, or private LAN IPs like 192.168.x.x, 10.x.x.x)
     const isDevPort = port === '4200' || port === '4201' || port === '4202';
     const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
     const isLanIp =

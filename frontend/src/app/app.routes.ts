@@ -198,7 +198,7 @@ export const routes: Routes = [
         path: 'designer-tasks',
         loadComponent: () =>
           import('./features/designer/designer-dashboard.component').then((m) => m.DesignerDashboardComponent),
-        data: { title: 'Own Tasks', icon: 'task_alt' },
+        data: { title: 'Designer', icon: 'palette' },
       },
       {
         path: 'designer-tasks/:id',

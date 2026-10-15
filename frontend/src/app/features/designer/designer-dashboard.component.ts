@@ -81,6 +81,18 @@ export class DesignerDashboardComponent implements OnInit {
   readonly selectedDesignerId = signal<string | null>(null);
   readonly showDesignersDirectory = signal<boolean>(true);
 
+  readonly currentRoutePath = computed<string>(() => {
+    return this.router.url.split('?')[0].toLowerCase();
+  });
+
+  readonly pageHeaderTitle = computed<string>(() => {
+    return 'Designer';
+  });
+
+  readonly activeProductName = computed<string>(() => {
+    return this.resolvedActiveProduct() || 'Careermate';
+  });
+
   readonly resolvedActiveProduct = computed<string | null>(() => {
     const prod = this.productFilterSignal()?.trim();
     if (prod) return prod;
@@ -575,13 +587,17 @@ export class DesignerDashboardComponent implements OnInit {
       if (filter === 'IN_PROGRESS') {
         matchesStatus = t.status === 'IN_PROGRESS' || t.status === 'ACCEPTED';
       } else if (filter === 'REVISION_REQUIRED') {
-        matchesStatus = t.status === 'REVISION_REQUIRED';
+        matchesStatus = t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED';
       } else if (filter === 'SUBMITTED') {
         matchesStatus = t.status === 'SUBMITTED' || t.status === 'RESUBMITTED' || t.status === 'UNDER_REVIEW';
       } else if (filter === 'COMPLETED') {
         matchesStatus = t.status === 'APPROVED' || t.status === 'PUBLISHED' || t.status === 'COMPLETED';
       } else if (filter === 'BDM_FLOW') {
         matchesStatus = t.creatorRole === 'BDM' || Boolean(t.createdBy && String(t.createdBy).toLowerCase().includes('bdm'));
+      } else if (filter === 'COMMENTS') {
+        matchesStatus = Boolean(t.reviewerFeedback || (t.comments && t.comments.length > 0));
+      } else if (filter === 'FILES') {
+        matchesStatus = Boolean((t.versions && t.versions.length > 0) || t.attachmentUrl);
       }
 
       return matchesSearch && matchesStatus;
@@ -592,6 +608,15 @@ export class DesignerDashboardComponent implements OnInit {
     await this.authService.ensureInitialized();
 
     this.route.queryParams.subscribe((params) => {
+      const pkgParam = params['workspace'] || params['packageFilter'];
+      if (pkgParam && !this.packageFilterSignal()) {
+        this.packageFilterSignal.set(pkgParam);
+      }
+      const prodParam = params['package'] || params['product'];
+      if (prodParam && !this.productFilterSignal()) {
+        this.productFilterSignal.set(prodParam);
+      }
+
       const view = params['view'] || params['tab'];
       if (view === 'my' || view === 'my_tasks' || view === 'my-tasks') {
         this.showDesignersDirectory.set(false);
@@ -606,6 +631,16 @@ export class DesignerDashboardComponent implements OnInit {
         this.selectedDesignerId.set(null);
       } else if (this.isDesigner()) {
         this.showDesignersDirectory.set(false);
+        const currentPath = this.router.url.split('?')[0].toLowerCase();
+        if (currentPath.includes('submissions')) {
+          this.statusFilter.set('SUBMITTED');
+        } else if (currentPath.includes('revisions')) {
+          this.statusFilter.set('REVISION_REQUIRED');
+        } else if (currentPath.includes('comments')) {
+          this.statusFilter.set('COMMENTS');
+        } else if (currentPath.includes('files')) {
+          this.statusFilter.set('FILES');
+        }
       } else if (!this.embedded) {
         this.showDesignersDirectory.set(true);
       }
@@ -848,11 +883,10 @@ export class DesignerDashboardComponent implements OnInit {
     this.taskService.closeTaskDetail();
     const baseRoute = this.isDesigner() ? '/designer-tasks' : '/tasks';
     let returnUrl = this.router.url;
-    if (this.embedded) {
-      const prod = this.productFilter || 'Careermate';
-      const pkg = this.packageFilter || task.packageName || '';
-      returnUrl = `/package-works?package=${encodeURIComponent(prod)}&workspace=${encodeURIComponent(pkg)}&dept=DESIGNER`;
-    }
+    const prod = this.productFilter || this.activeProductName() || 'Careermate';
+    const pkg = this.packageFilter || task.packageName || 'Test';
+    returnUrl = `/package-works?package=${encodeURIComponent(prod)}&workspace=${encodeURIComponent(pkg)}&dept=DESIGNER`;
+
     this.router.navigate([baseRoute, task.id], {
       queryParams: { returnUrl },
     });

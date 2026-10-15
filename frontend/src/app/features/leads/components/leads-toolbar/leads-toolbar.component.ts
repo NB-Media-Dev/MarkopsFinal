@@ -9,8 +9,6 @@ import { FormsModule } from '@angular/forms';
   templateUrl: './leads-toolbar.component.html',
   styleUrl: './leads-toolbar.component.scss',
 })
-
-//lead option kulla vandha ellam campagin um card format la list aagaum
 export class LeadsToolbarComponent {
   @Input() searchQuery = '';
   @Input() filterStatus = 'ALL';

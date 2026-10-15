@@ -20,8 +20,8 @@
                 <span>{{ lead.phone }}</span>
               </a>
               <span class="sub-dot">&bull;</span>
-              <span class="status-mini-pill" [ngClass]="getStatusBadgeClassFn(lead.status)">
-                {{ formatStatus(lead.status) }}
+              <span class="status-mini-pill" [ngClass]="getStatusBadgeClassFn(getLeadStatus())">
+                {{ formatStatus(getLeadStatus()) }}
               </span>
             </p>
           </div>
@@ -33,7 +33,7 @@
       <div class="modal-body history-modal-body">
         @if (leadHistoryCalls.length > 0) {
           <div class="timeline-feed-list custom-scroll">
-            @for (call of leadHistoryCalls; track call.id || call) {
+            @for (call of leadHistoryCalls; track call.id || $index) {
               <div class="timeline-card-item">
                 <div class="timeline-card-top">
                   <div class="caller-profile">

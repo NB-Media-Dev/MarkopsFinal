@@ -210,7 +210,8 @@ export class TaskCardComponent {
       case 'SUBMITTED':
       case 'RESUBMITTED':
       case 'UNDER_REVIEW': return 'badge-primary';
-      case 'REVISION_REQUIRED': return 'badge-danger';
+      case 'REVISION_REQUIRED':
+      case 'REDESIGN_REQUIRED': return 'badge-danger';
       case 'APPROVED':
       case 'PUBLISHED':
       case 'COMPLETED': return 'badge-success';

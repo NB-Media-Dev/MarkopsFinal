@@ -84,6 +84,98 @@
       </div>
     </div>
 
+    <div class="pipeline-cards-grid">
+      <button
+        type="button"
+        class="hub-kpi-card card-indigo"
+        [class.active]="pipelineStatusFilter === 'ALL'"
+        (click)="setPipelineFilter('ALL')"
+      >
+        <div class="kpi-squircle-icon icon-indigo">
+          <span class="material-symbols-outlined">dataset</span>
+        </div>
+        <div class="kpi-info-cluster">
+          <div class="kpi-top-row">
+            <span class="kpi-title">All Leads</span>
+        
+          </div>
+          <div class="kpi-value">{{ pipelineCounts.all }}</div>
+        </div>
+      </button>
+
+      <button
+        type="button"
+        class="hub-kpi-card card-amber"
+        [class.active]="pipelineStatusFilter === 'FOLLOW_UP'"
+        (click)="setPipelineFilter('FOLLOW_UP')"
+      >
+        <div class="kpi-squircle-icon icon-amber">
+          <span class="material-symbols-outlined">alarm</span>
+        </div>
+        <div class="kpi-info-cluster">
+          <div class="kpi-top-row">
+            <span class="kpi-title">Follow-ups</span>
+        
+          </div>
+          <div class="kpi-value">{{ pipelineCounts.followUp }}</div>
+        </div>
+      </button>
+
+      <button
+        type="button"
+        class="hub-kpi-card card-purple"
+        [class.active]="pipelineStatusFilter === 'INTERESTED'"
+        (click)="setPipelineFilter('INTERESTED')"
+      >
+        <div class="kpi-squircle-icon icon-purple">
+          <span class="material-symbols-outlined">thumb_up</span>
+        </div>
+        <div class="kpi-info-cluster">
+          <div class="kpi-top-row">
+            <span class="kpi-title">Interested</span>
+        
+          </div>
+          <div class="kpi-value">{{ pipelineCounts.interested }}</div>
+        </div>
+      </button>
+
+      <button
+        type="button"
+        class="hub-kpi-card card-emerald"
+        [class.active]="pipelineStatusFilter === 'QUALIFIED'"
+        (click)="setPipelineFilter('QUALIFIED')"
+      >
+        <div class="kpi-squircle-icon icon-emerald">
+          <span class="material-symbols-outlined">verified</span>
+        </div>
+        <div class="kpi-info-cluster">
+          <div class="kpi-top-row">
+            <span class="kpi-title">Paid / Qualified</span>
+         
+          </div>
+          <div class="kpi-value">{{ pipelineCounts.qualified }}</div>
+        </div>
+      </button>
+
+      <button
+        type="button"
+        class="hub-kpi-card card-rose"
+        [class.active]="pipelineStatusFilter === 'RETRY'"
+        (click)="setPipelineFilter('RETRY')"
+      >
+        <div class="kpi-squircle-icon icon-rose">
+          <span class="material-symbols-outlined">phone_missed</span>
+        </div>
+        <div class="kpi-info-cluster">
+          <div class="kpi-top-row">
+            <span class="kpi-title">Retry / Busy</span>
+        
+          </div>
+          <div class="kpi-value">{{ pipelineCounts.retry }}</div>
+        </div>
+      </button>
+    </div>
+
     @if (selectedCampaign !== 'ALL' || dateFilter !== 'ALL') {
       <div class="active-filter-tags-strip">
         <div class="active-tags-list">

@@ -79,7 +79,7 @@ async function findTask(taskId) {
   if (dbPool) {
     try {
       const [rows] = await dbPool.query(`
-        SELECT t.*, u.full_name as assignee_full_name, c.full_name as creator_full_name, COALESCE(cr.code, 'ADMINISTRATOR') as creator_role
+        SELECT t.*, u.full_name as assignee_full_name, c.full_name as creator_full_name, c.email as creator_email, COALESCE(cr.code, 'ADMINISTRATOR') as creator_role
         FROM tasks t
         LEFT JOIN users u ON t.assigned_to = u.id
         LEFT JOIN users c ON t.created_by = c.id
@@ -179,6 +179,7 @@ async function findTask(taskId) {
           priority: row.priority || 'MEDIUM',
           createdBy: row.created_by || 1,
           creatorName: row.creator_full_name || 'Manager',
+          creatorEmail: row.creator_email || '',
           creatorRole: detectedRole,
           assignedTo: row.assigned_to || '',
           assigneeName: row.assignee_full_name || 'Designer',
@@ -874,12 +875,18 @@ async function handleStatusTransition(req, res) {
 
  
   const validTransitions = {
+    DRAFT: ['ASSIGNED', 'IN_PROGRESS'],
     ASSIGNED: ['IN_PROGRESS'],
-    IN_PROGRESS: ['SUBMITTED'],
-    SUBMITTED: ['APPROVED', 'REDESIGN_REQUIRED', 'REVISION_REQUIRED'],
+    ACCEPTED: ['IN_PROGRESS'],
+    IN_PROGRESS: ['SUBMITTED', 'UNDER_REVIEW'],
+    SUBMITTED: ['APPROVED', 'REDESIGN_REQUIRED', 'REVISION_REQUIRED', 'IN_PROGRESS'],
+    RESUBMITTED: ['APPROVED', 'REDESIGN_REQUIRED', 'REVISION_REQUIRED', 'IN_PROGRESS'],
+    UNDER_REVIEW: ['APPROVED', 'REDESIGN_REQUIRED', 'REVISION_REQUIRED', 'IN_PROGRESS'],
     REDESIGN_REQUIRED: ['IN_PROGRESS'],
     REVISION_REQUIRED: ['IN_PROGRESS'],
-    APPROVED: [], 
+    APPROVED: ['PUBLISHED', 'COMPLETED'],
+    PUBLISHED: ['COMPLETED'],
+    COMPLETED: [],
   };
 
   if (validTransitions[previousStatus] && !validTransitions[previousStatus].includes(newStatus)) {
@@ -1299,9 +1306,9 @@ router.post('/tasks/:id/start', async (req, res) => {
     return res.status(403).json({ error: 'Permission Denied: Only assigned designer can start work.' });
   }
 
-  if (task.status !== 'ASSIGNED') {
+  if (task.status !== 'ASSIGNED' && task.status !== 'DRAFT' && task.status !== 'ACCEPTED') {
     return res.status(400).json({
-      error: `Invalid task status transition: Cannot start work on task with status "${task.status}". Expected "ASSIGNED".`,
+      error: `Invalid task status transition: Cannot start work on task with status "${task.status}". Expected "ASSIGNED", "DRAFT", or "ACCEPTED".`,
     });
   }
 
@@ -1351,9 +1358,9 @@ router.post('/tasks/:id/approve', async (req, res) => {
     return res.status(403).json({ error: 'Permission Denied: Only the user who created this task can approve designs.' });
   }
 
-  if (task.status !== 'SUBMITTED') {
+  if (task.status !== 'SUBMITTED' && task.status !== 'RESUBMITTED' && task.status !== 'UNDER_REVIEW') {
     return res.status(400).json({
-      error: `Invalid task status transition: Cannot approve design when task status is "${task.status}". Expected "SUBMITTED".`,
+      error: `Invalid task status transition: Cannot approve design when task status is "${task.status}". Expected review status ("SUBMITTED", "RESUBMITTED", or "UNDER_REVIEW").`,
     });
   }
 
@@ -1381,9 +1388,9 @@ router.post('/tasks/:id/redesign', async (req, res) => {
     return res.status(403).json({ error: 'Permission Denied: Only the user who created this task can request redesign.' });
   }
 
-  if (task.status !== 'SUBMITTED') {
+  if (task.status !== 'SUBMITTED' && task.status !== 'RESUBMITTED' && task.status !== 'UNDER_REVIEW') {
     return res.status(400).json({
-      error: `Invalid task status transition: Cannot request redesign when task status is "${task.status}". Expected "SUBMITTED".`,
+      error: `Invalid task status transition: Cannot request redesign when task status is "${task.status}". Expected review status ("SUBMITTED", "RESUBMITTED", or "UNDER_REVIEW").`,
     });
   }
 
@@ -1691,7 +1698,7 @@ router.get('/designer/dashboard-metrics', async (req, res) => {
   const dueToday = designerTasks.filter((t) => t.dueDate === todayStr);
   const overdue = designerTasks.filter((t) => t.dueDate && t.dueDate < todayStr && t.status !== 'COMPLETED' && t.status !== 'APPROVED');
   const submittedWaiting = designerTasks.filter((t) => t.status === 'SUBMITTED' || t.status === 'RESUBMITTED' || t.status === 'UNDER_REVIEW');
-  const revisionRequired = designerTasks.filter((t) => t.status === 'REVISION_REQUIRED');
+  const revisionRequired = designerTasks.filter((t) => t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED');
   const completed = designerTasks.filter((t) => t.status === 'APPROVED' || t.status === 'PUBLISHED' || t.status === 'COMPLETED');
 
   let totalRevisions = 0;

@@ -90,21 +90,21 @@ export class PackageWorksComponent implements OnInit {
         return {
           banner: '/classmate-hero-banner.jpg',
           logo: '/vidhvaa-class-img.png',
-  
+
           title: 'Classmate',
         };
       case 'pkg_jesus_messanger':
         return {
           banner: '/jesus-hero-banner.jpg',
           logo: '/jesus-img.png',
-      
+
           title: 'Jesus the Messenger',
         };
       default:
         return {
           banner: '/careermate-hero-banner.jpg',
           logo: '/vidhvaa-career-img.png',
-     
+
           title: 'CareerMate',
         };
     }
@@ -532,7 +532,7 @@ export class PackageWorksComponent implements OnInit {
     }
 
 
-    if (role === 'ADMINISTRATOR' || role === 'MARKETING_MANAGER' || role === 'BDM') {
+    if (role === 'ADMINISTRATOR') {
       const mgmtTabs: RoleOperationTab[] = [];
       mgmtTabs.push({ id: 'ANALYTICS_OVERVIEW', label: 'Overview', icon: 'grid_view' });
       mgmtTabs.push({ id: 'TRANSACTIONS', label: 'Transactions', icon: 'payments' });
@@ -581,7 +581,7 @@ export class PackageWorksComponent implements OnInit {
     this.scrollToPageTop();
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { dept: deptId },
+      queryParams: { dept: deptId, tab: null, subtab: null },
       queryParamsHandling: 'merge',
     });
   }
@@ -608,6 +608,76 @@ export class PackageWorksComponent implements OnInit {
     if (!deptId) return 'Department';
     const dept = this.operationDepartments().find((d) => d.id === deptId);
     return dept?.label || deptId;
+  }
+
+  readonly hasActiveSubTab = computed<boolean>(() => {
+    const dept = this.activeDepartment();
+    const tab = this.activeOperationTab();
+    if (!dept || !tab) return false;
+
+    if (dept === 'DIGITAL_MARKETING') {
+      return tab !== 'MARKETING_OVERVIEW' && tab !== 'OVERVIEW';
+    }
+
+    if (dept === 'ANALYTICS') {
+      return tab !== 'ANALYTICS_OVERVIEW' && tab !== 'OVERVIEW' && tab !== 'MANAGEMENT';
+    }
+
+    return false;
+  });
+
+  readonly hasActiveReportRole = computed<boolean>(() => {
+    return (
+      this.activeDepartment() === 'ANALYTICS' &&
+      this.activeOperationTab() === 'REPORTS' &&
+      this.activeReportRole() !== 'ALL' &&
+      !!this.activeReportRole()
+    );
+  });
+
+  getActiveSubTabTitle(): string {
+    const tabId = this.activeOperationTab();
+    const dept = this.operationDepartments().find((d) => d.id === this.activeDepartment());
+    const tab = dept?.tabs.find((t) => t.id === tabId);
+    if (tab) return tab.label;
+
+    switch (tabId) {
+      case 'CAMPAIGNS':
+        return 'Campaigns';
+      case 'ADS':
+        return 'Ads Metrics';
+      case 'LEADS':
+        return 'Leads';
+      case 'TELECALLING_VIEW':
+        return 'Telecalling';
+      case 'TRANSACTIONS':
+        return 'Transactions';
+      case 'REPORTS':
+        return 'Reports';
+      case 'AUDITS':
+        return 'Audit Logs';
+      default:
+        return tabId;
+    }
+  }
+
+  goToDepartmentOverview(deptId?: 'DESIGNER' | 'DIGITAL_MARKETING' | 'TELECALLING' | 'ANALYTICS' | null): void {
+    const currentDept = deptId || this.activeDepartment();
+    if (!currentDept) {
+      this.backToPackageHub();
+      return;
+    }
+    if (currentDept === 'DIGITAL_MARKETING') {
+      this.selectOperationTab('MARKETING_OVERVIEW');
+    } else if (currentDept === 'ANALYTICS') {
+      this.selectOperationTab('ANALYTICS_OVERVIEW');
+    } else {
+      const dept = this.operationDepartments().find((d) => d.id === currentDept);
+      if (dept && dept.tabs.length > 0) {
+        this.selectOperationTab(dept.tabs[0].id);
+      }
+    }
+    this.scrollToPageTop();
   }
 
   readonly filteredTasks = computed<Task[]>(() => {
@@ -999,7 +1069,7 @@ export class PackageWorksComponent implements OnInit {
     const allCalls = this.leadService.calls();
     const allAds = this.campaignService.ads();
 
-   
+
     const scopedTasks = this.taskService.tasks().filter((t) =>
       isTaskForPackage(t, targetFilter, allPkgs, expectedProductId)
     );
@@ -1542,20 +1612,26 @@ export class PackageWorksComponent implements OnInit {
       }
 
       if (requestedTab) {
-        this.selectOperationTab(requestedTab);
+        if (this.activeOperationTab() !== requestedTab) {
+          this.selectOperationTab(requestedTab);
+        }
       } else if (this.activeDepartment() === 'TELECALLING') {
         const role = this.currentRole();
         if (role === 'ADMINISTRATOR' || role === 'MARKETING_MANAGER') {
-          this.selectOperationTab('TELECALLER_MEMBERS');
+          if (this.activeOperationTab() !== 'TELECALLER_MEMBERS') this.selectOperationTab('TELECALLER_MEMBERS');
         } else {
-          this.selectOperationTab('TELECALLING');
+          if (this.activeOperationTab() !== 'TELECALLING') this.selectOperationTab('TELECALLING');
         }
       } else if (this.activeDepartment() === 'DESIGNER') {
-        this.selectOperationTab('TASKS');
+        if (this.activeOperationTab() !== 'TASKS') this.selectOperationTab('TASKS');
       } else if (this.activeDepartment() === 'DIGITAL_MARKETING') {
-        this.selectOperationTab('MARKETING_OVERVIEW');
+        if (this.activeOperationTab() !== 'MARKETING_OVERVIEW' && !this.hasActiveSubTab()) {
+          this.selectOperationTab('MARKETING_OVERVIEW');
+        }
       } else if (this.activeDepartment() === 'ANALYTICS') {
-        this.selectOperationTab('ANALYTICS_OVERVIEW');
+        if (this.activeOperationTab() !== 'ANALYTICS_OVERVIEW' && !this.hasActiveSubTab()) {
+          this.selectOperationTab('ANALYTICS_OVERVIEW');
+        }
       }
     } else {
       if (!requestedWorkspace) {
@@ -1826,13 +1902,15 @@ export class PackageWorksComponent implements OnInit {
       case 'DESIGNER':
         return 'Designers';
       case 'DIGITAL':
+      case 'DIGITAL_MARKETING':
         return 'Digital Marketing';
       case 'TELECALLER':
+      case 'TELECALLING':
         return 'Telecalling';
       case 'BDM':
         return 'BDM';
       default:
-        return 'Teams';
+        return roleCode || 'Teams';
     }
   }
 
@@ -2100,6 +2178,16 @@ export class PackageWorksComponent implements OnInit {
     if (tabId === 'AUDITS' || tabId === 'REPORTS' || tabId === 'TASKS') {
       this.fetchAuditLogs();
       this.taskService.loadTasks();
+    }
+
+    const currentTabInRoute = this.route.snapshot.queryParams['tab'] || this.route.snapshot.queryParams['subtab'];
+    const targetQueryTab = (tabId === 'MARKETING_OVERVIEW' || tabId === 'ANALYTICS_OVERVIEW') ? null : tabId;
+    if (currentTabInRoute !== (targetQueryTab || undefined)) {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { tab: targetQueryTab },
+        queryParamsHandling: 'merge',
+      });
     }
   }
 

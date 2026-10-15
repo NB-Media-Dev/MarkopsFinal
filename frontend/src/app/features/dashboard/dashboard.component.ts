@@ -34,6 +34,15 @@ export class DashboardComponent implements OnInit {
     });
   }
 
+  getCardTitle(pkg: any): string {
+    const short = String(pkg?.shortName || '').toLowerCase();
+    const name = String(pkg?.name || '').toLowerCase();
+    if (short.includes('career') || name.includes('career')) return 'Careermate';
+    if (short.includes('class') || name.includes('class')) return 'Classmate';
+    if (short.includes('jesus') || name.includes('jesus')) return 'Jesus The Messenger';
+    return pkg?.shortName || pkg?.name || '';
+  }
+
   readonly userRole = computed(() => this.authService.currentUser()?.role || 'ADMINISTRATOR');
 
   readonly greeting = computed(() => {

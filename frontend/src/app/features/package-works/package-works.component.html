@@ -1,162 +1,17 @@
 <div class="package-works-page">
 
-  <header class="page-header">
-    <div class="header-titles-group">
-
-      <nav class="clean-breadcrumbs" aria-label="Breadcrumb">
-        <button type="button" class="btn-back" (click)="onBreadcrumbBack()" title="Go Back">
-          <span class="material-symbols-outlined icon-back">arrow_back</span>
-        </button>
-        <span class="bc-bar-divider" aria-hidden="true"></span>
-
-        <div class="breadcrumbs-list">
-          <a routerLink="/dashboard" class="bc-item bc-link" title="Dashboard">
-            <span class="material-symbols-outlined bc-home-icon">home</span>
-            <span>Dashboard</span>
-          </a>
-          <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
-
-          @if (activeWorkspacePackage(); as selectedPkg) {
-            <button
-              type="button"
-              (click)="closePackageWorkspace()"
-              class="bc-item bc-btn"
-              title="Back to Packages List"
-            >
-              <span>{{ activePackageMeta().name }}</span>
-            </button>
-            <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
-
-            @if (activeDepartment(); as currentDept) {
-              <button
-                type="button"
-                (click)="backToPackageHub()"
-                class="bc-item bc-btn"
-                [title]="'Back to ' + selectedPkg.name + ' Overview'"
-              >
-                <span>{{ selectedPkg.name }}</span>
-              </button>
-              <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
-
-              @if (
-                currentDept === 'DIGITAL_MARKETING' &&
-                activeOperationTab() &&
-                activeOperationTab() !== 'MARKETING_OVERVIEW'
-              ) {
-                <button
-                  type="button"
-                  (click)="selectOperationTab('MARKETING_OVERVIEW')"
-                  class="bc-item bc-btn"
-                  title="Back to Digital Marketing Overview"
-                >
-                  <span>Digital Marketing</span>
-                </button>
-                <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
-                <span class="bc-item bc-current">{{ getOperationTabLabel(activeOperationTab()) }}</span>
-              } @else if (
-                currentDept === 'ANALYTICS' &&
-                activeOperationTab() &&
-                activeOperationTab() !== 'ANALYTICS_OVERVIEW' &&
-                activeOperationTab() !== 'OVERVIEW' &&
-                activeOperationTab() !== 'MANAGEMENT'
-              ) {
-                <button
-                  type="button"
-                  (click)="selectOperationTab('ANALYTICS_OVERVIEW')"
-                  class="bc-item bc-btn"
-                  title="Back to Analytics & Management Overview"
-                >
-                  <span>Analytics & Management</span>
-                </button>
-                <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
-
-                @if (activeOperationTab() === 'REPORTS' && activeReportRole() !== 'ALL') {
-                  <button
-                    type="button"
-                    (click)="resetReportRole()"
-                    class="bc-item bc-btn"
-                    title="Back to Reports Overview"
-                  >
-                    <span>Reports</span>
-                  </button>
-                 
-                  <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
-
-                  <span class="bc-item bc-current">{{ getReportRoleLabel(activeReportRole()) }}</span>
-                } @else {
-                  <span class="bc-item bc-current">{{ getOperationTabLabel(activeOperationTab()) }}</span>
-                }
-              } @else {
-                <span class="bc-item bc-current">{{ getDepartmentTitle(currentDept) }}</span>
-              }
-            } @else {
-              <span class="bc-item bc-current">{{ selectedPkg.name }}</span>
-            }
-          } @else {
-            <span class="bc-item bc-current">{{ activePackageMeta().name }}</span>
-          }
-        </div>
-      </nav>
-
-      <div class="page-title-block">
-
-        @if (!activeWorkspacePackage()) {
-          <div class="catalog-heading-row">
-            <h1 class="page-main-heading">{{ activePackageMeta().name }} Product</h1>
-          </div>
-        }
-      </div>
-    </div>
-
-    <div class="header-actions-group">
-
-      @if (!activeWorkspacePackage()) {
-        <div class="package-pill-switcher">
-          @for (pkg of availablePackages; track pkg) {
-            <button
-              class="package-switch-pill"
-              [class.active]="activePackageName().toLowerCase() === pkg.name.toLowerCase()"
-              [ngClass]="'pkg-pill-' + pkg.badgeColor"
-              (click)="selectPackage(pkg.name)"
-            >
-              <span>{{ pkg.name }}</span>
-              @if (getPackageCountForProduct(pkg.id) > 0) {
-                <span class="pkg-pill-count-chip">
-                  {{ getPackageCountForProduct(pkg.id) }}
-                </span>
-              }
-            </button>
-          }
-        </div>
-
-      }
-
-
-    </div>
-  </header>
-
-  @if (!activeWorkspacePackage()) {
-
-    <section class="catalog-toolbar" aria-label="Package catalog controls">
-      <div class="catalog-toolbar-header">
-
-        <div class="catalog-title-group">
-          <h2>Available Packages</h2>
-
+  <header class="page-clean-branding-header">
+    @if (!activeWorkspacePackage()) {
+      <div class="header-titles-block">
+        <h1 class="page-main-orange-title">Available Package</h1>
+        <div class="page-breadcrumb-subrow">
+          <a routerLink="/dashboard" class="bc-link">{{ activePackageMeta().name }}</a>
+          <span class="bc-sep">&gt;</span>
+          <span class="bc-current">Available Package</span>
         </div>
       </div>
-      <div class="catalog-actions">
-        <label class="package-search">
-          <span class="material-symbols-outlined" aria-hidden="true">search</span>
-          <input
-            type="search"
-            placeholder="Search packages..."
-            aria-label="Search packages"
-            [ngModel]="packageSearchQuery()"
-            (ngModelChange)="packageSearchQuery.set($event)"
-          />
-        </label>
 
+      <div class="catalog-header-actions">
         @if (canCreatePackage()) {
           <button
             (click)="openCreateProductPackageModal()"
@@ -168,7 +23,48 @@
           </button>
         }
       </div>
-    </section>
+    } @else if (!activeDepartment()) {
+      <div class="header-titles-block">
+        <h1 class="page-main-orange-title">Department Operations</h1>
+        <div class="page-breadcrumb-subrow">
+          <a routerLink="/dashboard" class="bc-link">{{ activePackageMeta().name }}</a>
+          <span class="bc-sep">&gt;</span>
+          <button type="button" class="bc-link-btn" (click)="closePackageWorkspace()">Available Package</button>
+          <span class="bc-sep">&gt;</span>
+          <span class="bc-current">Department Operations</span>
+        </div>
+      </div>
+    } @else {
+      @if (activeDepartment(); as currentDept) {
+        <div class="header-titles-block">
+          <h1 class="page-main-orange-title">{{ getDepartmentTitle(currentDept) }}</h1>
+          <div class="page-breadcrumb-subrow">
+            <a routerLink="/dashboard" class="bc-link">{{ activePackageMeta().name }}</a>
+            <span class="bc-sep">&gt;</span>
+            <button type="button" class="bc-link-btn" (click)="closePackageWorkspace()">Available Package</button>
+            <span class="bc-sep">&gt;</span>
+            <button type="button" class="bc-link-btn" (click)="backToPackageHub()">Department Operations</button>
+            <span class="bc-sep">&gt;</span>
+            @if (hasActiveSubTab()) {
+              <button type="button" class="bc-link-btn" (click)="goToDepartmentOverview(currentDept)">{{ getDepartmentTitle(currentDept) }}</button>
+              <span class="bc-sep">&gt;</span>
+              @if (hasActiveReportRole()) {
+                <button type="button" class="bc-link-btn" (click)="resetReportRole()">{{ getActiveSubTabTitle() }}</button>
+                <span class="bc-sep">&gt;</span>
+                <span class="bc-current">{{ getReportRoleLabel(activeReportRole()) }}</span>
+              } @else {
+                <span class="bc-current">{{ getActiveSubTabTitle() }}</span>
+              }
+            } @else {
+              <span class="bc-current">{{ getDepartmentTitle(currentDept) }}</span>
+            }
+          </div>
+        </div>
+      }
+    }
+  </header>
+
+  @if (!activeWorkspacePackage()) {
     <app-package-catalog
       [filteredProductPackages]="filteredProductPackages()"
       [activePackageMeta]="activePackageMeta()"
