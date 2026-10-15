@@ -3,7 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs/operators';
 import { io, Socket } from 'socket.io-client';
-import { getBackendBaseUrl } from '../utils/api-url.utils';
+import { getBackendBaseUrl, getAuthToken } from '../utils/api-url.utils';
 
 export interface LeadItem {
   id: string;
@@ -167,9 +167,27 @@ export class LeadTelecallingService {
     if (this.isBrowser) {
       try {
         const backendUrl = getBackendBaseUrl();
+        const token = getAuthToken();
+        let cachedUser: any = null;
+        try {
+          const userStr = localStorage.getItem('markops_user');
+          if (userStr) cachedUser = JSON.parse(userStr);
+        } catch {}
+
         this.socket = io(backendUrl, {
-          transports: ['polling', 'websocket'],
+          auth: {
+            token: token || undefined,
+            userId: cachedUser?.id,
+            role: cachedUser?.role,
+            email: cachedUser?.email,
+            fullName: cachedUser?.fullName,
+          },
+          transports: ['websocket', 'polling'],
           reconnectionAttempts: 5,
+        });
+
+        this.socket.on('connect_error', (error) => {
+          console.warn('[LeadTelecallingService] Realtime connection notice:', error.message);
         });
 
         this.socket.on('lead:status_changed', (data: { leadId: string; status: string }) => {

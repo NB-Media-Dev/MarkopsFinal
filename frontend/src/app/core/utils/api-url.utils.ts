@@ -10,15 +10,24 @@ export function getBackendBaseUrl(): string {
 
     const protocol = window.location.protocol || 'http:';
     const hostname = window.location.hostname || 'localhost';
-
-    // In local development, always route to Node.js backend on port 4000 regardless of frontend dev port
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return `${protocol}//${hostname}:4000`;
-    }
+    const port = window.location.port;
 
     // When deployed on Render (e.g. markopsfinal-1.onrender.com), connect to live backend service
     if (hostname.includes('onrender.com') || hostname.includes('markops')) {
       return 'https://markopsfinal.onrender.com';
+    }
+
+    // In local development or LAN testing (e.g. port 4200, localhost, 127.0.0.1, or private LAN IPs like 192.168.x.x, 10.x.x.x)
+    const isDevPort = port === '4200' || port === '4201' || port === '4202';
+    const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+    const isLanIp =
+      hostname.startsWith('192.168.') ||
+      hostname.startsWith('10.') ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname) ||
+      hostname.endsWith('.local');
+
+    if (port !== '4000' && (isDevPort || isLocalHost || isLanIp)) {
+      return `${protocol}//${hostname}:4000`;
     }
 
     return window.location.origin;

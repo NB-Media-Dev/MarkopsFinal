@@ -8,7 +8,7 @@ import { LeadTelecallingService } from './lead-telecalling.service';
 import { PackageService } from './package.service';
 import { Task } from '../models/task.model';
 import { FIXED_PACKAGES } from '../models/package.model';
-import { safeFetch, getBackendBaseUrl } from '../utils/api-url.utils';
+import { safeFetch, getBackendBaseUrl, getAuthToken } from '../utils/api-url.utils';
 
 export interface NotificationItem {
   id: string;
@@ -78,24 +78,24 @@ export class NotificationService {
   private initRealtimeSocket(): void {
     try {
       const currentUser = this.authService.currentUser();
-      const token = this.authService.accessToken();
-      if (!currentUser || !token) return;
+      const token = this.authService.accessToken() || getAuthToken();
+      if (!currentUser && !token) return;
       const backendUrl = getBackendBaseUrl();
       this.socket = io(backendUrl, {
         auth: {
-          token,
-          userId: currentUser.id,
-          role: currentUser.role,
-          email: currentUser.email,
-          fullName: currentUser.fullName,
+          token: token || undefined,
+          userId: currentUser?.id,
+          role: currentUser?.role,
+          email: currentUser?.email,
+          fullName: currentUser?.fullName,
         },
-        transports: ['polling', 'websocket'],
+        transports: ['websocket', 'polling'],
         reconnectionAttempts: 5,
         timeout: 10000,
       });
 
       this.socket.on('connect_error', (error) => {
-        console.error('[NotificationService] Realtime connection failed:', error.message);
+        console.warn('[NotificationService] Realtime connection notice:', error.message);
       });
 
       this.socket.on('notification:created', (rawNotif: NotificationItem) => {

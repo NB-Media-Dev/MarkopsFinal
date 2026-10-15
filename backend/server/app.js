@@ -201,21 +201,28 @@ app.use((err, req, res, next) => {
 function setupSocketIO(httpServer) {
   const io = new SocketIOServer(httpServer, {
     cors: {
-      origin: "*",
+      origin: corsOriginHandler,
       credentials: true,
       methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
     },
-    transports: ['websocket'],
+    transports: ['websocket', 'polling'],
     allowEIO3: true,
   });
 
   const authenticateSocket = authenticateJwt(dbPool);
   io.use((socket, next) => {
     const identity = socket.handshake.auth || {};
+    const token = identity.token || socket.handshake.headers?.authorization?.replace(/^Bearer\s+/i, '');
+    const userId = identity.userId || socket.handshake.headers?.['x-user-id'];
+
+    if (!token && !userId) {
+      return next();
+    }
+
     const req = {
       headers: {
-        authorization: identity.token ? `Bearer ${identity.token}` : '',
-        'x-user-id': identity.userId == null ? '' : String(identity.userId),
+        authorization: token ? `Bearer ${token}` : '',
+        'x-user-id': userId == null ? '' : String(userId),
         'x-user-role': identity.role || '',
         'x-user-email': identity.email || '',
         'x-user-name': identity.fullName || '',
@@ -237,18 +244,21 @@ function setupSocketIO(httpServer) {
 
     authenticateSocket(req, res, (error) => {
       nextCalled = true;
-      if (error) return next(error);
-      if (!req.user?.id) return next(new Error('Authentication required.'));
+      if (error || !req.user?.id) {
+        return next();
+      }
       socket.data.userId = String(req.user.id).trim().toLowerCase();
       return next();
     }).then(() => {
-      if (!nextCalled) next(new Error(res.body?.error || 'Authentication required.'));
-    }).catch(next);
+      if (!nextCalled) return next();
+    }).catch(() => next());
   });
 
   io.on('connection', (socket) => {
-    socket.join(`user:${socket.data.userId}`);
-    console.log('[Socket.IO] Realtime client connected:', socket.id);
+    if (socket.data.userId) {
+      socket.join(`user:${socket.data.userId}`);
+    }
+    console.log('[Socket.IO] Realtime client connected:', socket.id, socket.data.userId ? `(user: ${socket.data.userId})` : '(public)');
     socket.on('disconnect', () => {
       console.log('[Socket.IO] Realtime client disconnected:', socket.id);
     });
