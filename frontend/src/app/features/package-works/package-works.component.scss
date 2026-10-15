@@ -590,6 +590,36 @@
             font-weight: 700;
             cursor: default;
           }
+
+          &.bc-teams-pill-crumb {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            color: #ea580c;
+            font-weight: 700;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            padding: 0.16rem 0.55rem;
+            border-radius: 999px;
+            transition: all 0.16s ease;
+
+            .bc-crumb-back-icon {
+              font-size: 13px;
+              color: #ea580c;
+              transition: transform 0.16s ease;
+            }
+
+            &:hover {
+              background: #ea580c;
+              border-color: #ea580c;
+              color: #ffffff;
+
+              .bc-crumb-back-icon {
+                color: #ffffff;
+                transform: translateX(-2px);
+              }
+            }
+          }
         }
 
         .bc-sep-icon {
@@ -826,15 +856,7 @@
       align-items: center;
       gap: 0.75rem;
 
-      .workspace-product-badge {
-        padding: 0.4rem 0.9rem;
-        border-radius: 999px;
-        background: #EFF6FF;
-        color: #2563EB;
-        font-weight: 700;
-        font-size: 0.8125rem;
-        border: 1px solid #DBEAFE;
-      }
+
 
       .workspace-back-btn {
         display: inline-flex;

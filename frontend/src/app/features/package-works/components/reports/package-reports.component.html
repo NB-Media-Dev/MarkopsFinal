@@ -52,73 +52,512 @@
           }
         </div>
       } @else {
-        <!-- WHEN FILTERED BY ROLE OR SEARCH QUERY: DISPLAY FILTERED MEMBERS LIST -->
-        <div class="profile-cards-section-header with-back">
-          <div class="header-left-cluster">
-            <button
-              type="button"
-              class="btn-back-pill"
-              (click)="backToAllRoles()"
-              title="Back to All Teams"
-            >
-              <span class="material-symbols-outlined fs-15">arrow_back</span>
-              <span>All Teams</span>
-            </button>
-            <h3 class="profile-cards-main-title">
-              {{ getActiveRoleLabel() }} Reports
-            </h3>
-          </div>
-          <div class="showing-count-pill">
-            Showing {{ filteredTeamMembers.length }} of {{ reportEligibleMembers.length }} Members
-          </div>
-        </div>
+        <!-- TEAM MEMBER REPORTS WITH ACCORDION EFFECT (MATCHING SCREENSHOT) -->
+        <div class="team-reports-detail-page">
 
-        <div class="user-profile-cards-grid">
-          @for (u of filteredTeamMembers; track u.userId || u.email) {
-            <div class="user-profile-card">
-              <div class="user-profile-card-top">
-                @if (u.user?.avatarUrl) {
-                  <img
-                    [src]="getAvatarUrl(u.user?.avatarUrl)"
-                    [alt]="u.name"
-                    class="profile-avatar-circle avatar-img"
-                    (error)="onMemberAvatarError(u)"
-                  />
-                } @else {
-                  <div class="profile-avatar-circle" [ngClass]="u.avatarColor || 'avatar-purple'">
-                    {{ u.name ? u.name.charAt(0).toUpperCase() : '' }}
-                  </div>
-                }
-                <div class="profile-meta-content">
-                  <h4 class="profile-user-name" [title]="u.name">{{ u.name }}</h4>
-                  <div class="profile-user-role-wrap">
-                    <span class="role-text-label">Role:</span>
-                    <span class="role-badge-text" [ngClass]="u.roleBadgeClass">{{ u.roleLabel }}</span>
-                  </div>
-                </div>
-              </div>
+          <!-- COMPACT REPORT TOOLBAR (ZERO UNWANTED SPACE) -->
+          <div class="team-reports-compact-bar">
+            <div class="reports-bar-left">
+              <h2 class="team-member-reports-main-title">Team Member Reports</h2>
 
-              <div class="user-profile-card-footer">
+              @if (selectedRoleFilter !== 'ALL') {
+                <span class="role-scope-chip">{{ getActiveRoleLabel() }}</span>
+              }
+            </div>
+
+            <!-- RIGHT CONTROLS: USER DROPDOWN, FILTER DROPDOWN, DATE DROPDOWN -->
+            <div class="reports-bar-right">
+              <!-- USER DROPDOWN (SHOWS USER NAME) -->
+              <div class="dropdown-wrap-user position-relative">
                 <button
                   type="button"
-                  class="btn-profile-card-view"
-                  (click)="openUserDetailModal(u)"
-                  [title]="'View detailed records for ' + u.name"
+                  class="btn-top-outline-action btn-user-dropdown"
+                  (click)="toggleUserDropdown()"
+                  [class.active]="isUserDropdownOpen"
+                  title="Select user"
                 >
-                  <span class="material-symbols-outlined fs-16">visibility</span>
-                  <span>View</span>
+                  <span class="material-symbols-outlined fs-16 icon-gold">person</span>
+                  <span class="btn-user-name-text">{{ getSelectedMemberLabel() }}</span>
+                  <span class="material-symbols-outlined fs-15 text-muted">expand_more</span>
                 </button>
+
+                @if (isUserDropdownOpen) {
+                  <div class="top-action-dropdown-menu user-dropdown-menu">
+                    <!-- Option: All Users -->
+                    <button
+                      type="button"
+                      class="dropdown-menu-item user-dropdown-item"
+                      [class.active]="selectedMemberIdFilter === 'ALL'"
+                      (click)="selectMemberFilter('ALL')"
+                    >
+                      <div class="user-item-left">
+                        <div class="user-avatar-placeholder all-users-avatar">
+                          <span class="material-symbols-outlined fs-14">groups</span>
+                        </div>
+                        <div class="user-text-info">
+                          <span class="user-full-name">All Users</span>
+                          <span class="user-sub-role">Showing all team members</span>
+                        </div>
+                      </div>
+                      <span class="user-badge-count">{{ teamRoleMembers.length }}</span>
+                    </button>
+
+                    <div class="user-dropdown-divider"></div>
+
+                    @if (teamRoleMembers.length === 0) {
+                      <div class="user-dropdown-empty">
+                        No team members found in database
+                      </div>
+                    }
+
+                    <!-- Options: Individual Database Users -->
+                    @for (m of teamRoleMembers; track m.userId) {
+                      <button
+                        type="button"
+                        class="dropdown-menu-item user-dropdown-item"
+                        [class.active]="selectedMemberIdFilter === m.userId"
+                        (click)="selectMemberFilter(m.userId)"
+                      >
+                        <div class="user-item-left">
+                          @if (hasValidAvatar(m)) {
+                            <img
+                              [src]="getUserAvatarUrl(m)"
+                              [alt]="m.name"
+                              class="user-dropdown-avatar"
+                              (error)="onMemberAvatarError(m)"
+                            />
+                          } @else {
+                            <div class="user-avatar-placeholder">
+                              {{ getUserInitial(m) }}
+                            </div>
+                          }
+                          <div class="user-text-info">
+                            <span class="user-full-name">{{ m.name }}</span>
+                            <span class="user-sub-role">{{ m.roleLabel || m.department || 'Staff' }}</span>
+                          </div>
+                        </div>
+
+                        @if (selectedMemberIdFilter === m.userId) {
+                          <span class="material-symbols-outlined fs-16 check-icon">check</span>
+                        }
+                      </button>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- FILTER BUTTON & DROPDOWN -->
+              <div class="dropdown-wrap-filter position-relative">
+              
+
+                @if (isFilterDropdownOpen) {
+                  <div class="top-action-dropdown-menu">
+                    <button
+                      type="button"
+                      class="dropdown-menu-item"
+                      [class.active]="taskStatusSubFilter === 'ALL'"
+                      (click)="selectStatusFilter('ALL')"
+                    >
+                      All Tasks
+                    </button>
+                    <button
+                      type="button"
+                      class="dropdown-menu-item"
+                      [class.active]="taskStatusSubFilter === 'COMPLETED'"
+                      (click)="selectStatusFilter('COMPLETED')"
+                    >
+                      Approved / Completed
+                    </button>
+                    <button
+                      type="button"
+                      class="dropdown-menu-item"
+                      [class.active]="taskStatusSubFilter === 'IN_QUEUE'"
+                      (click)="selectStatusFilter('IN_QUEUE')"
+                    >
+                      Queue / In Progress
+                    </button>
+                    <button
+                      type="button"
+                      class="dropdown-menu-item"
+                      [class.active]="taskStatusSubFilter === 'REVISIONS'"
+                      (click)="selectStatusFilter('REVISIONS')"
+                    >
+                      Revisions Required
+                    </button>
+                  </div>
+                }
+              </div>
+
+              <!-- DATE BUTTON & DROPDOWN WITH CALENDAR -->
+              <div class="dropdown-wrap-date position-relative">
+                <button
+                  type="button"
+                  class="btn-top-outline-action"
+                  (click)="toggleDateDropdown()"
+                  [class.active]="isDateDropdownOpen || modalDateFilter !== 'ALL' || filterStartDate || filterEndDate"
+                  title="Filter by date or calendar"
+                >
+                  <span class="material-symbols-outlined fs-16 icon-gold">calendar_month</span>
+                  <span>{{ getActiveDateLabel() }}</span>
+                  <span class="material-symbols-outlined fs-15 text-muted">expand_more</span>
+                </button>
+
+                @if (isDateDropdownOpen) {
+                  <div class="top-action-dropdown-menu date-dropdown-menu">
+                    <!-- Preset chips grid -->
+                    <div class="date-presets-grid">
+                      <button
+                        type="button"
+                        class="date-preset-btn"
+                        [class.active]="modalDateFilter === 'ALL' && !filterStartDate && !filterEndDate"
+                        (click)="selectDateFilter('ALL')"
+                      >
+                        All Dates
+                      </button>
+                      <button
+                        type="button"
+                        class="date-preset-btn"
+                        [class.active]="modalDateFilter === 'TODAY' && !filterStartDate"
+                        (click)="selectDateFilter('TODAY')"
+                      >
+                        Today
+                      </button>
+                      <button
+                        type="button"
+                        class="date-preset-btn"
+                        [class.active]="modalDateFilter === 'YESTERDAY'"
+                        (click)="selectDateFilter('YESTERDAY')"
+                      >
+                        Yesterday
+                      </button>
+                      <button
+                        type="button"
+                        class="date-preset-btn"
+                        [class.active]="modalDateFilter === 'WEEK'"
+                        (click)="selectDateFilter('WEEK')"
+                      >
+                        1 Week
+                      </button>
+                      <button
+                        type="button"
+                        class="date-preset-btn"
+                        [class.active]="modalDateFilter === 'MONTH'"
+                        (click)="selectDateFilter('MONTH')"
+                      >
+                        1 Month
+                      </button>
+                    </div>
+
+                    <div class="date-dropdown-divider"></div>
+
+                    <!-- CALENDAR RANGE PICKER -->
+                    <div class="calendar-picker-box">
+                      <div class="calendar-picker-header">
+                        <span class="material-symbols-outlined fs-15 icon-gold">date_range</span>
+                        <span class="calendar-picker-title">Pick Date / Range</span>
+                      </div>
+
+                      <div class="calendar-fields-row">
+                        <div class="calendar-field">
+                          <label class="calendar-label">From</label>
+                          <input
+                            type="date"
+                            class="calendar-native-input"
+                            [max]="todayDateString"
+                            [ngModel]="filterStartDate"
+                            (ngModelChange)="onStartDateChange($event)"
+                          />
+                        </div>
+
+                        <div class="calendar-field">
+                          <label class="calendar-label">To</label>
+                          <input
+                            type="date"
+                            class="calendar-native-input"
+                            [max]="todayDateString"
+                            [min]="filterStartDate"
+                            [ngModel]="filterEndDate"
+                            (ngModelChange)="onEndDateChange($event)"
+                          />
+                        </div>
+                      </div>
+
+                      @if (filterStartDate || filterEndDate) {
+                        <div class="calendar-footer-actions">
+                          <button
+                            type="button"
+                            class="btn-calendar-clear"
+                            (click)="clearDateRange()"
+                          >
+                            <span class="material-symbols-outlined fs-14">close</span>
+                            <span>Reset Date</span>
+                          </button>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
               </div>
             </div>
-          }
+          </div>
 
-          @if (filteredTeamMembers.length === 0) {
-            <div class="profile-cards-empty-state">
-              <span class="material-symbols-outlined fs-28 text-muted mb-1">person_off</span>
-              <h4 class="empty-title fs-14">No users found</h4>
-              <p class="empty-subtitle fs-12 text-muted">No team members match the selected role or search filter.</p>
-            </div>
-          }
+          <!-- ACCORDION LIST OF ALL USERS IN THE TEAM -->
+          <div class="team-member-accordions-container">
+            @for (u of filteredTeamMembers; track u.userId || u.email; let uIdx = $index) {
+              <div
+                class="member-accordion-card"
+                [class.is-expanded]="isUserExpanded(u.userId)"
+                [id]="'user-accordion-' + u.userId"
+              >
+                <!-- ACCORDION HEADER (SCREENSHOT: SURYA) -->
+                <div
+                  class="member-accordion-header"
+                  [class.is-active-header]="isUserExpanded(u.userId)"
+                  (click)="toggleUserAccordion(u.userId)"
+                >
+                  <div class="accordion-header-left">
+                    <div class="avatar-ring-container">
+                      @if (hasValidAvatar(u)) {
+                        <img
+                          [src]="getUserAvatarUrl(u)"
+                          [alt]="u.name"
+                          class="accordion-avatar-img"
+                          (error)="onMemberAvatarError(u)"
+                        />
+                      } @else {
+                        <div class="accordion-avatar-fallback">
+                          {{ getUserInitial(u) }}
+                        </div>
+                      }
+                    </div>
+
+                    <div class="accordion-user-info">
+                      <h3 class="accordion-user-name">{{ u.name }}</h3>
+                      <p class="accordion-user-role">{{ u.roleLabel }}</p>
+                    </div>
+                  </div>
+
+                  <div class="accordion-header-right">
+                    <button
+                      type="button"
+                      class="btn-report-download"
+                      (click)="onDownloadReport(u, $event)"
+                      title="Download Performance Report as CSV"
+                    >
+                      Report Download
+                    </button>
+
+                    <button
+                      type="button"
+                      class="btn-accordion-toggle"
+                      aria-label="Toggle Accordion"
+                    >
+                      <span
+                        class="material-symbols-outlined accordion-arrow-icon"
+                        [class.rotated]="isUserExpanded(u.userId)"
+                      >
+                        expand_more
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- ACCORDION BODY (SCREENSHOT: TASK REPORT TABLE) -->
+                @if (isUserExpanded(u.userId)) {
+                  <div class="member-accordion-body">
+                    @if (u.role === 'TELECALLER') {
+                      <!-- TELECALLER CAMPAIGN REPORT TABLE -->
+                      <div class="table-responsive accordion-table-scroll-wrap">
+                        <table class="data-table accordion-tasks-table telecaller-campaign-summary-table">
+                          <thead>
+                            <tr>
+                              <th style="width: 50px">S.NO</th>
+                              <th>CAMPAIGN NAME</th>
+                              <th>AD NAME</th>
+                              <th>ASSIGNED DATE</th>
+                              <th>TOTAL LEADS</th>
+                              <th>TOTAL CALLS</th>
+                              <th>AVERAGE CALLS</th>
+                              <th>INTERESTED</th>
+                              <th>TARGETS</th>
+                              <th>CALLER RATIO</th>
+                              <th>PAID</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (row of getTelecallerReportsForUser(u); track row.sNo) {
+                              <tr>
+                                <td class="col-sno font-bold text-slate-500">{{ row.sNo }}</td>
+                                <td class="col-title font-semibold text-slate-800">
+                                  <div class="d-flex align-items-center gap-1">
+                                    <span class="material-symbols-outlined fs-14 text-indigo">campaign</span>
+                                    <span>{{ row.campaignName }}</span>
+                                  </div>
+                                </td>
+                                <td>{{ row.adName }}</td>
+                                <td>{{ row.assignedDate }}</td>
+                                <td class="font-bold text-slate-800">{{ row.totalCountLeads }}</td>
+                                <td class="font-bold text-indigo">{{ row.totalCalls }}</td>
+                                <td>{{ row.averageCalls }}</td>
+                                <td><span class="badge badge-green font-bold">{{ row.interested }}</span></td>
+                                <td class="font-bold text-slate-800">{{ row.targets }}</td>
+                                <td class="font-bold text-amber">{{ row.callerRatio }}</td>
+                                <td><span class="badge badge-emerald font-bold">{{ row.paid }}</span></td>
+                              </tr>
+                            }
+                            @if (getTelecallerReportsForUser(u).length === 0) {
+                              <tr>
+                                <td colspan="11" class="text-center py-4 text-muted">
+                                  No campaign records found for this telecaller.
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                        <div class="accordion-table-footer">
+                          <span>Showing 1 - {{ getTelecallerReportsForUser(u).length }} of {{ getTelecallerReportsForUser(u).length }} tasks</span>
+                        </div>
+                      </div>
+                    } @else if (u.role === 'DIGITAL_MARKETING') {
+                      <!-- DIGITAL MARKETING REPORT TABLE -->
+                      <div class="table-responsive accordion-table-scroll-wrap">
+                        <table class="data-table accordion-tasks-table dm-record-table">
+                          <thead>
+                            <tr>
+                              <th style="width: 50px">S.NO</th>
+                              <th>AD NAME</th>
+                              <th>CAMPAIGN NAME</th>
+                              <th>PRODUCT</th>
+                              <th>PACKAGE</th>
+                              <th>PLATFORM</th>
+                              <th>DATE</th>
+                              <th>LEADS GENERATED</th>
+                              <th>STATUS</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (t of getUserTasks(u); track t.id || $index; let dmIdx = $index) {
+                              <tr>
+                                <td class="col-sno font-bold text-slate-500">{{ dmIdx + 1 }}</td>
+                                <td class="col-title font-semibold text-slate-800">{{ t.adName || t.title }}</td>
+                                <td>{{ t.campaignName || '—' }}</td>
+                                <td>{{ formatProductName(t.productName, t) }}</td>
+                                <td>{{ formatPackageName(t.packageName, t) }}</td>
+                                <td><span class="badge" [ngClass]="getPlatformBadgeClass(t.platform)">{{ t.platform || 'Meta Ads' }}</span></td>
+                                <td>{{ formatDisplayDate(t.launchDate || t.createdAt) }}</td>
+                                <td class="font-bold text-indigo">{{ t.leadsCount !== undefined ? t.leadsCount : 0 }}</td>
+                                <td><span class="badge" [ngClass]="getAdStatusBadgeClass(t.status)">{{ t.status || 'ACTIVE' }}</span></td>
+                              </tr>
+                            }
+                            @if (getUserTasks(u).length === 0) {
+                              <tr>
+                                <td colspan="9" class="text-center py-4 text-muted">
+                                  No digital marketing records found.
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                        <div class="accordion-table-footer">
+                          <span>Showing 1 - {{ getUserTasks(u).length }} of {{ getUserTasks(u).length }} tasks</span>
+                        </div>
+                      </div>
+                    } @else {
+                      <!-- DESIGNER & GENERAL TASKS REPORT TABLE (MATCHING SCREENSHOT) -->
+                      <div class="table-responsive accordion-table-scroll-wrap">
+                        <table class="data-table accordion-tasks-table designer-report-table">
+                          <thead>
+                            <tr>
+                              <th style="width: 55px" class="col-sno">S.NO</th>
+                              <th class="col-task-head">TASK</th>
+                              <th class="col-assigned-by-head">ASSIGNED BY</th>
+                              <th class="col-priority-head">PRIORITY</th>
+                              <th class="col-date-head">ASSIGNED DATE</th>
+                              <th class="col-date-head">DUE DATE</th>
+                              <th class="col-date-head">SUBMISSION DATE</th>
+                              <th class="col-status-head">CURRENT STATUS</th>
+                              <th class="col-progress-head">PROGRESS STATUS</th>
+                              <th class="col-duration-head">TIME DURATION</th>
+                              <th style="width: 80px" class="col-revisions-head text-center">REVISIONS</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (t of getUserTasks(u); track t.id || $index; let tIdx = $index) {
+                              <tr class="task-report-row">
+                                <td class="col-sno font-bold text-slate-500">{{ tIdx + 1 }}</td>
+                                <td class="col-task">
+                                  <div class="task-name-main font-bold text-slate-800">{{ t.title }}</div>
+                                  <div class="task-pill-tags-cluster">
+                                    @if (t.productName) {
+                                      <span class="task-tag-badge tag-product">{{ formatProductName(t.productName, t) }}</span>
+                                    }
+                                    @if (t.packageName) {
+                                      <span class="task-tag-badge tag-package">{{ formatPackageName(t.packageName, t) }}</span>
+                                    }
+                                  </div>
+                                </td>
+                                <td class="col-assigned-by">
+                                  <span class="assigned-by-shield-pill">
+                                    <span class="material-symbols-outlined fs-14 icon-shield">shield_person</span>
+                                    <span>{{ t.creatorRole || 'Admin' }}</span>
+                                  </span>
+                                </td>
+                                <td class="col-priority">
+                                  <span class="screenshot-priority-pill" [ngClass]="'prio-' + (t.priority || 'high').toLowerCase()">
+                                    {{ (t.priority || 'HIGH').toUpperCase() }}
+                                  </span>
+                                </td>
+                                <td class="col-date text-slate-700">{{ formatDisplayDate(t.createdAt || t.assignedDate) }}</td>
+                                <td class="col-date text-slate-700">{{ formatDisplayDate(t.dueDate) }}</td>
+                                <td class="col-date text-slate-700">{{ getSubmissionDateText(t) }}</td>
+                                <td class="col-status">
+                                  <span class="screenshot-status-text" [ngClass]="'status-' + (t.status || 'APPROVED').toLowerCase()">
+                                    {{ (t.status || 'APPROVED').toUpperCase() }}
+                                  </span>
+                                </td>
+                                <td class="col-progress">
+                                  <span class="screenshot-progress-pill" [ngClass]="getProgressBadgeClass(t)">
+                                    {{ getProgressBadgeText(t) }}
+                                  </span>
+                                </td>
+                                <td class="col-duration">
+                                  <span class="screenshot-duration-pill">
+                                    <span class="material-symbols-outlined fs-14 icon-clock">schedule</span>
+                                    <span>{{ getTaskDuration(t) }}</span>
+                                  </span>
+                                </td>
+                                <td class="col-revisions text-center font-bold text-slate-600">
+                                  {{ getTaskRevisionsCount(t) }}
+                                </td>
+                              </tr>
+                            }
+                            @if (getUserTasks(u).length === 0) {
+                              <tr>
+                                <td colspan="11" class="text-center py-4 text-muted">
+                                  No tasks match the active filters for this member.
+                                </td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                        <div class="accordion-table-footer">
+                          <span>Showing 1 - {{ getUserTasks(u).length }} of {{ getUserTasks(u).length }} tasks</span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+
+            @if (filteredTeamMembers.length === 0) {
+              <div class="profile-cards-empty-state">
+                <span class="material-symbols-outlined fs-28 text-muted mb-1">person_off</span>
+                <h4 class="empty-title fs-14">No team members found</h4>
+                <p class="empty-subtitle fs-12 text-muted">No members match your search or filter criteria.</p>
+              </div>
+            }
+          </div>
         </div>
       }
     </div>

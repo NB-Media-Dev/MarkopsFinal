@@ -1012,11 +1012,19 @@
   .task-types-oneline-row,
   .step-details-stack .details-split-row,
   .assign-priority-widgets-row {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(1, 1fr);
   }
 
   .build-task-footer-bar .btn-review-create-task {
     width: 100%;
     justify-content: center;
+  }
+}
+
+@media (max-width:320px) {
+   .task-types-oneline-row,
+  .step-details-stack .details-split-row,
+  .assign-priority-widgets-row {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

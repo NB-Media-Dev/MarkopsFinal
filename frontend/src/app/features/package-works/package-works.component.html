@@ -69,7 +69,23 @@
                   <span>Analytics & Management</span>
                 </button>
                 <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
-                <span class="bc-item bc-current">{{ getOperationTabLabel(activeOperationTab()) }}</span>
+
+                @if (activeOperationTab() === 'REPORTS' && activeReportRole() !== 'ALL') {
+                  <button
+                    type="button"
+                    (click)="resetReportRole()"
+                    class="bc-item bc-btn"
+                    title="Back to Reports Overview"
+                  >
+                    <span>Reports</span>
+                  </button>
+                 
+                  <span class="material-symbols-outlined bc-sep-icon" aria-hidden="true">chevron_right</span>
+
+                  <span class="bc-item bc-current">{{ getReportRoleLabel(activeReportRole()) }}</span>
+                } @else {
+                  <span class="bc-item bc-current">{{ getOperationTabLabel(activeOperationTab()) }}</span>
+                }
               } @else {
                 <span class="bc-item bc-current">{{ getDepartmentTitle(currentDept) }}</span>
               }
@@ -115,11 +131,7 @@
 
       }
 
-      @if (activeWorkspacePackage(); as selectedPkg) {
-        <div class="workspace-header-actions">
-          <span class="workspace-product-badge">Product: {{ activePackageMeta().name }}</span>
-        </div>
-      }
+
     </div>
   </header>
 
@@ -242,6 +254,8 @@
         [teamPerformanceList]="teamPerformanceList()"
         [activeUsersCount]="activeUsersCount()"
         [productPackages]="packageService.packages()"
+        [activeReportRole]="activeReportRole()"
+        (activeReportRoleChange)="activeReportRole.set($event)"
         (operationTabSelect)="selectOperationTab($event)"
         (openTaskAudit)="openTaskAuditModal($event.log, $event.event)"
         (openTaskFile)="openTaskFileFromAudit($event.log, $event.event)"

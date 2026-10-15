@@ -111,6 +111,7 @@ export class PackageWorksComponent implements OnInit {
   });
   readonly activeWorkspacePackage = signal<ProductPackage | null>(null);
   readonly activeOperationTab = signal<string>('PACKAGES');
+  readonly activeReportRole = signal<string>('ALL');
 
   getPackageHeroBanner(pkg?: ProductPackage | null): string {
     if (pkg?.imageUrl) {
@@ -588,6 +589,7 @@ export class PackageWorksComponent implements OnInit {
   backToPackageHub(): void {
     this.activeDepartment.set(null);
     this.activeOperationTab.set('');
+    this.activeReportRole.set('ALL');
     this.scrollToPageTop();
     this.router.navigate([], {
       relativeTo: this.route,
@@ -1806,6 +1808,7 @@ export class PackageWorksComponent implements OnInit {
     this.activeWorkspacePackage.set(null);
     this.activeDepartment.set(null);
     this.activeOperationTab.set('PACKAGES');
+    this.activeReportRole.set('ALL');
     this.scrollToPageTop();
     this.router.navigate([], {
       relativeTo: this.route,
@@ -1814,9 +1817,37 @@ export class PackageWorksComponent implements OnInit {
     });
   }
 
+  resetReportRole(): void {
+    this.activeReportRole.set('ALL');
+  }
+
+  getReportRoleLabel(roleCode: string): string {
+    switch (roleCode) {
+      case 'DESIGNER':
+        return 'Designers';
+      case 'DIGITAL':
+        return 'Digital Marketing';
+      case 'TELECALLER':
+        return 'Telecalling';
+      case 'BDM':
+        return 'BDM';
+      default:
+        return 'Teams';
+    }
+  }
+
   onBreadcrumbBack(): void {
     const currentDept = this.activeDepartment();
     const currentTab = this.activeOperationTab();
+
+    if (
+      currentDept === 'ANALYTICS' &&
+      currentTab === 'REPORTS' &&
+      this.activeReportRole() !== 'ALL'
+    ) {
+      this.resetReportRole();
+      return;
+    }
 
     if (
       currentDept === 'ANALYTICS' &&
@@ -2051,6 +2082,9 @@ export class PackageWorksComponent implements OnInit {
   }
 
   selectOperationTab(tabId: string): void {
+    if (tabId !== 'REPORTS') {
+      this.activeReportRole.set('ALL');
+    }
     const depts = this.operationDepartments();
     for (const dept of depts) {
       if (dept.tabs.some((t) => t.id === tabId)) {

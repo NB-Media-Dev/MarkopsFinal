@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, inject, HostListener } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -51,7 +51,7 @@ export interface RoleTeamCard {
   templateUrl: './package-reports.component.html',
   styleUrl: './package-reports.component.scss',
 })
-export class PackageReportsComponent implements OnInit {
+export class PackageReportsComponent implements OnInit, OnChanges {
   private targetService = inject(TelecallerTargetService);
   private taskService = inject(TaskManagementService);
 
@@ -61,12 +61,22 @@ export class PackageReportsComponent implements OnInit {
   @Input() currentFilterTarget: string = '';
   @Input() activePackageDisplayNameFn?: () => string;
 
+  @Input() selectedRoleFilter: string = 'ALL';
+  @Output() selectedRoleFilterChange = new EventEmitter<string>();
   @Output() previewTaskDoc = new EventEmitter<{ task: any; event: MouseEvent }>();
 
-  selectedRoleFilter: string = 'ALL';
   teamSearchQuery: string = '';
   selectedPerformanceUser: UserPerformanceRecord | null = null;
   expandedCampaignRows = new Set<number>();
+
+  // Accordion state: set of expanded userIds
+  expandedUserIds = new Set<string>();
+
+  // Dropdown states for User, Filter & Date controls in header
+  isFilterDropdownOpen: boolean = false;
+  isDateDropdownOpen: boolean = false;
+  isUserDropdownOpen: boolean = false;
+  selectedMemberIdFilter: string = 'ALL';
 
   modalDateFilter: 'ALL' | 'YESTERDAY' | 'TODAY' | 'WEEK' | 'MONTH' | 'CUSTOM' = 'ALL';
   customFilterDate: string = '';
@@ -78,7 +88,62 @@ export class PackageReportsComponent implements OnInit {
   currentPage: number = 1;
   readonly pageSize: number = 15;
 
-  ngOnInit(): void {}
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (
+      !target.closest('.dropdown-wrap-filter') &&
+      !target.closest('.dropdown-wrap-date') &&
+      !target.closest('.dropdown-wrap-user')
+    ) {
+      this.isFilterDropdownOpen = false;
+      this.isDateDropdownOpen = false;
+      this.isUserDropdownOpen = false;
+    }
+  }
+
+  failedAvatarUserIds = new Set<string>();
+
+  ngOnInit(): void {
+    if (this.selectedRoleFilter !== 'ALL') {
+      const first = this.filteredTeamMembers[0];
+      if (first) {
+        this.expandedUserIds.add(first.userId);
+        this.selectedMemberIdFilter = first.userId;
+      }
+    }
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['selectedRoleFilter'] && !changes['selectedRoleFilter'].firstChange) {
+      const newRole = changes['selectedRoleFilter'].currentValue;
+      if (newRole === 'ALL') {
+        this.backToAllRoles(false);
+      } else if (newRole && newRole !== this.selectedRoleFilter) {
+        this.viewRoleTeam(newRole as any, false);
+      }
+    }
+  }
+
+  hasValidAvatar(u: any): boolean {
+    if (!u) return false;
+    const url = u.user?.avatarUrl || u.avatarUrl;
+    if (!url || typeof url !== 'string' || !url.trim() || url === 'undefined' || url === 'null') {
+      return false;
+    }
+    const id = u.userId || u.id || u.user?.id;
+    if (id && this.failedAvatarUserIds.has(id)) {
+      return false;
+    }
+    return true;
+  }
+
+  getUserInitial(u: any): string {
+    if (!u) return 'U';
+    const name = u.name || u.user?.fullName || u.fullName || u.email || 'User';
+    const trimmed = name.trim();
+    return trimmed ? trimmed.charAt(0).toUpperCase() : 'U';
+  }
 
   activePackageDisplayName(): string {
     return this.activePackageDisplayNameFn ? this.activePackageDisplayNameFn() : (this.activePackageMeta?.name || 'Package');
@@ -90,29 +155,354 @@ export class PackageReportsComponent implements OnInit {
     );
   }
 
-  get filteredTeamMembers(): UserPerformanceRecord[] {
+  get teamRoleMembers(): UserPerformanceRecord[] {
     const list = this.reportEligibleMembers;
-    const query = (this.teamSearchQuery || '').toLowerCase().trim();
     const roleFilter = this.selectedRoleFilter;
-
+    if (roleFilter === 'ALL') return list;
     return list.filter((u) => {
-      if (roleFilter !== 'ALL') {
-        if (roleFilter === 'DIGITAL' && u.role !== 'DIGITAL_MARKETING') return false;
-        if (roleFilter === 'BDM' && u.role !== 'BDM') return false;
-        if (roleFilter === 'DESIGNER' && u.role !== 'DESIGNER') return false;
-        if (roleFilter === 'TELECALLER' && u.role !== 'TELECALLER') return false;
-      }
+      if (roleFilter === 'DIGITAL') return u.role === 'DIGITAL_MARKETING';
+      if (roleFilter === 'BDM') return u.role === 'BDM';
+      if (roleFilter === 'DESIGNER') return u.role === 'DESIGNER';
+      if (roleFilter === 'TELECALLER') return u.role === 'TELECALLER';
+      return true;
+    });
+  }
 
-      if (query) {
+  get filteredTeamMembers(): UserPerformanceRecord[] {
+    let list = this.teamRoleMembers;
+    if (this.selectedMemberIdFilter && this.selectedMemberIdFilter !== 'ALL') {
+      list = list.filter((u) => u.userId === this.selectedMemberIdFilter);
+    }
+    const query = (this.teamSearchQuery || '').toLowerCase().trim();
+    if (query) {
+      list = list.filter((u) => {
         const matchesName = (u.name || '').toLowerCase().includes(query);
         const matchesEmail = (u.email || '').toLowerCase().includes(query);
         const matchesRole = (u.roleLabel || '').toLowerCase().includes(query);
         const matchesDept = (u.department || '').toLowerCase().includes(query);
-        return matchesName || matchesEmail || matchesRole || matchesDept;
+        const matchesTask = (u.tasks || []).some((t: any) =>
+          (t.title || '').toLowerCase().includes(query) ||
+          (t.productName || '').toLowerCase().includes(query) ||
+          (t.packageName || '').toLowerCase().includes(query)
+        );
+        return matchesName || matchesEmail || matchesRole || matchesDept || matchesTask;
+      });
+    }
+    return list;
+  }
+
+  isUserExpanded(userId: string): boolean {
+    return this.expandedUserIds.has(userId);
+  }
+
+  toggleUserAccordion(userId: string): void {
+    if (this.expandedUserIds.has(userId)) {
+      this.expandedUserIds.delete(userId);
+    } else {
+      this.expandedUserIds.add(userId);
+      this.selectedMemberIdFilter = userId;
+    }
+  }
+
+  expandUser(userId: string): void {
+    this.expandedUserIds.add(userId);
+    this.selectedMemberIdFilter = userId;
+    setTimeout(() => {
+      const el = document.getElementById('user-accordion-' + userId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 60);
+  }
+
+  toggleUserDropdown(): void {
+    this.isUserDropdownOpen = !this.isUserDropdownOpen;
+    this.isFilterDropdownOpen = false;
+    this.isDateDropdownOpen = false;
+  }
+
+  selectMemberFilter(userId: string): void {
+    this.selectedMemberIdFilter = userId;
+    this.isUserDropdownOpen = false;
+    if (userId !== 'ALL') {
+      this.expandedUserIds.clear();
+      this.expandedUserIds.add(userId);
+      setTimeout(() => {
+        const el = document.getElementById('user-accordion-' + userId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      }, 50);
+    }
+  }
+
+  getSelectedMemberLabel(): string {
+    if (this.selectedMemberIdFilter !== 'ALL') {
+      const found = this.teamRoleMembers.find((m) => m.userId === this.selectedMemberIdFilter);
+      if (found) return found.name;
+    }
+    if (this.teamRoleMembers.length === 1) {
+      return this.teamRoleMembers[0].name;
+    }
+    if (this.expandedUserIds.size > 0) {
+      const expandedId = Array.from(this.expandedUserIds)[0];
+      const foundExp = this.teamRoleMembers.find((m) => m.userId === expandedId);
+      if (foundExp) return foundExp.name;
+    }
+    if (this.teamRoleMembers.length > 0) {
+      return this.teamRoleMembers[0].name;
+    }
+    return 'Select User';
+  }
+
+  getActiveDateLabel(): string {
+    if (this.filterStartDate && this.filterEndDate) {
+      if (this.filterStartDate === this.filterEndDate) {
+        return this.formatDisplayDate(this.filterStartDate);
+      }
+      return `${this.formatDisplayDate(this.filterStartDate)} - ${this.formatDisplayDate(this.filterEndDate)}`;
+    }
+    if (this.filterStartDate) {
+      return `From ${this.formatDisplayDate(this.filterStartDate)}`;
+    }
+    if (this.modalDateFilter === 'CUSTOM' && this.customFilterDate) {
+      return this.formatDisplayDate(this.customFilterDate);
+    }
+    switch (this.modalDateFilter) {
+      case 'TODAY':
+        return 'Today';
+      case 'YESTERDAY':
+        return 'Yesterday';
+      case 'WEEK':
+        return '1 Week';
+      case 'MONTH':
+        return '1 Month';
+      case 'ALL':
+        return 'All Date';
+      default:
+        return 'All Date';
+    }
+  }
+
+  getActiveStatusFilterLabel(): string {
+    switch (this.taskStatusSubFilter) {
+      case 'COMPLETED':
+        return 'Completed';
+      case 'IN_QUEUE':
+        return 'In Queue';
+      case 'REVISIONS':
+        return 'Revisions';
+      default:
+        return 'Filter';
+    }
+  }
+
+  toggleFilterDropdown(): void {
+    this.isFilterDropdownOpen = !this.isFilterDropdownOpen;
+    this.isDateDropdownOpen = false;
+  }
+
+  toggleDateDropdown(): void {
+    this.isDateDropdownOpen = !this.isDateDropdownOpen;
+    this.isFilterDropdownOpen = false;
+  }
+
+  selectDateFilter(filter: 'ALL' | 'YESTERDAY' | 'TODAY' | 'WEEK' | 'MONTH'): void {
+    this.setModalDateFilter(filter);
+    this.isDateDropdownOpen = false;
+  }
+
+  selectStatusFilter(filter: 'ALL' | 'IN_QUEUE' | 'COMPLETED' | 'REVISIONS'): void {
+    this.setTaskStatusSubFilter(filter);
+    this.isFilterDropdownOpen = false;
+  }
+
+  onDownloadReport(user: UserPerformanceRecord, event: MouseEvent): void {
+    event.stopPropagation();
+    this.downloadUserReport(user);
+  }
+
+  getUserTasks(user: UserPerformanceRecord): any[] {
+    if (!user) return [];
+    let tasks = user.tasks || [];
+
+    if (this.currentFilterTarget && this.currentFilterTarget !== 'ALL') {
+      const allPkgs = this.productPackages || [];
+      const prodId = this.activePackageMeta?.id;
+      tasks = tasks.filter((t) => isTaskForPackage(t, this.currentFilterTarget, allPkgs, prodId));
+    }
+
+    if (this.filterStartDate || this.filterEndDate) {
+      tasks = tasks.filter((t) => this.taskMatchesDateRange(t, this.filterStartDate, this.filterEndDate));
+    } else if (this.modalDateFilter !== 'ALL') {
+      let targetDate = '';
+      if (this.modalDateFilter === 'TODAY') {
+        targetDate = this.toLocalDateString(new Date());
+      } else if (this.modalDateFilter === 'YESTERDAY') {
+        const y = new Date();
+        y.setDate(y.getDate() - 1);
+        targetDate = this.toLocalDateString(y);
+      } else if (this.modalDateFilter === 'CUSTOM') {
+        targetDate = this.customFilterDate;
+      }
+      if (targetDate) {
+        tasks = tasks.filter((t) => {
+          const assigned = this.getTaskAssignedLocalDate(t);
+          if (assigned && assigned === targetDate) return true;
+          if (this.modalDateFilter === 'TODAY' && t.assignedDate && t.assignedDate.toLowerCase().includes('today')) return true;
+          return false;
+        });
+      }
+    }
+
+    if (this.taskStatusSubFilter === 'COMPLETED') {
+      tasks = tasks.filter((t) => t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED');
+    } else if (this.taskStatusSubFilter === 'IN_QUEUE') {
+      tasks = tasks.filter((t) => t.status !== 'APPROVED' && t.status !== 'COMPLETED' && t.status !== 'PUBLISHED');
+    } else if (this.taskStatusSubFilter === 'REVISIONS') {
+      tasks = tasks.filter((t) => t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED' || (t.revisions && t.revisions > 0));
+    }
+
+    if (this.taskSearchQuery.trim()) {
+      const q = this.taskSearchQuery.toLowerCase().trim();
+      tasks = tasks.filter((t) => {
+        const titleMatch = (t.title || '').toLowerCase().includes(q);
+        const prodMatch = (t.productName || '').toLowerCase().includes(q);
+        const pkgMatch = (t.packageName || '').toLowerCase().includes(q);
+        const statusMatch = (t.status || '').toLowerCase().includes(q);
+        return titleMatch || prodMatch || pkgMatch || statusMatch;
+      });
+    }
+
+    return tasks;
+  }
+
+  getTelecallerReportsForUser(user: UserPerformanceRecord): TelecallerCampaignReport[] {
+    if (!user || user.role !== 'TELECALLER') return [];
+    const tasks = this.getUserTasks(user);
+    const pkgDisplayName = this.activePackageDisplayName() || this.activePackageMeta?.name || 'current affairs oct';
+    const targetInfo = this.targetService.getTargetForTelecaller(user.userId || '5');
+    const baseDailyTarget = targetInfo?.dailyCallsTarget || 50;
+
+    if (tasks.length === 0 && (!user.tasks || user.tasks.length === 0)) {
+      return [];
+    }
+
+    const groups = new Map<string, any[]>();
+    for (const t of tasks) {
+      const campName = t.campaignName && t.campaignName !== '—' ? t.campaignName : pkgDisplayName;
+      const adName = t.adName && t.adName !== '—' ? t.adName : (t.title || 'Lead');
+      const rawDate = this.getTaskAssignedLocalDate(t) || this.toLocalDateString(t.createdAt || t.assignedDate) || this.todayDateString;
+      const groupKey = `${campName}___${adName}___${rawDate}`;
+
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, []);
+      }
+      groups.get(groupKey)!.push(t);
+    }
+
+    const reports: TelecallerCampaignReport[] = [];
+    let sNo = 1;
+    const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
+      const dateA = a.split('___')[2] || '';
+      const dateB = b.split('___')[2] || '';
+      return dateB.localeCompare(dateA);
+    });
+
+    for (const key of sortedKeys) {
+      const [cName, aName, dateRaw] = key.split('___');
+      const groupLeads = groups.get(key) || [];
+      const totalLeads = groupLeads.length;
+      let totalCalls = 0;
+      let interested = 0;
+      let paid = 0;
+
+      for (const lead of groupLeads) {
+        const callsCount = Array.isArray(lead.calls) && lead.calls.length > 0
+          ? lead.calls.length
+          : lead.callAttempts && lead.callAttempts > 0 ? lead.callAttempts : lead.calledAt ? 1 : 0;
+        totalCalls += callsCount;
+
+        const outcome = (lead.callOutcome || lead.status || '').toUpperCase();
+        if (['INTERESTED', 'QUALIFIED', 'HOT'].includes(outcome)) {
+          interested++;
+        } else if (['PAID', 'CONVERTED'].includes(outcome) || lead.isPaid || lead.paidAmount > 0) {
+          paid++;
+          interested++;
+        }
       }
 
-      return true;
-    });
+      const avgCalls = totalLeads > 0 ? Number((totalCalls / totalLeads).toFixed(1)) : 0;
+      const rowTarget = baseDailyTarget > 0 ? baseDailyTarget : 50;
+      const ratioVal = rowTarget > 0 ? (totalCalls / rowTarget) * 100 : 0;
+      const formattedRatio = ratioVal % 1 === 0 ? `${ratioVal}%` : `${ratioVal.toFixed(1)}%`;
+
+      let displayDate = dateRaw;
+      if (dateRaw && dateRaw.includes('-')) {
+        const parts = dateRaw.split('-');
+        if (parts.length === 3) {
+          const dObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+          if (!isNaN(dObj.getTime())) {
+            displayDate = dObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+          }
+        }
+      }
+
+      reports.push({
+        sNo: sNo++,
+        campaignName: cName,
+        adName: aName,
+        assignedDate: displayDate,
+        assignedDateRaw: dateRaw,
+        totalCountLeads: totalLeads,
+        totalCalls,
+        averageCalls: avgCalls,
+        interested,
+        targets: rowTarget,
+        callerRatio: formattedRatio,
+        paid,
+        leads: groupLeads,
+      });
+    }
+
+    return reports;
+  }
+
+  formatDisplayDate(d: any): string {
+    if (!d) return '—';
+    if (typeof d === 'string' && (d.includes('Oct') || d.includes('Nov') || d.includes('Dec') || d.includes('Jan') || d.includes('Feb') || d.includes('Mar') || d.includes('Apr') || d.includes('May') || d.includes('Jun') || d.includes('Jul') || d.includes('Aug') || d.includes('Sep'))) {
+      return d;
+    }
+    const dateObj = new Date(d);
+    if (isNaN(dateObj.getTime())) return String(d);
+    return dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  getProgressBadgeText(t: any): string {
+    if (t.progressStatus) return t.progressStatus;
+    if (t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED') {
+      return '100% Completed';
+    }
+    if (t.status === 'IN_PROGRESS' || t.status === 'ACCEPTED') {
+      return '50% In Progress';
+    }
+    if (t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED') {
+      return 'Revision Required';
+    }
+    return 'In Queue';
+  }
+
+  getProgressBadgeClass(t: any): string {
+    if (t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED') {
+      return 'progress-completed';
+    }
+    if (t.status === 'IN_PROGRESS' || t.status === 'ACCEPTED') {
+      return 'progress-in-progress';
+    }
+    if (t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED') {
+      return 'progress-revision';
+    }
+    return 'progress-queue';
   }
 
   getRoleCount(roleCode: string): number {
@@ -125,20 +515,51 @@ export class PackageReportsComponent implements OnInit {
     return 0;
   }
 
-  setRoleFilter(filter: string): void {
+  setRoleFilter(filter: string, emit = true): void {
     this.selectedRoleFilter = filter;
+    if (emit) {
+      this.selectedRoleFilterChange.emit(filter);
+    }
     this.currentPage = 1;
+    this.expandedUserIds.clear();
+    const members = this.filteredTeamMembers;
+    if (members.length > 0) {
+      this.expandedUserIds.add(members[0].userId);
+    }
   }
 
-  viewRoleTeam(roleCode: 'DESIGNER' | 'DIGITAL' | 'TELECALLER' | 'BDM'): void {
+  viewRoleTeam(roleCode: 'DESIGNER' | 'DIGITAL' | 'TELECALLER' | 'BDM', emit = true): void {
     this.selectedRoleFilter = roleCode;
+    if (emit) {
+      this.selectedRoleFilterChange.emit(roleCode);
+    }
     this.currentPage = 1;
+    this.selectedPerformanceUser = null;
+    this.expandedUserIds.clear();
+    this.modalDateFilter = 'ALL';
+    this.filterStartDate = '';
+    this.filterEndDate = '';
+    setTimeout(() => {
+      const members = this.teamRoleMembers;
+      if (members.length > 0) {
+        this.selectedMemberIdFilter = members[0].userId;
+        this.expandedUserIds.add(members[0].userId);
+      } else {
+        this.selectedMemberIdFilter = 'ALL';
+      }
+    }, 0);
   }
 
-  backToAllRoles(): void {
+  backToAllRoles(emit = true): void {
     this.selectedRoleFilter = 'ALL';
+    if (emit) {
+      this.selectedRoleFilterChange.emit('ALL');
+    }
+    this.selectedMemberIdFilter = 'ALL';
     this.teamSearchQuery = '';
     this.currentPage = 1;
+    this.expandedUserIds.clear();
+    this.selectedPerformanceUser = null;
   }
 
   getActiveRoleLabel(): string {
@@ -161,10 +582,22 @@ export class PackageReportsComponent implements OnInit {
     return getApiUrl(avatarUrl);
   }
 
-  onMemberAvatarError(u: UserPerformanceRecord): void {
+  getUserAvatarUrl(u: any): string {
+    if (!u) return '';
+    const raw = u.user?.avatarUrl || u.avatarUrl || (u.user as any)?.avatar_url;
+    return this.getAvatarUrl(raw);
+  }
+
+  onMemberAvatarError(u: any): void {
+    if (!u) return;
+    const id = u.userId || u.id || u.user?.id;
+    if (id) {
+      this.failedAvatarUserIds.add(id);
+    }
     if (u.user) {
       u.user.avatarUrl = undefined;
     }
+    u.avatarUrl = undefined;
   }
 
   get roleTeamCards(): RoleTeamCard[] {
@@ -376,70 +809,13 @@ export class PackageReportsComponent implements OnInit {
     const baseDailyTarget = targetInfo?.dailyCallsTarget || 50;
 
     if (tasks.length === 0 && (!this.selectedPerformanceUser.tasks || this.selectedPerformanceUser.tasks.length === 0)) {
-      const mockRows: TelecallerCampaignReport[] = [
-        {
-          sNo: 1,
-          campaignName: pkgDisplayName || 'current affairs oct',
-          adName: 'spiderman poster',
-          assignedDate: '13 Oct 2026',
-          assignedDateRaw: '2026-10-13',
-          totalCountLeads: 2,
-          totalCalls: 5,
-          averageCalls: 2.5,
-          interested: 1,
-          targets: 200,
-          callerRatio: '2.5%',
-          paid: 7,
-          leads: [],
-        },
-        {
-          sNo: 2,
-          campaignName: pkgDisplayName || 'current affairs oct',
-          adName: 'spiderman poster',
-          assignedDate: '12 Oct 2026',
-          assignedDateRaw: '2026-10-12',
-          totalCountLeads: 6,
-          totalCalls: 2,
-          averageCalls: 0.3,
-          interested: 0,
-          targets: 50,
-          callerRatio: '4%',
-          paid: 6,
-          leads: [],
-        },
-        {
-          sNo: 3,
-          campaignName: pkgDisplayName || 'current affairs oct',
-          adName: 'spiderman poster',
-          assignedDate: '11 Oct 2026',
-          assignedDateRaw: '2026-10-11',
-          totalCountLeads: 1,
-          totalCalls: 1,
-          averageCalls: 1.0,
-          interested: 0,
-          targets: 50,
-          callerRatio: '2%',
-          paid: 0,
-          leads: [],
-        },
-      ];
-
-      if (this.taskSearchQuery.trim()) {
-        const q = this.taskSearchQuery.toLowerCase().trim();
-        return mockRows.filter(
-          (r) =>
-            r.campaignName.toLowerCase().includes(q) ||
-            r.adName.toLowerCase().includes(q) ||
-            r.assignedDate.toLowerCase().includes(q)
-        );
-      }
-      return mockRows;
+      return [];
     }
 
     const groups = new Map<string, any[]>();
     for (const t of tasks) {
       const campName = t.campaignName && t.campaignName !== '—' ? t.campaignName : pkgDisplayName;
-      const adName = t.adName && t.adName !== '—' ? t.adName : 'spiderman poster';
+      const adName = t.adName && t.adName !== '—' ? t.adName : (t.title || 'Lead');
       const rawDate = this.getTaskAssignedLocalDate(t) || this.toLocalDateString(t.createdAt || t.assignedDate) || this.todayDateString;
       const groupKey = `${campName}___${adName}___${rawDate}`;
 
@@ -755,6 +1131,8 @@ export class PackageReportsComponent implements OnInit {
 
   getTaskDuration(task: any): string {
     if (!task) return '—';
+    if (task.timeDuration) return task.timeDuration;
+    if (task.duration) return task.duration;
 
     if (task.workCycle?.durationText) {
       return task.workCycle.durationText;
@@ -818,26 +1196,36 @@ export class PackageReportsComponent implements OnInit {
 
   getSubmissionDateText(t: any): string {
     if (!t) return '—';
+    if (t.submissionDate) return t.submissionDate;
     const actualSubDate = t.submittedAt || (Array.isArray(t.versions) && t.versions.length > 0 ? t.versions[t.versions.length - 1].createdAt : null);
     if (actualSubDate) {
       const d = new Date(actualSubDate);
       if (!isNaN(d.getTime())) {
-        return d.toLocaleDateString();
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
       }
     }
     if (t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED') {
       const refDate = t.updatedAt || t.createdAt;
       if (refDate) {
         const d = new Date(refDate);
-        if (!isNaN(d.getTime())) return d.toLocaleDateString();
+        if (!isNaN(d.getTime())) {
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const year = d.getFullYear();
+          return `${day}/${month}/${year}`;
+        }
       }
-      return 'Completed';
+      return '—';
     }
     return '—';
   }
 
   getTaskRevisionsCount(t: any): number {
     if (!t) return 0;
+    if (t.revisions !== undefined) return Number(t.revisions);
     if (Array.isArray(t.versions) && t.versions.length > 1) {
       return t.versions.length - 1;
     } else if (t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED') {

@@ -493,6 +493,8 @@
         [productPackages]="productPackages"
         [currentFilterTarget]="currentFilterTarget"
         [activePackageDisplayNameFn]="activePackageDisplayNameFn"
+        [selectedRoleFilter]="activeReportRole"
+        (selectedRoleFilterChange)="activeReportRoleChange.emit($event)"
         (previewTaskDoc)="previewTaskDoc.emit($event)"
       ></app-package-reports>
     </div>

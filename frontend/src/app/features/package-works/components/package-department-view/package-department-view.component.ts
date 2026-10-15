@@ -61,6 +61,8 @@ export class PackageDepartmentViewComponent {
   @Input() teamPerformanceList: UserPerformanceRecord[] = [];
   @Input() activeUsersCount: number = 10;
   @Input() productPackages: ProductPackage[] = [];
+  @Input() activeReportRole: string = 'ALL';
+  @Output() activeReportRoleChange = new EventEmitter<string>();
 
 
   @Input() getAuditLogCreatorFn!: (log: any) => { name: string; role: string };

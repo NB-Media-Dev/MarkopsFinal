@@ -15,9 +15,13 @@
   }
 
   @media (max-width: 480px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: 2fr;
     gap: 0.65rem;
   }
+  @media (max-width: 425px) {
+      grid-template-columns: repeat(2, 1fr);
+    gap: 0.65rem;
+}
 }
 
 .kpi-card {
