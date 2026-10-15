@@ -136,45 +136,7 @@
   </header>
 
   @if (!activeWorkspacePackage()) {
-    <section
-      class="product-hero-banner"
-      [style.background-image]="'url(' + activeHeroBanner() + ')'"
-    >
-      @if (canEditPackage()) {
-        <input
-          #heroBannerInput
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          aria-label="Choose product hero banner"
-          hidden
-          (change)="onHeroBannerSelected($event)"
-        />
-        <button
-          type="button"
-          class="hero-banner-edit-btn"
-          [disabled]="isSavingHeroBanner()"
-          (click)="heroBannerInput.click()"
-        >
-          <span class="material-symbols-outlined">
-            {{ isSavingHeroBanner() ? 'hourglass_top' : 'edit' }}
-          </span>
-          <span>{{ isSavingHeroBanner() ? 'Saving Banner...' : 'Edit Banner' }}</span>
-        </button>
-      }
-      <div class="product-hero-content">
-        <img
-          [src]="productVisual().logo"
-          [alt]="productVisual().title + ' logo'"
-          class="product-hero-logo"
-        />
-        <div class="product-hero-copy">
-          <h1>{{ productVisual().title }}</h1>
-        </div>
-      </div>
-    </section>
-    @if (heroBannerError()) {
-      <p class="hero-banner-error" role="alert">{{ heroBannerError() }}</p>
-    }
+
     <section class="catalog-toolbar" aria-label="Package catalog controls">
       <div class="catalog-toolbar-header">
 
