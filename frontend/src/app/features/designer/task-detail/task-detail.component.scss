@@ -266,7 +266,6 @@
   }
 }
 
-/* 1. Floating Workflow Stepper Grid at the VERY TOP matching Image 2 */
 .workflow-stepper-floating-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -378,7 +377,6 @@
   }
 }
 
-/* 2. Hero Header Card matching Image 2 */
 .hero-header-card {
   display: flex;
   align-items: center;
@@ -636,7 +634,6 @@
   }
 }
 
-/* 3. Clean Text Tabs matching Image 2 */
 .tab-nav-container {
   display: flex;
   align-items: center;
@@ -742,7 +739,6 @@
     padding: 1.5rem;
   }
 
-  /* 4. Requirement Card matching Image 2 */
   &.requirement-card {
     border: 1.5px solid #FED7AA;
     border-radius: 20px;
@@ -765,7 +761,6 @@
     }
   }
 
-  /* 5. Task Information Meta Card matching Image 2 */
   &.meta-card {
     border: 1.5px solid #FED7AA;
     border-radius: 20px;
@@ -822,7 +817,6 @@
   }
 }
 
-/* File Box inside Requirement Card matching Image 2 */
 .req-file-box {
   display: flex;
   align-items: center;

@@ -105,7 +105,6 @@ function reconcileCallActivities(dbRows) {
     });
   }
 
-  // Preserve followUpDate, followUpTime, and outcome from memory if DB row didn't have it
   for (const dbC of uniqueDbCalls) {
     const memMatch = dbCallActivitiesStore.find((memCall) => isSameCallActivity(memCall, dbC));
     if (memMatch) {
