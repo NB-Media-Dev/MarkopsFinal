@@ -7,32 +7,33 @@
     (change)="onLeadsFileSelected($event)"
   />
   @if (!embedded) {
-    <header class="page-header">
-      <div class="header-titles-group">
-        <h1 class="page-heading">
-          <a routerLink="/dashboard" class="title-back-btn" title="Back to Dashboard">
-            <span class="arrow-char">←</span>
-          </a>
-          <span>Lead Management</span>
-        </h1>
-        @if (isTelecaller()) {
-          <p class="page-sub">View and track your assigned lead queue and pipeline status</p>
-        }
+    <header class="page-header page-clean-branding-header">
+      <div class="header-titles-block header-titles-group">
+        <h1 class="page-main-orange-title">Lead Management</h1>
+        <div class="page-breadcrumb-subrow">
+          <a routerLink="/dashboard" class="bc-link">Dashboard</a>
+          <span class="bc-sep">&gt;</span>
+          <span class="bc-current">Lead Management</span>
+        </div>
       </div>
       <div class="header-actions">
         @if (canCreateLeads()) {
           <button
-            class="btn-action-secondary"
+            class="btn-lead-upload-outline"
             type="button"
             [disabled]="isUploadingLeads()"
             (click)="leadFileInput.click()"
+            title="Upload leads via Excel / CSV"
           >
             <span class="material-symbols-outlined fs-18">upload_file</span>
-            <span>{{ isUploadingLeads() ? 'Uploading...' : 'Upload Excel' }}</span>
+            <span>{{ isUploadingLeads() ? 'Uploading...' : 'Upload Lead' }}</span>
           </button>
-        }
-        @if (canCreateLeads()) {
-          <button class="btn-action-secondary" (click)="openModal()">
+          <button
+            class="btn-lead-create-action"
+            type="button"
+            (click)="openModal()"
+            title="Add a new lead"
+          >
             <span class="material-symbols-outlined fs-18">person_add</span>
             <span>Add Lead</span>
           </button>

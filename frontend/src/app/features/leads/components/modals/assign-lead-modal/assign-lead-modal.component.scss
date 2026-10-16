@@ -1,27 +1,35 @@
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(8px);
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 1rem;
+  animation: fadeIn 0.15s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal-card {
   background: #FFFFFF;
-  border-radius: 24px;
+  border-radius: 20px;
   width: 100%;
   max-height: 90vh;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2);
+  border: 1px solid #E2E8F0;
+  animation: scaleUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
 
   &.modal-sm { max-width: 440px; }
 
   .modal-header {
-    padding: 1.4rem 1.6rem;
+    padding: 1.15rem 1.4rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -30,30 +38,39 @@
     .modal-title-wrap {
       display: flex;
       align-items: center;
-      gap: 0.85rem;
+      gap: 0.75rem;
 
       .modal-squircle-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        background: #EEF2FF;
-        color: #4F46E5;
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: #FFF5E6;
+        color: #FF9F1C;
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
+
+        .material-symbols-outlined {
+          font-size: 22px;
+          color: #FF9F1C;
+        }
       }
 
       h2 {
-        font-size: 1.25rem;
-        font-weight: 700;
+        font-family: var(--mo-font-sans);
+        font-size: 1.15rem;
+        font-weight: 800;
         color: #0F172A;
         margin: 0;
+        letter-spacing: -0.01em;
       }
 
       .modal-sub {
-        font-size: 0.78125rem;
+        font-size: 0.75rem;
         color: #64748B;
-        margin: 0.15rem 0 0 0;
+        margin: 0.1rem 0 0 0;
+        font-weight: 500;
       }
     }
 
@@ -68,6 +85,11 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
+      transition: all 0.15s ease;
+
+      .material-symbols-outlined {
+        font-size: 18px;
+      }
 
       &:hover {
         background: #F1F5F9;
@@ -77,80 +99,229 @@
   }
 
   .modal-body {
-    padding: 1.5rem 1.6rem;
+    padding: 1.25rem 1.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.15rem;
+
+    .lead-info-preview-card {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: #FFFDF9;
+      border: 1px solid rgba(255, 159, 28, 0.25);
+      border-radius: 12px;
+      padding: 0.75rem 0.95rem;
+
+      .lead-avatar-bubble {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: #FFF5E6;
+        color: #E28704;
+        font-size: 0.8rem;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .lead-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+        min-width: 0;
+
+        .lead-fullname {
+          font-size: 0.88rem;
+          font-weight: 700;
+          color: #0F172A;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .lead-sub-chips {
+          display: flex;
+          align-items: center;
+          gap: 0.45rem;
+          flex-wrap: wrap;
+
+          .lead-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748B;
+            background: #FFFFFF;
+            padding: 0.15rem 0.45rem;
+            border-radius: 6px;
+            border: 1px solid #E2E8F0;
+
+            .fs-13 {
+              font-size: 13px;
+              color: #94A3B8;
+            }
+
+            &.campaign-chip {
+              color: #0284C7;
+              background: #F0F9FF;
+              border-color: #BAE6FD;
+
+              .fs-13 {
+                color: #0284C7;
+              }
+            }
+          }
+        }
+      }
+    }
 
     .form-group {
       display: flex;
       flex-direction: column;
-      gap: 0.35rem;
+      gap: 0.4rem;
 
       .form-label {
-        font-size: 0.71875rem;
+        font-size: 0.72rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.05em;
         color: #475569;
 
-        .required { color: #E11D48; }
+        .required { color: #EF4444; }
       }
 
-      .form-input {
-        background: #F8FAFC;
-        border: 1.5px solid #E2E8F0;
-        border-radius: 12px;
-        padding: 0.6rem 0.9rem;
-        font-size: 0.84375rem;
-        color: #0F172A;
-        outline: none;
+      .custom-select-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+        width: 100%;
 
-        &:focus {
+        .form-input {
           background: #FFFFFF;
-          border-color: #4F46E5;
+          border: 1.5px solid #CBD5E1;
+          border-radius: 10px;
+          padding: 0.65rem 2.25rem 0.65rem 0.95rem;
+          font-size: 0.85rem;
+          font-weight: 600;
+          color: #0F172A;
+          outline: none;
+          width: 100%;
+          cursor: pointer;
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          appearance: none;
+          transition: all 0.18s ease;
+
+          &:focus {
+            border-color: #FF9F1C;
+            box-shadow: 0 0 0 3px rgba(255, 159, 28, 0.15);
+          }
+        }
+
+        .select-dropdown-icon {
+          position: absolute;
+          right: 10px;
+          font-size: 20px;
+          color: #64748B;
+          pointer-events: none;
+          transition: transform 0.2s ease, color 0.15s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        &:hover .select-dropdown-icon,
+        &:focus-within .select-dropdown-icon {
+          color: #FF9F1C;
         }
       }
     }
   }
 
   .modal-footer {
-    padding: 1rem 1.6rem;
+    padding: 0.9rem 1.4rem;
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.65rem;
     border-top: 1px solid #F1F5F9;
     background: #F8FAFC;
 
     .btn-action-primary {
-      background-color: #121826;
+      background-color: #FF9F1C;
       color: #FFFFFF;
-      border: none;
+      border: 1px solid #FF9F1C;
       border-radius: 999px;
-      padding: 0.6rem 1.3rem;
+      padding: 0.55rem 1.35rem;
       font-size: 0.8125rem;
       font-weight: 700;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      box-shadow: 0 4px 12px rgba(255, 159, 28, 0.25);
+      transition: all 0.18s ease;
+
+      .fs-16 {
+        font-size: 16px;
+      }
+
+      &:hover:not(:disabled) {
+        background-color: #E28704;
+        border-color: #E28704;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(255, 159, 28, 0.35);
+      }
 
       &:disabled {
         opacity: 0.5;
         cursor: not-allowed;
-      }
-
-      &:hover:not(:disabled) {
-        background-color: #1E293B;
+        box-shadow: none;
       }
     }
 
     .btn-action-secondary {
-      background-color: #F8FAFC;
+      background-color: #FFFFFF;
       color: #475569;
-      border: 1px solid #E2E8F0;
+      border: 1px solid #CBD5E1;
       border-radius: 999px;
-      padding: 0.6rem 1.25rem;
+      padding: 0.55rem 1.25rem;
       font-size: 0.8125rem;
       font-weight: 700;
       cursor: pointer;
+      transition: all 0.18s ease;
 
-      &:hover { background-color: #F1F5F9; }
+      &:hover {
+        background-color: #F1F5F9;
+        color: #0F172A;
+      }
     }
   }
 }
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+

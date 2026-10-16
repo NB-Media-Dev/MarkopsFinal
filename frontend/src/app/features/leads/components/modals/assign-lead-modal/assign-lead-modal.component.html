@@ -9,7 +9,7 @@
           <div>
             <h2>Assign Lead</h2>
             <p class="modal-sub">
-              {{ lead.firstName }} {{ lead.lastName }}
+              Assign or route lead to a telecaller
             </p>
           </div>
         </div>
@@ -22,23 +22,51 @@
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
+
       <div class="modal-body">
+        <div class="lead-info-preview-card">
+          <div class="lead-avatar-bubble">
+            {{ (lead.firstName?.[0] || 'L') + (lead.lastName?.[0] || '') | uppercase }}
+          </div>
+          <div class="lead-meta">
+            <span class="lead-fullname">{{ lead.firstName }} {{ lead.lastName }}</span>
+            <div class="lead-sub-chips">
+              @if (lead.phone) {
+                <span class="lead-chip">
+                  <span class="material-symbols-outlined fs-13">call</span>
+                  <span>{{ lead.phone }}</span>
+                </span>
+              }
+              @if (lead.campaignName) {
+                <span class="lead-chip campaign-chip">
+                  <span class="material-symbols-outlined fs-13">campaign</span>
+                  <span>{{ lead.campaignName }}</span>
+                </span>
+              }
+            </div>
+          </div>
+        </div>
+
         <div class="form-group">
           <label class="form-label">Select Telecaller <span class="required">*</span></label>
-          <select
-            [ngModel]="selectedUserId"
-            (ngModelChange)="onUserChange($event)"
-            class="form-input"
-          >
-            <option value="" disabled>-- Select Telecaller --</option>
-            @for (user of realUsersList; track user.id) {
-              <option [value]="user.id">
-                {{ user.fullName }}
-              </option>
-            }
-          </select>
+          <div class="custom-select-wrap">
+            <select
+              [ngModel]="selectedUserId"
+              (ngModelChange)="onUserChange($event)"
+              class="form-input"
+            >
+              <option value="" disabled>-- Choose Telecaller --</option>
+              @for (user of realUsersList; track user.id) {
+                <option [value]="user.id">
+                  {{ user.fullName }}
+                </option>
+              }
+            </select>
+            <span class="material-symbols-outlined select-dropdown-icon">expand_more</span>
+          </div>
         </div>
       </div>
+
       <div class="modal-footer">
         <button class="btn-action-secondary" (click)="onCancel()" type="button">
           Cancel
@@ -49,6 +77,7 @@
           [disabled]="!selectedUserId"
           type="button"
         >
+          <span class="material-symbols-outlined fs-16">check</span>
           <span>Assign Lead</span>
         </button>
       </div>

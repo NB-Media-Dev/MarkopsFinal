@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LeadItem } from '../../../../core/services/lead-telecalling.service';
@@ -33,6 +33,22 @@ export class LeadsTableComponent {
   @Output() resetFilters = new EventEmitter<void>();
 
   readonly Math = Math;
+
+  activeMenuLeadId: string | null = null;
+
+  toggleActionMenu(leadId: string, event: Event) {
+    event.stopPropagation();
+    this.activeMenuLeadId = this.activeMenuLeadId === leadId ? null : leadId;
+  }
+
+  closeActionMenu() {
+    this.activeMenuLeadId = null;
+  }
+
+  @HostListener('document:click')
+  onDocumentClick() {
+    this.activeMenuLeadId = null;
+  }
 
   mathMin(a: number, b: number): number {
     return Math.min(a, b);

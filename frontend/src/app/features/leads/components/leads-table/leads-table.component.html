@@ -98,37 +98,59 @@
                   title="View complete interaction and telecalling call history"
                 >
                   <span class="material-symbols-outlined fs-15">visibility</span>
-                  <span>View Details</span>
+                  <span>View</span>
                 </button>
-                @if (canReassign(lead)) {
-                  <button
-                    class="btn-action-secondary btn-sm"
-                    (click)="reassign.emit(lead)"
-                    title="Assign / Reassign Telecaller (Creator only)"
-                  >
-                    <span class="material-symbols-outlined fs-15">assignment_ind</span>
-                    <span>Reassign</span>
-                  </button>
-                }
-                @if (canEditOrDelete(lead)) {
-                  <button
-                    class="btn-action-edit btn-sm"
-                    (click)="edit.emit(lead)"
-                    title="Edit Lead (Creator only)"
-                  >
-                    <span class="material-symbols-outlined fs-15">edit</span>
-                    <span>Edit</span>
-                  </button>
-                }
-                @if (canEditOrDelete(lead)) {
-                  <button
-                    class="btn-action-delete btn-sm"
-                    (click)="delete.emit(lead)"
-                    title="Delete Lead (Creator only)"
-                  >
-                    <span class="material-symbols-outlined fs-15">delete</span>
-                    <span>Delete</span>
-                  </button>
+
+                @if (canReassign(lead) || canEditOrDelete(lead)) {
+                  <div class="action-dropdown-wrap" (click)="$event.stopPropagation()">
+                    <button
+                      type="button"
+                      class="btn-more-dots"
+                      [class.active]="activeMenuLeadId === lead.id"
+                      (click)="toggleActionMenu(lead.id, $event)"
+                      title="More options"
+                    >
+                      <span class="material-symbols-outlined">more_vert</span>
+                    </button>
+
+                    @if (activeMenuLeadId === lead.id) {
+                      <div class="action-dropdown-menu">
+                        @if (canEditOrDelete(lead)) {
+                          <button
+                            type="button"
+                            class="menu-action-item"
+                            (click)="edit.emit(lead); closeActionMenu()"
+                          >
+                            <span class="material-symbols-outlined icon-edit">edit</span>
+                            <span>Edit</span>
+                          </button>
+                        }
+
+                        @if (canReassign(lead)) {
+                          <button
+                            type="button"
+                            class="menu-action-item"
+                            (click)="reassign.emit(lead); closeActionMenu()"
+                          >
+                            <span class="material-symbols-outlined icon-reassign">assignment_ind</span>
+                            <span>Reassign</span>
+                          </button>
+                        }
+
+                        @if (canEditOrDelete(lead)) {
+                          <div class="dropdown-divider"></div>
+                          <button
+                            type="button"
+                            class="menu-action-item item-danger"
+                            (click)="delete.emit(lead); closeActionMenu()"
+                          >
+                            <span class="material-symbols-outlined icon-delete">delete</span>
+                            <span>Delete</span>
+                          </button>
+                        }
+                      </div>
+                    }
+                  </div>
                 }
               </div>
             </td>
