@@ -1126,12 +1126,15 @@ export class PackageWorksComponent implements OnInit {
           const lNameLower = `${l.firstName || ''} ${l.lastName || ''}`.trim().toLowerCase();
 
           const callsForLead = allCalls.filter((c) => {
-            const cLeadId = String(c.leadId || (c as any).lead_id || '').trim();
+            const cLeadId = String(c.leadId || (c as any).lead_id || '').trim().toLowerCase();
             const cPhone = String(c.leadPhone || (c as any).lead_phone || (c as any).phone || '').replace(/\D/g, '');
             const cLeadName = String(c.leadName || (c as any).lead_name || '').trim().toLowerCase();
-            return (cLeadId && lId && cLeadId === lId) ||
-                   (lPhone && cPhone && lPhone === cPhone) ||
-                   (cLeadName && lNameLower && (cLeadName === lNameLower || cLeadName.includes(lNameLower) || lNameLower.includes(cLeadName)));
+            if (cLeadId && lId && cLeadId === lId.toLowerCase()) return true;
+            if (lPhone && cPhone && lPhone === cPhone) return true;
+            if (cLeadName && lNameLower && cLeadName === lNameLower && lNameLower !== 'lead' && lNameLower !== 'lead customer' && lNameLower.length > 3) {
+              return true;
+            }
+            return false;
           });
 
           const sortedCalls = [...callsForLead].sort(
@@ -1222,6 +1225,18 @@ export class PackageWorksComponent implements OnInit {
             return '—';
           })();
 
+          const uncalledStatuses = new Set(['NEW', 'UNASSIGNED', 'ASSIGNED', '—', '']);
+          const rawLeadStatus = String(l.status || 'ASSIGNED').toUpperCase().trim();
+          const isStatusUpdated = Boolean(rawLeadStatus && !uncalledStatuses.has(rawLeadStatus));
+
+          const currentOutcome = latestCall?.outcome
+            ? String(latestCall.outcome).toUpperCase().trim()
+            : (isStatusUpdated ? rawLeadStatus : '');
+
+          const finalStatus = latestCall?.outcome
+            ? String(latestCall.outcome).toUpperCase().trim()
+            : rawLeadStatus;
+
           return {
             id: l.id,
             leadId: l.id,
@@ -1239,8 +1254,8 @@ export class PackageWorksComponent implements OnInit {
             calledAt: latestCall ? (latestCall.calledAt || (latestCall as any).callDate) : null,
             callDurationText: durationText,
             callDurationSeconds: latestCall?.durationSeconds || 0,
-            callOutcome: (latestCall?.outcome || l.status || 'NEW').toUpperCase(),
-            status: (latestCall?.outcome || l.status || 'NEW').toUpperCase(),
+            callOutcome: currentOutcome,
+            status: finalStatus,
             callAttempts,
             callAttemptsText,
             followUpDate: latestCall?.followUpDate || (l as any).followUpDate || null,

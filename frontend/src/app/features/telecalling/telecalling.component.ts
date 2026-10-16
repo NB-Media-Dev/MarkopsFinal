@@ -769,8 +769,19 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     const calls = this.leadService.calls();
     const leads = this.leadService.leads();
 
-    const totalCalls = calls.length;
-    const interested = calls.filter((c) => c.outcome === 'INTERESTED' || c.outcome === 'QUALIFIED').length;
+    const uniqueLeadsCalled = new Set(
+      calls
+        .map((c) => String(c.leadId || c.leadPhone || c.leadName || '').trim().toLowerCase())
+        .filter((k) => !!k)
+    );
+    const uniqueInterestedLeads = new Set(
+      calls
+        .filter((c) => ['INTERESTED', 'QUALIFIED', 'PAID'].includes(String(c.outcome || '').toUpperCase()))
+        .map((c) => String(c.leadId || c.leadPhone || c.leadName || '').trim().toLowerCase())
+        .filter((k) => !!k)
+    );
+    const totalCalls = uniqueLeadsCalled.size;
+    const interested = uniqueInterestedLeads.size;
     const avgConv = list.length > 0 ? Math.round(list.reduce((acc, tc) => acc + tc.conversionRate, 0) / list.length) : 0;
 
     return {

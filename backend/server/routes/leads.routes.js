@@ -33,14 +33,15 @@ function isSameCallActivity(c1, c2) {
     return true;
   }
 
-  // If both have IDs, compare them
-  if (c1.id && c2.id) {
+  // If both have direct numeric database IDs, compare them
+  const isPureDbId1 = /^call_\d+$/.test(String(c1.id || '').trim()) || /^\d+$/.test(String(c1.id || '').trim());
+  const isPureDbId2 = /^call_\d+$/.test(String(c2.id || '').trim()) || /^\d+$/.test(String(c2.id || '').trim());
+  if (isPureDbId1 && isPureDbId2) {
     const num1 = String(c1.id).replace(/\D/g, '');
     const num2 = String(c2.id).replace(/\D/g, '');
-    if (num1 && num2) {
-      return num1 === num2;
+    if (num1 && num2 && num1 === num2) {
+      return true;
     }
-    return false;
   }
 
   const lead1 = String(c1.leadId || '').replace(/\D/g, '') || String(c1.leadId || '').trim();
@@ -64,12 +65,13 @@ function isSameCallActivity(c1, c2) {
     const t2 = new Date(c2.calledAt).getTime();
     if (!isNaN(t1) && !isNaN(t2)) {
       const diff = Math.abs(t1 - t2);
-      if (diff <= 5000) return true;
+      const isFivePointFiveHours = Math.abs(diff - (5.5 * 3600 * 1000)) <= 60000;
+      if (diff <= 60000 || isFivePointFiveHours) return true;
       return false;
     }
   }
 
-  return false;
+  return true;
 }
 
 function reconcileCallActivities(dbRows) {

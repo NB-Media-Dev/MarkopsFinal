@@ -419,26 +419,34 @@ export class PackageReportsComponent implements OnInit, OnChanges {
       for (const lead of groupLeads) {
         const leadId = String(lead.id || lead.leadId || '').trim().toLowerCase();
         const leadPhone = String(lead.phone || lead.leadPhone || '').replace(/\D/g, '');
-        const leadKey = leadPhone ? `p_${leadPhone}` : (leadId ? `id_${leadId}` : `ref_${Math.random()}`);
+        const leadKey = leadId ? `id_${leadId}` : (leadPhone ? `p_${leadPhone}` : `ref_${lead.title || lead.name || ''}`);
 
-        const hasBeenCalled =
-          (Array.isArray(lead.calls) && lead.calls.length > 0) ||
-          (lead.callAttempts && lead.callAttempts > 0) ||
-          Boolean(lead.calledAt) ||
-          Boolean(lead.lastCalledAt) ||
-          (lead.callOutcome && String(lead.callOutcome).trim().length > 0) ||
-          (lead.status && !['NEW', 'UNASSIGNED', 'ASSIGNED'].includes(String(lead.status).toUpperCase()));
+        const uncalledStatuses = new Set(['NEW', 'UNASSIGNED', 'ASSIGNED', '—', '', 'NULL', 'UNDEFINED']);
+        const rawOutcome = String(lead.callOutcome || '').toUpperCase().trim();
+        const rawStatus = String(lead.status || '').toUpperCase().trim();
 
-        if (hasBeenCalled) {
+        const hasValidOutcome = Boolean(rawOutcome && !uncalledStatuses.has(rawOutcome));
+        const hasValidStatus = Boolean(rawStatus && !uncalledStatuses.has(rawStatus));
+        const hasValidCalls = Array.isArray(lead.calls) && lead.calls.length > 0;
+        const hasValidAttempts = typeof lead.callAttempts === 'number' && lead.callAttempts > 0;
+        const hasValidCallDate = Boolean(lead.calledAt) || Boolean(lead.lastCalledAt);
+
+        const hasBeenCalled = hasValidCalls || hasValidAttempts || hasValidCallDate || hasValidOutcome || hasValidStatus;
+
+        if (hasBeenCalled && leadKey) {
           calledLeadIds.add(leadKey);
         }
 
-        const outcome = (lead.callOutcome || lead.status || '').toUpperCase();
+        const outcome = (hasValidOutcome ? rawOutcome : (hasValidStatus ? rawStatus : '')).toUpperCase();
         if (['PAID', 'CONVERTED'].includes(outcome) || lead.isPaid || lead.paidAmount > 0) {
-          paidLeadIds.add(leadKey);
-          interestedLeadIds.add(leadKey);
+          if (leadKey) {
+            paidLeadIds.add(leadKey);
+            interestedLeadIds.add(leadKey);
+          }
         } else if (['INTERESTED', 'QUALIFIED', 'HOT'].includes(outcome)) {
-          interestedLeadIds.add(leadKey);
+          if (leadKey) {
+            interestedLeadIds.add(leadKey);
+          }
         }
       }
 
@@ -873,26 +881,34 @@ export class PackageReportsComponent implements OnInit, OnChanges {
       for (const lead of groupLeads) {
         const leadId = String(lead.id || lead.leadId || '').trim().toLowerCase();
         const leadPhone = String(lead.phone || lead.leadPhone || '').replace(/\D/g, '');
-        const leadKey = leadPhone ? `p_${leadPhone}` : (leadId ? `id_${leadId}` : `ref_${Math.random()}`);
+        const leadKey = leadId ? `id_${leadId}` : (leadPhone ? `p_${leadPhone}` : `ref_${lead.title || lead.name || ''}`);
 
-        const hasBeenCalled =
-          (Array.isArray(lead.calls) && lead.calls.length > 0) ||
-          (lead.callAttempts && lead.callAttempts > 0) ||
-          Boolean(lead.calledAt) ||
-          Boolean(lead.lastCalledAt) ||
-          (lead.callOutcome && String(lead.callOutcome).trim().length > 0) ||
-          (lead.status && !['NEW', 'UNASSIGNED', 'ASSIGNED'].includes(String(lead.status).toUpperCase()));
+        const uncalledStatuses = new Set(['NEW', 'UNASSIGNED', 'ASSIGNED', '—', '', 'NULL', 'UNDEFINED']);
+        const rawOutcome = String(lead.callOutcome || '').toUpperCase().trim();
+        const rawStatus = String(lead.status || '').toUpperCase().trim();
 
-        if (hasBeenCalled) {
+        const hasValidOutcome = Boolean(rawOutcome && !uncalledStatuses.has(rawOutcome));
+        const hasValidStatus = Boolean(rawStatus && !uncalledStatuses.has(rawStatus));
+        const hasValidCalls = Array.isArray(lead.calls) && lead.calls.length > 0;
+        const hasValidAttempts = typeof lead.callAttempts === 'number' && lead.callAttempts > 0;
+        const hasValidCallDate = Boolean(lead.calledAt) || Boolean(lead.lastCalledAt);
+
+        const hasBeenCalled = hasValidCalls || hasValidAttempts || hasValidCallDate || hasValidOutcome || hasValidStatus;
+
+        if (hasBeenCalled && leadKey) {
           calledLeadIds.add(leadKey);
         }
 
-        const outcome = (lead.callOutcome || lead.status || '').toUpperCase();
+        const outcome = (hasValidOutcome ? rawOutcome : (hasValidStatus ? rawStatus : '')).toUpperCase();
         if (['PAID', 'CONVERTED'].includes(outcome) || lead.isPaid || lead.paidAmount > 0) {
-          paidLeadIds.add(leadKey);
-          interestedLeadIds.add(leadKey);
+          if (leadKey) {
+            paidLeadIds.add(leadKey);
+            interestedLeadIds.add(leadKey);
+          }
         } else if (['INTERESTED', 'QUALIFIED', 'HOT'].includes(outcome)) {
-          interestedLeadIds.add(leadKey);
+          if (leadKey) {
+            interestedLeadIds.add(leadKey);
+          }
         }
       }
 
@@ -953,7 +969,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
     if (this.telecallerCampaignReports.length > 0) {
       return this.telecallerCampaignReports.reduce((acc, r) => acc + (r.totalCalls || 0), 0);
     }
-    return 8;
+    return 0;
   }
 
   get telecallerPendingCalls(): number {
