@@ -104,13 +104,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
   failedAvatarUserIds = new Set<string>();
 
   ngOnInit(): void {
-    if (this.selectedRoleFilter !== 'ALL') {
-      const first = this.filteredTeamMembers[0];
-      if (first) {
-        this.expandedUserIds.add(first.userId);
-        this.selectedMemberIdFilter = first.userId;
-      }
-    }
+    this.selectedMemberIdFilter = 'ALL';
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -199,13 +193,11 @@ export class PackageReportsComponent implements OnInit, OnChanges {
       this.expandedUserIds.delete(userId);
     } else {
       this.expandedUserIds.add(userId);
-      this.selectedMemberIdFilter = userId;
     }
   }
 
   expandUser(userId: string): void {
     this.expandedUserIds.add(userId);
-    this.selectedMemberIdFilter = userId;
     setTimeout(() => {
       const el = document.getElementById('user-accordion-' + userId);
       if (el) {
@@ -236,22 +228,11 @@ export class PackageReportsComponent implements OnInit, OnChanges {
   }
 
   getSelectedMemberLabel(): string {
-    if (this.selectedMemberIdFilter !== 'ALL') {
+    if (this.selectedMemberIdFilter && this.selectedMemberIdFilter !== 'ALL') {
       const found = this.teamRoleMembers.find((m) => m.userId === this.selectedMemberIdFilter);
       if (found) return found.name;
     }
-    if (this.teamRoleMembers.length === 1) {
-      return this.teamRoleMembers[0].name;
-    }
-    if (this.expandedUserIds.size > 0) {
-      const expandedId = Array.from(this.expandedUserIds)[0];
-      const foundExp = this.teamRoleMembers.find((m) => m.userId === expandedId);
-      if (foundExp) return foundExp.name;
-    }
-    if (this.teamRoleMembers.length > 0) {
-      return this.teamRoleMembers[0].name;
-    }
-    return 'Select User';
+    return 'All Users';
   }
 
   getActiveDateLabel(): string {
@@ -562,13 +543,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
     this.filterStartDate = '';
     this.filterEndDate = '';
     setTimeout(() => {
-      const members = this.teamRoleMembers;
-      if (members.length > 0) {
-        this.selectedMemberIdFilter = members[0].userId;
-        this.expandedUserIds.add(members[0].userId);
-      } else {
-        this.selectedMemberIdFilter = 'ALL';
-      }
+      this.selectedMemberIdFilter = 'ALL';
     }, 0);
   }
 

@@ -91,7 +91,7 @@
 
                 @if (isUserDropdownOpen) {
                   <div class="top-action-dropdown-menu user-dropdown-menu">
-                    <!-- Option: All Users -->
+               
                     <button
                       type="button"
                       class="dropdown-menu-item user-dropdown-item"
@@ -118,7 +118,7 @@
                       </div>
                     }
 
-                    <!-- Options: Individual Database Users -->
+                    
                     @for (m of teamRoleMembers; track m.userId) {
                       <button
                         type="button"
