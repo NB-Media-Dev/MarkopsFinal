@@ -1,16 +1,17 @@
 <div class="notifications-page">
 
-  <header class="page-header">
-    <div class="header-left">
+  <header class="page-header page-clean-branding-header">
+    <div class="header-titles-block">
       <div class="header-title-row">
-        <a (click)="goBack()" class="title-back-btn" title="Back to Previous Page">
-          <span class="arrow-char">←</span>
-        </a>
-        <h1>Notifications</h1>
-        <span class="live-dot-pulse" title="Live updates active"></span>
+        <h1 class="page-main-orange-title">Notifications</h1>
         @if (stats().unread > 0) {
           <span class="unread-count-badge"> {{ stats().unread }} unread </span>
         }
+      </div>
+      <div class="page-breadcrumb-subrow">
+        <a routerLink="/dashboard" class="bc-link">Dashboard</a>
+        <span class="bc-sep">&gt;</span>
+        <span class="bc-current">Notifications</span>
       </div>
     </div>
     <div class="header-right">

@@ -1,4 +1,4 @@
-<div class="toolbar-card">
+<!-- <div class="toolbar-card">
   <div class="search-box">
     <span class="material-symbols-outlined search-icon">search</span>
     <input
@@ -67,6 +67,87 @@
     >
       <span class="tab-indicator-dot dot-youtube"></span>
       YouTube
+    </button>
+  </div>
+</div> -->
+
+<div class="toolbar-card">
+  
+  <!-- LEFT: SEARCH CONTAINER (Orange border theme with custom focus states) -->
+  <div class="search-box">
+    <span class="material-symbols-outlined search-icon">search</span>
+    <input
+      type="text"
+      [ngModel]="searchQuery"
+      (ngModelChange)="onSearch($event)"
+      placeholder="Search ad name, campaign, or platform..."
+    />
+    @if (searchQuery) {
+      <button class="clear-search-btn" (click)="onSearch('')" title="Clear Search">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    }
+  </div>
+
+  <!-- RIGHT: SEGMENTED FILTERS (Converted into light custom border frame layout with orange tab actions) -->
+  <div class="segmented-tabs">
+    <button
+      type="button"
+      class="tab-pill-btn"
+      [class.active]="filterPlatform === 'ALL'"
+      (click)="setFilter('ALL')"
+    >
+      All Platforms
+    </button>
+    
+    <button
+      type="button"
+      class="tab-pill-btn"
+      [class.active]="filterPlatform === 'Meta'"
+      (click)="setFilter('Meta')"
+    >
+      
+      <span>Meta</span>
+    </button>
+    
+    <button
+      type="button"
+      class="tab-pill-btn"
+      [class.active]="filterPlatform === 'Google Ads'"
+      (click)="setFilter('Google Ads')"
+    >
+    
+      <span>Google Ads</span>
+    </button>
+    
+    <button
+      type="button"
+      class="tab-pill-btn"
+      [class.active]="filterPlatform === 'Instagram'"
+      (click)="setFilter('Instagram')"
+    >
+    
+      <span>Instagram</span>
+    </button>
+    
+    <button
+      type="button"
+      class="tab-pill-btn"
+      [class.active]="filterPlatform === 'LinkedIn'"
+      (click)="setFilter('LinkedIn')"
+    >
+      
+      <span>LinkedIn</span>
+    </button>
+    
+    <button
+      type="button"
+      class="tab-pill-btn"
+      [class.active]="filterPlatform === 'YouTube'"
+      (click)="setFilter('YouTube')"
+    >
+      
+      <span>YouTube</span>
     </button>
   </div>
 </div>

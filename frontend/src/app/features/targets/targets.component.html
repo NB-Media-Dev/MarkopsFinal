@@ -75,64 +75,52 @@
             <div class="kpi-squircle-icon icon-indigo">
               <span class="material-symbols-outlined">groups</span>
             </div>
-            <div class="kpi-pill-badge pill-indigo">Roster</div>
+         
           </div>
           <div class="kpi-body">
             <span class="kpi-title">ACTIVE TELECALLERS</span>
             <div class="kpi-value">{{ kpis.totalTelecallers }}</div>
           </div>
-          <div class="kpi-footer-row">
-            <span class="kpi-footer-text">Monitored Daily</span>
-            <span class="kpi-footer-pill pill-indigo">Quota Active</span>
-          </div>
+        
         </div>
         <div class="kpi-card card-conversion">
           <div class="kpi-top-row">
             <div class="kpi-squircle-icon icon-emerald">
               <span class="material-symbols-outlined">verified</span>
             </div>
-            <div class="kpi-pill-badge pill-emerald">Optimal</div>
+      
           </div>
           <div class="kpi-body">
             <span class="kpi-title">COMPLIANCE RATE</span>
             <div class="kpi-value">{{ kpis.overallComplianceRatePct }}%</div>
           </div>
-          <div class="kpi-footer-row">
-            <span class="kpi-footer-text">Overall Team Average</span>
-            <span class="kpi-footer-pill pill-emerald">Yield</span>
-          </div>
+  
         </div>
         <div class="kpi-card card-revenue">
           <div class="kpi-top-row">
             <div class="kpi-squircle-icon icon-amber">
               <span class="material-symbols-outlined">trending_up</span>
             </div>
-            <div class="kpi-pill-badge pill-amber">On Schedule</div>
+     
           </div>
           <div class="kpi-body">
             <span class="kpi-title">ON-TRACK / ACHIEVED</span>
             <div class="kpi-value">{{ kpis.achievedCount + kpis.onTrackCount }}</div>
           </div>
-          <div class="kpi-footer-row">
-            <span class="kpi-footer-text">Meeting Daily Goals</span>
-            <span class="kpi-footer-pill pill-amber">Success</span>
-          </div>
+     >
         </div>
         <div class="kpi-card card-tasks">
           <div class="kpi-top-row">
             <div class="kpi-squircle-icon icon-rose">
               <span class="material-symbols-outlined">report_problem</span>
             </div>
-            <div class="kpi-pill-badge pill-rose">Attention</div>
+      
           </div>
           <div class="kpi-body">
             <span class="kpi-title">TARGET DEFICITS</span>
             <div class="kpi-value">{{ kpis.deficitCount }}</div>
           </div>
-          <div class="kpi-footer-row">
-            <span class="kpi-footer-text">Behind Quota</span>
-            <span class="kpi-footer-pill pill-rose">Requires Action</span>
-          </div>
+    
         </div>
       </section>
     }
@@ -231,7 +219,7 @@
           [class.active]="statusFilter() === 'ON_TRACK'"
           (click)="setFilter('ON_TRACK')"
         >
-          <span class="tab-indicator-dot dot-active"></span>
+         
           On Track
         </button>
         <button
@@ -239,7 +227,7 @@
           [class.active]="statusFilter() === 'ACHIEVED'"
           (click)="setFilter('ACHIEVED')"
         >
-          <span class="tab-indicator-dot dot-achieved"></span>
+     
           Achieved
         </button>
         <button
@@ -247,7 +235,7 @@
           [class.active]="statusFilter() === 'BEHIND_TARGET'"
           (click)="setFilter('BEHIND_TARGET')"
         >
-          <span class="tab-indicator-dot dot-behind"></span>
+    
           Behind Target
         </button>
       </div>

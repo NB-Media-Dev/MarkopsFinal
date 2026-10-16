@@ -1,12 +1,12 @@
 <div class="users-roles-page">
-  <header class="page-header">
-    <div class="header-titles-group">
-      <h1 class="page-heading">
-        <a routerLink="/dashboard" class="title-back-btn" title="Back to Dashboard">
-          <span class="arrow-char">←</span>
-        </a>
-        <span>Users & Roles Management</span>
-      </h1>
+  <header class="page-header page-clean-branding-header">
+    <div class="header-titles-group header-titles-block">
+      <h1 class="page-main-orange-title">Users & Roles Management</h1>
+      <div class="page-breadcrumb-subrow">
+        <a routerLink="/dashboard" class="bc-link">Dashboard</a>
+        <span class="bc-sep">&gt;</span>
+        <span class="bc-current">Users & Roles Management</span>
+      </div>
     </div>
 
     <div class="header-actions">
@@ -52,9 +52,7 @@
         <span class="kpi-title">TOTAL USERS</span>
         <div class="kpi-value">{{ userMgmtService.totalUsersCount() }}</div>
       </div>
-      <div class="kpi-footer-row">
-        <span class="kpi-footer-text">Platform Accounts</span>
-      </div>
+
     </div>
 
     <div class="kpi-card card-active">
@@ -67,9 +65,6 @@
         <span class="kpi-title">ACTIVE ACCOUNTS</span>
         <div class="kpi-value">{{ userMgmtService.activeUsersCount() }}</div>
       </div>
-      <div class="kpi-footer-row">
-        <span class="kpi-footer-text">Enabled Access</span>
-      </div>
     </div>
 
     <div class="kpi-card card-roles">
@@ -81,9 +76,6 @@
       <div class="kpi-body">
         <span class="kpi-title">SYSTEM ROLES</span>
         <div class="kpi-value">5</div>
-      </div>
-      <div class="kpi-footer-row">
-        <span class="kpi-footer-text">Permission Tiers</span>
       </div>
     </div>
   </section>
@@ -388,34 +380,7 @@
         novalidate
       >
         <div class="modal-body">
-          <div class="form-group avatar-upload-group">
-            <label class="form-label">Profile Picture</label>
-            <div class="avatar-picker-wrapper">
-              <div class="avatar-picker-preview">
-                @if (editAvatarPreview()) {
-                  <img [src]="editAvatarPreview()" alt="Preview" class="avatar-preview-img" />
-                  <button type="button" class="btn-avatar-remove" (click)="removeEditAvatar()" title="Remove image">
-                    <span class="material-symbols-outlined">close</span>
-                  </button>
-                } @else {
-                  <span class="material-symbols-outlined icon-placeholder">person</span>
-                }
-              </div>
-              <div class="avatar-picker-actions">
-                <label class="btn-avatar-select">
-                  <span class="material-symbols-outlined fs-16">photo_camera</span>
-                  <span>{{ editAvatarPreview() ? 'Change Photo' : 'Upload Photo' }}</span>
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg,image/webp"
-                    (change)="onSelectEditAvatar($event)"
-                    class="avatar-hidden-input"
-                  />
-                </label>
-                <span class="avatar-upload-hint">PNG, JPG, WEBP up to 5MB</span>
-              </div>
-            </div>
-          </div>
+         
           <div class="form-group">
             <label class="form-label">Full Name <span class="required">*</span></label>
             <input

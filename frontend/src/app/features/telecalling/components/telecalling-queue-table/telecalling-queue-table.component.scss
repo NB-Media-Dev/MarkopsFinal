@@ -1,29 +1,31 @@
 .toolbar-card {
   background: #FFFFFF;
-  border: 1.5px solid #E2E8F0;
-  border-radius: 20px;
-  padding: 0.65rem 1rem;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  padding: 0.75rem 1.25rem;
   display: flex;
   align-items: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
   margin-bottom: 1.25rem;
 
   @media (max-width: 640px) {
     padding: 0.5rem 0.65rem;
-    border-radius: 14px;
+    border-radius: 10px;
   }
 
   .segmented-tabs {
     display: flex;
-    background: #F1F5F9;
-    border-radius: 999px;
+    align-items: center;
+    background: #FFFFFF;
+    border: 1.5px solid rgba(255, 159, 28, 0.2);
+    border-radius: 8px;
     padding: 3px;
     gap: 3px;
     overflow-x: auto;
     flex-wrap: nowrap;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
-    width: 100%;
+    width: auto;
 
     &::-webkit-scrollbar {
       display: none;
@@ -32,35 +34,43 @@
     .tab-pill-btn {
       border: none;
       background: transparent;
-      padding: 0.38rem 0.95rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
+      padding: 0 0.85rem;
+      height: 32px;
+      border-radius: 6px;
+      font-size: 0.8rem;
       font-weight: 600;
-      color: #64748B;
+      color: #2B2D42;
       flex-shrink: 0;
       white-space: nowrap;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 0.35rem;
+      gap: 0.45rem;
       transition: all 0.15s ease;
 
       .tab-icon {
         font-size: 16px;
+        color: #8D99AE;
+        transition: color 0.15s ease;
       }
 
       &:hover {
-        color: #0F172A;
+        color: #FF9F1C;
+        background-color: #FFF5E6;
+
+        .tab-icon {
+          color: #FF9F1C;
+        }
       }
 
       &.active {
-        background-color: #FFFFFF;
-        color: #0F172A;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        background-color: #FF9F1C;
+        color: #FFFFFF !important;
         font-weight: 700;
+        box-shadow: none;
 
         .tab-icon {
-          color: #F59E0B;
+          color: #FFFFFF !important;
         }
       }
     }
@@ -181,29 +191,29 @@
         }
 
         .queue-search-input {
-          height: 34px;
-          padding: 0 1.9rem 0 2.1rem;
-          font-size: 0.785rem;
+          height: 36px;
+          padding: 0 1.9rem 0 2.2rem;
+          font-size: 0.825rem;
           font-weight: 500;
-          color: #1E293B;
-          background: #F8FAFC;
-          border: 1.5px solid #CBD5E1;
-          border-radius: 999px;
+          color: #2B2D42;
+          background: #FFFFFF;
+          border: 1.5px solid rgba(255, 159, 28, 0.3);
+          border-radius: 8px;
           outline: none;
-          min-width: 220px;
+          min-width: 240px;
           transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 
           &::placeholder {
-            color: #94A3B8;
-            font-size: 0.75rem;
+            color: #CBD5E1;
+            font-size: 0.8rem;
             font-weight: 500;
           }
 
           &:focus {
             background: #FFFFFF;
-            border-color: #6366F1;
-            min-width: 260px;
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+            border-color: #FF9F1C;
+            min-width: 270px;
+            box-shadow: 0 0 0 3px rgba(255, 159, 28, 0.1);
           }
         }
 
@@ -274,14 +284,14 @@
 
     thead tr,
     thead th {
-      background-color: #F8FAFC !important;
-      color: #475569 !important;
+      background-color: #FFF5E6 !important;
+      color: #E28704 !important;
       font-weight: 700 !important;
-      font-size: 0.6875rem !important;
+      font-size: 0.725rem !important;
       letter-spacing: 0.05em !important;
       text-transform: uppercase !important;
-      padding: 0.65rem 0.5rem !important;
-      border-bottom: 1px solid #E2E8F0 !important;
+      padding: 0.75rem 0.5rem !important;
+      border-bottom: 1px solid rgba(255, 159, 28, 0.2) !important;
       white-space: nowrap !important;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -952,10 +962,10 @@
       }
 
       &.active-page {
-        background: #4F46E5;
+        background: #FF9F1C;
         color: #FFFFFF;
-        border-color: #4F46E5;
-        box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
+        border-color: #FF9F1C;
+        box-shadow: 0 2px 6px rgba(255, 159, 28, 0.3);
       }
     }
   }

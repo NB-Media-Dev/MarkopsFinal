@@ -1,4 +1,6 @@
 <div class="toolbar-card">
+  
+  <!-- LEFT: SEARCH CONTAINER (Orange accent on click, square-round outline shape) -->
   <div class="search-box">
     <span class="material-symbols-outlined search-icon">search</span>
     <input
@@ -14,6 +16,7 @@
     }
   </div>
 
+  <!-- RIGHT: SEGMENTED FILTERS (Converted into light tab layouts with orange fills) -->
   <div class="segmented-tabs">
     <button
       type="button"
@@ -30,7 +33,6 @@
       [class.active]="filterStatus === 'ACTIVE'"
       (click)="setFilter('ACTIVE')"
     >
-      <span class="tab-indicator-dot dot-active"></span>
       Active ({{ activeCount }})
     </button>
 
@@ -40,7 +42,6 @@
       [class.active]="filterStatus === 'PLANNING'"
       (click)="setFilter('PLANNING')"
     >
-      <span class="tab-indicator-dot dot-planning"></span>
       Planning ({{ planningCount }})
     </button>
 
@@ -50,7 +51,6 @@
       [class.active]="filterStatus === 'PAUSED'"
       (click)="setFilter('PAUSED')"
     >
-      <span class="tab-indicator-dot dot-paused"></span>
       Paused ({{ pausedCount }})
     </button>
 
@@ -60,7 +60,6 @@
       [class.active]="filterStatus === 'COMPLETED'"
       (click)="setFilter('COMPLETED')"
     >
-      <span class="tab-indicator-dot dot-completed"></span>
       Completed ({{ completedCount }})
     </button>
   </div>

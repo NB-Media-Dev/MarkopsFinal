@@ -20,7 +20,12 @@
   }
 
   @media (max-width: 480px) {
-    padding: 1rem 0.75rem 2rem 0.75rem;
+    padding: 1rem 0.5rem 2rem 0.5rem;
+    gap: 0.85rem;
+  }
+
+  @media (max-width: 360px) {
+    padding: 0.75rem 0.25rem 1.75rem 0.25rem;
   }
 }
 
@@ -54,6 +59,14 @@
       @media (max-width: 768px) {
         font-size: 1.25rem;
       }
+
+      @media (max-width: 480px) {
+        font-size: 1.15rem;
+      }
+
+      @media (max-width: 360px) {
+        font-size: 1.05rem;
+      }
     }
 
     .page-breadcrumb-subrow {
@@ -70,6 +83,12 @@
 
       @media (max-width: 768px) {
         font-size: 0.78rem;
+      }
+
+      @media (max-width: 480px) {
+        font-size: 0.72rem;
+        column-gap: 4px;
+        row-gap: 3px;
       }
 
       .bc-link {
@@ -2766,11 +2785,11 @@
 .dept-nav-tabs-bar {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.35rem 0.5rem;
+  gap: 0.35rem;
+  padding: 3px;
   background: #FFFFFF;
-  border: 1px solid #E2E8F0;
-  border-radius: 12px;
+  border: 1.5px solid rgba(255, 159, 28, 0.25);
+  border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   margin-bottom: 1.25rem;
   flex-wrap: wrap;
@@ -2779,21 +2798,22 @@
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    padding: 0.45rem 1rem;
-    border-radius: 9px;
-    font-size: 0.8125rem;
-    font-weight: 700;
-    color: #475569;
-    background: #F8FAFC;
-    border: 1px solid #E2E8F0;
+    padding: 0 0.85rem;
+    height: 32px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #2B2D42;
+    background: transparent;
+    border: none;
     cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: all 0.15s ease;
     white-space: nowrap;
 
     .subtab-icon {
       font-size: 1.15rem;
-      color: #64748B;
-      transition: color 0.18s ease;
+      color: #8D99AE;
+      transition: color 0.15s ease;
       line-height: 1;
       display: inline-flex;
       align-items: center;
@@ -2805,28 +2825,29 @@
     }
 
     &:hover:not(.active) {
-      background: #F1F5F9;
-      border-color: #CBD5E1;
-      color: #0F172A;
-      transform: translateY(-1px);
+      background: #FFF5E6;
+      border-color: transparent;
+      color: #FF9F1C;
+      transform: none;
 
       .subtab-icon {
-        color: #2563EB;
+        color: #FF9F1C;
       }
     }
 
     &.active {
-      background: #0F172A;
-      border-color: #0F172A;
-      color: #FFFFFF;
-      box-shadow: 0 3px 10px rgba(15, 23, 42, 0.2);
+      background: #FF9F1C;
+      border-color: #FF9F1C;
+      color: #FFFFFF !important;
+      box-shadow: none;
+      font-weight: 700;
 
       .subtab-icon {
-        color: #F59E0B;
+        color: #FFFFFF !important;
       }
 
       .subtab-text {
-        color: #FFFFFF;
+        color: #FFFFFF !important;
       }
     }
   }
@@ -2836,21 +2857,22 @@
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  padding: 0.45rem 1rem;
-  border-radius: 9px;
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: #475569;
-  background: #F8FAFC;
-  border: 1px solid #E2E8F0;
+  padding: 0 0.85rem;
+  height: 32px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #2B2D42;
+  background: transparent;
+  border: none;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.15s ease;
   white-space: nowrap;
 
   .subtab-icon {
     font-size: 1.15rem;
-    color: #64748B;
-    transition: color 0.18s ease;
+    color: #8D99AE;
+    transition: color 0.15s ease;
     line-height: 1;
     display: inline-flex;
     align-items: center;
@@ -2862,28 +2884,29 @@
   }
 
   &:hover:not(.active) {
-    background: #F1F5F9;
-    border-color: #CBD5E1;
-    color: #0F172A;
-    transform: translateY(-1px);
+    background: #FFF5E6;
+    border-color: transparent;
+    color: #FF9F1C;
+    transform: none;
 
     .subtab-icon {
-      color: #2563EB;
+      color: #FF9F1C;
     }
   }
 
   &.active {
-    background: #0F172A;
-    border-color: #0F172A;
-    color: #FFFFFF;
-    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.2);
+    background: #FF9F1C;
+    border-color: #FF9F1C;
+    color: #FFFFFF !important;
+    box-shadow: none;
+    font-weight: 700;
 
     .subtab-icon {
-      color: #F59E0B;
+      color: #FFFFFF !important;
     }
 
     .subtab-text {
-      color: #FFFFFF;
+      color: #FFFFFF !important;
     }
   }
 }
@@ -2979,13 +3002,14 @@
   border-collapse: collapse;
 
   th {
-    background: #f8fafc;
+    background-color: #FFF5E6 !important;
     padding: 0.875rem 1.25rem;
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     font-weight: 700;
-    color: #475569;
+    color: #E28704 !important;
     text-transform: uppercase;
-    border-bottom: 1px solid #e2e8f0;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid rgba(255, 159, 28, 0.2) !important;
     text-align: left;
   }
 

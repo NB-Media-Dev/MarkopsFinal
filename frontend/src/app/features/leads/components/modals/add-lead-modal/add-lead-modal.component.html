@@ -1,4 +1,4 @@
-@if (isOpen) {
+<!-- @if (isOpen) {
   <div class="modal-backdrop" (click)="onClose()">
     <div class="modal-card modal-md add-lead-modal-card" (click)="$event.stopPropagation()">
       <div class="modal-header">
@@ -208,6 +208,188 @@
           }
         </button>
       </div>
+    </div>
+  </div>
+} -->
+@if (isOpen) {
+  <div class="modal-backdrop" (click)="onClose()">
+    <div class="modal-card modal-md add-lead-modal-card" (click)="$event.stopPropagation()">
+      
+      <!-- HEADER PANEL -->
+      <div class="modal-header">
+        <h2>Add New Lead</h2>
+        <button class="btn-close-modal" (click)="onClose()" aria-label="Close" type="button">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <!-- COMPACT NON-SCROLL BODY -->
+      <div class="modal-body compact-no-scroll">
+
+        <!-- STEP 1: LEAD IDENTITY DETAILS -->
+        <div class="form-step-section">
+          <div class="step-heading">
+            <span class="step-badge step-orange">1</span>
+            <h3>Lead Identity</h3>
+          </div>
+          
+          <div class="form-row-flexible">
+            <div class="form-group flex-1">
+              <label class="form-label">First Name <span class="required">*</span></label>
+              <input
+                type="text"
+                [ngModel]="newFirstName"
+                (ngModelChange)="newFirstNameChange.emit($event)"
+                (blur)="firstNameTouched = true"
+                placeholder="Rahul"
+                class="form-input"
+                [class.input-error]="firstNameTouched && !newFirstName.trim()"
+                required
+              />
+            </div>
+            
+            <div class="form-group flex-1">
+              <label class="form-label">Last Name <span class="required">*</span></label>
+              <input
+                type="text"
+                [ngModel]="newLastName"
+                (ngModelChange)="newLastNameChange.emit($event)"
+                (blur)="lastNameTouched = true"
+                placeholder="Sharma"
+                class="form-input"
+                [class.input-error]="lastNameTouched && !newLastName.trim()"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-row-flexible">
+            <div class="form-group flex-1">
+              <label class="form-label">Phone Number <span class="required">*</span></label>
+              <div class="input-with-icon-wrap">
+                <input
+                  type="tel"
+                  [ngModel]="newPhone"
+                  (ngModelChange)="newPhoneChange.emit($event)"
+                  (blur)="phoneTouched = true"
+                  placeholder="10 digit number"
+                  class="form-input"
+                  [class.input-error]="phoneTouched && !isPhoneValid(newPhone)"
+                  [class.input-valid]="newPhone && isPhoneValid(newPhone)"
+                  required
+                />
+                @if (newPhone && isPhoneValid(newPhone)) {
+                  <span class="input-right-status-icon">
+                    <span class="material-symbols-outlined text-emerald">check_circle</span>
+                  </span>
+                }
+              </div>
+            </div>
+
+            <div class="form-group flex-1">
+              <label class="form-label">Email Address <span class="required">*</span></label>
+              <div class="input-with-icon-wrap">
+                <input
+                  type="email"
+                  [ngModel]="newEmail"
+                  (ngModelChange)="newEmailChange.emit($event)"
+                  (blur)="emailTouched = true"
+                  placeholder="name@domain.com"
+                  class="form-input"
+                  [class.input-error]="emailTouched && !isEmailValid(newEmail)"
+                  [class.input-valid]="newEmail && isEmailValid(newEmail)"
+                  required
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: MARKETING & ATTRIBUTION CHANNELS -->
+        <div class="form-step-section">
+          <div class="step-heading">
+            <span class="step-badge step-blue">2</span>
+            <h3>Attribution & Target Channel</h3>
+          </div>
+
+          <div class="form-row-flexible">
+            <div class="form-group flex-1">
+              <label class="form-label">Marketing Campaign <span class="required">*</span></label>
+              <select class="form-input custom-select" [ngModel]="newCampaignId" (change)="campaignChange.emit($event)">
+                @if (availableCampaigns.length === 0) {
+                  <option value="">General Ad Campaign</option>
+                }
+                @for (cmp of availableCampaigns; track cmp.id) {
+                  <option [value]="cmp.id">{{ cmp.name }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-group flex-1">
+              <label class="form-label">Lead Source <span class="required">*</span></label>
+              <select class="form-input custom-select" [ngModel]="newSource" (ngModelChange)="newSourceChange.emit($event)">
+                <option value="Google">Google</option>
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="Facebook">Facebook</option>
+                <option value="Instagram">Instagram</option>
+                <option value="Meta">Meta</option>
+                <option value="Youtube">Youtube</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row-flexible">
+            <div class="form-group flex-grow-1">
+              <label class="form-label">Select Ad <span class="text-muted font-normal">(Digital Ad)</span></label>
+              <select class="form-input custom-select" [ngModel]="newAdId" (change)="adChange.emit($event)">
+                <option value="">-- No specific Ad / Select Ad --</option>
+                @for (ad of availableAds; track ad.id) {
+                  <option [value]="ad.id">{{ ad.name }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3: WORKFLOW AUTOMATION ASSIGNMENT -->
+        <div class="form-step-section">
+          <div class="step-heading">
+            <span class="step-badge step-green">3</span>
+            <h3>Telecaller</h3>
+          </div>
+
+          <div class="form-row-flexible">
+            <div class="form-group flex-grow-1 telecaller-assign-group">
+              <label class="form-label distribution-label">
+                <span>Target Telecaller Assignment</span>
+             
+              </label>
+              <select class="form-input custom-select" [ngModel]="newAssignedTelecallerId" (change)="telecallerChange.emit($event)">
+                <option value="">Unassigned (Send to General Lead Pool)</option>
+                @for (tc of activeTelecallers; track tc) {
+                  <option [value]="tc.id">{{ tc.fullName }}</option>
+                }
+              </select>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- FOOTER CONTROL PANEL -->
+      <div class="modal-footer">
+        
+        <button class="btn-action-primary-orange" type="button" (click)="onSave()" [disabled]="!isFormValid || isCreatingLead">
+          @if (!isCreatingLead) {
+            <span class="material-symbols-outlined">save</span>
+            <span>Save Lead Record</span>
+          } @else {
+            <span class="spinner-inline"></span>
+            <span>Saving...</span>
+          }
+        </button>
+      </div>
+
     </div>
   </div>
 }

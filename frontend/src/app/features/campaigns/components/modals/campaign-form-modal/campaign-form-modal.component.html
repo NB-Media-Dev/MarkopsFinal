@@ -1,4 +1,4 @@
-@if (isOpen) {
+<!-- @if (isOpen) {
   <div class="modal-backdrop" (click)="onClose()">
     <div class="modal-card modal-lg" (click)="$event.stopPropagation()">
       <div class="modal-header">
@@ -110,6 +110,155 @@
           <span>{{ isEditing ? 'Update Campaign' : 'Save Campaign' }}</span>
         </button>
       </div>
+    </div>
+  </div>
+} -->
+
+@if (isOpen) {
+  <div class="modal-backdrop" (click)="onClose()">
+    <div class="modal-card modal-lg" (click)="$event.stopPropagation()">
+      
+      <!-- HEADER -->
+      <div class="modal-header">
+        <h2>{{ isEditing ? 'Edit Campaign' : 'Create New Campaign' }}</h2>
+        <button class="btn-close-modal" (click)="onClose()" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+
+      <!-- BODY -->
+      <div class="modal-body">
+        
+        <!-- STEP 1: CAMPAIGN DETAILS -->
+        <div class="form-step-section">
+          <div class="step-heading">
+            <span class="step-badge step-orange">1</span>
+            <h3>Choose Details</h3>
+          </div>
+          
+          <div class="form-row-flexible">
+            <div class="form-group flex-2">
+              <label class="form-label">Campaign Name <span class="required">*</span></label>
+              <input
+                type="text"
+                [(ngModel)]="formModel.name"
+                placeholder="e.g. Meta Q4 Leads"
+                class="form-input"
+              />
+            </div>
+            <div class="form-group flex-1 min-w-status">
+              <label class="form-label">Status</label>
+              <select [(ngModel)]="formModel.status" class="form-input">
+                <option value="ACTIVE">Active</option>
+                <option value="PLANNING">Planning</option>
+                <option value="PAUSED">Paused</option>
+                <option value="COMPLETED">Completed</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 2: OBJECTIVE & SCHEDULING -->
+        <div class="form-step-section">
+          <div class="step-heading">
+            <span class="step-badge step-blue">2</span>
+            <h3>Objective & Timeline</h3>
+          </div>
+
+          <div class="form-row-flexible">
+            <div class="form-group flex-grow-1">
+              <label class="form-label">Objective</label>
+              <div class="objective-tabs">
+                <button 
+                  type="button" 
+                  class="tab-btn" 
+                  [class.active]="formModel.objective === 'LEAD_GENERATION'"
+                  (click)="formModel.objective = 'LEAD_GENERATION'">
+                  <span class="material-symbols-outlined">leaderboard</span>
+                  <span class="tab-text">Lead Gen</span>
+                </button>
+                <button 
+                  type="button" 
+                  class="tab-btn" 
+                  [class.active]="formModel.objective === 'BRAND_AWARENESS'"
+                  (click)="formModel.objective = 'BRAND_AWARENESS'">
+                  <span class="material-symbols-outlined">campaign</span>
+                  <span class="tab-text">Awareness</span>
+                </button>
+                <button 
+                  type="button" 
+                  class="tab-btn" 
+                  [class.active]="formModel.objective === 'PERFORMANCE_SCALE'"
+                  (click)="formModel.objective = 'PERFORMANCE_SCALE'">
+                  <span class="material-symbols-outlined">trending_up</span>
+                  <span class="tab-text">Performance</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row-flexible">
+            <div class="form-group flex-1">
+              <label class="form-label">Start Date</label>
+              <input type="date" [(ngModel)]="formModel.startDate" [min]="todayDate" class="form-input" />
+            </div>
+            <div class="form-group flex-1">
+              <label class="form-label">Budget (₹)</label>
+              <input type="number" [(ngModel)]="formModel.budget" min="0" placeholder="0" class="form-input" />
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3: METRICS & CONVERSIONS -->
+        <div class="form-step-section">
+          <div class="step-heading">
+            <span class="step-badge step-green">3</span>
+            <h3>Performance & Conversion Metrics</h3>
+          </div>
+          
+          <div class="metrics-grid">
+            <div class="form-group">
+              <label class="form-label">Spend (₹)</label>
+              <input type="number" [(ngModel)]="formModel.spend" min="0" placeholder="0" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Leads Count</label>
+              <input type="number" [(ngModel)]="formModel.leadsCount" min="0" placeholder="0" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">PAID Leads</label>
+              <input type="number" [(ngModel)]="formModel.qualifiedLeads" min="0" placeholder="0" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Conversions</label>
+              <input type="number" [(ngModel)]="formModel.conversions" min="0" placeholder="0" class="form-input" />
+            </div>
+          </div>
+        </div>
+
+        <!-- AUTO COMPUTED METRICS PANEL -->
+        <div class="live-calc-panel">
+          <div class="calc-item">
+            <span class="calc-label">Auto CPL <small class="hide-mobile">(Spend/Leads)</small></span>
+            <span class="calc-val text-emerald">₹{{ computedModalCpl }}</span>
+          </div>
+          <div class="calc-item">
+            <span class="calc-label">Auto Conv. % <small class="hide-mobile">(Conv/Leads*100)</small></span>
+            <span class="calc-val text-purple">{{ computedModalConvRate }}%</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- FOOTER ACTIONS -->
+      <div class="modal-footer">
+        <button type="button" class="btn-action-secondary" (click)="onClose()">Cancel</button>
+        <button type="button" class="btn-action-primary" (click)="onSave()">
+          <span class="btn-text">Review & Create Campaign</span>
+          <span class="material-symbols-outlined">rocket_launch</span>
+        </button>
+      </div>
+
     </div>
   </div>
 }

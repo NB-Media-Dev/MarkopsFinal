@@ -1272,11 +1272,11 @@
         padding: 0.75rem 1rem;
         font-size: 0.72rem;
         font-weight: 700;
-        color: #475569;
-        letter-spacing: 0.03em;
-        border-bottom: 1.5px solid #e2e8f0;
+        color: #E28704 !important;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid rgba(255, 159, 28, 0.2) !important;
         text-transform: uppercase;
-        background: #ffffff;
+        background: #FFF5E6 !important;
         white-space: nowrap;
 
         @media (max-width: 768px) {
@@ -1866,12 +1866,15 @@
         font-size: 0.8125rem;
 
         thead th {
-          background: #f8fafc;
+          background-color: #FFF5E6 !important;
           padding: 0.85rem 1rem;
           text-align: left;
           font-weight: 700;
-          color: #475569;
-          border-bottom: 1px solid #e2e8f0;
+          font-size: 0.725rem;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          color: #E28704 !important;
+          border-bottom: 1px solid rgba(255, 159, 28, 0.2) !important;
           white-space: nowrap;
         }
 

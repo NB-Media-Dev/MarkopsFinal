@@ -1,4 +1,4 @@
-<div class="table-card card-ads-perf">
+<!-- <div class="table-card card-ads-perf">
   <div class="card-title-bar">
     <div class="title-with-badge">
       <div class="title-icon-squircle">
@@ -157,6 +157,176 @@
                 @if (canManageAds) {
                   <button class="btn-action-primary btn-sm" (click)="onCreate()">
                     <span class="material-symbols-outlined icon-glow">add</span>
+                    <span>Add Ad Metric</span>
+                  </button>
+                }
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div> -->
+
+<div class="table-card card-ads-perf">
+  
+  <!-- HEADER BAR (Aligned structure with custom primary button) -->
+  <div class="card-title-bar">
+    <div class="title-with-badge">
+      <div class="title-icon-squircle">
+        <span class="material-symbols-outlined">ads_click</span>
+      </div>
+      <div>
+        <h3>Ad Creatives & Attribution</h3>
+        <span class="table-sub-meta">{{ ads.length }} active ad metrics tracked</span>
+      </div>
+    </div>
+
+    @if (canManageAds) {
+      <div class="table-actions">
+        <button class="btn-action-primary-orange" (click)="onCreate()">
+          <span class="material-symbols-outlined fs-16">add</span>
+          <span>New Ad Record</span>
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- TABLE CONTAINER CONTAINER -->
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Ad Creative</th>
+          <th>Campaign</th>
+          <th>Platform</th>
+          <th>Status</th>
+          <th>Ad Spend</th>
+          <th>Leads</th>
+          <th>Avg CPL</th>
+          <th>CTR</th>
+          @if (canManageAds) {
+            <th class="text-right">Action</th>
+          }
+        </tr>
+      </thead>
+      <tbody>
+        @for (ad of ads; track ad) {
+          <tr class="ad-row">
+
+            <!-- AD CREATIVE LEADING PREVIEW STACK -->
+            <td>
+              <div class="ad-title-cell">
+                @if (getAdImage(ad)) {
+                  <div class="ad-thumb-preview">
+                    <img [src]="getAdImage(ad)" [alt]="ad.name" />
+                  </div>
+                } @else {
+                  <div class="ad-thumb-preview ad-thumb-default">
+                    <span class="material-symbols-outlined">brush</span>
+                  </div>
+                }
+                <div class="ad-text-stack">
+                  <span class="ad-name-text">{{ ad.name }}</span>
+                  <div class="ad-meta-sub-row">
+                    <span class="ad-sub-text">{{ ad.platformAdId || 'ID: ' + ad.id }}</span>
+                    @if (getDesignTitle(ad) || ad.designTitle) {
+                      <span class="ad-design-tag" [title]="getDesignTitle(ad) || ad.designTitle">
+                        <span class="material-symbols-outlined">verified</span>
+                        <span>Approved Design</span>
+                      </span>
+                    }
+                  </div>
+                </div>
+              </div>
+            </td>
+
+            <td>
+              <span class="campaign-tag-pill">{{ ad.campaignName }}</span>
+            </td>
+
+            <td>
+              <span
+                class="platform-tag"
+                [ngClass]="{
+                  'platform-meta': ad.platform === 'Meta',
+                  'platform-google': ad.platform === 'Google Ads',
+                  'platform-instagram': ad.platform === 'Instagram',
+                  'platform-linkedin': ad.platform === 'LinkedIn',
+                  'platform-youtube': ad.platform === 'YouTube'
+                }"
+              >
+                {{ ad.platform }}
+              </span>
+            </td>
+
+            <!-- STATUS CAPSULE CAPSULES (Aligned colors to match 'Available' status format) -->
+            <td>
+              @if (ad.status === 'ACTIVE') {
+                <span class="status-pill status-pill-active">Active</span>
+              }
+              @if (ad.status === 'PAUSED') {
+                <span class="status-pill status-pill-paused">Paused</span>
+              }
+              @if (ad.status === 'COMPLETED' || ad.status === 'DRAFT') {
+                <span class="status-pill status-pill-completed">
+                  <span>{{ ad.status | titlecase }}</span>
+                  @if(ad.status === 'COMPLETED') {
+                    <span class="material-symbols-outlined check-mark-icon">check_circle</span>
+                  }
+                </span>
+              }
+            </td>
+
+            <td>
+              <span class="metric-bold-val">₹{{ ad.spend | number: '1.2-2' }}</span>
+            </td>
+
+            <td>
+              <span class="metric-bold-val">{{ ad.leadsCount | number }}</span>
+            </td>
+
+            <td>
+              <span class="metric-cpl-wrap text-emerald">
+                <span>₹{{ ad.cpl | number: '1.2-2' }}</span>
+              </span>
+            </td>
+
+            <td>
+              <span class="metric-bold-val text-coral">{{ ad.ctr }}%</span>
+            </td>
+
+            <!-- ACTION CONTROLS BUTTONS ROW -->
+            @if (canManageAd(ad)) {
+              <td class="text-right actions-col">
+                <div class="action-buttons-group">
+                  <button class="btn-view-action" (click)="onEdit(ad)" title="Edit Ad Metric">
+                    <span class="material-symbols-outlined">visibility</span>
+                    <span>View</span>
+                  </button>
+                  <button class="btn-delete-action" (click)="onDelete(ad)" title="Delete Ad Metric">
+                    <span class="material-symbols-outlined">delete</span>
+                  </button>
+                </div>
+              </td>
+            }
+          </tr>
+        }
+
+        <!-- EMPTY STATE RECONCILIATION CELL -->
+        @if (ads.length === 0) {
+          <tr>
+            <td [attr.colspan]="canManageAds ? 9 : 8" class="empty-state-cell">
+              <div class="empty-state-box">
+                <div class="empty-icon-squircle">
+                  <span class="material-symbols-outlined">ads_click</span>
+                </div>
+                <h4 class="empty-title">No ad metrics found</h4>
+                <p class="empty-subtitle">Create a new ad performance record or sync with connected ad accounts.</p>
+                @if (canManageAds) {
+                  <button class="btn-action-primary-orange" (click)="onCreate()">
+                    <span class="material-symbols-outlined">add</span>
                     <span>Add Ad Metric</span>
                   </button>
                 }

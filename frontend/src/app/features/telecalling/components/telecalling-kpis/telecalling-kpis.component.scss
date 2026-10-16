@@ -116,39 +116,35 @@
     }
 
     &.card-revenue {
-      border: 1.5px solid #FDE68A;
-      box-shadow: 0 8px 24px rgba(245, 158, 11, 0.08), 0 2px 6px rgba(0, 0, 0, 0.02);
-      &:hover { border-color: #F59E0B; box-shadow: 0 14px 32px rgba(245, 158, 11, 0.16); }
-      .icon-amber { background: #F59E0B; }
+      border: 2px solid #ffb35b;
+      &:hover { border-color: #F59E0B; box-shadow: 0 6px 16px rgba(245, 158, 11, 0.18); transform: translateY(-2px); }
+      .icon-amber { background: #F59E0B; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3); }
       .pill-amber { background-color: #FEF3C7; color: #92400E; }
       .kpi-value { color: #1C1917; }
     }
 
     &.card-leads {
-      border: 1.5px solid #DDD6FE;
-      box-shadow: 0 8px 24px rgba(99, 102, 241, 0.08), 0 2px 6px rgba(0, 0, 0, 0.02);
-      &:hover { border-color: #6366F1; box-shadow: 0 14px 32px rgba(99, 102, 241, 0.16); }
-      .icon-purple { background: #6366F1; }
+      border: 2px solid #ffb35b;
+      &:hover { border-color: #6366F1; box-shadow: 0 6px 16px rgba(99, 102, 241, 0.18); transform: translateY(-2px); }
+      .icon-purple { background: #6366F1; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
       .pill-purple { background-color: #EDE9FE; color: #5B21B6; }
       .kpi-value { color: #1E1B4B; }
     }
 
     &.card-conversion {
-      border: 1.5px solid #A7F3D0;
-      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.08), 0 2px 6px rgba(0, 0, 0, 0.02);
-      &:hover { border-color: #10B981; box-shadow: 0 14px 32px rgba(16, 185, 129, 0.16); }
-      .icon-emerald { background: #10B981; }
+      border: 2px solid #ffb35b;
+      &:hover { border-color: #10B981; box-shadow: 0 6px 16px rgba(16, 185, 129, 0.18); transform: translateY(-2px); }
+      .icon-emerald { background: #10B981; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); }
       .pill-emerald { background-color: #D1FAE5; color: #065F46; }
       .kpi-value { color: #064E3B; }
     }
 
     &.card-pkg-works {
-      border: 1.5px solid #C7D2FE;
-      box-shadow: 0 8px 24px rgba(79, 70, 229, 0.08), 0 2px 6px rgba(0, 0, 0, 0.02);
-      &:hover { border-color: #4F46E5; box-shadow: 0 14px 32px rgba(79, 70, 229, 0.16); }
-      .icon-indigo { background: #4F46E5; }
+      border: 2px solid #ffb35b;
+      &:hover { border-color: #3B82F6; box-shadow: 0 6px 16px rgba(59, 130, 246, 0.18); transform: translateY(-2px); }
+      .icon-indigo { background: #3B82F6; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
       .pill-indigo { background-color: #EEF2FF; color: #4338CA; }
-      .kpi-value { color: #312E81; }
+      .kpi-value { color: #1E1B4B; }
     }
   }
 }

@@ -144,7 +144,7 @@ export class AdFormModalComponent implements OnInit, OnChanges {
             approverRole: approverInfo.role,
             approvedAt: approverInfo.label,
             status: t.status,
-            description: t.description || 'Approved design asset ready for campaign ad attribution.',
+            description: t.description || 'Approved design asset ready for campaign ads attribution.',
           });
         }
       }
