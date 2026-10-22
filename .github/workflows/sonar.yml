@@ -35,10 +35,35 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-      - name: Print Local Dashboard URL
-        if: always()
+      - name: Display Unresolved Bugs in GitHub Logs (on failure)
+        if: failure()
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
           echo "=========================================================="
-          echo " View remaining bugs on your local/Cloudflare SonarQube:"
-          echo " ${{ secrets.SONAR_HOST_URL }}/dashboard?id=MarkopsFinal"
+          echo " FAILED QUALITY GATE - UNRESOLVED BUGS / ISSUES:"
+          echo "=========================================================="
+          
+          # Fetch open issues from SonarQube API
+          curl -s -u "${{ secrets.SONAR_TOKEN }}:" "${{ secrets.SONAR_HOST_URL }}/api/issues/search?componentKeys=MarkopsFinal&resolved=false&ps=10" > sonar-issues.json
+          
+          # Parse and print them neatly using Node.js (pre-installed on GitHub runners)
+          node -e '
+            const fs = require("fs");
+            try {
+              const data = JSON.parse(fs.readFileSync("sonar-issues.json"));
+              if (data.issues && data.issues.length > 0) {
+                data.issues.forEach((issue, idx) => {
+                  console.log(`\n${idx + 1}. Severity: [${issue.severity}] Type: [${issue.type}]`);
+                  console.log(`   Message: ${issue.message}`);
+                  console.log(`   File:    ${issue.component} (Line: ${issue.line || "N/A"})`);
+                });
+              } else {
+                console.log("No detailed issues returned by API. Check your Cloudflare tunnel connection.");
+              }
+            } catch (e) {
+              console.log("Failed to parse issues JSON. Ensure Cloudflare tunnel is active.");
+            }
+          '
           echo "=========================================================="
