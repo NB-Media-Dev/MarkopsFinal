@@ -1,4 +1,4 @@
-﻿name: SonarQube CI Pipeline
+name: SonarQube CI Pipeline
 
 on:
   push:
@@ -11,7 +11,8 @@ jobs:
     name: SonarQube Scan and Gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -19,7 +20,7 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://calibration-alcohol-intro-productive.trycloudflare.com
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
             -Dsonar.projectKey=MarkopsFinal
@@ -32,7 +33,7 @@ jobs:
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://calibration-alcohol-intro-productive.trycloudflare.com
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
       - name: Open GitHub Issue on Quality Gate Failure
         if: failure() && steps.sonarqube-quality-gate-check.outcome == 'failure'
