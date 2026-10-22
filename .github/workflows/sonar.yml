@@ -19,7 +19,7 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://YOUR-NEW-URL.trycloudflare.com
+          SONAR_HOST_URL: https://calibration-alcohol-intro-productive.trycloudflare.com
         with:
           args: >
             -Dsonar.projectKey=MarkopsFinal
