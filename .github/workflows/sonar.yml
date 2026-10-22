@@ -45,8 +45,9 @@ jobs:
           echo " FAILED QUALITY GATE - UNRESOLVED BUGS / ISSUES:"
           echo "=========================================================="
           
-          # Fetch open issues with a custom user-agent to bypass basic tunnel scripts
+          # Added 'Bypass-Tunnel-Reminder: true' to prevent Cloudflare quick tunnel from blocking the script
           curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+               -H "Bypass-Tunnel-Reminder: true" \
                -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)" \
                "${{ secrets.SONAR_HOST_URL }}/api/issues/search?componentKeys=MarkopsFinal&resolved=false&ps=10" > sonar-issues.json
           
