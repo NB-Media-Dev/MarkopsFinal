@@ -16,11 +16,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
+      # Step 2: Scan the project
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
         env:
@@ -32,6 +34,7 @@ jobs:
             -Dsonar.projectName=MarkopsFinal
             -Dsonar.sources=.
 
+      # Step 3: Check the Quality Gate
       - name: SonarQube Quality Gate check
         id: sonarqube-quality-gate-check
         uses: sonarsource/sonarqube-quality-gate-action@master
@@ -40,7 +43,8 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-      - name: Publish Unresolved Bug Report
+      # Step 4: Publish unresolved issues to GitHub Actions Summary
+      - name: Publish Unresolved Issue Report
         if: always()
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -50,12 +54,10 @@ jobs:
         run: |
           set -u
 
-          echo "## SonarQube Unresolved Bug Report" \
-            >> "$GITHUB_STEP_SUMMARY"
-
+          echo "## SonarQube Unresolved Issue Report" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
-          if [ -z "${SONAR_TOKEN:-}" ] ||
+          if [ -z "${SONAR_TOKEN:-}" ] || \
              [ -z "${SONAR_HOST_URL:-}" ]; then
             echo "⚠️ SonarQube URL or token is missing." \
               >> "$GITHUB_STEP_SUMMARY"
@@ -64,29 +66,40 @@ jobs:
 
           BASE_URL="${SONAR_HOST_URL%/}"
           API_URL="${BASE_URL}/api/issues/search"
+          REPORT_URL="${BASE_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
 
+          echo "[Open full SonarQube dashboard](${REPORT_URL})" \
+            >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          # Retrieve unresolved issues across all three software qualities.
           if ! curl --fail --silent --show-error --get \
-            --connect-timeout 15 --max-time 60 \
+            --connect-timeout 15 \
+            --max-time 60 \
             --user "${SONAR_TOKEN}:" \
             -H "Bypass-Tunnel-Reminder: true" \
             -H "User-Agent: GitHub-Actions-SonarQube-Report" \
             --data-urlencode \
               "componentKeys=${SONAR_PROJECT_KEY}" \
-            --data-urlencode "resolved=false" \
-            --data-urlencode "types=BUG" \
+            --data-urlencode \
+              "issueStatuses=OPEN,CONFIRMED" \
+            --data-urlencode \
+              "impactSoftwareQualities=SECURITY,RELIABILITY,MAINTAINABILITY" \
             --data-urlencode "ps=100" \
             "$API_URL" \
             --output sonar-issues.json; then
 
             echo "⚠️ Could not retrieve issues from SonarQube." \
               >> "$GITHUB_STEP_SUMMARY"
-            echo "Check server connectivity, token permissions, and tunnel access." \
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "Check the server URL, token permissions, project key, and network/tunnel access." \
               >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
-          export SONAR_REPORT_URL="${BASE_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
+          export SONAR_REPORT_URL="$REPORT_URL"
 
+          # Format the API response as a Markdown report.
           node <<'NODE'
           const fs = require("fs");
 
@@ -109,8 +122,8 @@ jobs:
           } catch {
             fs.appendFileSync(
               summary,
-              "⚠️ SonarQube returned an invalid JSON response. " +
-              "Check whether a proxy or Cloudflare tunnel returned HTML.\n"
+              "⚠️ SonarQube returned invalid JSON. " +
+              "Check whether a proxy or tunnel returned an HTML page.\n"
             );
             process.exit(0);
           }
@@ -118,8 +131,8 @@ jobs:
           if (!Array.isArray(data.issues)) {
             fs.appendFileSync(
               summary,
-              "⚠️ The SonarQube response did not contain an issues list. " +
-              "Check the API response and permissions.\n"
+              "⚠️ The API response does not contain an issues list. " +
+              "Check the SonarQube API response and permissions.\n"
             );
             process.exit(0);
           }
@@ -127,27 +140,56 @@ jobs:
           const issues = data.issues;
           let output = "";
 
-          output += `**Unresolved bugs in this API response: ${data.total ?? issues.length}**\n\n`;
-          output += "| Severity | File | Line | Bug description |\n";
-          output += "|---|---|---:|---|\n";
+          output += `**Total matching unresolved issues: ${data.total ?? issues.length}**\n\n`;
+          output += `Showing up to ${issues.length} issues in this report.\n\n`;
+
+          output += "| Software Quality | Impact | File | Line | Issue Description |\n";
+          output += "|---|---|---|---:|---|\n";
 
           if (issues.length === 0) {
-            output += "| - | - | - | No unresolved bugs returned |\n";
+            output += "| - | - | - | - | No matching unresolved issues returned |\n";
           } else {
             for (const issue of issues) {
-              const file = issue.component || "-";
+              const impacts = Array.isArray(issue.impacts)
+                ? issue.impacts
+                : [];
+
+              let quality = impacts
+                .map(item => item.softwareQuality)
+                .filter(Boolean)
+                .join(", ");
+
+              let impact = impacts
+                .map(item => item.severity)
+                .filter(Boolean)
+                .join(", ");
+
+              // Fall back to legacy fields when available.
+              if (!quality) {
+                quality = issue.type || "-";
+              }
+
+              if (!impact) {
+                impact = issue.severity || "-";
+              }
+
+              const component = issue.component || "-";
+              const file = component.includes(":")
+                ? component.substring(component.indexOf(":") + 1)
+                : component;
+
               const line = issue.line ?? "-";
               const message = md(issue.message);
-              output += `| ${md(issue.severity)} | ${md(file)} | ${line} | ${message} |\n`;
+
+              output += `| ${md(quality)} | ${md(impact)} | ${md(file)} | ${md(line)} | ${message} |\n`;
             }
           }
 
           output += "\n";
           output += `[Open full SonarQube report](${reportUrl})\n\n`;
-          output += "_This report lists unresolved bugs from the SonarQube API. " +
-            "The API response is limited to 100 issues per run._\n";
+          output += "_The API request is limited to 100 returned issues. The total may be larger._\n";
 
           fs.appendFileSync(summary, output);
           NODE
 
-          echo "Report generation step completed."
+          echo "SonarQube issue report generation completed."
