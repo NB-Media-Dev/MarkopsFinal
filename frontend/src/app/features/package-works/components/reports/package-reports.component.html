@@ -327,7 +327,6 @@
                   (keydown.enter)="toggleUserAccordion(u.userId)"
                   (keydown.space)="toggleUserAccordion(u.userId)"
                   tabindex="0"
-                  role="button"
                   aria-label="Toggle user performance details"
                 >
                   <div class="accordion-header-left">
@@ -822,7 +821,7 @@
                 </thead>
                 <tbody>
                   @for (row of paginatedCampaignReports; track row.sNo) {
-                    <tr class="campaign-summary-master-row" (click)="toggleExpandCampaignRow(row.sNo)" (keydown.enter)="toggleExpandCampaignRow(row.sNo)" (keydown.space)="toggleExpandCampaignRow(row.sNo)" tabindex="0" role="button" aria-label="Toggle campaign row details">
+                    <tr class="campaign-summary-master-row" (click)="toggleExpandCampaignRow(row.sNo)" (keydown.enter)="toggleExpandCampaignRow(row.sNo)" (keydown.space)="toggleExpandCampaignRow(row.sNo)" tabindex="0" aria-label="Toggle campaign row details">
                       <td class="font-bold text-slate-500">{{ row.sNo }}</td>
                       <td class="font-semibold text-slate-800">
                         <div class="d-flex align-items-center gap-1">

@@ -1,8 +1,14 @@
 function extractFirstEmail(text) {
-  if (!text || !text.includes('@')) return '';
+  if (!text?.includes('@')) return '';
   const tokens = String(text).split(/\s+/);
   for (const token of tokens) {
-    const clean = token.replace(/^[<([{"']+|[>\])}".,;:]+$/g, '');
+    let clean = token.trim();
+    while (clean.length > 0 && '<([{"\'>\])}.,;:'.includes(clean[0])) {
+      clean = clean.slice(1);
+    }
+    while (clean.length > 0 && '<([{"\'>\])}.,;:'.includes(clean[clean.length - 1])) {
+      clean = clean.slice(0, -1);
+    }
     const atIdx = clean.indexOf('@');
     const lastDot = clean.lastIndexOf('.');
     if (atIdx > 0 && lastDot > atIdx + 1 && lastDot < clean.length - 1) {
@@ -12,7 +18,7 @@ function extractFirstEmail(text) {
   return '';
 }
 
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 const express = require('express');
 const {
   dbPool,
@@ -848,7 +854,10 @@ router.put('/leads/:id', async (req, res) => {
   const updatedSource = source !== undefined ? String(source).trim() : (lead.source || 'Manual');
   const updatedStatus = status !== undefined ? String(status).trim() : (lead.status || 'NEW');
   const updatedCampName = campaignName !== undefined ? String(campaignName).trim() : (lead.campaign_name || lead.campaignName || '');
-  const updatedAssignedTo = assignedTo !== undefined ? (assignedTo ? Number.parseInt(String(assignedTo).replace(/\D/g, ''), 10) || null : null) : (lead.assigned_to || null);
+  let updatedAssignedTo = lead.assigned_to || null;
+  if (assignedTo !== undefined) {
+    updatedAssignedTo = assignedTo ? (Number.parseInt(String(assignedTo).replace(/\D/g, ''), 10) || null) : null;
+  }
   let updatedAssigneeName = assigneeName !== undefined ? String(assigneeName).trim() : (lead.assignee_full_name || lead.assigneeName || 'Unassigned');
   if (!updatedAssignedTo) updatedAssigneeName = 'Unassigned';
 

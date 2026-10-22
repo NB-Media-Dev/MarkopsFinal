@@ -1,8 +1,14 @@
 function extractLeadEmail(text: string): string {
-  if (!text || !text.includes('@')) return '';
+  if (!text?.includes('@')) return '';
   const tokens = text.split(/\s+/);
   for (const token of tokens) {
-    const clean = token.replace(/^[<([{"']+|[>\])}".,;:]+$/g, '');
+    let clean = token.trim();
+    while (clean.length > 0 && '<([{"\'>\])}.,;:'.includes(clean[0])) {
+      clean = clean.slice(1);
+    }
+    while (clean.length > 0 && '<([{"\'>\])}.,;:'.includes(clean[clean.length - 1])) {
+      clean = clean.slice(0, -1);
+    }
     const atIdx = clean.indexOf('@');
     const lastDot = clean.lastIndexOf('.');
     if (atIdx > 0 && lastDot > atIdx + 1 && lastDot < clean.length - 1) {

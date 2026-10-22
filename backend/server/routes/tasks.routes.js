@@ -1,4 +1,4 @@
-const crypto = require('crypto');
+const crypto = require('node:crypto');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -659,7 +659,10 @@ router.post('/tasks', async (req, res) => {
 
   const authUserId = req.user?.id ? (Number.parseInt(req.user.id, 10) || req.user.id) : null;
   let numericCreatorId = typeof creatorId === 'number' ? creatorId : (Number.parseInt(creatorId, 10) || (typeof authUserId === 'number' ? authUserId : 1));
-  const numericAssignedTo = assignedTo ? (typeof assignedTo === 'number' ? assignedTo : (Number.parseInt(assignedTo, 10) || null)) : null;
+  let numericAssignedTo = null;
+  if (assignedTo) {
+    numericAssignedTo = typeof assignedTo === 'number' ? assignedTo : (Number.parseInt(assignedTo, 10) || null);
+  }
 
   let safeTaskType = taskType || req.body.task_type;
   if (!safeTaskType) {

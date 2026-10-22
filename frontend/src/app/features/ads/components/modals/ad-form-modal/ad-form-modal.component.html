@@ -1,6 +1,6 @@
 @if (isOpen) {
-  <div class="modal-backdrop" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" tabindex="0" role="button" aria-label="Close ad modal">
-    <div class="modal-card modern-ad-modal" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Ad configuration dialog">
+  <div class="modal-backdrop" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" aria-label="Close ad modal">
+    <div class="modal-card modern-ad-modal" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" aria-label="Ad configuration dialog">
 
       <div class="modal-header">
         <div class="modal-title-wrap">
@@ -41,7 +41,6 @@
                   (keydown.enter)="selectDesignType(type.id)"
                   (keydown.space)="selectDesignType(type.id)"
                   tabindex="0"
-                  role="button"
                   [attr.aria-label]="type.title"
                 >
                   @if (selectedDesignType === type.id) {

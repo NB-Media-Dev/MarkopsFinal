@@ -139,11 +139,11 @@
         justify-content: center;
         flex-shrink: 0;
         background: #FFF5E6;
-        color: #FF9F1C;
+        color: #B45309;
 
         .material-symbols-outlined {
           font-size: 20px;
-          color: #FF9F1C;
+          color: #B45309;
         }
       }
 
@@ -624,7 +624,7 @@
 
       &.badge-has-calls {
         background: #FFF5E6;
-        color: #E28704;
+        color: #B45309;
         border: 1px solid rgba(255, 159, 28, 0.25);
       }
     }
@@ -752,7 +752,7 @@
         &:hover {
           background: #FFF5E6;
           border-color: #FF9F1C;
-          color: #E28704;
+          color: #B45309;
           transform: translateY(-1px);
         }
       }

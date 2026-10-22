@@ -1,6 +1,6 @@
 @if (lead) {
-  <div class="modal-backdrop" (click)="onCancel()" (keydown.enter)="onCancel()" (keydown.space)="onCancel()" (keydown.escape)="onCancel()" tabindex="0" role="button" aria-label="Close modal">
-    <div class="modal-card modal-sm" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Assign lead dialog">
+  <div class="modal-backdrop" (click)="onCancel()" (keydown.enter)="onCancel()" (keydown.space)="onCancel()" (keydown.escape)="onCancel()" aria-label="Close modal">
+    <div class="modal-card modal-sm" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" aria-label="Assign lead dialog">
       <div class="modal-header">
         <div class="modal-title-wrap">
           <div class="modal-squircle-icon">
