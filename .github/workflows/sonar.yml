@@ -1,0 +1,47 @@
+﻿name: SonarQube CI Pipeline
+
+on:
+  push:
+    branches: [ main, master, development ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  sonarQube:
+    name: SonarQube Scan and Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://calibration-alcohol-intro-productive.trycloudflare.com
+        with:
+          args: >
+            -Dsonar.projectKey=MarkopsFinal
+            -Dsonar.projectName=MarkopsFinal
+            -Dsonar.sources=.
+
+      - name: SonarQube Quality Gate check
+        id: sonarqube-quality-gate-check
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://calibration-alcohol-intro-productive.trycloudflare.com
+
+      - name: Open GitHub Issue on Quality Gate Failure
+        if: failure() && steps.sonarqube-quality-gate-check.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '❌ SonarQube Quality Gate Failed: Bugs Detected',
+              body: 'The latest code scan failed the SonarQube Quality Gate threshold. Please check the local SonarQube dashboard or GitHub Actions logs for details and fix the issues.'
+            });
