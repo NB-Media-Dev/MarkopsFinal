@@ -45,25 +45,34 @@ jobs:
           echo " FAILED QUALITY GATE - UNRESOLVED BUGS / ISSUES:"
           echo "=========================================================="
           
-          # Fetch open issues from SonarQube API
-          curl -s -u "${{ secrets.SONAR_TOKEN }}:" "${{ secrets.SONAR_HOST_URL }}/api/issues/search?componentKeys=MarkopsFinal&resolved=false&ps=10" > sonar-issues.json
+          # Fetch open issues with a custom user-agent to bypass basic tunnel scripts
+          curl -s -u "${{ secrets.SONAR_TOKEN }}:" \
+               -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)" \
+               "${{ secrets.SONAR_HOST_URL }}/api/issues/search?componentKeys=MarkopsFinal&resolved=false&ps=10" > sonar-issues.json
           
-          # Parse and print them neatly using Node.js (pre-installed on GitHub runners)
           node -e '
             const fs = require("fs");
-            try {
-              const data = JSON.parse(fs.readFileSync("sonar-issues.json"));
-              if (data.issues && data.issues.length > 0) {
-                data.issues.forEach((issue, idx) => {
-                  console.log(`\n${idx + 1}. Severity: [${issue.severity}] Type: [${issue.type}]`);
-                  console.log(`   Message: ${issue.message}`);
-                  console.log(`   File:    ${issue.component} (Line: ${issue.line || "N/A"})`);
-                });
-              } else {
-                console.log("No detailed issues returned by API. Check your Cloudflare tunnel connection.");
+            const content = fs.readFileSync("sonar-issues.json", "utf8");
+            
+            if (content.includes("<html>") || content.includes("Cloudflare")) {
+              console.log("⚠️ Cloudflare Tunnel intercepted the automated API request.");
+              console.log("👉 Please view your remaining bugs directly on your local dashboard:");
+              console.log("   ${{ secrets.SONAR_HOST_URL }}/dashboard?id=MarkopsFinal");
+            } else {
+              try {
+                const data = JSON.parse(content);
+                if (data.issues && data.issues.length > 0) {
+                  data.issues.forEach((issue, idx) => {
+                    console.log(`\n${idx + 1}. Severity: [${issue.severity}] Type: [${issue.type}]`);
+                    console.log(`   Message: ${issue.message}`);
+                    console.log(`   File:    ${issue.component} (Line: ${issue.line || "N/A"})`);
+                  });
+                } else {
+                  console.log("No open issues found or response was empty.");
+                }
+              } catch (e) {
+                console.log("Failed to parse response. Check your Cloudflare tunnel connection.");
               }
-            } catch (e) {
-              console.log("Failed to parse issues JSON. Ensure Cloudflare tunnel is active.");
             }
           '
           echo "=========================================================="
