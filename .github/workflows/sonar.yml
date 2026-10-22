@@ -19,7 +19,7 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://YOUR-NEW-CLOUDFLARE-URL.trycloudflare.com
+          SONAR_HOST_URL: https://nascar-comm-roommate-ports.trycloudflare.com
         with:
           args: >
             -Dsonar.projectKey=MarkopsFinal
