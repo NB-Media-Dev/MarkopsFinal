@@ -307,12 +307,13 @@
 
       <!-- Campaign Filter Cluster -->
       <div class="filter-cluster campaign-cluster">
-        <div class="cluster-label">
+        <label class="cluster-label" for="telecallingCampaignSelect">
           <span class="material-symbols-outlined icon-lead-filter text-amber">campaign</span>
           <span>Campaign:</span>
-        </div>
+        </label>
         <div class="campaign-select-wrap">
           <select
+            id="telecallingCampaignSelect"
             class="campaign-styled-select"
             [ngModel]="selectedCampaign"
             (ngModelChange)="selectCampaign($event)"

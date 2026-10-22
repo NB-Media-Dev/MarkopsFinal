@@ -269,6 +269,7 @@
                         <div class="calendar-field">
                           <label class="calendar-label" for="reportsFromDate">From</label>
                           <input
+                            id="reportsFromDate"
                             type="date"
                             class="calendar-native-input"
                             [max]="todayDateString"
@@ -280,6 +281,7 @@
                         <div class="calendar-field">
                           <label class="calendar-label" for="reportsToDate">To</label>
                           <input
+                            id="reportsToDate"
                             type="date"
                             class="calendar-native-input"
                             [max]="todayDateString"
@@ -632,6 +634,7 @@
                 <div class="date-input-field-wrap" [class.field-active]="!!filterStartDate">
                   <label class="date-input-label" for="reportsModalStartDate">START</label>
                   <input
+                    id="reportsModalStartDate"
                     type="date"
                     class="range-date-input"
                     [max]="todayDateString"
@@ -644,6 +647,7 @@
                 <div class="date-input-field-wrap" [class.field-active]="!!filterEndDate">
                   <label class="date-input-label" for="reportsModalEndDate">END</label>
                   <input
+                    id="reportsModalEndDate"
                     type="date"
                     class="range-date-input"
                     [max]="todayDateString"

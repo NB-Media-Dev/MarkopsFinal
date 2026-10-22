@@ -1,6 +1,6 @@
 @if (isOpen) {
   <div class="modal-backdrop upload-modal-backdrop" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" tabindex="0" role="button" aria-label="Close upload modal">
-    <div class="modal-box upload-modal-box" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Upload design dialog">
+    <div class="modal-box upload-modal-box" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Upload design dialog">
 
       <div class="modal-header upload-modal-header">
         <div class="modal-title-group">

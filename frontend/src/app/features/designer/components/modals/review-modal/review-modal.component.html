@@ -1,6 +1,6 @@
 @if (isOpen) {
   <div class="modal-backdrop" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" tabindex="0" role="button" aria-label="Close review modal">
-    <div class="modal-box review-modal-box" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Review submission dialog">
+    <div class="modal-box review-modal-box" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Review submission dialog">
       <div class="modal-header">
         <div class="modal-title-group">
           <div class="modal-icon-badge">

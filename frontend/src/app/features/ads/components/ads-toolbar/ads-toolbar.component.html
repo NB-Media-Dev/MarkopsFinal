@@ -77,8 +77,10 @@
   
   <!-- LEFT: SEARCH CONTAINER (Orange border theme with custom focus states) -->
   <div class="search-box">
+    <label for="adsSearchInput" class="sr-only">Search ads</label>
     <span class="material-symbols-outlined search-icon">search</span>
     <input
+      id="adsSearchInput"
       type="text"
       [ngModel]="searchQuery"
       (ngModelChange)="onSearch($event)"

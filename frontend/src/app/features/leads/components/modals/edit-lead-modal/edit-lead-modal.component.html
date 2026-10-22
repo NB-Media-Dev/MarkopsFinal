@@ -1,6 +1,6 @@
 @if (isOpen && lead) {
   <div class="modal-backdrop" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" tabindex="0" role="button" aria-label="Close edit lead modal">
-    <div class="modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Edit lead dialog">
+    <div class="modal-card" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Edit lead dialog">
       <div class="modal-header">
         <div class="modal-title-wrap">
           <div class="modal-squircle-icon">

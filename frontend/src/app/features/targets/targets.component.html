@@ -354,7 +354,7 @@
 
   @if (isEditModalOpen()) {
     <div class="modal-backdrop" (click)="closeEditModal()" (keydown.enter)="closeEditModal()" (keydown.space)="closeEditModal()" (keydown.escape)="closeEditModal()" tabindex="0" role="button" aria-label="Close edit target modal">
-      <div class="modal-card modal-md" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Edit target dialog">
+      <div class="modal-card modal-md" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Edit target dialog">
         <div class="modal-header">
           <div class="modal-title-wrap">
             <div class="modal-squircle-icon">
