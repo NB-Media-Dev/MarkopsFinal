@@ -19,7 +19,7 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://YOUR-ACTUAL-NGROK-URL.ngrok-free.app
+          SONAR_HOST_URL: https://YOUR-NEW-CLOUDFLARE-URL.trycloudflare.com
         with:
           args: >
             -Dsonar.projectKey=MarkopsFinal
