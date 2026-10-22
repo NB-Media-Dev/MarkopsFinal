@@ -32,7 +32,7 @@
       </thead>
       <tbody>
         @for (designer of paginatedDesigners(); track designer.id) {
-          <tr class="clickable-row" (click)="onSelect(designer.id)" (keydown.enter)="onSelect(designer.id)" (keydown.space)="onSelect(designer.id)" tabindex="0" aria-label="Select designer">
+          <tr class="clickable-row" (click)="onSelect(designer.id)" (keydown.enter)="onSelect(designer.id)" (keydown.space)="onSelect(designer.id)" aria-label="Select designer">
 
             <!-- Column 1: Designer -->
             <td class="col-td-designer">

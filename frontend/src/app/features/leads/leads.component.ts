@@ -1,12 +1,13 @@
+const LEAD_PUNCT_CHARS = new Set(['<', '(', '[', '{', '"', "'", '>', ']', '}', ')', '.', ',', ';', ':']);
 function extractLeadEmail(text: string): string {
   if (!text?.includes('@')) return '';
   const tokens = text.split(/\s+/);
   for (const token of tokens) {
     let clean = token.trim();
-    while (clean.length > 0 && '<([{"\'>\])}.,;:'.includes(clean[0])) {
+    while (clean.length > 0 && LEAD_PUNCT_CHARS.has(clean[0])) {
       clean = clean.slice(1);
     }
-    while (clean.length > 0 && '<([{"\'>\])}.,;:'.includes(clean[clean.length - 1])) {
+    while (clean.length > 0 && LEAD_PUNCT_CHARS.has(clean.at(-1) || '')) {
       clean = clean.slice(0, -1);
     }
     const atIdx = clean.indexOf('@');

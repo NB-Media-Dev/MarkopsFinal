@@ -51,7 +51,6 @@
                     (click)="selectTaskType(type)"
                     (keydown.enter)="selectTaskType(type)"
                     (keydown.space)="selectTaskType(type)"
-                    tabindex="0"
                     [attr.aria-pressed]="selectedTaskType() === type.id"
                   >
                     @if (selectedTaskType() === type.id) {

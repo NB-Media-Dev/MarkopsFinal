@@ -285,7 +285,7 @@
 
         &:hover {
           background-color: #FFF5E6;
-          color: #FF9F1C;
+          color: #B45309;
           border-color: rgba(255, 159, 28, 0.4);
           transform: scale(1.05);
         }
@@ -293,7 +293,7 @@
         &.has-unread {
           border-color: rgba(255, 159, 28, 0.5);
           background-color: #FFF5E6;
-          color: #E28704;
+          color: #B45309;
           box-shadow: 0 0 12px rgba(255, 159, 28, 0.25);
         }
 
@@ -418,14 +418,14 @@
 
               &:hover {
                 border-color: rgba(255, 159, 28, 0.4);
-                color: #E28704;
+                color: #B45309;
                 background-color: #FFF5E6;
               }
 
               &.active {
-                background: #FF9F1C !important;
+                background: #C2410C !important;
                 color: #FFFFFF !important;
-                border-color: #FF9F1C !important;
+                border-color: #C2410C !important;
                 font-weight: 700;
                 box-shadow: 0 2px 6px rgba(255, 159, 28, 0.35);
               }
@@ -470,7 +470,7 @@
               font-size: 0.875rem;
               flex-shrink: 0;
 
-              &.info { background: #FFF5E6; color: #E28704; }
+              &.info { background: #FFF5E6; color: #B45309; }
               &.success { background: #DEF7EC; color: #046C4E; }
               &.warning { background: #FEF08A; color: #854D0E; }
               &.alert { background: #FEE2E2; color: #B91C1C; }

@@ -40,7 +40,6 @@
                   (click)="selectDesignType(type.id)"
                   (keydown.enter)="selectDesignType(type.id)"
                   (keydown.space)="selectDesignType(type.id)"
-                  tabindex="0"
                   [attr.aria-label]="type.title"
                 >
                   @if (selectedDesignType === type.id) {

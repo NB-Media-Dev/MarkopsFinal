@@ -244,15 +244,14 @@
 @if (isCreateUserModalOpen()) {
   <div
     class="modal-backdrop"
-    (click)="closeCreateUserModal()"
-    (keydown.enter)="closeCreateUserModal()"
-    (keydown.space)="closeCreateUserModal()"
+    (click)="$event.target === $event.currentTarget && closeCreateUserModal()"
+    (keydown.enter)="$event.target === $event.currentTarget && closeCreateUserModal()"
+    (keydown.space)="$event.target === $event.currentTarget && closeCreateUserModal()"
     (keydown.escape)="closeCreateUserModal()"
     aria-label="Close create user modal"
   >
     <div
       class="modal-card modal-md"
-      (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()"
       aria-label="Create user dialog"
     >
       <div class="modal-header">
@@ -329,6 +328,7 @@
                 class="eye-toggle-btn"
                 (click)="toggleCreatePasswordVisibility()"
                 title="Toggle visibility"
+                aria-label="Toggle password visibility"
               >
                 <span class="material-symbols-outlined fs-18">
                   {{ showCreatePassword() ? 'visibility_off' : 'visibility' }}
@@ -374,15 +374,14 @@
 @if (isEditUserModalOpen()) {
   <div
     class="modal-backdrop"
-    (click)="closeEditUserModal()"
-    (keydown.enter)="closeEditUserModal()"
-    (keydown.space)="closeEditUserModal()"
+    (click)="$event.target === $event.currentTarget && closeEditUserModal()"
+    (keydown.enter)="$event.target === $event.currentTarget && closeEditUserModal()"
+    (keydown.space)="$event.target === $event.currentTarget && closeEditUserModal()"
     (keydown.escape)="closeEditUserModal()"
     aria-label="Close edit user modal"
   >
     <div
       class="modal-card modal-md"
-      (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()"
       aria-label="Edit user dialog"
     >
       <div class="modal-header">
@@ -450,6 +449,7 @@
                 class="eye-toggle-btn"
                 (click)="toggleEditPasswordVisibility()"
                 title="Toggle visibility"
+                aria-label="Toggle password visibility"
               >
                 <span class="material-symbols-outlined fs-18">
                   {{ showEditPassword() ? 'visibility_off' : 'visibility' }}

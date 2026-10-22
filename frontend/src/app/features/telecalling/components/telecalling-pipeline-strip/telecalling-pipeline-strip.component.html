@@ -41,6 +41,7 @@
 
           <label
             class="calendar-picker-pill"
+            for="telecallingCustomDate"
             [class.active]="dateFilter === 'CUSTOM'"
             title="Select custom date from calendar"
           >
@@ -52,6 +53,7 @@
               <span class="cal-text cal-active-date">{{ customDate }}</span>
             }
             <input
+              id="telecallingCustomDate"
               type="date"
               class="hidden-native-date-input"
               [max]="todayDate"
@@ -284,6 +286,7 @@
 
           <label
             class="calendar-picker-pill"
+            for="telecallingCustomDateMobile"
             [class.active]="dateFilter === 'CUSTOM'"
             title="Select custom date from calendar"
           >
@@ -295,6 +298,7 @@
               <span class="cal-text cal-active-date">{{ customDate }}</span>
             }
             <input
+              id="telecallingCustomDateMobile"
               type="date"
               class="hidden-native-date-input"
               [max]="todayDate"

@@ -1,5 +1,5 @@
 @if (isOpen && pkg) {
-  <div class="custom-modal-overlay" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" tabindex="0" aria-label="Close modal">
+  <div class="custom-modal-overlay" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" aria-label="Close modal">
     <div class="custom-modal-container package-detail-modal" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" aria-label="Package details dialog">
 
       <div class="custom-modal-header">

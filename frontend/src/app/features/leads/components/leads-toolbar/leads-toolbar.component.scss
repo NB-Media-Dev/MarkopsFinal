@@ -155,7 +155,7 @@
       border-radius: 999px;
       background: #FFF5E6;
       border: 1px solid rgba(255, 159, 28, 0.45);
-      color: #E28704;
+      color: #B45309;
       font-size: 0.76rem;
       font-weight: 700;
       cursor: pointer;
@@ -163,12 +163,12 @@
 
       .icon-btn {
         font-size: 16px;
-        color: #E28704;
+        color: #B45309;
         transition: color 0.15s ease;
       }
 
       &:hover:not(:disabled) {
-        background: #FF9F1C;
+        background: #C2410C;
         color: #FFFFFF;
         border-color: #FF9F1C;
         box-shadow: 0 2px 8px rgba(255, 159, 28, 0.25);
