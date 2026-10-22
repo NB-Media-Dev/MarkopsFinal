@@ -1,6 +1,6 @@
 <!-- @if (isOpen) {
   <div class="modal-backdrop" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" tabindex="0" role="button" aria-label="Close campaign modal">
-    <div class="modal-card modal-lg" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="0" role="dialog" aria-modal="true" aria-label="Campaign configuration dialog">
+    <div class="modal-card modal-lg" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Campaign configuration dialog">
       <div class="modal-header">
         <div class="modal-title-wrap">
           <div class="modal-squircle-icon">
@@ -138,7 +138,7 @@
           
           <div class="form-row-flexible">
             <div class="form-group flex-2">
-              <label class="form-label">Campaign Name <span class="required">*</span></label>
+              <label class="form-label" for="campaignNameInput">Campaign Name <span class="required">*</span></label>
               <input
                 type="text"
                 id="campaignNameInput"
@@ -171,7 +171,7 @@
 
           <div class="form-row-flexible">
             <div class="form-group flex-grow-1">
-              <label class="form-label">Objective</label>
+              <span class="form-label">Objective</span>
               <div class="objective-tabs">
                 <button 
                   type="button" 
@@ -203,7 +203,7 @@
 
           <div class="form-row-flexible">
             <div class="form-group flex-1">
-              <label class="form-label">Start Date</label>
+              <label class="form-label" for="campaignStartDateInput">Start Date</label>
               <input id="campaignStartDateInput" type="date" [(ngModel)]="formModel.startDate" [min]="todayDate" class="form-input" />
             </div>
             <div class="form-group flex-1">
@@ -230,7 +230,7 @@
               <input type="number" [(ngModel)]="formModel.leadsCount" min="0" placeholder="0" class="form-input" />
             </div>
             <div class="form-group">
-              <label class="form-label">PAID Leads</label>
+              <label class="form-label" for="campaignPaidLeadsInput">PAID Leads</label>
               <input id="campaignPaidLeadsInput" type="number" [(ngModel)]="formModel.qualifiedLeads" min="0" placeholder="0" class="form-input" />
             </div>
             <div class="form-group">

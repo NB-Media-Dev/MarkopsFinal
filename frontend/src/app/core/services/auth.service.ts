@@ -72,7 +72,7 @@ export class AuthService {
     if (this._isInitialized()) {
       return this.isAuthenticated();
     }
-    if (this.initPromise) {
+    if (this.initPromise !== null) {
       return this.initPromise;
     }
     return this.initAuth();
@@ -85,7 +85,7 @@ export class AuthService {
       return true;
     }
 
-    if (this.initPromise) {
+    if (this.initPromise !== null) {
       return this.initPromise;
     }
 

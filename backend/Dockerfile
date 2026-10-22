@@ -16,8 +16,8 @@ COPY prisma ./prisma/
 RUN npm ci --omit=dev || npm install --omit=dev
 RUN npx prisma generate --schema=prisma/schema.prisma || true
 
-# Copy backend source code
-COPY . .
+# Copy application source files explicitly to avoid leaking sensitive files
+COPY server ./server/
 
 # Set default production environment
 ENV NODE_ENV=production

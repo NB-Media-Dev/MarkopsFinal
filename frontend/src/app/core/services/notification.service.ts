@@ -1,3 +1,19 @@
+function extractBetween(text: string | null | undefined, prefix: string, terminators: string[]): string {
+  if (!text) return '';
+  const lower = text.toLowerCase();
+  const pLower = prefix.toLowerCase();
+  const idx = lower.indexOf(pLower);
+  if (idx === -1) return '';
+  let sub = text.slice(idx + prefix.length);
+  for (const term of terminators) {
+    const tIdx = sub.toLowerCase().indexOf(term.toLowerCase());
+    if (tIdx !== -1) {
+      sub = sub.slice(0, tIdx);
+    }
+  }
+  return sub.replaceAll('.trim()', '').trim();
+}
+
 import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';

@@ -71,7 +71,7 @@ export class UserManagementService {
     };
 
     let createdUser: ManagedUser = {
-      id: `usr_${crypto.randomUUID().replace(/-/g, '').substring(0, 9)}`,
+      id: `usr_${crypto.randomUUID().replaceAll('-', '').substring(0, 9)}`,
       email: payload.email,
       fullName: payload.fullName,
       role: payload.role,

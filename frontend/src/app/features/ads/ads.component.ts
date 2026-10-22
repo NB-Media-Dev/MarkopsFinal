@@ -179,7 +179,14 @@ export class AdsComponent implements OnInit {
       clicks: 150,
       ctr: 3.0,
       cpc: 5.0,
-      platformAdId: `ad_ext_${Math.floor(100000 + Math.random() * 900000)}`,
+      platformAdId: `ad_ext_${(() => {
+        if (typeof window !== 'undefined' && window.crypto) {
+          const arr = new Uint32Array(1);
+          window.crypto.getRandomValues(arr);
+          return 100000 + (arr[0] % 900000);
+        }
+        return 100000 + Math.floor(Date.now() % 900000);
+      })()}`,
       designId: '',
       designTitle: '',
       designImageUrl: '',

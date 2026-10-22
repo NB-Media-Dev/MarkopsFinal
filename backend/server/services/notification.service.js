@@ -88,7 +88,7 @@ async function dispatchNotification({ userIds = [], title, message, type = 'INFO
       throw new Error(`Notification recipient "${rId}" is not a valid database user ID.`);
     }
     const notifObj = {
-      id: `notif_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      id: `notif_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
       userId: numericUserId || recipient,
       title: cleanTitle,
       message: cleanMessage,

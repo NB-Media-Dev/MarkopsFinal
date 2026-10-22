@@ -270,7 +270,7 @@
     <div class="analytics-hub-section">
       <div class="analytics-showcase-grid">
 
-        <div class="analytics-card card-transactions" (click)="selectOperationTab('TRANSACTIONS')">
+        <div class="analytics-card card-transactions" (click)="selectOperationTab('TRANSACTIONS')" (keydown.enter)="selectOperationTab('TRANSACTIONS')" (keydown.space)="selectOperationTab('TRANSACTIONS')" tabindex="0" role="button" aria-label="Open Transactions">
           <div class="card-top-header">
             <div class="card-icon-pill icon-orange">
               <span class="material-symbols-outlined">payments</span>
@@ -319,7 +319,7 @@
           </div>
         </div>
 
-        <div class="analytics-card card-reports" (click)="selectOperationTab('REPORTS')">
+        <div class="analytics-card card-reports" (click)="selectOperationTab('REPORTS')" (keydown.enter)="selectOperationTab('REPORTS')" (keydown.space)="selectOperationTab('REPORTS')" tabindex="0" role="button" aria-label="Open Reports">
           <div class="card-top-header">
             <div class="card-icon-pill icon-blue">
               <span class="material-symbols-outlined">bar_chart</span>
@@ -368,7 +368,7 @@
           </div>
         </div>
 
-        <div class="analytics-card card-audits" (click)="selectOperationTab('AUDITS')">
+        <div class="analytics-card card-audits" (click)="selectOperationTab('AUDITS')" (keydown.enter)="selectOperationTab('AUDITS')" (keydown.space)="selectOperationTab('AUDITS')" tabindex="0" role="button" aria-label="Open Audit Logs">
           <div class="card-top-header">
             <div class="card-icon-pill icon-purple">
               <span class="material-symbols-outlined">shield</span>

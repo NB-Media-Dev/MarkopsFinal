@@ -674,7 +674,9 @@ export class DesignerDashboardComponent implements OnInit {
     if (docUrl.startsWith('data:application/pdf') || docUrl.startsWith('data:image/')) {
       try {
         const parts = docUrl.split(',');
-        const mime = parts[0].match(/:([^;]+);/)?.[1] || 'application/pdf';
+        const colonIdx = parts[0].indexOf(':');
+        const semiIdx = parts[0].indexOf(';');
+        const mime = (colonIdx !== -1 && semiIdx > colonIdx) ? parts[0].substring(colonIdx + 1, semiIdx) : 'application/pdf';
         const bstr = atob(parts[1]);
         let n = bstr.length;
         const u8arr = new Uint8Array(n);

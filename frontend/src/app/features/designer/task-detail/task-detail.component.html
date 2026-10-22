@@ -569,7 +569,7 @@
 
 @if (isRedesignModalOpen()) {
   <div class="modal-backdrop" (click)="closeRedesignModal()" (keydown.enter)="closeRedesignModal()" (keydown.space)="closeRedesignModal()" (keydown.escape)="closeRedesignModal()" tabindex="0" role="button" aria-label="Close redesign modal">
-    <div class="modal-window redesign-modal-window" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="0" role="dialog" aria-modal="true" aria-label="Redesign dialog">
+    <div class="modal-window redesign-modal-window" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Redesign dialog">
       <div class="modal-header header-redesign">
         <div class="header-icon-box box-danger">
           <span class="material-symbols-outlined">rate_review</span>
@@ -629,7 +629,7 @@
 
 @if (isImageViewerOpen()) {
   <div class="modal-backdrop lightbox-backdrop" (click)="closeImageViewer()" (keydown.enter)="closeImageViewer()" (keydown.space)="closeImageViewer()" (keydown.escape)="closeImageViewer()" tabindex="0" role="button" aria-label="Close image viewer">
-    <div class="lightbox-container" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="0" role="dialog" aria-modal="true" aria-label="Image preview">
+    <div class="lightbox-container" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Deliverable preview">
       <div class="lightbox-header">
         <div class="lh-title">{{ imageViewerTitle() }}</div>
         <div class="lh-actions">
@@ -650,7 +650,7 @@
         @if (isVideo(imageViewerUrl()) || isVideo(imageViewerTitle())) {
           <video [src]="imageViewerUrl()" controls autoplay aria-label="Video deliverable preview"></video>
         } @else {
-          <img [src]="imageViewerUrl()" [alt]="imageViewerTitle() ? imageViewerTitle().replace(/image/gi, 'preview') : 'Deliverable preview'" />
+          <img [src]="imageViewerUrl()" [alt]="deliverableAltText()" />
         }
       </div>
     </div>
@@ -659,7 +659,7 @@
 
 @if (isDocViewerOpen()) {
   <div class="modal-backdrop" (click)="closeDocViewer()" (keydown.enter)="closeDocViewer()" (keydown.space)="closeDocViewer()" (keydown.escape)="closeDocViewer()" tabindex="0" role="button" aria-label="Close document viewer">
-    <div class="modal-window doc-modal-window" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="0" role="dialog" aria-modal="true" aria-label="Document viewer">
+    <div class="modal-window doc-modal-window" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Document viewer">
       <div class="modal-header">
         <div class="header-icon-box">
           <span class="material-symbols-outlined">description</span>

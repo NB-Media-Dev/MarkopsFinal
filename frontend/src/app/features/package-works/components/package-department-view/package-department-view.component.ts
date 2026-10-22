@@ -1081,7 +1081,7 @@ export class PackageDepartmentViewComponent {
 
     const escapeCsv = (val: any): string => {
       if (val === null || val === undefined) return '""';
-      const str = String(val).replace(/"/g, '""');
+      const str = String(val).replaceAll('"', '""');
       return `"${str}"`;
     };
 

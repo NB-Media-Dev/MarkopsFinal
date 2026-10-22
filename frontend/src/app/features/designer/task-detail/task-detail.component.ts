@@ -1,3 +1,10 @@
+function isSafeViewerUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const trimmed = url.trim().toLowerCase();
+  if (trimmed.startsWith('javascript:') || trimmed.startsWith('vbscript:')) return false;
+  return trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('/');
+}
+
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -161,6 +168,11 @@ export class TaskDetailComponent implements OnInit {
   readonly isImageViewerOpen = signal<boolean>(false);
   readonly imageViewerUrl = signal<string>('');
   readonly imageViewerTitle = signal<string>('');
+  readonly deliverableAltText = computed<string>(() => {
+    const title = this.imageViewerTitle();
+    if (!title) return 'Deliverable preview';
+    return title.replaceAll(/image/gi, 'preview').replaceAll(/photo/gi, 'preview');
+  });
 
   readonly quickRedesignSnippets = [
     '• Revise typography hierarchy & font weights for better readability',
@@ -798,7 +810,7 @@ export class TaskDetailComponent implements OnInit {
         }
 
         nodes.push({
-          id: h.id || `hist_${Math.random()}`,
+          id: h.id || `hist_${h.createdAt || Date.now()}_${nodes.length}`,
           hash: this.generateShortHash(`hist_${h.id || h.createdAt}`),
           authorLabel: `${rolePrefix} (${actorName})`,
           authorRole: actorRole,

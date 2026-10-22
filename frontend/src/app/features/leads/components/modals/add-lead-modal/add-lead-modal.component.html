@@ -1,6 +1,6 @@
 <!-- @if (isOpen) {
   <div class="modal-backdrop" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" tabindex="0" role="button" aria-label="Close add lead modal">
-    <div class="modal-card modal-md add-lead-modal-card" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="0" role="dialog" aria-modal="true" aria-label="Add new lead dialog">
+    <div class="modal-card modal-md add-lead-modal-card" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Add new lead dialog">
       <div class="modal-header">
         <div class="modal-title-wrap">
           <div class="modal-squircle-icon">
@@ -314,7 +314,7 @@
 
           <div class="form-row-flexible">
             <div class="form-group flex-1">
-              <label class="form-label">Marketing Campaign <span class="required">*</span></label>
+              <label class="form-label" for="newLeadCampaign">Marketing Campaign <span class="required">*</span></label>
               <select id="newLeadCampaign" class="form-input custom-select" [ngModel]="newCampaignId" (change)="campaignChange.emit($event)">
                 @if (availableCampaigns.length === 0) {
                   <option value="">General Ad Campaign</option>

@@ -166,7 +166,7 @@ router.post('/campaigns', async (req, res) => {
   const computedConvRate = convRate !== undefined && convRate !== null ? Number(convRate) : (numericLeads > 0 ? Number(((numericConversions / numericLeads) * 100).toFixed(1)) : 0);
 
   const newCmp = {
-    id: `cmp_${Math.random().toString(36).substring(2, 10)}`,
+    id: `cmp_${crypto.randomBytes(4).toString('hex')}`,
     name: String(name).trim(),
     objective: String(objective || 'LEAD_GENERATION'),
     productId: productId || null,
@@ -496,7 +496,7 @@ router.post('/ads', async (req, res) => {
   if (!Number.isSafeInteger(creatorId) || creatorId < 1) {
     return res.status(401).json({ error: 'Authenticated user ID is invalid.' });
   }
-  let id = `ad_${Math.random().toString(36).substring(2, 10)}`;
+  let id = `ad_${crypto.randomBytes(4).toString('hex')}`;
   const numericSpend = Number(spend) || 0;
   const numericLeads = Number(leadsCount) || 0;
   const computedCpl = cpl !== undefined && cpl !== null ? Number(cpl) : (numericLeads > 0 ? Number((numericSpend / numericLeads).toFixed(2)) : 0);
@@ -544,7 +544,7 @@ router.post('/ads', async (req, res) => {
     cpc: computedCpc,
     leadsCount: numericLeads,
     cpl: computedCpl,
-    platformAdId: platformAdId || `ad_ext_${Math.floor(100000 + Math.random() * 900000)}`,
+    platformAdId: platformAdId || `ad_ext_${crypto.randomInt(100000, 1000000)}`,
     designId: req.body.designId || null,
     designTitle: req.body.designTitle || null,
     designImageUrl: req.body.designImageUrl || null,
@@ -738,8 +738,8 @@ router.post('/ads/sync', async (req, res) => {
   const syncTimestamp = new Date().toISOString();
   dbAdsStore.forEach((ad) => {
     ad.lastSyncedAt = syncTimestamp;
-    ad.impressions += Math.floor(Math.random() * 500) + 100;
-    ad.clicks += Math.floor(Math.random() * 20) + 5;
+    ad.impressions += crypto.randomInt(100, 600);
+    ad.clicks += crypto.randomInt(5, 25);
     ad.reach = Math.round(ad.impressions * 0.72);
     if (ad.impressions > 0) {
       ad.ctr = Number(((ad.clicks / ad.impressions) * 100).toFixed(2));

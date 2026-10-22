@@ -1,3 +1,17 @@
+function extractLeadEmail(text: string): string {
+  if (!text || !text.includes('@')) return '';
+  const tokens = text.split(/\s+/);
+  for (const token of tokens) {
+    const clean = token.replace(/^[<([{"']+|[>\])}".,;:]+$/g, '');
+    const atIdx = clean.indexOf('@');
+    const lastDot = clean.lastIndexOf('.');
+    if (atIdx > 0 && lastDot > atIdx + 1 && lastDot < clean.length - 1) {
+      return clean;
+    }
+  }
+  return '';
+}
+
 import { Component, inject, OnInit, signal, computed, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -347,7 +361,7 @@ export class LeadsComponent implements OnInit {
           const firstName = get('firstname') || splitName.shift() || '';
           const lastName = get('lastname') || splitName.join(' ');
           const contactInfo = get('contactinfo', 'contact');
-          const contactEmail = contactInfo.match(/[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}/)?.[0] || '';
+          const contactEmail = extractLeadEmail(contactInfo);
           const contactPhone = contactInfo
             .replace(contactEmail, '')
             .replace(/(?:phone|mobile|tel)\s*[:=-]?\s*/i, '')

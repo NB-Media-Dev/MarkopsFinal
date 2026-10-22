@@ -1,3 +1,17 @@
+function extractFirstEmail(text) {
+  if (!text || !text.includes('@')) return '';
+  const tokens = String(text).split(/\s+/);
+  for (const token of tokens) {
+    const clean = token.replace(/^[<([{"']+|[>\])}".,;:]+$/g, '');
+    const atIdx = clean.indexOf('@');
+    const lastDot = clean.lastIndexOf('.');
+    if (atIdx > 0 && lastDot > atIdx + 1 && lastDot < clean.length - 1) {
+      return clean;
+    }
+  }
+  return '';
+}
+
 const crypto = require('crypto');
 const express = require('express');
 const {
@@ -455,7 +469,7 @@ router.post('/leads', async (req, res) => {
   }
 
   const newLead = {
-    id: `lead_${Math.random().toString(36).substring(2, 10)}`,
+    id: `lead_${crypto.randomBytes(4).toString('hex')}`,
     firstName: fName,
     lastName: lName,
     email: em,
@@ -1106,7 +1120,7 @@ router.post('/calls', async (req, res) => {
       lead.updatedAt = new Date().toISOString();
     } else if (rawLeadId || rawName || rawPhone) {
       lead = {
-        id: rawLeadId || `lead_${Math.random().toString(36).substring(2, 10)}`,
+        id: rawLeadId || `lead_${crypto.randomBytes(4).toString('hex')}`,
         firstName: firstName || (leadName ? leadName.split(' ')[0] : 'Lead'),
         lastName: lastName || (leadName ? leadName.split(' ').slice(1).join(' ') : 'Customer'),
         phone: leadPhone || phone || '+91 9800000000',
@@ -1129,7 +1143,7 @@ router.post('/calls', async (req, res) => {
   const effectiveCallerName = telecallerName || req.headers['x-user-name'] || 'System User';
   const callTimestamp = new Date();
   const isoCalledAt = callTimestamp.toISOString();
-  let assignedCallId = `call_${Math.random().toString(36).substring(2, 10)}`;
+  let assignedCallId = `call_${crypto.randomBytes(4).toString('hex')}`;
 
   if (dbPool) {
     try {
@@ -1249,7 +1263,7 @@ router.post('/calls', async (req, res) => {
 
   if (followUpDate) {
     const followUpItem = {
-      id: `fol_${Math.random().toString(36).substring(2, 10)}`,
+      id: `fol_${crypto.randomBytes(4).toString('hex')}`,
       leadId: newCall.leadId,
       leadName: newCall.leadName,
       leadPhone: lead ? lead.phone : (leadPhone || phone || ''),
@@ -1624,7 +1638,7 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
     const fullName = String(raw.fullName || raw.leadName || raw['Full Name'] || raw['Lead Name'] || raw['Name'] || '').trim();
     const fName = String(raw.firstName || raw['First Name'] || raw['first_name'] || fullName.split(/\s+/)[0] || '').trim();
     const contactInfo = String(raw.contactInfo || raw['Contact Info'] || '').trim();
-    const contactEmail = contactInfo.match(/[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}/)?.[0] || '';
+    const contactEmail = extractFirstEmail(contactInfo);
     const contactPhone = contactInfo
       .replace(contactEmail, '')
       .replace(/(?:phone|mobile|tel)\s*[:=-]?\s*/i, '')
@@ -1747,7 +1761,7 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
     const lastName = String(raw.lastName || raw['Last Name'] || raw['last_name'] || fullNameParts.join(' ')).trim();
     const email = String(raw.email || raw['Email'] || raw['email_address'] || '').trim();
     const contactInfo = String(raw.contactInfo || raw['Contact Info'] || '').trim();
-    const contactEmail = contactInfo.match(/[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}/)?.[0] || '';
+    const contactEmail = extractFirstEmail(contactInfo);
     const contactPhone = contactInfo
       .replace(contactEmail, '')
       .replace(/(?:phone|mobile|tel)\s*[:=-]?\s*/i, '')
@@ -1780,7 +1794,7 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
     const targetProdId = req.body.productId || raw.productId || raw.product_id || '';
 
     const newLead = {
-      id: `lead_${Math.random().toString(36).substring(2, 10)}`,
+      id: `lead_${crypto.randomBytes(4).toString('hex')}`,
       firstName,
       lastName,
       email: emailAddress,
