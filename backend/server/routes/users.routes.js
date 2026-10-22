@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -171,7 +172,7 @@ router.post('/users', async (req, res) => {
     }
   }
 
-  const finalId = insertedUserId ? String(insertedUserId) : `usr_${Math.random().toString(36).substring(2, 11)}`;
+  const finalId = insertedUserId ? String(insertedUserId) : `usr_${crypto.randomBytes(5).toString('hex')}`;
   const newUser = {
     id: finalId,
     email: normalizedEmail,
@@ -213,8 +214,8 @@ router.delete('/users/:id', async (req, res) => {
 
   if (dbPool) {
     try {
-      const numId = parseInt(userId, 10);
-      if (!isNaN(numId)) {
+      const numId = Number.parseInt(userId, 10);
+      if (!Number.isNaN(numId)) {
         await dbPool.query('DELETE FROM task_assignments WHERE user_id = ?', [numId]);
         await dbPool.query('DELETE FROM notifications WHERE user_id = ?', [numId]);
         await dbPool.query('DELETE FROM users WHERE id = ?', [numId]);
@@ -256,8 +257,8 @@ router.patch('/users/:id/status', async (req, res) => {
 
   if (dbPool) {
     try {
-      const numId = parseInt(userId, 10);
-      if (!isNaN(numId)) {
+      const numId = Number.parseInt(userId, 10);
+      if (!Number.isNaN(numId)) {
         if (!user) {
           const [rows] = await dbPool.query('SELECT is_active FROM users WHERE id = ?', [numId]);
           if (Array.isArray(rows) && rows.length > 0) {
@@ -314,7 +315,7 @@ router.put('/users/:id', async (req, res) => {
 
   if (dbPool) {
     try {
-      const numId = parseInt(userId, 10);
+      const numId = Number.parseInt(userId, 10);
       const targetRoleId = resolveRoleId(role);
       let sql = 'UPDATE users SET full_name = ?, email = ?, role_id = ?, department = ?, is_active = ?';
       const params = [fullName, email, targetRoleId, department, isActive ? 1 : 0];
@@ -330,7 +331,7 @@ router.put('/users/:id', async (req, res) => {
         params.push(hash);
       }
 
-      if (!isNaN(numId)) {
+      if (!Number.isNaN(numId)) {
         sql += ' WHERE id = ?';
         params.push(numId);
       } else {

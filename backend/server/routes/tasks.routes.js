@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
@@ -36,7 +37,7 @@ function formatDueDate(val) {
   if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val.trim())) return val.trim();
   try {
     const d = new Date(val);
-    if (isNaN(d.getTime())) return '';
+    if (Number.isNaN(d.getTime())) return '';
     return d.toISOString().split('T')[0];
   } catch (e) {
     return '';
@@ -434,7 +435,7 @@ router.get('/tasks/my', async (req, res) => {
   const currentUserName = req.user?.fullName ? String(req.user.fullName).toLowerCase().trim() : '';
   const isDesigner = currentUserRole === 'DESIGNER';
   const { status, assignedTo, createdBy } = req.query;
-  const numericUserId = parseInt(currentUserId, 10) || currentUserId;
+  const numericUserId = Number.parseInt(currentUserId, 10) || currentUserId;
 
   if (dbPool) {
     try {
@@ -656,9 +657,9 @@ router.post('/tasks', async (req, res) => {
     return res.status(400).json({ error: 'All fields (Title, Package, Designer, Priority, and Deadline) are required.' });
   }
 
-  const authUserId = req.user?.id ? (parseInt(req.user.id, 10) || req.user.id) : null;
-  let numericCreatorId = typeof creatorId === 'number' ? creatorId : (parseInt(creatorId, 10) || (typeof authUserId === 'number' ? authUserId : 1));
-  const numericAssignedTo = assignedTo ? (typeof assignedTo === 'number' ? assignedTo : (parseInt(assignedTo, 10) || null)) : null;
+  const authUserId = req.user?.id ? (Number.parseInt(req.user.id, 10) || req.user.id) : null;
+  let numericCreatorId = typeof creatorId === 'number' ? creatorId : (Number.parseInt(creatorId, 10) || (typeof authUserId === 'number' ? authUserId : 1));
+  const numericAssignedTo = assignedTo ? (typeof assignedTo === 'number' ? assignedTo : (Number.parseInt(assignedTo, 10) || null)) : null;
 
   let safeTaskType = taskType || req.body.task_type;
   if (!safeTaskType) {
@@ -792,7 +793,7 @@ router.post('/tasks', async (req, res) => {
   }
 
  
-  const taskId = `task_${Math.random().toString(36).substring(2, 11)}`;
+  const taskId = `task_${crypto.randomBytes(5).toString('hex')}`;
   const now = new Date().toISOString();
   const targetUser = dbUsersStore.find((u) => String(u.id) === String(assignedTo));
   const assigneeName = targetUser ? targetUser.fullName : (req.body.assigneeName || 'Assigned User');
@@ -821,7 +822,7 @@ router.post('/tasks', async (req, res) => {
     versions: [],
     statusHistory: [
       {
-        id: `hist_${Math.random().toString(36).substring(2, 9)}`,
+        id: `hist_${crypto.randomBytes(4).toString('hex')}`,
         taskId,
         actorId: creatorId || req.headers['x-user-id'] || 'usr_admin_01',
         actorName: creatorName || req.headers['x-user-name'] || 'System Administrator',
@@ -926,7 +927,7 @@ async function handleStatusTransition(req, res) {
   const effectiveActorName = req.user?.fullName || actorName || req.headers['x-user-name'] || 'User';
 
   const historyEntry = {
-    id: `hist_${Math.random().toString(36).substring(2, 9)}`,
+    id: `hist_${crypto.randomBytes(4).toString('hex')}`,
     taskId,
     actorId: effectiveActorId,
     actorName: effectiveActorName,
@@ -1072,9 +1073,9 @@ async function handleStatusTransition(req, res) {
 
   if (dbPool) {
     try {
-      const numericTaskId = typeof taskId === 'number' ? taskId : (parseInt(taskId, 10) || null);
-      let numericActorId = typeof effectiveActorId === 'number' ? effectiveActorId : parseInt(effectiveActorId, 10);
-      if (isNaN(numericActorId) || !numericActorId) numericActorId = 1;
+      const numericTaskId = typeof taskId === 'number' ? taskId : (Number.parseInt(taskId, 10) || null);
+      let numericActorId = typeof effectiveActorId === 'number' ? effectiveActorId : Number.parseInt(effectiveActorId, 10);
+      if (Number.isNaN(numericActorId) || !numericActorId) numericActorId = 1;
 
       if (numericTaskId) {
         await dbPool.query(
@@ -1163,7 +1164,7 @@ async function handleVersionSubmission(req, res, targetTask) {
   const safeFileSize = typeof fileSize === 'number' ? Math.round(fileSize) : 2048000;
 
   const newVersion = {
-    id: `ver_${Math.random().toString(36).substring(2, 9)}`,
+    id: `ver_${crypto.randomBytes(4).toString('hex')}`,
     taskId,
     versionNumber: newVersionNumber,
     submittedBy: effectiveUser,
@@ -1212,7 +1213,7 @@ async function handleVersionSubmission(req, res, targetTask) {
 
   if (!task.statusHistory) task.statusHistory = [];
   task.statusHistory.unshift({
-    id: `hist_${Math.random().toString(36).substring(2, 9)}`,
+    id: `hist_${crypto.randomBytes(4).toString('hex')}`,
     taskId,
     actorId: effectiveUser,
     actorName: effectiveUserName,
@@ -1224,14 +1225,14 @@ async function handleVersionSubmission(req, res, targetTask) {
 
   if (dbPool) {
     try {
-      const numericTaskId = typeof taskId === 'number' ? taskId : (parseInt(taskId, 10) || null);
-      let numericSubmittedBy = typeof effectiveUser === 'number' ? effectiveUser : parseInt(effectiveUser, 10);
-      if (isNaN(numericSubmittedBy) || !numericSubmittedBy) {
+      const numericTaskId = typeof taskId === 'number' ? taskId : (Number.parseInt(taskId, 10) || null);
+      let numericSubmittedBy = typeof effectiveUser === 'number' ? effectiveUser : Number.parseInt(effectiveUser, 10);
+      if (Number.isNaN(numericSubmittedBy) || !numericSubmittedBy) {
         if (task.assignedTo) {
-          numericSubmittedBy = typeof task.assignedTo === 'number' ? task.assignedTo : parseInt(task.assignedTo, 10);
+          numericSubmittedBy = typeof task.assignedTo === 'number' ? task.assignedTo : Number.parseInt(task.assignedTo, 10);
         }
       }
-      if (isNaN(numericSubmittedBy) || !numericSubmittedBy) numericSubmittedBy = 1;
+      if (Number.isNaN(numericSubmittedBy) || !numericSubmittedBy) numericSubmittedBy = 1;
 
       if (numericTaskId) {
         await dbPool.query(
@@ -1455,7 +1456,7 @@ router.post('/tasks/:id/comments', async (req, res) => {
   const detectedUserRole = userRole || req.user?.role || req.headers['x-user-role'] || 'ADMINISTRATOR';
 
   const newComment = {
-    id: `comm_${Math.random().toString(36).substring(2, 9)}`,
+    id: `comm_${crypto.randomBytes(4).toString('hex')}`,
     taskId,
     userId: detectedUserId,
     userName: detectedUserName,
@@ -1470,8 +1471,8 @@ router.post('/tasks/:id/comments', async (req, res) => {
 
   if (dbPool) {
     try {
-      const numericTaskId = typeof taskId === 'number' ? taskId : (parseInt(taskId, 10) || null);
-      const numericUserId = typeof newComment.userId === 'number' ? newComment.userId : (parseInt(newComment.userId, 10) || 1);
+      const numericTaskId = typeof taskId === 'number' ? taskId : (Number.parseInt(taskId, 10) || null);
+      const numericUserId = typeof newComment.userId === 'number' ? newComment.userId : (Number.parseInt(newComment.userId, 10) || 1);
       if (numericTaskId) {
         const [result] = await dbPool.query(
           `INSERT INTO task_comments (task_id, user_id, comment, created_at)
@@ -1556,7 +1557,7 @@ router.post('/tasks/:id/messages', async (req, res) => {
   const detectedUserRole = userRole || req.user?.role || req.headers['x-user-role'] || 'ADMINISTRATOR';
 
   const newComment = {
-    id: `comm_${Math.random().toString(36).substring(2, 9)}`,
+    id: `comm_${crypto.randomBytes(4).toString('hex')}`,
     taskId,
     userId: detectedUserId,
     userName: detectedUserName,
@@ -1571,8 +1572,8 @@ router.post('/tasks/:id/messages', async (req, res) => {
 
   if (dbPool) {
     try {
-      const numericTaskId = typeof taskId === 'number' ? taskId : (parseInt(taskId, 10) || null);
-      const numericUserId = typeof newComment.userId === 'number' ? newComment.userId : (parseInt(newComment.userId, 10) || 1);
+      const numericTaskId = typeof taskId === 'number' ? taskId : (Number.parseInt(taskId, 10) || null);
+      const numericUserId = typeof newComment.userId === 'number' ? newComment.userId : (Number.parseInt(newComment.userId, 10) || 1);
       if (numericTaskId) {
         await dbPool.query(
           `INSERT INTO task_comments (task_id, user_id, comment, created_at) VALUES (?, ?, ?, NOW())`,

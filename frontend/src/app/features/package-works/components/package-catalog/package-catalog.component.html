@@ -6,12 +6,17 @@
         <div
           class="package-display-card"
           (click)="onOpenPackage(pkg)"
+          (keydown.enter)="onOpenPackage(pkg)"
+          (keydown.space)="onOpenPackage(pkg)"
+          tabindex="0"
+          role="button"
+          [attr.aria-label]="'Open ' + pkg.name"
           [attr.data-package-id]="pkg.id"
         >
 
           <!-- Discreet Menu for Admin Edit/Delete -->
           @if (canEditPackage || canDeletePackage) {
-            <div class="package-card-menu-wrapper" (click)="$event.stopPropagation()">
+            <div class="package-card-menu-wrapper" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
               <button
                 type="button"
                 class="package-menu-btn"

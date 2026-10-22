@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const {
   dbPool,
@@ -63,7 +64,7 @@ function isSameCallActivity(c1, c2) {
   if (c1.calledAt && c2.calledAt) {
     const t1 = new Date(c1.calledAt).getTime();
     const t2 = new Date(c2.calledAt).getTime();
-    if (!isNaN(t1) && !isNaN(t2)) {
+    if (!Number.isNaN(t1) && !Number.isNaN(t2)) {
       const diff = Math.abs(t1 - t2);
       const isFivePointFiveHours = Math.abs(diff - (5.5 * 3600 * 1000)) <= 60000;
       if (diff <= 60000 || isFivePointFiveHours) return true;
@@ -158,7 +159,7 @@ router.get('/leads', async (req, res) => {
       const queryParams = [];
 
       if (isTelecallerRole) {
-        const numUid = parseInt(String(currentUserId || '').replace(/\D/g, ''), 10);
+        const numUid = Number.parseInt(String(currentUserId || '').replace(/\D/g, ''), 10);
         queryStr += `
           WHERE (
             l.assigned_to = ?
@@ -173,11 +174,11 @@ router.get('/leads', async (req, res) => {
         `;
         queryParams.push(
           currentUserId || -1,
-          isNaN(numUid) ? -1 : numUid,
+          Number.isNaN(numUid) ? -1 : numUid,
           currentUserId || '__none__',
           currentUserEmail || '__none__',
           currentUserName || '__none__',
-          isNaN(numUid) ? -1 : numUid,
+          Number.isNaN(numUid) ? -1 : numUid,
           currentUserId || '__none__',
           currentUserEmail || '__none__',
           currentUserName || '__none__',
@@ -302,7 +303,7 @@ router.get('/leads', async (req, res) => {
       const uemail = String(currentUserEmail || '').toLowerCase().trim();
       const uname = String(currentUserName || '').toLowerCase().trim();
 
-      if (uid && (aTo === uid || parseInt(aTo, 10) === parseInt(uid, 10))) return true;
+      if (uid && (aTo === uid || Number.parseInt(aTo, 10) === Number.parseInt(uid, 10))) return true;
       if (uemail && (aTo === uemail || aName === uemail || aTo.includes(uemail))) return true;
       if (uname && (aName === uname || aTo === uname || aName.includes(uname) || uname.includes(aName) || aTo.includes(uname))) return true;
       return false;
@@ -429,9 +430,9 @@ router.post('/leads', async (req, res) => {
     }
   }
 
-  const numericCreatorId = parseInt(String(effectiveUserId || '1').replace(/\D/g, ''), 10) || 1;
-  const numericAssignedTo = targetAssignedTo ? (parseInt(targetAssignedTo.replace(/\D/g, ''), 10) || null) : null;
-  let numericAdId = targetAdId ? (parseInt(targetAdId.replace(/\D/g, ''), 10) || null) : null;
+  const numericCreatorId = Number.parseInt(String(effectiveUserId || '1').replace(/\D/g, ''), 10) || 1;
+  const numericAssignedTo = targetAssignedTo ? (Number.parseInt(targetAssignedTo.replace(/\D/g, ''), 10) || null) : null;
+  let numericAdId = targetAdId ? (Number.parseInt(targetAdId.replace(/\D/g, ''), 10) || null) : null;
 
   if (dbPool && targetAdName) {
     try {
@@ -670,12 +671,12 @@ router.post('/leads/:id/assign', async (req, res) => {
         (u) => String(u.id).trim() === targetUserIdStr || u.email === targetUserIdStr
       );
       if (user) {
-        const parsed = parseInt(String(user.id).replace(/\D/g, ''), 10);
-        cleanAssignedTo = !isNaN(parsed) && parsed > 0 ? parsed : user.id;
+        const parsed = Number.parseInt(String(user.id).replace(/\D/g, ''), 10);
+        cleanAssignedTo = !Number.isNaN(parsed) && parsed > 0 ? parsed : user.id;
         effectiveName = user.fullName;
       } else {
-        const parsed = parseInt(targetUserIdStr.replace(/\D/g, ''), 10);
-        cleanAssignedTo = !isNaN(parsed) && parsed > 0 ? parsed : targetUserIdStr;
+        const parsed = Number.parseInt(targetUserIdStr.replace(/\D/g, ''), 10);
+        cleanAssignedTo = !Number.isNaN(parsed) && parsed > 0 ? parsed : targetUserIdStr;
       }
     }
   }
@@ -686,16 +687,16 @@ router.post('/leads/:id/assign', async (req, res) => {
 
   if (dbPool) {
     try {
-      const numLeadId = parseInt(leadId, 10);
-      if (!isNaN(numLeadId)) {
+      const numLeadId = Number.parseInt(leadId, 10);
+      if (!Number.isNaN(numLeadId)) {
         try {
           await dbPool.query(
             `UPDATE leads
              SET assigned_to = ?, assigned_telecaller_id = ?, assignment_status = ?, status = ?, updated_at = NOW()
              WHERE id = ?`,
             [
-              cleanAssignedTo ? (parseInt(String(cleanAssignedTo).replace(/\D/g, ''), 10) || cleanAssignedTo) : null,
-              cleanAssignedTo ? (parseInt(String(cleanAssignedTo).replace(/\D/g, ''), 10) || cleanAssignedTo) : null,
+              cleanAssignedTo ? (Number.parseInt(String(cleanAssignedTo).replace(/\D/g, ''), 10) || cleanAssignedTo) : null,
+              cleanAssignedTo ? (Number.parseInt(String(cleanAssignedTo).replace(/\D/g, ''), 10) || cleanAssignedTo) : null,
               cleanAssignedTo ? 'ASSIGNED' : 'UNASSIGNED',
               finalStatus,
               numLeadId,
@@ -707,7 +708,7 @@ router.post('/leads/:id/assign', async (req, res) => {
              SET assigned_to = ?, status = ?, updated_at = NOW()
              WHERE id = ?`,
             [
-              cleanAssignedTo ? (parseInt(String(cleanAssignedTo).replace(/\D/g, ''), 10) || cleanAssignedTo) : null,
+              cleanAssignedTo ? (Number.parseInt(String(cleanAssignedTo).replace(/\D/g, ''), 10) || cleanAssignedTo) : null,
               finalStatus,
               numLeadId,
             ]
@@ -833,7 +834,7 @@ router.put('/leads/:id', async (req, res) => {
   const updatedSource = source !== undefined ? String(source).trim() : (lead.source || 'Manual');
   const updatedStatus = status !== undefined ? String(status).trim() : (lead.status || 'NEW');
   const updatedCampName = campaignName !== undefined ? String(campaignName).trim() : (lead.campaign_name || lead.campaignName || '');
-  const updatedAssignedTo = assignedTo !== undefined ? (assignedTo ? parseInt(String(assignedTo).replace(/\D/g, ''), 10) || null : null) : (lead.assigned_to || null);
+  const updatedAssignedTo = assignedTo !== undefined ? (assignedTo ? Number.parseInt(String(assignedTo).replace(/\D/g, ''), 10) || null : null) : (lead.assigned_to || null);
   let updatedAssigneeName = assigneeName !== undefined ? String(assigneeName).trim() : (lead.assignee_full_name || lead.assigneeName || 'Unassigned');
   if (!updatedAssignedTo) updatedAssigneeName = 'Unassigned';
 
@@ -1017,13 +1018,13 @@ router.post('/calls', async (req, res) => {
   if (newStatus === 'FOLLOW_UP_SCHEDULED') newStatus = 'FOLLOW_UP';
 
   let lead = null;
-  const numId = parseInt(rawLeadId, 10);
+  const numId = Number.parseInt(rawLeadId, 10);
 
   let mysqlLeadStatus = newStatus;
 
   if (dbPool) {
     try {
-      if (!isNaN(numId)) {
+      if (!Number.isNaN(numId)) {
         await dbPool.query('UPDATE leads SET status = ?, remarks = ?, notes = ?, updated_at = NOW() WHERE id = ?', [mysqlLeadStatus, remarks || 'Call logged.', remarks || 'Call logged.', numId]);
       } else if (rawPhone) {
         await dbPool.query('UPDATE leads SET status = ?, remarks = ?, notes = ?, updated_at = NOW() WHERE phone LIKE ?', [mysqlLeadStatus, remarks || 'Call logged.', remarks || 'Call logged.', `%${rawPhone}%`]);
@@ -1040,7 +1041,7 @@ router.post('/calls', async (req, res) => {
         LEFT JOIN users u ON l.assigned_to = u.id
       `;
       let params = [];
-      if (!isNaN(numId)) {
+      if (!Number.isNaN(numId)) {
         fetchSql += ' WHERE l.id = ?';
         params = [numId];
       } else if (rawPhone) {
@@ -1133,13 +1134,13 @@ router.post('/calls', async (req, res) => {
   if (dbPool) {
     try {
       const targetLeadId = lead ? lead.id : rawLeadId;
-      const numLeadId = parseInt(String(targetLeadId).replace(/\D/g, ''), 10);
-      const numCallerId = parseInt(String(effectiveCallerId).replace(/\D/g, ''), 10) || 1;
+      const numLeadId = Number.parseInt(String(targetLeadId).replace(/\D/g, ''), 10);
+      const numCallerId = Number.parseInt(String(effectiveCallerId).replace(/\D/g, ''), 10) || 1;
       let mysqlOutcome = newStatus;
       const effectiveLeadPhone = lead ? (lead.phone || '') : (leadPhone || phone || '');
       const effectiveLeadName = lead ? `${lead.firstName || ''} ${lead.lastName || ''}`.trim() : (leadName || `${firstName || ''} ${lastName || ''}`.trim() || 'Lead Customer');
 
-      if (!isNaN(numLeadId)) {
+      if (!Number.isNaN(numLeadId)) {
         let insertRes = null;
         try {
           const [res] = await dbPool.query(
@@ -1239,8 +1240,8 @@ router.post('/calls', async (req, res) => {
 
   if (dbPool) {
     try {
-      const numLeadId = parseInt(String(targetLeadId).replace(/\D/g, ''), 10);
-      if (!isNaN(numLeadId)) {
+      const numLeadId = Number.parseInt(String(targetLeadId).replace(/\D/g, ''), 10);
+      if (!Number.isNaN(numLeadId)) {
         await dbPool.query("UPDATE follow_ups SET status = 'COMPLETED', completed_at = NOW() WHERE lead_id = ? AND status = 'PENDING'", [numLeadId]).catch(() => {});
       }
     } catch (e) {}
@@ -1264,9 +1265,9 @@ router.post('/calls', async (req, res) => {
 
     if (dbPool) {
       try {
-        const numLeadId = parseInt(String(targetLeadId).replace(/\D/g, ''), 10);
-        const numCallerId = parseInt(String(effectiveCallerId).replace(/\D/g, ''), 10) || 1;
-        if (!isNaN(numLeadId)) {
+        const numLeadId = Number.parseInt(String(targetLeadId).replace(/\D/g, ''), 10);
+        const numCallerId = Number.parseInt(String(effectiveCallerId).replace(/\D/g, ''), 10) || 1;
+        if (!Number.isNaN(numLeadId)) {
           let mysqlDueDate = followUpDate;
           if (followUpDate.includes('T')) {
             mysqlDueDate = new Date(followUpDate).toISOString().slice(0, 19).replace('T', ' ');
@@ -1484,8 +1485,8 @@ router.patch('/leads/:id/status', async (req, res) => {
 
   if (dbPool) {
     try {
-      const numId = parseInt(leadId, 10);
-      if (!isNaN(numId)) {
+      const numId = Number.parseInt(leadId, 10);
+      if (!Number.isNaN(numId)) {
         await dbPool.query('UPDATE leads SET status = ?, updated_at = NOW() WHERE id = ?', [newStatus, numId]);
       }
     } catch (e) {
@@ -1569,8 +1570,8 @@ router.get('/followups', async (req, res) => {
       if (Array.isArray(rows) && rows.length > 0) {
         const dbFollowUps = rows.map((r) => {
           const d = r.due_date ? new Date(r.due_date) : null;
-          const dueStr = d && !isNaN(d.getTime()) ? d.toISOString().split('T')[0] : '';
-          const dueTimeStr = d && !isNaN(d.getTime()) ? d.toTimeString().slice(0, 5) : '10:00';
+          const dueStr = d && !Number.isNaN(d.getTime()) ? d.toISOString().split('T')[0] : '';
+          const dueTimeStr = d && !Number.isNaN(d.getTime()) ? d.toTimeString().slice(0, 5) : '10:00';
           return {
             id: `fol_${r.id}`,
             leadId: String(r.lead_id || ''),
@@ -1623,7 +1624,7 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
     const fullName = String(raw.fullName || raw.leadName || raw['Full Name'] || raw['Lead Name'] || raw['Name'] || '').trim();
     const fName = String(raw.firstName || raw['First Name'] || raw['first_name'] || fullName.split(/\s+/)[0] || '').trim();
     const contactInfo = String(raw.contactInfo || raw['Contact Info'] || '').trim();
-    const contactEmail = contactInfo.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || '';
+    const contactEmail = contactInfo.match(/[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}/)?.[0] || '';
     const contactPhone = contactInfo
       .replace(contactEmail, '')
       .replace(/(?:phone|mobile|tel)\s*[:=-]?\s*/i, '')
@@ -1746,7 +1747,7 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
     const lastName = String(raw.lastName || raw['Last Name'] || raw['last_name'] || fullNameParts.join(' ')).trim();
     const email = String(raw.email || raw['Email'] || raw['email_address'] || '').trim();
     const contactInfo = String(raw.contactInfo || raw['Contact Info'] || '').trim();
-    const contactEmail = contactInfo.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || '';
+    const contactEmail = contactInfo.match(/[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}/)?.[0] || '';
     const contactPhone = contactInfo
       .replace(contactEmail, '')
       .replace(/(?:phone|mobile|tel)\s*[:=-]?\s*/i, '')
@@ -1771,8 +1772,8 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
     }
 
 
-    const cleanAssignedToId = assignedTelecaller ? (parseInt(String(assignedTelecaller.id).replace(/\D/g, ''), 10) || null) : null;
-    const cleanCreatorId = parseInt(String(uploaderUid || '1').replace(/\D/g, ''), 10) || 1;
+    const cleanAssignedToId = assignedTelecaller ? (Number.parseInt(String(assignedTelecaller.id).replace(/\D/g, ''), 10) || null) : null;
+    const cleanCreatorId = Number.parseInt(String(uploaderUid || '1').replace(/\D/g, ''), 10) || 1;
 
     const targetPkgName = req.body.packageName || raw.packageName || raw.package || targetCampName || 'Careermate';
     const targetProdName = req.body.productName || raw.productName || raw.product || '';
@@ -1809,7 +1810,7 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
   
       _mysqlCampaignId: metaWebhook
         ? mysqlCampaignId
-        : (parseInt(String(rowCampaignId), 10) || mysqlCampaignId),
+        : (Number.parseInt(String(rowCampaignId), 10) || mysqlCampaignId),
       _mysqlAdId: null,
       _mysqlAssignedTo: cleanAssignedToId,
       _mysqlCreatorId: cleanCreatorId

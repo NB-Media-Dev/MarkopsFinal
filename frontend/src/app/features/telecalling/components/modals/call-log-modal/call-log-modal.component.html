@@ -1,6 +1,6 @@
 @if (lead) {
-  <div class="modal-backdrop" (click)="onClose()">
-    <div class="modal-card modal-compact-card" (click)="$event.stopPropagation()">
+  <div class="modal-backdrop" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" tabindex="0" role="button" aria-label="Close call log modal">
+    <div class="modal-card modal-compact-card" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="0" role="dialog" aria-modal="true" aria-label="Call log dialog">
       <div class="modal-header">
         <div class="modal-title-wrap">
           <div class="modal-squircle-icon">
@@ -23,8 +23,9 @@
 
         <div class="form-row outcome-duration-row">
           <div class="form-group flex-1">
-            <label class="form-label">Call Outcome <span class="required">*</span></label>
+            <label class="form-label" for="callOutcomeSelect">Call Outcome <span class="required">*</span></label>
             <select
+              id="callOutcomeSelect"
               [(ngModel)]="callOutcome"
               (change)="onCallOutcomeChange()"
               class="form-input form-select-compact"
@@ -41,13 +42,13 @@
 
           @if (shouldShowDuration()) {
             <div class="form-group flex-1">
-              <label class="form-label">Duration (Seconds)</label>
+              <label class="form-label" for="callDurationInput">Duration (Seconds)</label>
               <div class="duration-input-compact">
                 <input
                   type="number"
                   [ngModel]="callDuration"
                   (ngModelChange)="onDurationChange($event)"
-                  class="form-input duration-num"
+                  id="callDurationInput" class="form-input duration-num"
                 />
                 <div class="duration-mini-pills">
                   <button type="button" class="mini-pill" (click)="setDurationPreset(30)">
@@ -71,6 +72,11 @@
         <div
           class="reminder-option-bar"
           (click)="toggleReminder()"
+          (keydown.enter)="toggleReminder()"
+          (keydown.space)="toggleReminder()"
+          tabindex="0"
+          role="button"
+          aria-label="Toggle reminder"
           [class.active-reminder]="enableReminder"
         >
           <div class="reminder-left">
@@ -107,7 +113,7 @@
             "
           >
             <div class="scheduler-label-row">
-              <label class="form-label">
+              <label class="form-label" for="followUpDateInput">
                 <span class="material-symbols-outlined fs-13 align-middle icon-timer-sub"
                   >alarm</span
                 >
@@ -117,17 +123,18 @@
             </div>
             <div class="form-row datetime-input-row">
               <div class="form-group flex-1">
-                <label class="field-sub-label">Date</label>
+                <label class="field-sub-label" for="followUpDateInput">Date</label>
                 <input
                   type="date"
                   [ngModel]="followUpDate"
                   (ngModelChange)="onDateChange($event)"
                   [min]="todayDate"
+                  id="followUpDateInput"
                   class="form-input form-input-sm"
                 />
               </div>
               <div class="form-group flex-1">
-                <label class="field-sub-label">Time</label>
+                <label class="field-sub-label" for="followUpTimeInput">Time</label>
                 <input
                   type="time"
                   [ngModel]="followUpTime"
@@ -178,13 +185,14 @@
 
         <div class="form-group remarks-form-group">
           <div class="remarks-label-row">
-            <label class="form-label">
+            <label class="form-label" for="callRemarksTextarea">
               <span class="material-symbols-outlined fs-13 align-middle icon-notes">notes</span>
               Call Remarks
             </label>
             <span class="remarks-hint-tag">{{ callOutcome.replace('_', ' ') }}</span>
           </div>
           <textarea
+            id="callRemarksTextarea"
             rows="2"
             [ngModel]="callRemarks"
             (ngModelChange)="onRemarksChange($event)"

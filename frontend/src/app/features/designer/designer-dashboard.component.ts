@@ -250,7 +250,7 @@ export class DesignerDashboardComponent implements OnInit {
     const colors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2', '#4f46e5', '#db2777'];
     let hash = 0;
     for (let i = 0; i < (name || '').length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash);
     }
     return colors[Math.abs(hash) % colors.length];
   }
@@ -674,12 +674,12 @@ export class DesignerDashboardComponent implements OnInit {
     if (docUrl.startsWith('data:application/pdf') || docUrl.startsWith('data:image/')) {
       try {
         const parts = docUrl.split(',');
-        const mime = parts[0].match(/:(.*?);/)?.[1] || 'application/pdf';
+        const mime = parts[0].match(/:([^;]+);/)?.[1] || 'application/pdf';
         const bstr = atob(parts[1]);
         let n = bstr.length;
         const u8arr = new Uint8Array(n);
         while (n--) {
-          u8arr[n] = bstr.charCodeAt(n);
+          u8arr[n] = bstr.codePointAt(n) || 0;
         }
         const blob = new Blob([u8arr], { type: mime });
         docUrl = URL.createObjectURL(blob);

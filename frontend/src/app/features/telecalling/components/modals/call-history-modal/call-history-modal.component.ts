@@ -62,7 +62,7 @@ export class CallHistoryModalComponent {
       case 'CONNECTED':
         return 'Connected';
       default:
-        return s ? (s.charAt(0).toUpperCase() + s.slice(1).toLowerCase().replace(/_/g, ' ')) : 'Assigned';
+        return s ? (s.charAt(0).toUpperCase() + s.slice(1).toLowerCase().replaceAll('_', ' ')) : 'Assigned';
     }
   }
 

@@ -1,6 +1,6 @@
 @if (isOpen) {
-  <div class="modal-backdrop" (click)="onClose()">
-    <div class="modal-card modern-ad-modal" (click)="$event.stopPropagation()">
+  <div class="modal-backdrop" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" tabindex="0" role="button" aria-label="Close ad modal">
+    <div class="modal-card modern-ad-modal" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="0" role="dialog" aria-modal="true" aria-label="Ad configuration dialog">
 
       <div class="modal-header">
         <div class="modal-title-wrap">
@@ -38,6 +38,11 @@
                   [class.is-selected]="selectedDesignType === type.id"
                   [ngClass]="'type-box-' + type.color"
                   (click)="selectDesignType(type.id)"
+                  (keydown.enter)="selectDesignType(type.id)"
+                  (keydown.space)="selectDesignType(type.id)"
+                  tabindex="0"
+                  role="button"
+                  [attr.aria-label]="type.title"
                 >
                   @if (selectedDesignType === type.id) {
                     <div class="selected-checkmark-badge" [ngClass]="'badge-' + type.color">
@@ -55,7 +60,7 @@
             </div>
 
             <div class="design-dropdown-wrap">
-              <label class="form-label design-select-label">
+              <label class="form-label design-select-label" for="approvedDesignSelect">
                 <span>Approved Design Selection</span>
                 @if (selectedDesignId) {
                   <button type="button" class="btn-clear-design" (click)="clearSelectedDesign()">
@@ -112,7 +117,7 @@
 
             <div class="form-row">
               <div class="form-group flex-2">
-                <label class="form-label">
+                <label class="form-label" for="adNameInput">
                   Ad Name <span class="required">*</span>
                   @if (selectedDesignId) {
                     <span class="linked-tag">✓ Design Linked</span>
@@ -122,6 +127,7 @@
                   <span class="material-symbols-outlined input-prefix-ico">brush</span>
                   <input
                     type="text"
+                    id="adNameInput"
                     [(ngModel)]="formModel.name"
                     placeholder="e.g. Meta - Carousel Promo"
                     class="form-input with-icon"
@@ -130,8 +136,8 @@
               </div>
 
               <div class="form-group flex-1">
-                <label class="form-label">Platform</label>
-                <select [(ngModel)]="formModel.platform" class="form-input">
+                <label class="form-label" for="adPlatformSelect">Platform</label>
+                <select id="adPlatformSelect" [(ngModel)]="formModel.platform" class="form-input">
                   <option value="Meta">Meta</option>
                   <option value="Google Ads">Google Ads</option>
                   <option value="Instagram">Instagram</option>
@@ -141,8 +147,8 @@
               </div>
 
               <div class="form-group flex-1">
-                <label class="form-label">Status</label>
-                <select [(ngModel)]="formModel.status" class="form-input">
+                <label class="form-label" for="adStatusSelect">Status</label>
+                <select id="adStatusSelect" [(ngModel)]="formModel.status" class="form-input">
                   <option value="ACTIVE">Active</option>
                   <option value="PAUSED">Paused</option>
                   <option value="COMPLETED">Completed</option>
@@ -153,8 +159,9 @@
 
             <div class="form-row">
               <div class="form-group flex-2">
-                <label class="form-label">Campaign Association</label>
+                <label class="form-label" for="adCampaignSelect">Campaign Association</label>
                 <select
+                  id="adCampaignSelect"
                   [ngModel]="formModel.campaignId"
                   (ngModelChange)="onCampaignChange($event)"
                   class="form-input"
@@ -169,9 +176,10 @@
               </div>
 
               <div class="form-group flex-1">
-                <label class="form-label">Platform Ad ID</label>
+                <label class="form-label" for="adPlatformId">Platform Ad ID</label>
                 <input
                   type="text"
+                  id="adPlatformId"
                   [(ngModel)]="formModel.platformAdId"
                   placeholder="e.g. ad_ext_639767"
                   class="form-input"
@@ -190,20 +198,20 @@
 
             <div class="form-row">
               <div class="form-group flex-1">
-                <label class="form-label">Spend (₹)</label>
-                <input type="number" [(ngModel)]="formModel.spend" min="0" class="form-input" />
+                <label class="form-label" for="adSpendInput">Spend (₹)</label>
+                <input id="adSpendInput" type="number" [(ngModel)]="formModel.spend" min="0" class="form-input" />
               </div>
               <div class="form-group flex-1">
-                <label class="form-label">Leads</label>
-                <input type="number" [(ngModel)]="formModel.leadsCount" min="0" class="form-input" />
+                <label class="form-label" for="adLeadsInput">Leads</label>
+                <input id="adLeadsInput" type="number" [(ngModel)]="formModel.leadsCount" min="0" class="form-input" />
               </div>
               <div class="form-group flex-1">
-                <label class="form-label">Impressions</label>
-                <input type="number" [(ngModel)]="formModel.impressions" min="0" class="form-input" />
+                <label class="form-label" for="adImpressionsInput">Impressions</label>
+                <input id="adImpressionsInput" type="number" [(ngModel)]="formModel.impressions" min="0" class="form-input" />
               </div>
               <div class="form-group flex-1">
-                <label class="form-label">Clicks</label>
-                <input type="number" [(ngModel)]="formModel.clicks" min="0" class="form-input" />
+                <label class="form-label" for="adClicksInput">Clicks</label>
+                <input id="adClicksInput" type="number" [(ngModel)]="formModel.clicks" min="0" class="form-input" />
               </div>
             </div>
 

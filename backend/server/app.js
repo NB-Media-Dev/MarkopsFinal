@@ -22,6 +22,7 @@ const productBannersRoutes = require('./routes/product-banners.routes');
 const metaWebhookRoutes = require('./routes/meta-webhook.routes');
 
 const app = express();
+app.disable('x-powered-by');
 
 const corsOriginHandler = (origin, callback) => {
   callback(null, origin || true);

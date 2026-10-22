@@ -1,6 +1,6 @@
 @if (isOpen) {
-  <div class="modal-backdrop" (click)="onClose()">
-    <div class="modal-box review-modal-box" (click)="$event.stopPropagation()">
+  <div class="modal-backdrop" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" tabindex="0" role="button" aria-label="Close review modal">
+    <div class="modal-box review-modal-box" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="0" role="dialog" aria-modal="true" aria-label="Review submission dialog">
       <div class="modal-header">
         <div class="modal-title-group">
           <div class="modal-icon-badge">
@@ -20,15 +20,16 @@
       <form [formGroup]="reviewForm" (ngSubmit)="onSubmit()">
         <div class="modal-body p-4">
           <div class="form-group mb-3">
-            <label class="form-label-bold">Decision *</label>
-            <select formControlName="action" class="form-control-modern">
+            <label class="form-label-bold" for="reviewActionSelect">Decision *</label>
+            <select id="reviewActionSelect" formControlName="action" class="form-control-modern">
               <option value="APPROVE">Approve Design (Mark Complete)</option>
               <option value="REQUEST_REVISION">Request Redesign (Return to In-Progress)</option>
             </select>
           </div>
           <div class="form-group mb-2">
-            <label class="form-label-bold">Feedback & Instructions *</label>
+            <label class="form-label-bold" for="reviewRemarkTextarea">Feedback & Instructions *</label>
             <textarea
+              id="reviewRemarkTextarea"
               formControlName="remark"
               rows="3"
               class="form-control-modern textarea-modern"

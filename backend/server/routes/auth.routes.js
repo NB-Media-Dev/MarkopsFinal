@@ -403,14 +403,17 @@ router.post('/profile/avatar', async (req, res) => {
     return res.status(400).json({ error: 'Please provide a valid image data URL.' });
   }
 
-  const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(avatarDataUrl);
+  const commaIdx = avatarDataUrl.indexOf(',');
+  if (commaIdx === -1) return res.status(400).json({ error: 'Invalid image format. Supported formats: JPEG, PNG, WEBP.' });
+  const metaPart = avatarDataUrl.substring(0, commaIdx);
+  const match = /^data:(image\/(?:jpeg|png|webp));base64$/i.exec(metaPart);
   if (!match) {
     return res.status(400).json({ error: 'Image must be a valid PNG, JPG, JPEG, or WEBP file.' });
   }
 
   const mime = match[1];
   const ext = mime === 'image/jpeg' ? 'jpg' : mime === 'image/png' ? 'png' : 'webp';
-  const imageBuffer = Buffer.from(match[2], 'base64');
+  const imageBuffer = Buffer.from(avatarDataUrl.substring(commaIdx + 1), 'base64');
 
   if (imageBuffer.length > 5 * 1024 * 1024) {
     return res.status(400).json({ error: 'Image file size exceeds the 5MB limit.' });
@@ -438,8 +441,8 @@ router.post('/profile/avatar', async (req, res) => {
 
   if (dbPool) {
     try {
-      const numId = parseInt(authUser.id, 10);
-      if (!isNaN(numId)) {
+      const numId = Number.parseInt(authUser.id, 10);
+      if (!Number.isNaN(numId)) {
         await dbPool.query('UPDATE users SET avatar_url = ? WHERE id = ?', [relativeUrl, numId]);
       } else {
         await dbPool.query('UPDATE users SET avatar_url = ? WHERE id = ? OR LOWER(email) = ?', [relativeUrl, authUser.id, authUser.email.toLowerCase()]);
@@ -488,8 +491,8 @@ router.delete('/profile/avatar', async (req, res) => {
 
   if (dbPool) {
     try {
-      const numId = parseInt(authUser.id, 10);
-      if (!isNaN(numId)) {
+      const numId = Number.parseInt(authUser.id, 10);
+      if (!Number.isNaN(numId)) {
         await dbPool.query('UPDATE users SET avatar_url = NULL WHERE id = ?', [numId]);
       } else {
         await dbPool.query('UPDATE users SET avatar_url = NULL WHERE id = ? OR LOWER(email) = ?', [authUser.id, authUser.email.toLowerCase()]);
@@ -571,8 +574,8 @@ const handleChangePassword = async (req, res) => {
 
   if (dbPool) {
     try {
-      const numId = parseInt(authUser.id, 10);
-      if (!isNaN(numId)) {
+      const numId = Number.parseInt(authUser.id, 10);
+      if (!Number.isNaN(numId)) {
         await dbPool.query('UPDATE users SET password_hash = ? WHERE id = ?', [newHash, numId]);
       } else {
         await dbPool.query('UPDATE users SET password_hash = ? WHERE id = ? OR LOWER(email) = ?', [newHash, authUser.id, authUser.email.toLowerCase()]);

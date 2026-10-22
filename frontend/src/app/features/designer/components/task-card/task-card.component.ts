@@ -150,7 +150,7 @@ export class TaskCardComponent {
     const colors = ['#F59E0B', '#EA580C', '#D97706', '#7C3AED', '#2563EB', '#059669', '#0891B2'];
     let hash = 0;
     for (let i = 0; i < (name || '').length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash);
     }
     return colors[Math.abs(hash) % colors.length];
   }

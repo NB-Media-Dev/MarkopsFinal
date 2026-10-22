@@ -325,7 +325,7 @@ export class TaskDetailComponent implements OnInit {
     const colors = ['#F59E0B', '#EA580C', '#D97706', '#7C3AED', '#2563EB', '#059669', '#0891B2'];
     let hash = 0;
     for (let i = 0; i < (name || '').length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash);
     }
     return colors[Math.abs(hash) % colors.length];
   }
@@ -366,7 +366,7 @@ export class TaskDetailComponent implements OnInit {
     const colors = ['#2563EB', '#7C3AED', '#059669', '#D97706', '#DC2626', '#0891B2'];
     let hash = 0;
     for (let i = 0; i < (name || '').length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash);
     }
     return colors[Math.abs(hash) % colors.length];
   }
@@ -461,8 +461,8 @@ export class TaskDetailComponent implements OnInit {
   generateShortHash(str: string): string {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash) + str.charCodeAt(i);
-      hash |= 0;
+      hash = ((hash << 5) - hash) + (str.codePointAt(i) || 0);
+      hash = Math.trunc(hash);
     }
     const hex = Math.abs(hash).toString(16).padStart(6, '0');
     return hex.substring(0, 6);
@@ -782,12 +782,12 @@ export class TaskDetailComponent implements OnInit {
         let messageText = rawRemark;
         let bullets: string[] = [];
 
-        const uploadMatch = rawRemark.match(/^Uploaded version (v\d+\.\d+.*?):\s*"?([\s\S]*?)"?$/i);
+        const uploadMatch = rawRemark.match(/^Uploaded version (v\d+\.\d+[^:]*):\s*"?([\s\S]*?)"?$/i);
         if (uploadMatch) {
           messageText = `Uploaded version ${uploadMatch[1]}:`;
           bullets = this.parseBulletPoints(uploadMatch[2]);
         } else if (rawRemark.includes('•')) {
-          const leadMatch = rawRemark.match(/^([^•]+?):\s*([\s\S]*)$/);
+          const leadMatch = rawRemark.match(/^([^•:\r\n]+):\s*([\s\S]*)$/);
           if (leadMatch) {
             messageText = leadMatch[1] + ':';
             bullets = this.parseBulletPoints(leadMatch[2]);
@@ -862,7 +862,7 @@ export class TaskDetailComponent implements OnInit {
   getVersionDuration(ver: any, task?: Task | null): string {
     if (!ver || !ver.createdAt) return '';
     const uploadTime = new Date(ver.createdAt).getTime();
-    if (isNaN(uploadTime)) return '';
+    if (Number.isNaN(uploadTime)) return '';
 
     let startTime: number | null = null;
 
@@ -911,7 +911,7 @@ export class TaskDetailComponent implements OnInit {
       startTime = new Date(task.createdAt).getTime();
     }
 
-    if (!startTime || isNaN(startTime) || uploadTime < startTime) {
+    if (!startTime || Number.isNaN(startTime) || uploadTime < startTime) {
       return '1 min';
     }
 

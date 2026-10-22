@@ -82,6 +82,11 @@
                     class="notif-item clickable-notif"
                     [class.unread]="!item.isRead"
                     (click)="onNotificationClick(item)"
+                    (keydown.enter)="onNotificationClick(item)"
+                    (keydown.space)="onNotificationClick(item)"
+                    tabindex="0"
+                    role="button"
+                    aria-label="Open notification"
                     title="Click to open related page"
                   >
                     <div class="notif-icon" [ngClass]="item.type.toLowerCase()">
@@ -128,6 +133,8 @@
         <div
           class="header-user-pill clickable-user-pill"
           (click)="openProfileModal()"
+          (keydown.enter)="openProfileModal()"
+          (keydown.space)="openProfileModal()"
           role="button"
           tabindex="0"
           title="Click to view and update account profile"
@@ -169,6 +176,11 @@
         class="global-realtime-toast"
         [ngClass]="'toast-' + toast.type.toLowerCase()"
         (click)="onToastClick(toast)"
+        (keydown.enter)="onToastClick(toast)"
+        (keydown.space)="onToastClick(toast)"
+        tabindex="0"
+        role="button"
+        aria-label="Notification alert"
         title="Click notification to navigate to page"
       >
         <div class="toast-icon">

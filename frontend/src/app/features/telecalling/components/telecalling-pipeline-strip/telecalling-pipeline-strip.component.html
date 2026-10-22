@@ -63,13 +63,13 @@
       </div>
 
       <div class="filter-cluster campaign-cluster">
-        <div class="cluster-label">
+        <label class="cluster-label" for="pipelineCampaignSelect">
           <span class="material-symbols-outlined icon-lead-filter text-amber">campaign</span>
           <span>Campaign:</span>
-        </div>
+        </label>
         <div class="campaign-select-wrap">
           <select
-            class="campaign-styled-select"
+            id="pipelineCampaignSelect" class="campaign-styled-select"
             [ngModel]="selectedCampaign"
             (ngModelChange)="selectCampaign($event)"
             title="Filter by campaign"

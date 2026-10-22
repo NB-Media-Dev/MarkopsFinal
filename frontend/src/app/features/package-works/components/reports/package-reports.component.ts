@@ -445,7 +445,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
         const parts = dateRaw.split('-');
         if (parts.length === 3) {
           const dObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-          if (!isNaN(dObj.getTime())) {
+          if (!Number.isNaN(dObj.getTime())) {
             displayDate = dObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
           }
         }
@@ -477,7 +477,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
       return d;
     }
     const dateObj = new Date(d);
-    if (isNaN(dateObj.getTime())) return String(d);
+    if (Number.isNaN(dateObj.getTime())) return String(d);
     return dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
@@ -701,9 +701,9 @@ export class PackageReportsComponent implements OnInit, OnChanges {
       return val.trim();
     }
     const d = new Date(val);
-    if (isNaN(d.getTime())) {
+    if (Number.isNaN(d.getTime())) {
       const parsed = Date.parse(val);
-      if (!isNaN(parsed)) {
+      if (!Number.isNaN(parsed)) {
         const pd = new Date(parsed);
         const y = pd.getFullYear();
         const m = String(pd.getMonth() + 1).padStart(2, '0');
@@ -901,7 +901,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
         const parts = dateRaw.split('-');
         if (parts.length === 3) {
           const dObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-          if (!isNaN(dObj.getTime())) {
+          if (!Number.isNaN(dObj.getTime())) {
             displayDate = dObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
           }
         }
@@ -1087,7 +1087,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
   getVersionDuration(ver: any, task?: any): string {
     if (!ver || !ver.createdAt) return '';
     const uploadTime = new Date(ver.createdAt).getTime();
-    if (isNaN(uploadTime)) return '';
+    if (Number.isNaN(uploadTime)) return '';
 
     let startTime: number | null = null;
 
@@ -1135,7 +1135,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
       startTime = new Date(task.createdAt).getTime();
     }
 
-    if (!startTime || isNaN(startTime) || uploadTime < startTime) {
+    if (!startTime || Number.isNaN(startTime) || uploadTime < startTime) {
       return '—';
     }
 
@@ -1187,7 +1187,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
       if (task.createdAt && task.updatedAt) {
         const start = new Date(task.createdAt).getTime();
         const end = new Date(task.updatedAt).getTime();
-        if (!isNaN(start) && !isNaN(end) && end >= start) {
+        if (!Number.isNaN(start) && !Number.isNaN(end) && end >= start) {
           const diffMs = end - start;
           const diffMinutes = Math.floor(diffMs / 60000);
           const diffHours = Math.floor(diffMinutes / 60);
@@ -1211,7 +1211,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
       if (task.createdAt) {
         const start = new Date(task.createdAt).getTime();
         const now = Date.now();
-        if (!isNaN(start) && now > start) {
+        if (!Number.isNaN(start) && now > start) {
           const diffMs = now - start;
           const diffHours = Math.floor(diffMs / 3600000);
           const diffDays = Math.floor(diffHours / 24);
@@ -1233,7 +1233,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
     const actualSubDate = t.submittedAt || (Array.isArray(t.versions) && t.versions.length > 0 ? t.versions[t.versions.length - 1].createdAt : null);
     if (actualSubDate) {
       const d = new Date(actualSubDate);
-      if (!isNaN(d.getTime())) {
+      if (!Number.isNaN(d.getTime())) {
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const year = d.getFullYear();
@@ -1244,7 +1244,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
       const refDate = t.updatedAt || t.createdAt;
       if (refDate) {
         const d = new Date(refDate);
-        if (!isNaN(d.getTime())) {
+        if (!Number.isNaN(d.getTime())) {
           const day = String(d.getDate()).padStart(2, '0');
           const month = String(d.getMonth() + 1).padStart(2, '0');
           const year = d.getFullYear();
@@ -1487,7 +1487,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
 
     const escapeCsv = (val: any): string => {
       if (val === null || val === undefined) return '""';
-      const str = String(val).replace(/"/g, '""');
+      const str = String(val).replaceAll('"', '""');
       return `"${str}"`;
     };
 

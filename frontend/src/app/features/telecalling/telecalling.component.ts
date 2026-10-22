@@ -28,9 +28,9 @@ export function isLeadAssignedToUser(l: any, user: any): boolean {
 
   if (uId && lAssignedTo) {
     if (lAssignedTo === uId || lAssignedTo.toLowerCase() === uId.toLowerCase()) return true;
-    const numUId = parseInt(uId.replace(/\D/g, ''), 10);
-    const numLId = parseInt(lAssignedTo.replace(/\D/g, ''), 10);
-    if (!isNaN(numUId) && !isNaN(numLId) && numUId === numLId) return true;
+    const numUId = Number.parseInt(uId.replace(/\D/g, ''), 10);
+    const numLId = Number.parseInt(lAssignedTo.replace(/\D/g, ''), 10);
+    if (!Number.isNaN(numUId) && !Number.isNaN(numLId) && numUId === numLId) return true;
   }
 
 
@@ -152,28 +152,28 @@ export function parseFollowUpDateTime(dateStr?: string, timeStr?: string): Date 
   if (d.includes('-')) {
     const p = d.split('-');
     if (p[0].length === 4) {
-      year = parseInt(p[0], 10);
-      month = parseInt(p[1], 10) - 1;
-      day = parseInt(p[2], 10);
+      year = Number.parseInt(p[0], 10);
+      month = Number.parseInt(p[1], 10) - 1;
+      day = Number.parseInt(p[2], 10);
     } else {
-      day = parseInt(p[0], 10);
-      month = parseInt(p[1], 10) - 1;
-      year = parseInt(p[2], 10);
+      day = Number.parseInt(p[0], 10);
+      month = Number.parseInt(p[1], 10) - 1;
+      year = Number.parseInt(p[2], 10);
     }
   } else if (d.includes('/')) {
     const p = d.split('/');
     if (p[0].length === 4) {
-      year = parseInt(p[0], 10);
-      month = parseInt(p[1], 10) - 1;
-      day = parseInt(p[2], 10);
+      year = Number.parseInt(p[0], 10);
+      month = Number.parseInt(p[1], 10) - 1;
+      day = Number.parseInt(p[2], 10);
     } else {
-      day = parseInt(p[0], 10);
-      month = parseInt(p[1], 10) - 1;
-      year = parseInt(p[2], 10);
+      day = Number.parseInt(p[0], 10);
+      month = Number.parseInt(p[1], 10) - 1;
+      year = Number.parseInt(p[2], 10);
     }
   } else {
     const parsed = new Date(d);
-    if (!isNaN(parsed.getTime())) return parsed;
+    if (!Number.isNaN(parsed.getTime())) return parsed;
     return null;
   }
 
@@ -183,13 +183,13 @@ export function parseFollowUpDateTime(dateStr?: string, timeStr?: string): Date 
     const cleanTime = t.replace(/Z.*/i, '').trim();
     if (cleanTime.includes(':')) {
       const tp = cleanTime.split(':');
-      hours = parseInt(tp[0], 10) || 0;
-      minutes = parseInt(tp[1], 10) || 0;
+      hours = Number.parseInt(tp[0], 10) || 0;
+      minutes = Number.parseInt(tp[1], 10) || 0;
     }
   }
 
   const dt = new Date(year, month, day, hours, minutes, 0, 0);
-  if (isNaN(dt.getTime())) return null;
+  if (Number.isNaN(dt.getTime())) return null;
   return dt;
 }
 
@@ -1258,7 +1258,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
       case 'CONNECTED':
         return 'Connected';
       default:
-        return s ? (s.charAt(0).toUpperCase() + s.slice(1).toLowerCase().replace(/_/g, ' ')) : 'Assigned';
+        return s ? (s.charAt(0).toUpperCase() + s.slice(1).toLowerCase().replaceAll('_', ' ')) : 'Assigned';
     }
   }
 

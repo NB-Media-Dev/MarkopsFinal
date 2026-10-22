@@ -1,6 +1,6 @@
 <!-- @if (isOpen) {
-  <div class="modal-backdrop" (click)="onClose()">
-    <div class="modal-card modal-md add-lead-modal-card" (click)="$event.stopPropagation()">
+  <div class="modal-backdrop" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" tabindex="0" role="button" aria-label="Close add lead modal">
+    <div class="modal-card modal-md add-lead-modal-card" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="0" role="dialog" aria-modal="true" aria-label="Add new lead dialog">
       <div class="modal-header">
         <div class="modal-title-wrap">
           <div class="modal-squircle-icon">
@@ -19,7 +19,7 @@
 
         <div class="form-row">
           <div class="form-group flex-1">
-            <label class="form-label">First Name <span class="required">*</span></label>
+            <label class="form-label" for="newLeadFirstName">First Name <span class="required">*</span></label>
             <input
               type="text"
               [ngModel]="newFirstName"
@@ -37,7 +37,7 @@
             }
           </div>
           <div class="form-group flex-1">
-            <label class="form-label">Last Name <span class="required">*</span></label>
+            <label class="form-label" for="newLeadLastName">Last Name <span class="required">*</span></label>
             <input
               type="text"
               [ngModel]="newLastName"
@@ -57,7 +57,7 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Phone Number <span class="required">*</span></label>
+          <label class="form-label" for="newLeadPhone">Phone Number <span class="required">*</span></label>
           <div class="input-with-icon-wrap">
             <input
               type="tel"
@@ -90,7 +90,7 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Email Address <span class="required">*</span></label>
+          <label class="form-label" for="newLeadEmail">Email Address <span class="required">*</span></label>
           <div class="input-with-icon-wrap">
             <input
               type="email"
@@ -118,7 +118,7 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Marketing Campaign <span class="required">*</span></label>
+          <label class="form-label" for="newLeadCampaign">Marketing Campaign <span class="required">*</span></label>
           <select
             class="form-input custom-select"
             [ngModel]="newCampaignId"
@@ -152,8 +152,8 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Lead Source <span class="required">*</span></label>
-          <select class="form-input custom-select" [ngModel]="newSource" (ngModelChange)="newSourceChange.emit($event)">
+          <label class="form-label" for="newLeadSource">Lead Source <span class="required">*</span></label>
+          <select id="newLeadSource" class="form-input custom-select" [ngModel]="newSource" (ngModelChange)="newSourceChange.emit($event)">
             <option value="Google">Google</option>
             <option value=" LinkedIn">LinkedIn</option>
             <option value="Facebook">Facebook</option>
@@ -315,7 +315,7 @@
           <div class="form-row-flexible">
             <div class="form-group flex-1">
               <label class="form-label">Marketing Campaign <span class="required">*</span></label>
-              <select class="form-input custom-select" [ngModel]="newCampaignId" (change)="campaignChange.emit($event)">
+              <select id="newLeadCampaign" class="form-input custom-select" [ngModel]="newCampaignId" (change)="campaignChange.emit($event)">
                 @if (availableCampaigns.length === 0) {
                   <option value="">General Ad Campaign</option>
                 }
@@ -340,8 +340,8 @@
 
           <div class="form-row-flexible">
             <div class="form-group flex-grow-1">
-              <label class="form-label">Select Ad <span class="text-muted font-normal">(Digital Ad)</span></label>
-              <select class="form-input custom-select" [ngModel]="newAdId" (change)="adChange.emit($event)">
+              <label class="form-label" for="newLeadAd">Select Ad <span class="text-muted font-normal">(Digital Ad)</span></label>
+              <select id="newLeadAd" class="form-input custom-select" [ngModel]="newAdId" (change)="adChange.emit($event)">
                 <option value="">-- No specific Ad / Select Ad --</option>
                 @for (ad of availableAds; track ad.id) {
                   <option [value]="ad.id">{{ ad.name }}</option>
@@ -360,11 +360,11 @@
 
           <div class="form-row-flexible">
             <div class="form-group flex-grow-1 telecaller-assign-group">
-              <label class="form-label distribution-label">
+              <label class="form-label distribution-label" for="newLeadTelecaller">
                 <span>Target Telecaller Assignment</span>
              
               </label>
-              <select class="form-input custom-select" [ngModel]="newAssignedTelecallerId" (change)="telecallerChange.emit($event)">
+              <select id="newLeadTelecaller" class="form-input custom-select" [ngModel]="newAssignedTelecallerId" (change)="telecallerChange.emit($event)">
                 <option value="">Unassigned (Send to General Lead Pool)</option>
                 @for (tc of activeTelecallers; track tc) {
                   <option [value]="tc.id">{{ tc.fullName }}</option>

@@ -1,6 +1,6 @@
 @if (lead) {
-  <div class="modal-backdrop" (click)="onCancel()">
-    <div class="modal-card modal-sm" (click)="$event.stopPropagation()">
+  <div class="modal-backdrop" (click)="onCancel()" (keydown.enter)="onCancel()" (keydown.space)="onCancel()" (keydown.escape)="onCancel()" tabindex="0" role="button" aria-label="Close modal">
+    <div class="modal-card modal-sm" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="0" role="dialog" aria-modal="true" aria-label="Assign lead dialog">
       <div class="modal-header">
         <div class="modal-title-wrap">
           <div class="modal-squircle-icon">
@@ -48,9 +48,10 @@
         </div>
 
         <div class="form-group">
-          <label class="form-label">Select Telecaller <span class="required">*</span></label>
+          <label class="form-label" for="assignLeadTelecallerSelect">Select Telecaller <span class="required">*</span></label>
           <div class="custom-select-wrap">
             <select
+              id="assignLeadTelecallerSelect"
               [ngModel]="selectedUserId"
               (ngModelChange)="onUserChange($event)"
               class="form-input"

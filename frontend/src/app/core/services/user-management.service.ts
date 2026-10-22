@@ -34,7 +34,7 @@ export class UserManagementService {
       try {
         localStorage.removeItem('markops_users_db_store');
       } catch {}
-      this.loadUsersFromDatabase();
+      setTimeout(() => { void this.loadUsersFromDatabase(); }, 0);
     }
   }
 
@@ -71,7 +71,7 @@ export class UserManagementService {
     };
 
     let createdUser: ManagedUser = {
-      id: `usr_${Math.random().toString(36).substring(2, 11)}`,
+      id: `usr_${crypto.randomUUID().replace(/-/g, '').substring(0, 9)}`,
       email: payload.email,
       fullName: payload.fullName,
       role: payload.role,

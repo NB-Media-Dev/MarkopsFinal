@@ -42,7 +42,7 @@
 
       <div class="marketing-showcase-grid">
 
-        <div class="marketing-card card-campaigns" (click)="selectOperationTab('CAMPAIGNS')">
+        <div class="marketing-card card-campaigns" (click)="selectOperationTab('CAMPAIGNS')" (keydown.enter)="selectOperationTab('CAMPAIGNS')" (keydown.space)="selectOperationTab('CAMPAIGNS')" tabindex="0" role="button" aria-label="Open Campaigns tab">
           <div class="card-top-header">
             <div class="card-icon-pill icon-orange">
               <span class="material-symbols-outlined">campaign</span>
@@ -95,7 +95,7 @@
           </div>
         </div>
 
-        <div class="marketing-card card-ads" (click)="selectOperationTab('ADS')">
+        <div class="marketing-card card-ads" (click)="selectOperationTab('ADS')" (keydown.enter)="selectOperationTab('ADS')" (keydown.space)="selectOperationTab('ADS')" tabindex="0" role="button" aria-label="Open Ads tab">
           <div class="card-top-header">
             <div class="card-icon-pill icon-blue">
               <span class="material-symbols-outlined">analytics</span>
@@ -145,7 +145,7 @@
           </div>
         </div>
 
-        <div class="marketing-card card-leads" (click)="selectOperationTab('LEADS')">
+        <div class="marketing-card card-leads" (click)="selectOperationTab('LEADS')" (keydown.enter)="selectOperationTab('LEADS')" (keydown.space)="selectOperationTab('LEADS')" tabindex="0" role="button" aria-label="Open Leads tab">
           <div class="card-top-header">
             <div class="card-icon-pill icon-green">
               <span class="material-symbols-outlined">groups</span>

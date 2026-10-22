@@ -228,9 +228,9 @@ export class PackageDepartmentViewComponent {
       return val.trim();
     }
     const d = new Date(val);
-    if (isNaN(d.getTime())) {
+    if (Number.isNaN(d.getTime())) {
       const parsed = Date.parse(val);
-      if (!isNaN(parsed)) {
+      if (!Number.isNaN(parsed)) {
         const pd = new Date(parsed);
         const y = pd.getFullYear();
         const m = String(pd.getMonth() + 1).padStart(2, '0');
@@ -489,7 +489,7 @@ export class PackageDepartmentViewComponent {
         const parts = dateRaw.split('-');
         if (parts.length === 3) {
           const dObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-          if (!isNaN(dObj.getTime())) {
+          if (!Number.isNaN(dObj.getTime())) {
             displayDate = dObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
           }
         }
@@ -676,7 +676,7 @@ export class PackageDepartmentViewComponent {
   getVersionDuration(ver: any, task?: any): string {
     if (!ver || !ver.createdAt) return '';
     const uploadTime = new Date(ver.createdAt).getTime();
-    if (isNaN(uploadTime)) return '';
+    if (Number.isNaN(uploadTime)) return '';
 
     let startTime: number | null = null;
 
@@ -724,7 +724,7 @@ export class PackageDepartmentViewComponent {
       startTime = new Date(task.createdAt).getTime();
     }
 
-    if (!startTime || isNaN(startTime) || uploadTime < startTime) {
+    if (!startTime || Number.isNaN(startTime) || uploadTime < startTime) {
       return '—';
     }
 
@@ -777,7 +777,7 @@ export class PackageDepartmentViewComponent {
       if (task.createdAt && task.updatedAt) {
         const start = new Date(task.createdAt).getTime();
         const end = new Date(task.updatedAt).getTime();
-        if (!isNaN(start) && !isNaN(end) && end >= start) {
+        if (!Number.isNaN(start) && !Number.isNaN(end) && end >= start) {
           const diffMs = end - start;
           const diffMinutes = Math.floor(diffMs / 60000);
           const diffHours = Math.floor(diffMinutes / 60);
@@ -802,7 +802,7 @@ export class PackageDepartmentViewComponent {
       if (task.createdAt) {
         const start = new Date(task.createdAt).getTime();
         const now = Date.now();
-        if (!isNaN(start) && now > start) {
+        if (!Number.isNaN(start) && now > start) {
           const diffMs = now - start;
           const diffHours = Math.floor(diffMs / 3600000);
           const diffDays = Math.floor(diffHours / 24);

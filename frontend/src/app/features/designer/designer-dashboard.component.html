@@ -60,7 +60,7 @@
           <input
             type="text"
             class="designer-search-input"
-            placeholder="Search designers by name, email, or department..."
+            id="designerSearchInput" aria-label="Search designers by name, email, or department" placeholder="Search designers by name, email, or department..."
             [ngModel]="designerSearchQuery()"
             (ngModelChange)="designerSearchQuery.set($event)"
           />
@@ -73,7 +73,7 @@
           <input
             type="text"
             class="designer-search-input"
-            placeholder="Search {{ activeTaskView() === 'my' ? 'my' : 'all' }} tasks..."
+            id="designerTaskSearchInput" aria-label="Search tasks" placeholder="Search {{ activeTaskView() === 'my' ? 'my' : 'all' }} tasks..."
             [ngModel]="searchQuery()"
             (ngModelChange)="searchQuery.set($event)"
           />
@@ -92,7 +92,7 @@
           <div class="calendar-input-wrapper">
             <span class="material-symbols-outlined cal-icon">calendar_month</span>
             <input
-              id="taskDateFilter"
+              id="taskDateFilter" aria-label="Filter tasks by date"
               type="date"
               class="cal-date-input"
               [max]="todayDate"
@@ -173,6 +173,8 @@
         <div class="filter-dropdown-wrapper priority-filter-wrapper">
           <span class="material-symbols-outlined filter-icon">flag</span>
           <select
+            id="designerPriorityFilter"
+            aria-label="Filter tasks by priority"
             class="filter-dropdown-select"
             [ngModel]="priorityFilter()"
             (change)="onPriorityFilterChange($event)"
@@ -189,6 +191,8 @@
         <div class="filter-dropdown-wrapper">
           <span class="material-symbols-outlined filter-icon">filter_list</span>
           <select
+            id="designerStatusFilter"
+            aria-label="Filter tasks by status"
             class="filter-dropdown-select"
             [ngModel]="statusFilter()"
             (change)="onFilterChange($event)"
@@ -213,7 +217,7 @@
               <span class="material-symbols-outlined search-icon">search</span>
               <input
                 type="text"
-                placeholder="Search all tasks..."
+                id="designerAllTasksSearchInput" aria-label="Search all tasks" placeholder="Search all tasks..."
                 (input)="onSearch($event)"
               />
             </div>
@@ -222,7 +226,7 @@
                 <span class="material-symbols-outlined cal-icon-sm">calendar_month</span>
                 <input
                   type="date"
-                  class="filter-date-select-sm"
+                  id="designerInlineDateFilter" aria-label="Filter by date" class="filter-date-select-sm"
                   [max]="todayDate"
                   [ngModel]="selectedDateFilter()"
                   (ngModelChange)="setDateFilter($event)"
@@ -243,6 +247,8 @@
               <div class="filter-dropdown-wrapper priority-filter-wrapper">
                 <span class="material-symbols-outlined filter-icon">flag</span>
                 <select
+                  id="designerInlinePriorityFilter"
+                  aria-label="Filter tasks by priority"
                   class="filter-dropdown-select"
                   [ngModel]="priorityFilter()"
                   (change)="onPriorityFilterChange($event)"
@@ -259,6 +265,8 @@
               <div class="filter-dropdown-wrapper">
                 <span class="material-symbols-outlined filter-icon">filter_list</span>
                 <select
+                  id="designerInlineStatusFilter"
+                  aria-label="Filter tasks by status"
                   class="filter-dropdown-select"
                   [ngModel]="statusFilter()"
                   (change)="onFilterChange($event)"

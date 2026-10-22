@@ -347,7 +347,7 @@ export class LeadsComponent implements OnInit {
           const firstName = get('firstname') || splitName.shift() || '';
           const lastName = get('lastname') || splitName.join(' ');
           const contactInfo = get('contactinfo', 'contact');
-          const contactEmail = contactInfo.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || '';
+          const contactEmail = contactInfo.match(/[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}/)?.[0] || '';
           const contactPhone = contactInfo
             .replace(contactEmail, '')
             .replace(/(?:phone|mobile|tel)\s*[:=-]?\s*/i, '')
@@ -501,7 +501,7 @@ export class LeadsComponent implements OnInit {
     const pkgName = pkg || resolved.productName;
     const prodName = resolved.productName;
 
-    const payload: Partial<LeadItem> & any = {
+    const payload: Partial<LeadItem> & Record<string, unknown> = {
       firstName: this.newFirstName.trim(),
       lastName: this.newLastName.trim(),
       email: this.newEmail.trim(),
@@ -648,7 +648,7 @@ export class LeadsComponent implements OnInit {
         const campaign = String(l.campaignName || (l as any).campaign_name || '').toLowerCase();
         const source = String(l.source || '').toLowerCase();
         const assignee = String(l.assigneeName || (l as any).assignee_name || '').toLowerCase();
-        const status = String(l.status || '').toLowerCase().replace(/_/g, ' ');
+        const status = String(l.status || '').toLowerCase().replaceAll('_', ' ');
 
         return (
           name.includes(query) ||
@@ -770,8 +770,8 @@ export class LeadsComponent implements OnInit {
   }
 
   setPage(page: number | string): void {
-    const p = typeof page === 'number' ? page : parseInt(page, 10);
-    if (!isNaN(p) && p >= 1 && p <= this.totalPages()) {
+    const p = typeof page === 'number' ? page : Number.parseInt(page, 10);
+    if (!Number.isNaN(p) && p >= 1 && p <= this.totalPages()) {
       this.currentPage.set(p);
     }
   }

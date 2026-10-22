@@ -47,7 +47,7 @@ export class AuthService {
 
   constructor() {
     if (this.isBrowser) {
-      this.initAuth();
+      setTimeout(() => { void this.initAuth(); }, 0);
     } else {
   
       this._currentUser.set(DEMO_ACCOUNTS['ADMINISTRATOR'].user);
@@ -209,7 +209,7 @@ export class AuthService {
       }
       const parts = token.split('.');
       if (parts.length < 2) return null;
-      const payloadStr = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+      const payloadStr = atob(parts[1].replaceAll('-', '+').replaceAll('_', '/'));
       const payload = JSON.parse(payloadStr);
       if (payload && payload.sub) {
         return {

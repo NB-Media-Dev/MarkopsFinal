@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const express = require('express');
 const { dbPool, dbCampaignsStore, dbAdsStore, dbTasksStore } = require('../db');
 const { recordAuditLog } = require('../services/audit.service');

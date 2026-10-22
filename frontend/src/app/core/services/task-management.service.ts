@@ -46,7 +46,7 @@ export class TaskManagementService {
         localStorage.removeItem('markops_tasks_db_store');
       } catch {}
       this.initRealtimeSocket();
-      this.initTaskData();
+      setTimeout(() => { void this.initTaskData(); }, 0);
     }
   }
 

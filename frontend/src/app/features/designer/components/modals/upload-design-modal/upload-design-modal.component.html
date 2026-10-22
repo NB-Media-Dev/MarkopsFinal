@@ -1,6 +1,6 @@
 @if (isOpen) {
-  <div class="modal-backdrop upload-modal-backdrop" (click)="onClose()">
-    <div class="modal-box upload-modal-box" (click)="$event.stopPropagation()">
+  <div class="modal-backdrop upload-modal-backdrop" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" tabindex="0" role="button" aria-label="Close upload modal">
+    <div class="modal-box upload-modal-box" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" tabindex="0" role="dialog" aria-modal="true" aria-label="Upload design dialog">
 
       <div class="modal-header upload-modal-header">
         <div class="modal-title-group">
@@ -26,7 +26,7 @@
           <div class="form-group mb-2">
 
             @if (!selectedFileObject()) {
-              <div class="creative-upload-dropzone" (click)="triggerFileInput()">
+              <div class="creative-upload-dropzone" (click)="triggerFileInput()" (keydown.enter)="triggerFileInput()" (keydown.space)="triggerFileInput()" tabindex="0" role="button" aria-label="Upload design file dropzone">
                 <div class="cloud-icon-circle">
                   <span class="material-symbols-outlined">cloud_upload</span>
                 </div>
@@ -92,6 +92,7 @@
             }
             <input
               id="designerCreativeFileInput"
+              aria-label="Upload design deliverable"
               type="file"
               (change)="onFileSelected($event)"
               accept="image/*,video/*,.pdf,.psd,.ai,.svg"

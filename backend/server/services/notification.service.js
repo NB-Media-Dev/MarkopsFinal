@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { dbPool, dbNotificationsStore, dbUsersStore } = require('../db');
 const { emitUserRealtimeEvent } = require('../events');
 

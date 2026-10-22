@@ -25,7 +25,7 @@ export interface NotificationItem {
 export function cleanNotificationText(str: string | undefined | null): string {
   if (!str) return '';
   return str
-    .replace(/\.trim\(\)/g, '')
+    .replaceAll('.trim()', '')
     .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{2300}-\u{23FF}\u{2B50}\u{200D}]/gu, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -61,7 +61,7 @@ export class NotificationService {
 
   constructor() {
     if (this.isBrowser) {
-      void this.initializeNotifications();
+      setTimeout(() => { void this.initializeNotifications(); }, 0);
     }
   }
 
@@ -246,12 +246,12 @@ export class NotificationService {
       let leadName = '';
       const leadTitleMatch = notif.title?.match(/Lead (?:Qualified|Assigned|Created|Interested):\s*(.+)$/i);
       if (leadTitleMatch && leadTitleMatch[1]) {
-        leadName = leadTitleMatch[1].replace(/->/g, '').replace(/\.trim\(\)/g, '').replace(/["']/g, '').trim().toLowerCase();
+        leadName = leadTitleMatch[1].replaceAll('->', '').replaceAll('.trim()', '').replaceAll('"', '').replaceAll("'", '').trim().toLowerCase();
       }
       if (!leadName) {
         const leadQuoteMatch = notif.message?.match(/"([^"]+)"/);
         if (leadQuoteMatch && leadQuoteMatch[1]) {
-          leadName = leadQuoteMatch[1].replace(/\.trim\(\)/g, '').replace(/["']/g, '').trim().toLowerCase();
+          leadName = leadQuoteMatch[1].replaceAll('.trim()', '').replaceAll('"', '').replaceAll("'", '').trim().toLowerCase();
         }
       }
 
@@ -297,14 +297,14 @@ export class NotificationService {
     }
 
     let matchedTaskTitle = '';
-    const titleMatch = notif.title?.match(/(?:Task Assigned|Task Approved|Redesign Requested|Work Started|Design Uploaded.*?|Design Submitted):\s*(.+)$/i);
+    const titleMatch = notif.title?.match(/(?:Task Assigned|Task Approved|Redesign Requested|Work Started|Design Uploaded|Design Submitted):\s*([^\r\n]+)$/i);
     if (titleMatch && titleMatch[1]) {
-      matchedTaskTitle = titleMatch[1].replace(/->/g, '').replace(/\.trim\(\)/g, '').trim();
+      matchedTaskTitle = titleMatch[1].replaceAll('->', '').replaceAll('.trim()', '').trim();
     }
     if (!matchedTaskTitle && (currentRole === 'DESIGNER' || text.includes('creative') || text.includes('design') || text.includes('submission') || text.includes('redesign'))) {
       const quoteMatch = notif.message?.match(/"([^"]+)"/);
       if (quoteMatch && quoteMatch[1]) {
-        matchedTaskTitle = quoteMatch[1].replace(/\.trim\(\)/g, '').trim();
+        matchedTaskTitle = quoteMatch[1].replaceAll('.trim()', '').trim();
       }
     }
 

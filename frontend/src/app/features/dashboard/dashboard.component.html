@@ -11,6 +11,10 @@
           <article
             class="product-card"
             (click)="openPackage(pkg.shortName || pkg.name)"
+            (keydown.enter)="openPackage(pkg.shortName || pkg.name)"
+            (keydown.space)="openPackage(pkg.shortName || pkg.name)"
+            tabindex="0"
+            role="button"
             [attr.aria-label]="'Explore ' + getCardTitle(pkg)"
           >
             <div class="product-emblem-badge">

@@ -2,6 +2,11 @@
   class="task-card"
   [class.selected]="isSelected"
   (click)="onView($event)"
+  (keydown.enter)="onView($event)"
+  (keydown.space)="onView($event)"
+  tabindex="0"
+  role="button"
+  aria-label="View task details"
 >
 
   <!-- Top Header: Designer Avatar & Role matching Image 1 + Priority & Status Badges -->
@@ -95,7 +100,7 @@
       }
     </div>
 
-    <div class="task-card-actions" (click)="$event.stopPropagation()">
+    <div class="task-card-actions" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
       <!-- Image 1 Style: Soft Green Pill for Preview / View Detail -->
       <button
         type="button"

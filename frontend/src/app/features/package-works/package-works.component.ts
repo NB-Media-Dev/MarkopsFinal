@@ -3026,11 +3026,11 @@ export class PackageWorksComponent implements OnInit {
     if (!task || !ver || !ver.createdAt) return '';
 
     const verTime = new Date(ver.createdAt).getTime();
-    if (isNaN(verTime)) return '';
+    if (Number.isNaN(verTime)) return '';
 
     if (task.statusHistory && task.statusHistory.length > 0) {
       const sortedHistory = [...task.statusHistory]
-        .filter((h) => h.createdAt && !isNaN(new Date(h.createdAt).getTime()))
+        .filter((h) => h.createdAt && !Number.isNaN(new Date(h.createdAt).getTime()))
         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
       let lastStart: number | null = null;
@@ -3053,7 +3053,7 @@ export class PackageWorksComponent implements OnInit {
 
     if (task.versions && task.versions.length > 1) {
       const sortedVers = [...task.versions]
-        .filter((v) => v.createdAt && !isNaN(new Date(v.createdAt).getTime()))
+        .filter((v) => v.createdAt && !Number.isNaN(new Date(v.createdAt).getTime()))
         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
       const curIdx = sortedVers.findIndex((v) => v.id === ver.id);
@@ -3067,7 +3067,7 @@ export class PackageWorksComponent implements OnInit {
 
     if (task.createdAt) {
       const taskCreatedTime = new Date(task.createdAt).getTime();
-      if (!isNaN(taskCreatedTime) && verTime >= taskCreatedTime) {
+      if (!Number.isNaN(taskCreatedTime) && verTime >= taskCreatedTime) {
         return this.formatDurationMs(verTime - taskCreatedTime);
       }
     }

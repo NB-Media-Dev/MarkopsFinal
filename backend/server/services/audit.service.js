@@ -1,8 +1,9 @@
+const crypto = require('crypto');
 const memoryAuditLogs = [];
 
 
 async function recordAuditLog(dbPool, params) {
-  const logId = `audit_${Math.random().toString(36).substring(2, 11)}`;
+  const logId = `audit_${crypto.randomBytes(5).toString('hex')}`;
   const now = new Date().toISOString();
 
   const auditItem = {
@@ -23,7 +24,7 @@ async function recordAuditLog(dbPool, params) {
 
   if (dbPool) {
     try {
-      const numericActorId = typeof params.actorId === 'number' ? params.actorId : (parseInt(params.actorId, 10) || null);
+      const numericActorId = typeof params.actorId === 'number' ? params.actorId : (Number.parseInt(params.actorId, 10) || null);
       await dbPool.query(
         `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, previous_state, new_state, ip_address, user_agent, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,

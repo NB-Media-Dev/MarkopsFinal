@@ -14,7 +14,7 @@
       (click)="$event.stopPropagation()"
       (keydown.enter)="$event.stopPropagation()"
       (keydown.space)="$event.stopPropagation()"
-      tabindex="0"
+      tabindex="-1"
       role="dialog"
       aria-modal="true"
       aria-label="Create task dialog"
@@ -85,7 +85,9 @@
 
               <div class="step-details-stack">
                 <div class="detail-inputs-wrapper">
+                  <label for="createTaskTitleInput" class="sr-only">Task Name</label>
                   <input
+                    id="createTaskTitleInput"
                     type="text"
                     formControlName="title"
                     placeholder="Task Name (e.g. Festive Campaign Banner, Product Promo...)"
@@ -94,7 +96,9 @@
                 </div>
 
                 <div class="detail-inputs-wrapper">
+                  <label for="createTaskDescInput" class="sr-only">Task Description</label>
                   <textarea
+                    id="createTaskDescInput"
                     formControlName="description"
                     placeholder="Task Description (e.g. Dimensions, content guidelines, target audience or specific instructions...)"
                     class="step-textarea-input task-desc-input"
@@ -148,7 +152,8 @@
                         <span class="detail-title">Package:</span>
                       </div>
                       <div class="package-pill-select-wrapper">
-                        <select formControlName="packageName" class="package-pill-select">
+                        <label for="createTaskPackageSelect" class="sr-only">Package</label>
+                        <select id="createTaskPackageSelect" formControlName="packageName" class="package-pill-select">
                           <option value="" disabled selected>Select Package</option>
                           @for (pkg of availablePackages; track pkg.name) {
                             <option [value]="pkg.name">{{ pkg.name }}</option>
@@ -187,7 +192,8 @@
                         }
                       </div>
                       <div class="designer-select-wrap">
-                        <select formControlName="assignedTo" class="native-designer-select">
+                        <label for="createTaskAssignedToSelect" class="sr-only">Designer</label>
+                        <select id="createTaskAssignedToSelect" formControlName="assignedTo" class="native-designer-select">
                           <option value="" disabled selected>Select Designer</option>
                           @for (d of designers; track d.id) {
                             <option [value]="d.id">{{ d.name }}</option>
@@ -251,7 +257,9 @@
                       <div class="custom-date-picker-box">
                         <span class="formatted-date-text">{{ getFormattedDisplayDate() }}</span>
                         <span class="material-symbols-outlined cal-mini-icon">calendar_today</span>
+                        <label for="createTaskDueDateInput" class="sr-only">Deadline</label>
                         <input
+                          id="createTaskDueDateInput"
                           type="date"
                           formControlName="dueDate"
                           [min]="todayDate"

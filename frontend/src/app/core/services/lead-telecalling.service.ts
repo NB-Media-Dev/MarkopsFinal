@@ -136,7 +136,7 @@ export function isClientDuplicateCall(c1: CallActivityItem, c2: CallActivityItem
   if (c1.calledAt && c2.calledAt) {
     const t1 = new Date(c1.calledAt).getTime();
     const t2 = new Date(c2.calledAt).getTime();
-    if (!isNaN(t1) && !isNaN(t2)) {
+    if (!Number.isNaN(t1) && !Number.isNaN(t2)) {
       const diff = Math.abs(t1 - t2);
       const isFivePointFiveHours = Math.abs(diff - (5.5 * 3600 * 1000)) <= 60000;
       if (diff <= 60000 || isFivePointFiveHours) return true;
