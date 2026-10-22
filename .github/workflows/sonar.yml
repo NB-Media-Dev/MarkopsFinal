@@ -34,3 +34,11 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+      - name: Print Local Dashboard URL
+        if: always()
+        run: |
+          echo "=========================================================="
+          echo " View remaining bugs on your local/Cloudflare SonarQube:"
+          echo " ${{ secrets.SONAR_HOST_URL }}/dashboard?id=MarkopsFinal"
+          echo "=========================================================="
