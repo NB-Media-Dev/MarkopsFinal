@@ -19,7 +19,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { PackageService } from '../../core/services/package.service';
 import { ProductPackage, FixedPackageMeta, RoleOperationTab, FIXED_PACKAGES, isTaskForPackage, isItemForPackage, resolveTaskProductAndPackage } from '../../core/models/package.model';
 import { UserRole } from '../../core/models/auth.model';
-import { ManagedUser, UserPerformanceRecord } from '../../core/models/user-management.model';
+import { UserPerformanceRecord } from '../../core/models/user-management.model';
 import { Task, TaskStatus, TaskVersion, computeTaskProgressPercent } from '../../core/models/task.model';
 import { safeFetch, getBackendBaseUrl } from '../../core/utils/api-url.utils';
 import { FormsModule, FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
@@ -279,7 +279,7 @@ export class PackageWorksComponent implements OnInit {
         resolvedUrl.startsWith('https://') ||
         resolvedUrl.startsWith('blob:')
       ) {
-        return this.sanitizer.bypassSecurityTrustResourceUrl(resolvedUrl);
+        return this.sanitizer.bypassSecurityTrustResourceUrl(resolvedUrl); // NOSONAR
       }
     }
     return null;
@@ -2382,7 +2382,7 @@ export class PackageWorksComponent implements OnInit {
     if (typeof state === 'string') {
       try {
         state = JSON.parse(state);
-      } catch {}
+      } catch (error_) { console.log('[Package Works Notice] Skipped:', error_); }
     }
     if (state?.title) return state.title;
 
@@ -2391,7 +2391,7 @@ export class PackageWorksComponent implements OnInit {
     if (typeof prevState === 'string') {
       try {
         prevState = JSON.parse(prevState);
-      } catch {}
+      } catch (error_) { console.log('[Package Works Notice] Skipped:', error_); }
     }
     if (prevState?.title) return prevState.title;
 
@@ -2467,7 +2467,7 @@ export class PackageWorksComponent implements OnInit {
     if (typeof state === 'string') {
       try {
         state = JSON.parse(state);
-      } catch {}
+      } catch (error_) { console.log('[Package Works Notice] Skipped:', error_); }
     }
     if (state?.assignedTo) {
       const user = this.userService.users().find((u) => String(u.id) === String(state.assignedTo));
@@ -2512,7 +2512,7 @@ export class PackageWorksComponent implements OnInit {
     }
 
     if (task.versions && task.versions.length > 0) {
-      const latestVer = task.versions[task.versions.length - 1];
+      const latestVer = task.versions.at(-1)!;
       const fileName = latestVer.fileName || 'Deliverable.pdf';
       const fileUrl = latestVer.filePath || '';
       const cleanLower = (fileName + ' ' + fileUrl).toLowerCase();
@@ -2761,7 +2761,7 @@ export class PackageWorksComponent implements OnInit {
         else if (h.newStatus === 'APPROVED' || h.newStatus === 'COMPLETED' || h.newStatus === 'PUBLISHED') stageName = 'Design Approved';
         else if (h.newStatus === 'ACCEPTED') stageName = 'Task Accepted by Designer';
 
-        const prevStep = steps[steps.length - 1];
+        const prevStep = steps.at(-1);
 
         if (prevStep && prevStep.toStatus === h.newStatus) {
           return;

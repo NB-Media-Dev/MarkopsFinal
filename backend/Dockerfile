@@ -13,8 +13,8 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install dependencies and generate prisma client
-RUN npm ci --omit=dev || npm install --omit=dev
-RUN npx prisma generate --schema=prisma/schema.prisma || true
+RUN (npm ci --omit=dev || npm install --omit=dev) && \
+    (npx prisma generate --schema=prisma/schema.prisma || true)
 
 # Copy application source files explicitly to avoid leaking sensitive files
 COPY server ./server/

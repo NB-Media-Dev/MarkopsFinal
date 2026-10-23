@@ -62,7 +62,7 @@ export class TaskDetailComponent implements OnInit {
         const url = new URL(ret, 'http://localhost');
         prodFromUrl = url.searchParams.get('package') || url.searchParams.get('product') || '';
         pkgFromUrl = url.searchParams.get('workspace') || url.searchParams.get('packageFilter') || '';
-      } catch {}
+      } catch (error_) { console.log('[Task Detail Notice] Skipped:', error_); }
     }
 
     const t = this.task();
@@ -84,7 +84,7 @@ export class TaskDetailComponent implements OnInit {
         if (deptParam) {
           return deptParam.toUpperCase();
         }
-      } catch {}
+      } catch (error_) { console.log('[Task Detail Notice] Skipped:', error_); }
     }
     const t = this.task();
     const role = (t?.creatorRole || '').toUpperCase();

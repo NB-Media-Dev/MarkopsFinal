@@ -75,7 +75,7 @@ function saveBase64Attachment(dataUrl, fileName, subFolder = 'briefs') {
     return dataUrl || null;
   }
   try {
-    const matches = dataUrl.match(/^data:([A-Za-z0-9-+\/.]+);base64,(.+)$/);
+    const matches = /^data:([A-Za-z0-9-+\/.]+);base64,(.+)$/.exec(dataUrl);
     if (!matches || matches.length !== 3) {
       return dataUrl;
     }
@@ -176,7 +176,7 @@ async function findTask(taskId) {
               createdAt: h.created_at ? new Date(h.created_at).toISOString() : new Date().toISOString(),
             }));
           }
-        } catch (he) {}
+        } catch (error_) { console.log('[MySQL Notice] Task history query skipped:', error_?.message || error_); }
 
         let versions = [];
         try {
@@ -202,7 +202,7 @@ async function findTask(taskId) {
               createdAt: v.created_at ? new Date(v.created_at).toISOString() : new Date().toISOString(),
             }));
           }
-        } catch (ve) {}
+        } catch (error_) { console.log('[MySQL Notice] Task versions query skipped:', error_?.message || error_); }
 
         let comments = [];
         try {
@@ -225,7 +225,7 @@ async function findTask(taskId) {
               createdAt: c.created_at ? new Date(c.created_at).toISOString() : new Date().toISOString(),
             }));
           }
-        } catch (ce) {}
+        } catch (error_) { console.log('[MySQL Notice] Task comments query skipped:', error_?.message || error_); }
 
         return {
           id: row.id,
@@ -382,14 +382,13 @@ async function populateTaskPackages(pool, tasksList) {
 }
 
 async function populateTaskRelations(tasksList) {
-  if (!Array.isArray(tasksList) || tasksList.length === 0 || !dbPool) return tasksList;
+  if (!Array.isArray(tasksList) || tasksList.length === 0 || !dbPool) return;
   const taskIds = tasksList.map((t) => t.id).filter((id) => id !== undefined && id !== null);
-  if (taskIds.length === 0) return tasksList;
+  if (taskIds.length === 0) return;
 
   await populateTaskVersions(dbPool, taskIds, tasksList);
   await populateTaskHistory(dbPool, taskIds, tasksList);
   await populateTaskPackages(dbPool, tasksList);
-  return tasksList;
 }
 
 router.get('/tasks', async (req, res) => {
@@ -724,17 +723,10 @@ router.get('/tasks/:id', async (req, res) => {
 });
 
 
-function resolveTaskTypeFallback(title, taskType) {
-  if (taskType) return taskType;
-  const lower = String(title || '').toLowerCase();
-  if (lower.includes('video')) return 'VIDEO';
-  if (lower.includes('post') || lower.includes('social')) return 'POST_DESIGN';
-  return 'BANNER_DESIGN';
-}
 
-async function verifyAndFetchTaskUsers(pool, numericCreatorId, numericAssignedTo, creatorUserEmail, creatorName, assigneeName) {
+async function verifyAndFetchTaskUsers(pool, numericCreatorId, numericAssignedTo, creatorUserEmail, creatorName, assigneeName = 'Designer') {
   let creatorFullName = creatorName;
-  let assigneeFullName = assigneeName || 'Designer';
+  let assigneeFullName = assigneeName;
   let verifiedCreatorId = numericCreatorId;
 
   try {
@@ -799,95 +791,69 @@ async function notifyAndAuditTask(pool, dbTask, numericAssignedTo, numericCreato
   });
 }
 
-router.post('/tasks', async (req, res) => {
-  const userRole = String(req.headers['x-user-role'] || req.user?.role || req.body.creatorRole || '').toUpperCase();
-  if (userRole && !['ADMINISTRATOR', 'MARKETING_MANAGER', 'BDM'].includes(userRole)) {
-    return res.status(403).json({ error: 'Permission Denied: Only Admin, Marketing Manager, and BDM can create tasks.' });
-  }
+function resolveAuthUserId(id) {
+  if (!id) return null;
+  const parsed = Number.parseInt(id, 10);
+  return Number.isNaN(parsed) ? id : parsed;
+}
 
-  const { title, taskType, description, content, attachmentUrl, attachmentName, priority, assignedTo, dueDate, creatorId, creatorName, creatorEmail, packageName } = req.body;
-  if (!title || !priority || !packageName || !assignedTo || !dueDate) {
-    return res.status(400).json({ error: 'All fields (Title, Package, Designer, Priority, and Deadline) are required.' });
-  }
+async function createTaskInDatabase(pool, taskData, req) {
+  const { title, safeTaskType, description, content, savedAttachmentUrl, attachmentName, safePackageName, priority, numericCreatorId, numericAssignedTo, safeDueDate, assigneeFullName, creatorEmail, packageName, body } = taskData;
+  const [result] = await pool.query(
+    `INSERT INTO tasks (title, task_type, description, content, attachment_url, attachment_name, package_name, status, priority, created_by, assigned_to, due_date, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+    [
+      String(title).trim(),
+      safeTaskType,
+      (description && !String(description).startsWith('Document File:')) ? String(description).trim() : null,
+      content || null,
+      savedAttachmentUrl || null,
+      attachmentName || null,
+      safePackageName,
+      numericAssignedTo ? 'ASSIGNED' : 'DRAFT',
+      String(priority),
+      numericCreatorId,
+      numericAssignedTo,
+      safeDueDate || null,
+    ]
+  );
 
-  const authUserId = req.user?.id ? (Number.parseInt(req.user.id, 10) || req.user.id) : null;
-  const initialCreatorId = resolveInitialCreatorId(creatorId, authUserId);
-  const numericAssignedTo = resolveNumericAssignedTo(assignedTo);
+  if (!result?.insertId) return null;
+  const newTaskId = result.insertId;
 
-  const safeTaskType = resolveTaskTypeFallback(title, taskType || req.body.task_type);
-  const safeDueDate = formatDueDate(dueDate);
-  const safePackageName = resolveSafePackageName(packageName, req.body.productName);
-  const savedAttachmentUrl = saveBase64Attachment(attachmentUrl, attachmentName, 'briefs');
+  await pool.query(
+    `INSERT INTO task_status_history (task_id, actor_id, previous_status, new_status, remark, created_at)
+     VALUES (?, ?, NULL, ?, ?, NOW())`,
+    [newTaskId, numericCreatorId, numericAssignedTo ? 'ASSIGNED' : 'DRAFT', `Task created and assigned to ${assigneeFullName}.`]
+  );
 
-  let creatorFullName = creatorName || req.user?.fullName || req.headers['x-user-name'] || 'Manager';
-  let creatorUserEmail = creatorEmail || req.user?.email || '';
-  let assigneeFullName = req.body.assigneeName || 'Designer';
-  let numericCreatorId = initialCreatorId;
+  const dbTask = await findTask(newTaskId);
+  if (!dbTask) return null;
 
-  if (dbPool) {
+  if (packageName) dbTask.packageName = packageName;
+  if (body.productName) dbTask.productName = body.productName;
+  if (body.productId) dbTask.productId = body.productId;
+  if (content) dbTask.content = content;
+  if (savedAttachmentUrl) dbTask.attachmentUrl = savedAttachmentUrl;
+  if (attachmentName) dbTask.attachmentName = attachmentName;
+
+  if (attachmentName || savedAttachmentUrl) {
     try {
-      const userCheck = await verifyAndFetchTaskUsers(dbPool, numericCreatorId, numericAssignedTo, creatorUserEmail, creatorFullName, assigneeFullName);
-      if (userCheck.error) return res.status(400).json({ error: userCheck.error });
-      creatorFullName = userCheck.creatorFullName;
-      assigneeFullName = userCheck.assigneeFullName;
-      numericCreatorId = userCheck.verifiedCreatorId;
-
-      const [result] = await dbPool.query(
-        `INSERT INTO tasks (title, task_type, description, content, attachment_url, attachment_name, package_name, status, priority, created_by, assigned_to, due_date, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-        [
-          String(title).trim(),
-          safeTaskType,
-          (description && !String(description).startsWith('Document File:')) ? String(description).trim() : null,
-          content || null,
-          savedAttachmentUrl || null,
-          attachmentName || null,
-          safePackageName,
-          numericAssignedTo ? 'ASSIGNED' : 'DRAFT',
-          String(priority),
-          numericCreatorId,
-          numericAssignedTo,
-          safeDueDate || null,
-        ]
+      await pool.query(
+        `INSERT INTO task_attachments (task_id, file_name, file_path, file_size, uploaded_by, created_at)
+         VALUES (?, ?, ?, ?, ?, NOW())`,
+        [newTaskId, attachmentName || 'Document.pdf', savedAttachmentUrl || '', 1024, numericCreatorId]
       );
-
-      if (result?.insertId) {
-        const newTaskId = result.insertId;
-        await dbPool.query(
-          `INSERT INTO task_status_history (task_id, actor_id, previous_status, new_status, remark, created_at)
-           VALUES (?, ?, NULL, ?, ?, NOW())`,
-          [newTaskId, numericCreatorId, numericAssignedTo ? 'ASSIGNED' : 'DRAFT', `Task created and assigned to ${assigneeFullName}.`]
-        );
-
-        const dbTask = await findTask(newTaskId);
-        if (dbTask) {
-          if (packageName) dbTask.packageName = packageName;
-          if (req.body.productName) dbTask.productName = req.body.productName;
-          if (req.body.productId) dbTask.productId = req.body.productId;
-          if (content) dbTask.content = content;
-          if (savedAttachmentUrl) dbTask.attachmentUrl = savedAttachmentUrl;
-          if (attachmentName) dbTask.attachmentName = attachmentName;
-
-          if (attachmentName || savedAttachmentUrl) {
-            try {
-              await dbPool.query(
-                `INSERT INTO task_attachments (task_id, file_name, file_path, file_size, uploaded_by, created_at)
-                 VALUES (?, ?, ?, ?, ?, NOW())`,
-                [newTaskId, attachmentName || 'Document.pdf', savedAttachmentUrl || '', 1024, numericCreatorId]
-              );
-            } catch (attErr) { console.log('[MySQL Notice] Insert task attachment skipped:', attErr?.message || attErr); }
-          }
-
-          await notifyAndAuditTask(dbPool, dbTask, numericAssignedTo, numericCreatorId, assigneeFullName, creatorEmail, req);
-          return res.status(201).json(dbTask);
-        }
-      }
-    } catch (e) {
-      console.error('[MySQL DB Error] Task INSERT failed:', e?.message || e);
-    }
+    } catch (attErr) { console.log('[MySQL Notice] Insert task attachment skipped:', attErr?.message || attErr); }
   }
 
-  const newTask = {
+  await notifyAndAuditTask(pool, dbTask, numericAssignedTo, numericCreatorId, assigneeFullName, creatorEmail, req);
+  return dbTask;
+}
+
+function buildTaskFallbackObject(taskData) {
+  const { title, safeTaskType, description, content, savedAttachmentUrl, attachmentName, safePackageName, priority, numericCreatorId, creatorFullName, userRole, numericAssignedTo, assigneeFullName, safeDueDate, body } = taskData;
+  return {
     id: String(Date.now()),
     title: String(title).trim(),
     taskType: safeTaskType,
@@ -897,8 +863,8 @@ router.post('/tasks', async (req, res) => {
     attachmentName: attachmentName || null,
     packageName: safePackageName,
     package: safePackageName,
-    productName: req.body.productName || 'Careermate',
-    productId: req.body.productId || 'pkg_careermate',
+    productName: body.productName || 'Careermate',
+    productId: body.productId || 'pkg_careermate',
     status: numericAssignedTo ? 'ASSIGNED' : 'DRAFT',
     priority: String(priority),
     createdBy: String(numericCreatorId),
@@ -922,11 +888,503 @@ router.post('/tasks', async (req, res) => {
       },
     ],
   };
+}
 
+router.post('/tasks', async (req, res) => {
+  const userRole = String(req.headers['x-user-role'] || req.user?.role || req.body.creatorRole || '').toUpperCase();
+  if (userRole && !['ADMINISTRATOR', 'MARKETING_MANAGER', 'BDM'].includes(userRole)) {
+    return res.status(403).json({ error: 'Permission Denied: Only Admin, Marketing Manager, and BDM can create tasks.' });
+  }
+
+  const { title, taskType, description, content, attachmentUrl, attachmentName, priority, assignedTo, dueDate, creatorId, creatorName, creatorEmail, packageName } = req.body;
+  if (!title || !priority || !packageName || !assignedTo || !dueDate) {
+    return res.status(400).json({ error: 'All fields (Title, Package, Designer, Priority, and Deadline) are required.' });
+  }
+
+  const authUserId = resolveAuthUserId(req.user?.id);
+  const initialCreatorId = resolveInitialCreatorId(creatorId, authUserId);
+  const numericAssignedTo = resolveNumericAssignedTo(assignedTo);
+
+  const safeTaskType = resolveTaskTypeFallback(taskType || req.body.task_type, title);
+  const safeDueDate = formatDueDate(dueDate);
+  const safePackageName = resolveSafePackageName(packageName, req.body.productName);
+  const savedAttachmentUrl = saveBase64Attachment(attachmentUrl, attachmentName, 'briefs');
+
+  let creatorFullName = creatorName || req.user?.fullName || req.headers['x-user-name'] || 'Manager';
+  let creatorUserEmail = creatorEmail || req.user?.email || '';
+  let assigneeFullName = req.body.assigneeName || 'Designer';
+  let numericCreatorId = initialCreatorId;
+
+  if (dbPool) {
+    try {
+      const userCheck = await verifyAndFetchTaskUsers(dbPool, numericCreatorId, numericAssignedTo, creatorUserEmail, creatorFullName, assigneeFullName);
+      if (userCheck.error) return res.status(400).json({ error: userCheck.error });
+      creatorFullName = userCheck.creatorFullName;
+      assigneeFullName = userCheck.assigneeFullName;
+      numericCreatorId = userCheck.verifiedCreatorId;
+
+      const taskData = {
+        title, safeTaskType, description, content, savedAttachmentUrl, attachmentName, safePackageName,
+        priority, numericCreatorId, numericAssignedTo, safeDueDate, assigneeFullName, creatorEmail, packageName, body: req.body
+      };
+      const dbTask = await createTaskInDatabase(dbPool, taskData, req);
+      if (dbTask) return res.status(201).json(dbTask);
+    } catch (e) {
+      console.error('[MySQL DB Error] Task INSERT failed:', e?.message || e);
+    }
+  }
+
+  const taskData = {
+    title, safeTaskType, description, content, savedAttachmentUrl, attachmentName, safePackageName,
+    priority, numericCreatorId, creatorFullName, userRole, numericAssignedTo, assigneeFullName, safeDueDate, body: req.body
+  };
+  const newTask = buildTaskFallbackObject(taskData);
   dbTasksStore.unshift(newTask);
   emitRealtimeEvent('task:assigned', newTask);
   return res.status(201).json(newTask);
 });
+
+
+function validateTransitionAllowed(previousStatus, newStatus) {
+  const validTransitions = {
+    DRAFT: ['ASSIGNED', 'IN_PROGRESS'],
+    ASSIGNED: ['IN_PROGRESS'],
+    ACCEPTED: ['IN_PROGRESS'],
+    IN_PROGRESS: ['SUBMITTED', 'UNDER_REVIEW'],
+    SUBMITTED: ['APPROVED', 'REDESIGN_REQUIRED', 'REVISION_REQUIRED', 'IN_PROGRESS'],
+    RESUBMITTED: ['APPROVED', 'REDESIGN_REQUIRED', 'REVISION_REQUIRED', 'IN_PROGRESS'],
+    UNDER_REVIEW: ['APPROVED', 'REDESIGN_REQUIRED', 'REVISION_REQUIRED', 'IN_PROGRESS'],
+    REDESIGN_REQUIRED: ['IN_PROGRESS'],
+    REVISION_REQUIRED: ['IN_PROGRESS'],
+    APPROVED: ['PUBLISHED', 'COMPLETED'],
+    PUBLISHED: ['COMPLETED'],
+    COMPLETED: [],
+  };
+  if (validTransitions[previousStatus] && !validTransitions[previousStatus].includes(newStatus)) {
+    return `Invalid task status transition: Cannot transition task from "${previousStatus}" to "${newStatus}". Allowed next: [${(validTransitions[previousStatus] || []).join(', ')}]`;
+  }
+  return null;
+}
+
+function validateTransitionPermission(task, newStatus, req) {
+  if (newStatus !== 'APPROVED' && newStatus !== 'REDESIGN_REQUIRED' && newStatus !== 'REVISION_REQUIRED') {
+    return null;
+  }
+  const userId = req.user?.id ? String(req.user.id).trim() : (req.headers['x-user-id'] ? String(req.headers['x-user-id']).trim() : null);
+  const userEmail = req.user?.email ? String(req.user.email).toLowerCase().trim() : null;
+  const taskCreatorId = String(task.createdBy || task.created_by || '').trim();
+  const taskCreatorEmail = String(task.creatorEmail || task.creator_email || '').toLowerCase().trim();
+
+  const isCreator = (userId && taskCreatorId && userId === taskCreatorId) ||
+                    (userEmail && taskCreatorEmail && userEmail === taskCreatorEmail);
+  if (!isCreator) {
+    const action = newStatus === 'APPROVED' ? 'approve' : 'request redesign for';
+    return `Permission Denied: Only the user who created this task can ${action} it.`;
+  }
+  return null;
+}
+
+async function notifyStatusTransition(task, previousStatus, newStatus, effectiveActorName, effectiveActorId, remark) {
+  const creatorId = task.createdBy || task.created_by;
+  const assignedId = task.assignedTo || task.assigned_to;
+
+  if (newStatus === 'IN_PROGRESS') {
+    const isRedesign = previousStatus === 'REDESIGN_REQUIRED' || previousStatus === 'REVISION_REQUIRED';
+    if (creatorId) {
+      await dispatchNotification({
+        userIds: [creatorId],
+        title: isRedesign ? `Redesign Started: ${task.title}` : `Work Started: ${task.title}`,
+        message: isRedesign
+          ? `${effectiveActorName} has started working on the requested redesign for "${task.title}".`
+          : `${effectiveActorName} has started working on task "${task.title}". Status is now IN PROGRESS.`,
+        type: 'INFO',
+        targetRoute: `/tasks?view=my&taskId=${task.id}`,
+      });
+    }
+    if (assignedId) {
+      await dispatchNotification({
+        userIds: [assignedId],
+        title: isRedesign ? `Redesign In Progress: ${task.title}` : `Work Started: ${task.title}`,
+        message: `You started work on "${task.title}". Status updated to IN PROGRESS.`,
+        type: 'INFO',
+        targetRoute: '/designer-tasks',
+      });
+    }
+    return;
+  }
+
+  if (newStatus === 'REDESIGN_REQUIRED' || newStatus === 'REVISION_REQUIRED') {
+    if (assignedId) {
+      await dispatchNotification({
+        userIds: [assignedId],
+        title: `Redesign Requested: ${task.title}`,
+        message: `Redesign requested on "${task.title}". Feedback: "${remark || 'Please review feedback remarks and upload revision'}".`,
+        type: 'WARNING',
+        targetRoute: '/revisions',
+      });
+    }
+    if (creatorId && String(creatorId) === String(effectiveActorId)) {
+      await dispatchNotification({
+        userIds: [creatorId],
+        title: 'Redesign Feedback Submitted',
+        message: `Redesign request sent for "${task.title}". Designer has been notified.`,
+        type: 'INFO',
+        targetRoute: `/tasks?view=my&taskId=${task.id}`,
+      });
+    }
+    return;
+  }
+
+  if (newStatus === 'APPROVED') {
+    if (assignedId) {
+      await dispatchNotification({
+        userIds: [assignedId],
+        title: 'Creative Design Approved!',
+        message: `Congratulations! Your creative design for "${task.title}" has been approved by ${effectiveActorName}.`,
+        type: 'SUCCESS',
+        targetRoute: '/submissions',
+      });
+    }
+    if (creatorId) {
+      await dispatchNotification({
+        userIds: [creatorId],
+        title: `Task Approved: ${task.title}`,
+        message: `Task "${task.title}" has been approved and marked as completed (100%).`,
+        type: 'SUCCESS',
+        targetRoute: `/tasks?view=my&taskId=${task.id}`,
+      });
+    }
+    return;
+  }
+
+  if (newStatus === 'ASSIGNED' && assignedId) {
+    await dispatchNotification({
+      userIds: [assignedId],
+      title: `Task Assigned: ${task.title}`,
+      message: `You have been assigned to task "${task.title}". Priority: ${task.priority || 'MEDIUM'}.`,
+      type: 'INFO',
+      targetRoute: '/designer-tasks',
+    });
+    return;
+  }
+
+  if (['SUBMITTED', 'RESUBMITTED', 'UNDER_REVIEW'].includes(newStatus)) {
+    if (creatorId) {
+      await dispatchNotification({
+        userIds: [creatorId],
+        title: `Design Uploaded for Review: ${task.title}`,
+        message: `${effectiveActorName} submitted creative design for task "${task.title}". Ready for your review.`,
+        type: 'INFO',
+        targetRoute: `/tasks?view=my&taskId=${task.id}`,
+      });
+    }
+    if (assignedId) {
+      await dispatchNotification({
+        userIds: [assignedId],
+        title: `Design Submitted: ${task.title}`,
+        message: `Creative design for "${task.title}" has been submitted for review.`,
+        type: 'SUCCESS',
+        targetRoute: '/submissions',
+      });
+    }
+  }
+}
+
+async function persistDbStatusTransition(pool, taskId, newStatus, remark, effectiveActorId, previousStatus, computedProgress, isDuplicateHistory) {
+  if (!pool) return;
+  try {
+    const numericTaskId = typeof taskId === 'number' ? taskId : (Number.parseInt(taskId, 10) || null);
+    let numericActorId = typeof effectiveActorId === 'number' ? effectiveActorId : Number.parseInt(effectiveActorId, 10);
+    if (Number.isNaN(numericActorId) || !numericActorId) numericActorId = 1;
+
+    if (!numericTaskId) return;
+
+    await pool.query(
+      `UPDATE tasks SET status = ?, reviewer_feedback = ?, updated_at = NOW() WHERE id = ?`,
+      [newStatus, remark || null, numericTaskId]
+    );
+    if (!isDuplicateHistory) {
+      await pool.query(
+        `INSERT INTO task_status_history (task_id, actor_id, previous_status, new_status, remark, created_at)
+         VALUES (?, ?, ?, ?, ?, NOW())`,
+        [numericTaskId, numericActorId, previousStatus, newStatus, remark || null]
+      );
+    }
+    try {
+      await pool.query(
+        `INSERT INTO task_progress_history (task_id, actor_id, progress_percent, notes, created_at)
+         VALUES (?, ?, ?, ?, NOW())`,
+        [numericTaskId, numericActorId, computedProgress, remark || `Status changed to ${newStatus}`]
+      );
+    } catch (error_) {
+      console.log('[MySQL Notice] task_progress_history skipped:', error_?.message || error_);
+    }
+  } catch (e) {
+    console.error('[MySQL DB Error] Task status UPDATE failed:', e?.message || e);
+  }
+}
+
+async function handleStatusTransition(req, res) {
+  const { status, remark, actorId, actorName, actorEmail } = req.body;
+  const taskId = req.params.id;
+
+  const task = await findTask(taskId);
+  if (!task) {
+    return res.status(404).json({ error: `Task #${taskId} not found.` });
+  }
+
+  const previousStatus = task.status;
+  const newStatus = String(status);
+
+  const transErr = validateTransitionAllowed(previousStatus, newStatus);
+  if (transErr) {
+    return res.status(400).json({ error: transErr });
+  }
+
+  const permErr = validateTransitionPermission(task, newStatus, req);
+  if (permErr) {
+    return res.status(403).json({ error: permErr });
+  }
+
+  const now = new Date().toISOString();
+  task.status = newStatus;
+  task.updatedAt = now;
+  if (remark) task.reviewerFeedback = remark;
+
+  const computedProgress = computeTaskProgress(newStatus);
+  task.progressPercent = computedProgress;
+
+  const effectiveActorId = req.user?.id || actorId || req.headers['x-user-id'] || 1;
+  const effectiveActorName = req.user?.fullName || actorName || req.headers['x-user-name'] || 'User';
+
+  const historyEntry = {
+    id: `hist_${crypto.randomBytes(4).toString('hex')}`,
+    taskId,
+    actorId: effectiveActorId,
+    actorName: effectiveActorName,
+    previousStatus,
+    newStatus,
+    remark: remark || `Transitioned status from ${previousStatus} to ${newStatus}`,
+    createdAt: now,
+  };
+
+  const lastHistory = task.statusHistory && task.statusHistory.length > 0 ? task.statusHistory[0] : null;
+  const isDuplicateHistory = Boolean(
+    lastHistory &&
+    lastHistory.newStatus === newStatus &&
+    (new Date(now).getTime() - new Date(lastHistory.createdAt).getTime() < 15000)
+  );
+
+  if (!isDuplicateHistory) {
+    if (!task.statusHistory) task.statusHistory = [];
+    task.statusHistory.unshift(historyEntry);
+  }
+
+  emitRealtimeEvent('task:status_changed', task);
+  emitRealtimeEvent(`task:${newStatus.toLowerCase()}`, task);
+  emitRealtimeEvent('task:updated', task);
+  emitRealtimeEvent('task:progress_updated', { taskId, progressPercent: task.progressPercent });
+
+  await notifyStatusTransition(task, previousStatus, newStatus, effectiveActorName, effectiveActorId, remark);
+  await persistDbStatusTransition(dbPool, taskId, newStatus, remark, effectiveActorId, previousStatus, computedProgress, isDuplicateHistory);
+
+  const memIndex = dbTasksStore.findIndex((t) => String(t.id) === String(taskId));
+  if (memIndex !== -1) {
+    dbTasksStore[memIndex] = { ...dbTasksStore[memIndex], ...task };
+  }
+
+  await recordAuditLog(dbPool, {
+    actorId: effectiveActorId,
+    actorEmail: actorEmail || req.user?.email || 'admin@markops.io',
+    action: `TASK_STATUS_${newStatus}`,
+    entityType: 'Task',
+    entityId: taskId,
+    previousState: { status: previousStatus },
+    newState: { status: newStatus, remark },
+    ipAddress: req.ip || req.socket.remoteAddress,
+    userAgent: req.headers['user-agent'],
+  });
+
+  return res.json(task);
+}
+
+function resolveSavedVersionFilePath(filePath, fileContent, fileName, newVersionNumber) {
+  let savedFilePath = filePath;
+  if (typeof filePath === 'string' && filePath.startsWith('data:')) {
+    savedFilePath = saveBase64Attachment(filePath, fileName, 'creatives');
+  } else if (typeof fileContent === 'string' && fileContent.startsWith('data:')) {
+    savedFilePath = saveBase64Attachment(fileContent, fileName, 'creatives');
+  }
+  if (!savedFilePath || (typeof savedFilePath === 'string' && savedFilePath.startsWith('data:'))) {
+    savedFilePath = `/uploads/creatives/${fileName || `version_${newVersionNumber}.png`}`;
+  }
+  return savedFilePath;
+}
+
+async function persistDbVersionSubmission(pool, taskId, newVersion, effectiveUser, task, previousStatus, nextStatus) {
+  if (!pool) return;
+  try {
+    const numericTaskId = typeof taskId === 'number' ? taskId : (Number.parseInt(taskId, 10) || null);
+    let numericSubmittedBy = typeof effectiveUser === 'number' ? effectiveUser : Number.parseInt(effectiveUser, 10);
+    if (Number.isNaN(numericSubmittedBy) || !numericSubmittedBy) {
+      if (task.assignedTo) {
+        numericSubmittedBy = typeof task.assignedTo === 'number' ? task.assignedTo : Number.parseInt(task.assignedTo, 10);
+      }
+    }
+    if (Number.isNaN(numericSubmittedBy) || !numericSubmittedBy) numericSubmittedBy = 1;
+
+    if (numericTaskId) {
+      await pool.query(
+        `INSERT INTO task_versions (task_id, version_number, submitted_by, file_name, file_path, storage_key, file_size, mime_type, changelog, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          numericTaskId,
+          newVersion.versionNumber,
+          numericSubmittedBy,
+          newVersion.fileName,
+          newVersion.filePath,
+          newVersion.fileName,
+          newVersion.fileSize,
+          newVersion.mimeType,
+          newVersion.changelog,
+        ]
+      );
+      await pool.query(
+        `UPDATE tasks SET status = ?, updated_at = NOW() WHERE id = ?`,
+        [nextStatus, numericTaskId]
+      );
+      await pool.query(
+        `INSERT INTO task_status_history (task_id, actor_id, previous_status, new_status, remark, created_at)
+         VALUES (?, ?, ?, ?, ?, NOW())`,
+        [numericTaskId, numericSubmittedBy, previousStatus, nextStatus, `Uploaded Creative Version ${newVersion.versionNumber}.0 (${newVersion.fileName})`]
+      );
+      try {
+        await pool.query(
+          `INSERT INTO task_progress_history (task_id, actor_id, progress_percent, notes, created_at)
+           VALUES (?, ?, ?, ?, NOW())`,
+          [numericTaskId, numericSubmittedBy, computeTaskProgress(nextStatus), `Uploaded Creative Version ${newVersion.versionNumber}.0 (${newVersion.fileName})`]
+        );
+      } catch (error_) {
+        console.log('[MySQL Notice] Version progress history skipped:', error_?.message || error_);
+      }
+    }
+  } catch (e) {
+    console.error('[MySQL DB Error] Version INSERT failed:', e?.message || e);
+  }
+}
+
+async function handleVersionSubmission(req, res, targetTask) {
+  const { fileName, changelog, fileSize, filePath, fileContent, submittedBy, submittedByName, submittedByEmail } = req.body;
+  const taskId = req.params.id;
+
+  const task = targetTask || (await findTask(taskId));
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found.' });
+  }
+
+  if (['ASSIGNED', 'REDESIGN_REQUIRED', 'REVISION_REQUIRED'].includes(task.status)) {
+    task.status = 'IN_PROGRESS';
+  }
+
+  if (task.status !== 'IN_PROGRESS') {
+    return res.status(400).json({
+      error: `Invalid task status transition: Cannot submit design when task status is "${task.status}". Expected "IN_PROGRESS".`,
+    });
+  }
+
+  if (!task.versions) task.versions = [];
+  const newVersionNumber = task.versions.length + 1;
+  const now = new Date().toISOString();
+
+  const effectiveUser = req.user?.id || submittedBy || req.headers['x-user-id'] || 'usr_admin_01';
+  const effectiveUserName = req.user?.fullName || submittedByName || req.headers['x-user-name'] || 'Designer';
+  const fileMimeType = (/^data:([^;,]+)/.exec(String(filePath || fileContent || '')))?.[1] || 'application/octet-stream';
+
+  const savedFilePath = resolveSavedVersionFilePath(filePath, fileContent, fileName, newVersionNumber);
+  const safeFileSize = typeof fileSize === 'number' ? Math.round(fileSize) : 2048000;
+
+  const newVersion = {
+    id: `ver_${crypto.randomBytes(4).toString('hex')}`,
+    taskId,
+    versionNumber: newVersionNumber,
+    submittedBy: effectiveUser,
+    submittedByName: effectiveUserName,
+    fileName: fileName || `creative_version_v${newVersionNumber}.png`,
+    filePath: savedFilePath,
+    fileSize: safeFileSize,
+    mimeType: fileMimeType,
+    changelog: changelog || `Version ${newVersionNumber}.0 creative asset submission.`,
+    fileContent: fileContent || changelog || '',
+    createdAt: now,
+  };
+
+  task.versions.unshift(newVersion);
+
+  const creatorId = task.createdBy || task.created_by;
+  const assignedId = task.assignedTo || task.assigned_to || effectiveUser;
+
+  if (creatorId) {
+    await dispatchNotification({
+      userIds: [creatorId],
+      title: `Design Uploaded for Review: ${task.title}`,
+      message: `${effectiveUserName} uploaded creative version v${newVersionNumber}.0 (${newVersion.fileName}) for task "${task.title}". Ready for review.`,
+      type: 'INFO',
+      targetRoute: `/tasks?view=my&taskId=${task.id}`,
+    });
+  }
+
+  if (assignedId) {
+    await dispatchNotification({
+      userIds: [assignedId],
+      title: `Design Uploaded Successfully: ${task.title}`,
+      message: `Creative version v${newVersionNumber}.0 (${newVersion.fileName}) for "${task.title}" has been submitted for review.`,
+      type: 'SUCCESS',
+      targetRoute: '/submissions',
+    });
+  }
+
+  const previousStatus = task.status;
+  const nextStatus = 'SUBMITTED';
+  task.status = nextStatus;
+  task.progressPercent = computeTaskProgress(nextStatus);
+  task.updatedAt = now;
+
+  if (!task.statusHistory) task.statusHistory = [];
+  task.statusHistory.unshift({
+    id: `hist_${crypto.randomBytes(4).toString('hex')}`,
+    taskId,
+    actorId: effectiveUser,
+    actorName: effectiveUserName,
+    previousStatus,
+    newStatus: nextStatus,
+    remark: `Uploaded Creative Version ${newVersionNumber}.0 (${newVersion.fileName})`,
+    createdAt: now,
+  });
+
+  await persistDbVersionSubmission(dbPool, taskId, newVersion, effectiveUser, task, previousStatus, nextStatus);
+
+  const memIndex = dbTasksStore.findIndex((t) => String(t.id) === String(taskId));
+  if (memIndex !== -1) {
+    dbTasksStore[memIndex] = { ...dbTasksStore[memIndex], ...task };
+  }
+
+  emitRealtimeEvent('task:updated', task);
+  emitRealtimeEvent('task:version:added', { taskId, version: newVersion });
+  emitRealtimeEvent('task:submitted', task);
+
+  await recordAuditLog(dbPool, {
+    actorId: effectiveUser,
+    actorEmail: submittedByEmail || 'admin@markops.io',
+    action: 'TASK_VERSION_SUBMITTED',
+    entityType: 'Task',
+    entityId: newVersion.id,
+    newState: { versionNumber: newVersionNumber, fileName: newVersion.fileName },
+    ipAddress: req.ip || req.socket.remoteAddress,
+    userAgent: req.headers['user-agent'],
+  });
+
+  return res.status(201).json({ task, version: newVersion });
+}
 
 router.post('/tasks/:id/start', async (req, res) => {
   const taskId = req.params.id;
@@ -1211,7 +1669,7 @@ router.post('/tasks/:id/messages', async (req, res) => {
           [numericTaskId, numericUserId, newComment.comment]
         );
       }
-    } catch (e) {}
+    } catch (error_) { console.log('[MySQL Notice] Non-critical task operation skipped:', error_?.message || error_); }
   }
 
   return res.status(201).json(newComment);
@@ -1261,7 +1719,7 @@ router.get('/designer/dashboard-metrics', async (req, res) => {
                 createdAt: v.created_at ? new Date(v.created_at).toISOString() : new Date().toISOString(),
               }));
             }
-          } catch (e) {}
+          } catch (error_) { console.log('[MySQL Notice] Non-critical task operation skipped:', error_?.message || error_); }
 
           let statusHistory = [];
           try {
@@ -1284,7 +1742,7 @@ router.get('/designer/dashboard-metrics', async (req, res) => {
                 createdAt: h.created_at ? new Date(h.created_at).toISOString() : new Date().toISOString(),
               }));
             }
-          } catch (e) {}
+          } catch (error_) { console.log('[MySQL Notice] Non-critical task operation skipped:', error_?.message || error_); }
 
           return {
             id: row.id,

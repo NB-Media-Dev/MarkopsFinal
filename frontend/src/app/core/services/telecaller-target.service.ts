@@ -111,7 +111,7 @@ export class TelecallerTargetService {
       try {
         localStorage.removeItem('markops_telecaller_targets_store');
         localStorage.removeItem('markops_common_telecaller_target');
-      } catch {}
+      } catch (err) { console.log('[Storage Notice]:', err); }
     }
   }
 

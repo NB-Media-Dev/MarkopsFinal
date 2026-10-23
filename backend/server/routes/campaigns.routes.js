@@ -6,57 +6,27 @@ const { emitRealtimeEvent } = require('../events');
 const { requireRole, requireRecordCreator } = require('../middleware/auth.middleware');
 const router = express.Router();
 
-function resolveCampaignCpl(bodyCpl, spend, leads, existingCpl) {
+function computeCplValue(bodyCpl, spend, leads, fallbackCpl = 0) {
   if (bodyCpl !== undefined && bodyCpl !== null) return Number(bodyCpl);
   if (leads > 0) return Number((spend / leads).toFixed(2));
-  return existingCpl;
+  return fallbackCpl;
 }
 
-function resolveCampaignConvRate(bodyConvRate, conversions, leads, existingConvRate) {
+function resolveCampaignCpl(bodyCpl, spend, leads, existingCpl) {
+  return computeCplValue(bodyCpl, spend, leads, existingCpl);
+}
+
+function resolveAdCpl(bodyCpl, spend, leads, existingCpl = 0) {
+  return computeCplValue(bodyCpl, spend, leads, existingCpl);
+}
+
+function resolveCampaignConvRate(bodyConvRate, conversions, leads, existingConvRate = 0) {
   if (bodyConvRate !== undefined && bodyConvRate !== null) return Number(bodyConvRate);
   if (leads > 0) return Number(((conversions / leads) * 100).toFixed(1));
   return existingConvRate;
 }
 
-function computeCampaignMetrics(body, existing) {
-  const numericSpend = body.spend !== undefined ? Number(body.spend) : existing.spend;
-  const numericLeads = body.leadsCount !== undefined ? Number(body.leadsCount) : existing.leadsCount;
-  const numericConversions = body.conversions !== undefined ? Number(body.conversions) : existing.conversions;
-  const computedCpl = resolveCampaignCpl(body.cpl, numericSpend, numericLeads, existing.cpl);
-  const computedConvRate = resolveCampaignConvRate(body.convRate, numericConversions, numericLeads, existing.convRate);
-  return { numericSpend, numericLeads, computedCpl, numericConversions, computedConvRate };
-}
 
-function buildUpdatedCampaign(existing, body) {
-  const m = computeCampaignMetrics(body, existing);
-  return {
-    ...existing,
-    name: body.name !== undefined ? String(body.name).trim() : existing.name,
-    objective: body.objective !== undefined ? String(body.objective) : existing.objective,
-    status: body.status !== undefined ? String(body.status) : existing.status,
-    startDate: body.startDate !== undefined ? body.startDate : existing.startDate,
-    endDate: body.endDate !== undefined ? body.endDate : existing.endDate,
-    budget: body.budget !== undefined ? Number(body.budget) : existing.budget,
-    targetLeads: body.targetLeads !== undefined ? Number(body.targetLeads) : existing.targetLeads,
-    targetCpl: body.targetCpl !== undefined ? Number(body.targetCpl) : existing.targetCpl,
-    targetQualifiedPct: body.targetQualifiedPct !== undefined ? Number(body.targetQualifiedPct) : existing.targetQualifiedPct,
-    targetConversionPct: body.targetConversionPct !== undefined ? Number(body.targetConversionPct) : existing.targetConversionPct,
-    spend: m.numericSpend,
-    leadsCount: m.numericLeads,
-    cpl: m.computedCpl,
-    qualifiedLeads: body.qualifiedLeads !== undefined ? Number(body.qualifiedLeads) : existing.qualifiedLeads,
-    conversions: m.numericConversions,
-    convRate: m.computedConvRate,
-    revenue: body.revenue !== undefined ? Number(body.revenue) : existing.revenue,
-    updatedAt: new Date().toISOString(),
-  };
-}
-
-function resolveAdCpl(bodyCpl, spend, leads, existingCpl = 0) {
-  if (bodyCpl !== undefined && bodyCpl !== null) return Number(bodyCpl);
-  if (leads > 0) return Number((spend / leads).toFixed(2));
-  return existingCpl;
-}
 
 function resolveAdClicks(bodyClicks, leads, existingClicks) {
   if (bodyClicks !== undefined) return Number(bodyClicks);
@@ -183,7 +153,7 @@ function mapCampaignRow(row) {
     name: row.name,
     objective: row.objective || 'LEAD_GENERATION',
     productId: row.product_id || null,
-    packageName: row.product_id ? (row.product_id === 'pkg_careermate' ? 'Careermate Package' : row.product_id) : 'General Funnel',
+    packageName: resolveCampaignRowPackageName(row.product_id),
     status: row.status,
     startDate: row.start_date ? row.start_date.toISOString().split('T')[0] : '2026-10-01',
     endDate: row.end_date ? row.end_date.toISOString().split('T')[0] : null,
@@ -355,7 +325,7 @@ function mapAdRow(row) {
     campaignId: String(row.campaign_id),
     campaignName: row.campaign_name || 'General Funnel',
     productId: row.product_id || null,
-    packageName: row.product_id ? (row.product_id === 'pkg_careermate' ? 'Careermate Package' : row.product_id) : 'General Funnel',
+    packageName: resolveCampaignRowPackageName(row.product_id),
     platform: row.platform || 'Meta',
     status: row.status,
     spend: numSpend,

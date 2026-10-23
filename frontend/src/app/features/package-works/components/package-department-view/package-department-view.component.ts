@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RoleOperationTab, FixedPackageMeta, ProductPackage, FIXED_PACKAGES, resolveTaskProductAndPackage, isTaskForPackage } from '../../../../core/models/package.model';
+import { RoleOperationTab, FixedPackageMeta, ProductPackage, resolveTaskProductAndPackage, isTaskForPackage } from '../../../../core/models/package.model';
 import { UserPerformanceRecord } from '../../../../core/models/user-management.model';
 import { TelecallerTargetService } from '../../../../core/services/telecaller-target.service';
 
@@ -1415,7 +1415,7 @@ export class PackageDepartmentViewComponent {
     link.download = `${cleanName}_Report_${dateSuffix}.csv`;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
     window.URL.revokeObjectURL(url);
   }
 }

@@ -1,6 +1,6 @@
 
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const mysql = require('mysql2/promise');
 
 (async () => {
@@ -34,7 +34,7 @@ const mysql = require('mysql2/promise');
  
   const sql = fs
     .readFileSync(path.join(__dirname, 'prisma', 'seed.sql'), 'utf8')
-    .replace(/^\s*USE\s+`?markops`?\s*;/gim, '');
+    .split(/\r?\n/).filter(line => !line.trim().toLowerCase().startsWith('use `markops`') && !line.trim().toLowerCase().startsWith('use markops;')).join('\n');
   await conn.query(sql);
 
   const [rows] = await conn.query('SELECT email FROM users');

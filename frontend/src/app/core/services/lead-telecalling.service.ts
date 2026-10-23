@@ -110,9 +110,7 @@ function isSameNumericCallId(id1?: string, id2?: string): boolean {
   if (isPureDbId1 && isPureDbId2) {
     const num1 = String(id1).replace(/\D/g, '');
     const num2 = String(id2).replace(/\D/g, '');
-    if (num1 && num2 && num1 === num2) {
-      return true;
-    }
+    return Boolean(num1 && num2 && num1 === num2);
   }
   return false;
 }
@@ -178,7 +176,7 @@ export class LeadTelecallingService {
         try {
           const userStr = localStorage.getItem('markops_user');
           if (userStr) cachedUser = JSON.parse(userStr);
-        } catch {}
+        } catch (error_) { console.log('[Storage Notice] Skipped:', error_); }
 
         this.socket = io(backendUrl, {
           auth: {

@@ -108,7 +108,7 @@ export class AuthService {
           if (userJson) {
             cachedUser = JSON.parse(userJson);
           }
-        } catch {}
+        } catch (error_) { console.log('[Auth Storage Notice] Skipped:', error_); }
 
         if (!cachedUser) {
           cachedUser = this.parseUserFromJwt(token);
@@ -221,7 +221,7 @@ export class AuthService {
           isActive: payload.isActive !== false,
         };
       }
-    } catch {}
+    } catch (error_) { console.log('[Auth Storage Notice] Skipped:', error_); }
     return null;
   }
 
@@ -296,7 +296,7 @@ export class AuthService {
         localStorage.removeItem('markops_user');
         sessionStorage.removeItem('markops_token');
         sessionStorage.removeItem('markops_user');
-      } catch {}
+      } catch (error_) { console.log('[Auth Storage Notice] Skipped:', error_); }
     }
     this._currentUser.set(null);
     this._accessToken.set(null);
@@ -408,7 +408,7 @@ export class AuthService {
       try {
         localStorage.setItem('markops_token', activeToken);
         localStorage.setItem('markops_user', JSON.stringify(activeUser));
-      } catch {}
+      } catch (error_) { console.log('[Auth Storage Notice] Skipped:', error_); }
       this.setCookie('markops_token', activeToken, 7);
     }
   }

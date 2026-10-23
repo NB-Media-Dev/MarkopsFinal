@@ -5,6 +5,17 @@ function stringifyCellValue(value: unknown): string {
   return String(value).trim();
 }
 
+
+function resolveUploadErrorMessage(error: unknown): string {
+  if (error instanceof HttpErrorResponse) {
+    return error.error?.error || error.message;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'Unable to upload leads.';
+}
+
 function extractLeadEmail(text: string): string {
   if (!text?.includes('@')) return '';
   const tokens = text.split(/\s+/);

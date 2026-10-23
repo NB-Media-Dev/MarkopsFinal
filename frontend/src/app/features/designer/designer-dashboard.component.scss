@@ -230,7 +230,7 @@
 
         &.active {
           background-color: #C2410C;
-          background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%);
+          background-image: linear-gradient(135deg, #EA580C 0%, #C2410C 100%);
           color: #FFFFFF;
           font-weight: 700;
           box-shadow: 0 2px 8px rgba(234, 88, 12, 0.28);

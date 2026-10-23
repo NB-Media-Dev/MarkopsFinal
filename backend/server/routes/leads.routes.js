@@ -81,7 +81,7 @@ function createNotificationForTelecaller(targetUserId, title, message, targetRou
     message,
     type: 'INFO',
     targetRoute: targetRoute || '/package-works?dept=TELECALLING&tab=TELECALLING',
-  }).catch(() => {});
+  }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
 }
 
 function isSameNumericCallId(id1, id2) {
@@ -245,7 +245,7 @@ function enrichLeadWithCreator(lead, usersStore) {
     const uId = String(lead.creatorId || lead.uploaderId || '').toLowerCase();
     const uEm = String(lead.creatorEmail || lead.uploaderEmail || '').toLowerCase();
     const foundUser = usersStore.find(
-      (u) => (uId && String(u.id).toLowerCase() === uId) || (uEm && u.email && u.email.toLowerCase() === uEm)
+      (u) => (uId && String(u.id).toLowerCase() === uId) || (uEm && u.email?.toLowerCase() === uEm)
     );
     if (foundUser) {
       lead.creatorName = foundUser.fullName;
@@ -418,7 +418,7 @@ function resolveLeadCreatorDetails(effectiveUserId, creatorName, creatorEmail, u
 
   if ((!resolvedCreatorName || resolvedCreatorName === 'System Administrator') && effectiveUserId) {
     const foundUser = usersStore.find(
-      (u) => String(u.id).toLowerCase() === String(effectiveUserId).toLowerCase() || (u.email && u.email.toLowerCase() === String(effectiveUserId).toLowerCase())
+      (u) => String(u.id).toLowerCase() === String(effectiveUserId).toLowerCase() || (u.email?.toLowerCase() === String(effectiveUserId).toLowerCase())
     );
     if (foundUser) {
       resolvedCreatorName = foundUser.fullName;
@@ -536,8 +536,8 @@ function notifyLeadCreatedAssignment(newLead, targetAssignedTo, targetAssigneeNa
   const creator = reqBody.creatorName || reqBody.creatorEmail || 'System Administrator';
   const prod = reqBody.productName || 'Careermate';
   const pkg = reqBody.packageName || campName || 'CURRENT AFFAIRS AUGUST -2026';
-  const msg = `Assigned by: \${creator} -> Product: \${prod} -> Package: \${pkg} -> Total Leads: 1`;
-  const targetRoute = `/package-works?package=\${encodeURIComponent(prod)}&workspace=\${encodeURIComponent(pkg)}&dept=TELECALLING&tab=TELECALLING`;
+  const msg = `Assigned by: ${creator} -> Product: ${prod} -> Package: ${pkg} -> Total Leads: 1`;
+  const targetRoute = `/package-works?package=${encodeURIComponent(prod)}&workspace=${encodeURIComponent(pkg)}&dept=TELECALLING&tab=TELECALLING`;
   createNotificationForTelecaller(targetAssignedTo, 'New Lead Assigned', msg, targetRoute);
 
   if (newLead.creatorId && String(newLead.creatorId) !== String(targetAssignedTo)) {
@@ -547,7 +547,7 @@ function notifyLeadCreatedAssignment(newLead, targetAssignedTo, targetAssigneeNa
       message: `Lead "\${newLead.firstName} \${newLead.lastName || ''}" has been assigned to \${targetAssigneeName}.`,
       type: 'INFO',
       targetRoute: '/leads',
-    }).catch(() => {});
+    }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
   }
 }
 
@@ -634,6 +634,73 @@ router.post('/leads', async (req, res) => {
   return res.status(201).json(newLead);
 });
 
+
+async function findLeadById(leadId) {
+  let lead = null;
+  if (dbPool) {
+    try {
+      const [rows] = await dbPool.query(
+        `SELECT l.*, 
+                c.full_name as creator_full_name, 
+                c.email as creator_user_email,
+                u.full_name as assignee_full_name,
+                u.email as assignee_user_email
+         FROM leads l
+         LEFT JOIN users c ON l.creator_id = c.id
+         LEFT JOIN users u ON l.assigned_to = u.id
+         WHERE l.id = ?`,
+        [leadId]
+      );
+      if (rows && rows.length > 0) {
+        const row = rows[0];
+        lead = {
+          id: row.id,
+          firstName: row.first_name,
+          lastName: row.last_name,
+          email: row.email,
+          phone: row.phone,
+          source: row.source,
+          status: row.status,
+          assignedTo: row.assigned_to,
+          assigned_to: row.assigned_to,
+          assigneeName: row.assignee_full_name || (row.assigned_to ? 'Telecaller' : 'Unassigned'),
+          creatorId: row.creator_id,
+          creator_id: row.creator_id,
+          creatorName: row.creator_full_name || row.creator_name || 'System Administrator',
+          creatorEmail: row.creator_user_email || row.creator_email || 'admin@markops.io',
+          campaignId: row.campaign_id,
+          campaignName: row.campaign_name || '',
+          createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+          updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
+        };
+      }
+    } catch (e) {
+      console.error('[MySQL Error] Fetch lead by ID failed:', e.message);
+    }
+  }
+  if (!lead) {
+    lead = dbLeadsStore.find((l) => String(l.id).trim() === String(leadId).trim());
+  }
+  return lead;
+}
+
+function verifyLeadCreatorAccess(req, lead) {
+  const currentRole = String(req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
+  const currentUserId = resolveCurrentUserId(req);
+  const currentUserEmail = (req.user?.email || req.headers['x-user-email'] || '').toLowerCase().trim();
+  const currentUserName = (req.user?.fullName || req.headers['x-user-name'] || '').toLowerCase().trim();
+
+  const leadCreatorId = resolveLeadCreatorId(lead);
+  const leadCreatorEmail = (lead.creator_user_email || lead.creator_email || lead.creatorEmail || '').toLowerCase().trim();
+  const leadCreatorName = (lead.creator_full_name || lead.creator_name || lead.creatorName || '').toLowerCase().trim();
+
+  return Boolean(
+    (currentUserId && leadCreatorId && String(currentUserId) === String(leadCreatorId)) ||
+    (currentUserEmail && leadCreatorEmail && currentUserEmail === leadCreatorEmail) ||
+    (currentUserName && leadCreatorName && currentUserName === leadCreatorName) ||
+    (currentRole === 'ADMINISTRATOR')
+  );
+}
 
 router.post('/leads/:id/assign', async (req, res) => {
   const { assignedTo, assigneeName, actorId, actorEmail, creatorName, productName, packageName } = req.body;
@@ -823,7 +890,7 @@ router.post('/leads/:id/assign', async (req, res) => {
         message: `Lead "${lead.firstName} ${lead.lastName || ''}" has been assigned to ${lead.assigneeName}.`,
         type: 'INFO',
         targetRoute: '/leads',
-      }).catch(() => {});
+      }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
     }
   }
 
@@ -1012,8 +1079,8 @@ router.delete('/leads/:id', async (req, res) => {
 
   if (dbPool) {
     try {
-      await dbPool.query(`DELETE FROM follow_ups WHERE lead_id = ?`, [leadId]).catch(() => {});
-      await dbPool.query(`DELETE FROM call_activities WHERE lead_id = ?`, [leadId]).catch(() => {});
+      await dbPool.query(`DELETE FROM follow_ups WHERE lead_id = ?`, [leadId]).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
+      await dbPool.query(`DELETE FROM call_activities WHERE lead_id = ?`, [leadId]).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
       await dbPool.query(`DELETE FROM leads WHERE id = ?`, [leadId]);
     } catch (dbErr) {
       console.error('[MySQL Error] Delete lead failed:', dbErr.message);
@@ -1073,8 +1140,8 @@ router.get('/calls', async (req, res) => {
   return res.json(dbCallActivitiesStore);
 });
 
-function normalizeCallOutcomeStatus(outcome) {
-  const outcomeUpper = String(outcome || 'BUSY').toUpperCase().replace(/\s+/g, '_');
+function normalizeCallOutcomeStatus(outcome = 'BUSY') {
+  const outcomeUpper = String(outcome).toUpperCase().replace(/\s+/g, '_');
   let newStatus = outcomeUpper === 'BUSY' ? 'LINE_BUSY' : outcomeUpper;
   if (newStatus === 'QUALIFIED' || newStatus === 'CONVERTED') newStatus = 'PAID';
   if (newStatus === 'FOLLOW_UP_SCHEDULED') newStatus = 'FOLLOW_UP';
@@ -1243,7 +1310,7 @@ async function insertCallActivityDb(pool, callData) {
   }
 
   if (insertRes?.insertId) {
-    await pool.query('UPDATE leads SET status = ?, remarks = ?, notes = ?, updated_at = NOW() WHERE id = ?', [callData.newStatus, callData.remarks, callData.remarks, callData.numLeadId]).catch(() => {});
+    await pool.query('UPDATE leads SET status = ?, remarks = ?, notes = ?, updated_at = NOW() WHERE id = ?', [callData.newStatus, callData.remarks, callData.remarks, callData.numLeadId]).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
     return `call_${insertRes.insertId}`;
   }
   return null;
@@ -1321,7 +1388,7 @@ function dispatchLeadOutcomeNotifications(outcomeUpper, newStatus, finalLead, le
       message: `Lead "${finalLead.firstName} ${finalLead.lastName || ''}" (${leadPhone}) has shown interest! Handled by ${effectiveCallerName}. Campaign: ${finalLead.campaignName || 'Digital Campaign'}.`,
       type: 'SUCCESS',
       targetRoute: `/package-works?package=${encodeURIComponent(leadProd)}&workspace=${encodeURIComponent(leadPkg)}&dept=DIGITAL_MARKETING&tab=LEADS`,
-    }).catch(() => {});
+    }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
 
     dispatchNotification({
       userIds: [effectiveCallerId],
@@ -1329,7 +1396,7 @@ function dispatchLeadOutcomeNotifications(outcomeUpper, newStatus, finalLead, le
       message: `You marked "${finalLead.firstName} ${finalLead.lastName || ''}" as Interested. Great job!`,
       type: 'SUCCESS',
       targetRoute: telecallerTargetRoute,
-    }).catch(() => {});
+    }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
   } else if (isQualified) {
     dispatchNotification({
       userIds: [creatorTarget, '4'],
@@ -1337,7 +1404,7 @@ function dispatchLeadOutcomeNotifications(outcomeUpper, newStatus, finalLead, le
       message: `High-value lead "${finalLead.firstName} ${finalLead.lastName || ''}" (${leadPhone}) has been qualified by ${effectiveCallerName}! Ready for package conversion.`,
       type: 'SUCCESS',
       targetRoute: `/package-works?package=${encodeURIComponent(leadProd)}&workspace=${encodeURIComponent(leadPkg)}&dept=DIGITAL_MARKETING&tab=LEADS`,
-    }).catch(() => {});
+    }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
 
     dispatchNotification({
       userIds: ['2'],
@@ -1345,7 +1412,7 @@ function dispatchLeadOutcomeNotifications(outcomeUpper, newStatus, finalLead, le
       message: `Lead "${finalLead.firstName} ${finalLead.lastName || ''}" was qualified by ${effectiveCallerName}. Ready for package proposal and deal closure.`,
       type: 'SUCCESS',
       targetRoute: `/package-works?package=${encodeURIComponent(leadProd)}&workspace=${encodeURIComponent(leadPkg)}&dept=ANALYTICS&tab=REPORTS`,
-    }).catch(() => {});
+    }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
 
     dispatchNotification({
       userIds: [effectiveCallerId],
@@ -1353,7 +1420,7 @@ function dispatchLeadOutcomeNotifications(outcomeUpper, newStatus, finalLead, le
       message: `Lead "${finalLead.firstName} ${finalLead.lastName || ''}" has been successfully qualified! Target milestone progressed.`,
       type: 'SUCCESS',
       targetRoute: telecallerTargetRoute,
-    }).catch(() => {});
+    }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
   }
 }
 
@@ -1363,7 +1430,7 @@ function evaluateDailyTargetNotifications(effectiveCallerId, effectiveCallerName
     const callerIdStr = String(effectiveCallerId).toLowerCase();
     const todayCallerCalls = dbCallActivitiesStore.filter((c) => {
       const isCaller = String(c.telecallerId || '').toLowerCase() === callerIdStr || (c.telecallerName && c.telecallerName === effectiveCallerName);
-      const isToday = c.calledAt && c.calledAt.startsWith(todayDateStr);
+      const isToday = Boolean(c.calledAt?.startsWith(todayDateStr));
       return isCaller && isToday;
     });
 
@@ -1400,7 +1467,7 @@ function evaluateDailyTargetNotifications(effectiveCallerId, effectiveCallerName
           message: `Outstanding work, ${effectiveCallerName}! You have successfully achieved your daily target today (${todayCallsCount}/${targetCalls} unique leads called, ${todayInterestedCount}/${targetInterested} interested leads).`,
           type: 'SUCCESS',
           targetRoute: '/package-works?package=CAREERMATE&workspace=CURRENT-AFFAIR-PACKAGE&dept=TELECALLING&tab=TELECALLER_MEMBERS',
-        }).catch(() => {});
+        }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
 
         dispatchNotification({
           userIds: ['4', '1', '2', '3'],
@@ -1408,7 +1475,7 @@ function evaluateDailyTargetNotifications(effectiveCallerId, effectiveCallerName
           message: `${effectiveCallerName} has reached their daily target today with ${todayCallsCount} unique leads called and ${todayInterestedCount} interested/qualified leads!`,
           type: 'SUCCESS',
           targetRoute: '/package-works?package=CAREERMATE&workspace=CURRENT-AFFAIR-PACKAGE&dept=TELECALLING&tab=TELECALLER_MEMBERS',
-        }).catch(() => {});
+        }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
       }
     }
   } catch (targetErr) {
@@ -1538,7 +1605,7 @@ router.post('/calls', async (req, res) => {
 });
 
 router.patch('/leads/:id/status', async (req, res) => {
-  const { status, actorId, actorName, actorEmail } = req.body;
+  const { status, actorId, actorName } = req.body;
   const leadId = String(req.params.id).trim();
 
   let lead = null;
@@ -1625,7 +1692,7 @@ router.patch('/leads/:id/status', async (req, res) => {
       message: `Lead "${lead.firstName} ${lead.lastName || ''}" has shown interest! Handled by ${effectiveActorName}. Campaign: ${lead.campaignName || 'Digital Campaign'}.`,
       type: 'SUCCESS',
       targetRoute: `/package-works?package=${encodeURIComponent(leadProd)}&workspace=${encodeURIComponent(leadPkg)}&dept=DIGITAL_MARKETING&tab=LEADS`,
-    }).catch(() => {});
+    }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
 
     if (lead.assignedTo) {
       dispatchNotification({
@@ -1634,7 +1701,7 @@ router.patch('/leads/:id/status', async (req, res) => {
         message: `You marked "${lead.firstName} ${lead.lastName || ''}" as Interested. Great job!`,
         type: 'SUCCESS',
         targetRoute: telecallerTargetRoute,
-      }).catch(() => {});
+      }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
     }
   } else if (newStatus === 'QUALIFIED') {
     const creatorTarget = lead.creatorId || '4';
@@ -1644,7 +1711,7 @@ router.patch('/leads/:id/status', async (req, res) => {
       message: `High-value lead "${lead.firstName} ${lead.lastName || ''}" has been qualified by ${effectiveActorName}! Ready for package conversion.`,
       type: 'SUCCESS',
       targetRoute: `/package-works?package=${encodeURIComponent(leadProd)}&workspace=${encodeURIComponent(leadPkg)}&dept=DIGITAL_MARKETING&tab=LEADS`,
-    }).catch(() => {});
+    }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
 
     dispatchNotification({
       userIds: ['2'],
@@ -1652,7 +1719,7 @@ router.patch('/leads/:id/status', async (req, res) => {
       message: `Lead "${lead.firstName} ${lead.lastName || ''}" was qualified by ${effectiveActorName}. Ready for package conversion.`,
       type: 'SUCCESS',
       targetRoute: `/package-works?package=${encodeURIComponent(leadProd)}&workspace=${encodeURIComponent(leadPkg)}&dept=ANALYTICS&tab=REPORTS`,
-    }).catch(() => {});
+    }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
 
     if (lead.assignedTo) {
       dispatchNotification({
@@ -1661,7 +1728,7 @@ router.patch('/leads/:id/status', async (req, res) => {
         message: `Lead "${lead.firstName} ${lead.lastName || ''}" has been successfully qualified! Target milestone progressed.`,
         type: 'SUCCESS',
         targetRoute: telecallerTargetRoute,
-      }).catch(() => {});
+      }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
     }
   }
 
@@ -1866,8 +1933,7 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
       .trim();
     const phone = String(raw.phone || raw['Phone'] || raw['Phone Number'] || raw['Mobile'] || raw['Mobile Number'] || raw['Contact Number'] || raw['Contact'] || contactPhone).trim();
     const emailAddress = email || contactEmail;
-    const rowCampaignName = String(raw.campaignName || raw['Campaign'] || targetCampName).trim();
-    const rowCampaignId = raw.campaignId || campaignId || 'cmp_default';
+        const rowCampaignId = raw.campaignId || campaignId || 'cmp_default';
 
     const uploaderUid = req.body.creatorId || req.body.uploaderId || req.headers['x-user-id'];
     let uploaderNameResolved = req.body.creatorName || req.headers['x-user-name'];

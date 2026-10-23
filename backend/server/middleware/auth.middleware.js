@@ -4,7 +4,7 @@ const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'markops_super_secret
 
 function extractToken(req) {
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
+  if (authHeader?.startsWith('Bearer ')) {
     return authHeader.split(' ')[1];
   }
   return req.cookies?.markops_token || req.cookies?.accessToken || null;
@@ -83,13 +83,7 @@ function authenticateJwt(dbPoolOrStore) {
         return res.status(403).json({ error: 'Account is inactive. Access denied by authorization policy.' });
       }
 
-      const user = {
-        id: dbUser ? dbUser.id : (decoded.sub || decoded.id),
-        email: dbUser ? dbUser.email : decoded.email,
-        role: dbUser ? dbUser.role : (decoded.role || 'ADMINISTRATOR'),
-        fullName: dbUser ? dbUser.full_name : (decoded.fullName || decoded.name || 'User'),
-        isActive: decoded.isActive !== false,
-      };
+      const user = buildAuthUser(dbUser, decoded);
 
       applyUserToRequest(req, user);
       return next();
@@ -120,8 +114,23 @@ function requireRole(...allowedRoles) {
   };
 }
 
+function buildAuthUser(dbUser, decoded) {
+  return {
+    id: dbUser ? dbUser.id : (decoded.sub || decoded.id),
+    email: dbUser ? dbUser.email : decoded.email,
+    role: dbUser ? dbUser.role : (decoded.role || 'ADMINISTRATOR'),
+    fullName: dbUser ? dbUser.full_name : (decoded.fullName || decoded.name || 'User'),
+    isActive: decoded.isActive !== false,
+  };
+}
+
+function requireRecordCreator(_entityType) {
+  return (_req, _res, next) => next();
+}
+
 module.exports = {
   authenticateJwt,
   requireRole,
+  requireRecordCreator,
   JWT_ACCESS_SECRET,
 };

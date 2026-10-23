@@ -3,7 +3,7 @@ export function getBackendBaseUrl(): string {
     let savedApiUrl: string | null = null;
     try {
       savedApiUrl = localStorage.getItem('markops_backend_url');
-    } catch {}
+    } catch (err) { console.log('[Storage Notice]:', err); }
 
     const injectedUrl = (window as any).__API_URL__ || (window as any).process?.env?.BACKEND_URL || savedApiUrl;
     if (injectedUrl) return injectedUrl.replace(/\/$/, '');
@@ -63,7 +63,7 @@ export function getAuthToken(): string | null {
     if (localToken && localToken.trim()) {
       return localToken.trim();
     }
-  } catch {}
+  } catch (err) { console.log('[Storage Notice]:', err); }
 
   if (typeof document !== 'undefined') {
     const nameEQ = 'markops_token=';

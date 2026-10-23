@@ -201,7 +201,7 @@ $ui-light-bg: #F8FAFC;
   }
   &.status-pill-planning {
     background-color: #FEF3C7;
-    color: #92400E;
+    color: #78350F;
   }
   &.status-pill-paused {
     background-color: #FEE2E2;
@@ -282,6 +282,6 @@ $ui-light-bg: #F8FAFC;
     border-radius: 4px;
     
     .material-symbols-outlined { font-size: 18px; }
-    &:hover { color: #B91C1C; background-color: #FEF2F2; }
+    &:hover { color: #991B1B; background-color: #FEF2F2; }
   }
 }

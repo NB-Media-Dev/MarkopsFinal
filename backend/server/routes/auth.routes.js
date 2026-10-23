@@ -11,6 +11,69 @@ const router = express.Router();
 const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET || 'markops_super_secret_access_key_2026';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'markops_super_secret_refresh_key_2026';
 
+async function findUserForLogin(normalizedEmail) {
+  let foundUser = dbUsersStore.find((u) => u.email.toLowerCase() === normalizedEmail);
+
+  if (dbPool) {
+    try {
+      const [rows] = await dbPool.query(
+        `SELECT u.id, u.email, u.password_hash as passwordHash, u.full_name as fullName, COALESCE(r.code, 'ADMINISTRATOR') as role, u.is_active as isActive, u.avatar_url as avatarUrl
+         FROM users u
+         LEFT JOIN roles r ON u.role_id = r.id
+         WHERE LOWER(u.email) = ?`,
+        [normalizedEmail]
+      );
+      if (Array.isArray(rows) && rows.length > 0) {
+        foundUser = {
+          id: rows[0].id,
+          email: rows[0].email,
+          passwordHash: rows[0].passwordHash,
+          fullName: rows[0].fullName,
+          role: rows[0].role,
+          isActive: Boolean(rows[0].isActive),
+          avatarUrl: rows[0].avatarUrl,
+        };
+      }
+    } catch (e) {
+      console.log('MySQL login query notice (using fallback store):', e?.message || e);
+    }
+  }
+
+  const defaultAdminHash = '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3BoB6tK3y/G';
+  const isDefaultAdmin = normalizedEmail === 'admin@markops.io' || normalizedEmail === 'admin@markops.com' || normalizedEmail === 'admin';
+
+  if (!foundUser && isDefaultAdmin) {
+    foundUser = {
+      id: 'usr_admin_01',
+      email: 'admin@markops.io',
+      passwordHash: defaultAdminHash,
+      fullName: 'System Administrator',
+      role: 'ADMINISTRATOR',
+      isActive: true,
+    };
+  }
+
+  return { foundUser, isDefaultAdmin };
+}
+
+async function verifyUserPassword(foundUser, password, isDefaultAdmin) {
+  let isMatch = false;
+  if (foundUser.passwordHash) {
+    try {
+      isMatch = await bcrypt.compare(password, foundUser.passwordHash);
+    } catch (error_) {
+      console.log('[Auth Notice] Compare password notice:', error_?.message || error_);
+    }
+  }
+  if (!isMatch && foundUser.rawPassword && foundUser.rawPassword === password) {
+    isMatch = true;
+  }
+  if (!isMatch && isDefaultAdmin && password === 'admin123') {
+    isMatch = true;
+  }
+  return isMatch;
+}
+
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -19,46 +82,7 @@ router.post('/login', async (req, res) => {
     }
 
     const normalizedEmail = String(email).toLowerCase().trim();
-    let foundUser = dbUsersStore.find((u) => u.email.toLowerCase() === normalizedEmail);
-
-    if (dbPool) {
-      try {
-        const [rows] = await dbPool.query(
-          `SELECT u.id, u.email, u.password_hash as passwordHash, u.full_name as fullName, COALESCE(r.code, 'ADMINISTRATOR') as role, u.is_active as isActive, u.avatar_url as avatarUrl
-           FROM users u
-           LEFT JOIN roles r ON u.role_id = r.id
-           WHERE LOWER(u.email) = ?`,
-          [normalizedEmail]
-        );
-        if (Array.isArray(rows) && rows.length > 0) {
-          foundUser = {
-            id: rows[0].id,
-            email: rows[0].email,
-            passwordHash: rows[0].passwordHash,
-            fullName: rows[0].fullName,
-            role: rows[0].role,
-            isActive: Boolean(rows[0].isActive),
-            avatarUrl: rows[0].avatarUrl,
-          };
-        }
-      } catch (e) {
-        console.log('MySQL login query notice (using fallback store):', e);
-      }
-    }
-
-    const defaultAdminHash = '$2b$10$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQOEg6Lruj3BoB6tK3y/G';
-    const isDefaultAdmin = normalizedEmail === 'admin@markops.io' || normalizedEmail === 'admin@markops.com' || normalizedEmail === 'admin';
-
-    if (!foundUser && isDefaultAdmin) {
-      foundUser = {
-        id: 'usr_admin_01',
-        email: 'admin@markops.io',
-        passwordHash: defaultAdminHash,
-        fullName: 'System Administrator',
-        role: 'ADMINISTRATOR',
-        isActive: true,
-      };
-    }
+    const { foundUser, isDefaultAdmin } = await findUserForLogin(normalizedEmail);
 
     if (!foundUser) {
       await recordAuditLog(dbPool, {
@@ -86,20 +110,7 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'Account is inactive. Access denied by authentication middleware.' });
     }
 
-    let isMatch = false;
-    if (foundUser.passwordHash) {
-      try {
-        isMatch = await bcrypt.compare(password, foundUser.passwordHash);
-      } catch (error_) {
-      console.log('[MySQL Notice] Remove avatar from database skipped:', error_?.message || error_);
-    }
-    }
-    if (!isMatch && foundUser.rawPassword && foundUser.rawPassword === password) {
-      isMatch = true;
-    }
-    if (!isMatch && isDefaultAdmin && password === 'admin123') {
-      isMatch = true;
-    }
+    const isMatch = await verifyUserPassword(foundUser, password, isDefaultAdmin);
 
     if (!isMatch) {
       await recordAuditLog(dbPool, {
@@ -114,7 +125,6 @@ router.post('/login', async (req, res) => {
       });
       return res.status(401).json({ error: 'Invalid email or password. Access denied.' });
     }
-
     const accessToken = jwt.sign(
       {
         sub: foundUser.id,
@@ -220,7 +230,7 @@ router.post('/logout', async (req, res) => {
   let actorId = 'usr_admin_01';
   let actorEmail = 'admin@markops.io';
 
-  if (authHeader && authHeader.startsWith('Bearer ')) {
+  if (authHeader?.startsWith('Bearer ')) {
     try {
       const decoded = jwt.verify(authHeader.split(' ')[1], JWT_ACCESS_SECRET);
       actorId = decoded.sub;

@@ -98,7 +98,7 @@ export class UserManagementService {
     if (this.isBrowser) {
       try {
         localStorage.removeItem('markops_users_db_store');
-      } catch {}
+      } catch (error_) { console.log('[User Storage Notice] Skipped:', error_); }
       setTimeout(() => { void this.loadUsersFromDatabase(); }, 0);
     }
   }

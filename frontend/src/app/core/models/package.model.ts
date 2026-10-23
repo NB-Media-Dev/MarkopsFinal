@@ -305,13 +305,11 @@ export function resolveProductContext(
       return { ...matched, isSpecificPackage: false };
     }
 
-    if (dbPackages && dbPackages.length > 0) {
-      const match = dbPackages.find((p) => (p.name || '').toLowerCase().trim() === normPkg || String(p.id).toLowerCase() === normPkg);
-      if (match?.productId) {
-        const fromDb = resolveProductFromNormalizedName(match.productId.toLowerCase());
-        if (fromDb) {
-          return { ...fromDb, isSpecificPackage: true };
-        }
+    const match = dbPackages.find((p) => (p.name || '').toLowerCase().trim() === normPkg || String(p.id).toLowerCase() === normPkg);
+    if (match?.productId) {
+      const fromDb = resolveProductFromNormalizedName(match.productId.toLowerCase());
+      if (fromDb) {
+        return { ...fromDb, isSpecificPackage: true };
       }
     }
   }

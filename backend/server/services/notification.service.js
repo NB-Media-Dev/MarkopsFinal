@@ -137,46 +137,6 @@ async function createNotificationForRecipient(rId, cleanTitle, cleanMessage, typ
   return notifObj;
 }
 
-async function createNotificationForRecipient(rId, cleanTitle, cleanMessage, type, targetRoute) {
-  if (String(rId).trim().toUpperCase() === 'ALL') {
-    throw new Error('Notification recipients must be explicit user IDs; ALL is not supported.');
-  }
-  const recipient = String(rId).trim();
-  const numericUserId = resolveNumericUserId(rId, recipient);
-  if (dbPool.isConnected() && (!Number.isSafeInteger(numericUserId) || numericUserId < 1)) {
-    throw new Error(`Notification recipient "${rId}" is not a valid database user ID.`);
-  }
-
-  const notifObj = {
-    id: `notif_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
-    userId: numericUserId || recipient,
-    title: cleanTitle,
-    message: cleanMessage,
-    type,
-    isRead: false,
-    createdAt: new Date().toISOString(),
-    targetRoute: targetRoute || null,
-  };
-
-  if (dbPool.isConnected() && numericUserId) {
-    try {
-      notifObj.id = await persistNotificationToDb(numericUserId, cleanTitle, cleanMessage, type, targetRoute);
-    } catch (error) {
-      console.error(`[Notification Service] Persistence failed for recipient ${numericUserId}:`, error?.message || error);
-      throw error;
-    }
-  }
-
-  if (!isRecentDuplicateNotification(notifObj)) {
-    dbNotificationsStore.unshift(notifObj);
-    if (dbNotificationsStore.length > 500) {
-      dbNotificationsStore.pop();
-    }
-  }
-
-  return notifObj;
-}
-
 async function dispatchNotification({ userIds = [], title, message, type = 'INFO', targetRoute = null }) {
   const recipients = new Set();
   const arr = Array.isArray(userIds) ? userIds : [userIds];

@@ -160,8 +160,8 @@ async function run(conn, sql, label) {
 
   for (const [table, expectedCols] of checks) {
     const [cols] = await conn.query('SHOW COLUMNS FROM ' + table);
-    const existingCols = cols.map(c => c.Field);
-    const missing = expectedCols.filter(c => !existingCols.includes(c));
+    const existingCols = new Set(cols.map(c => c.Field));
+    const missing = expectedCols.filter(c => !existingCols.has(c));
     if (missing.length === 0) {
       console.log(`  ✅ ${table}: all required columns present`);
     } else {

@@ -560,11 +560,7 @@ export class DesignerDashboardComponent implements OnInit {
   }
 
   private matchesTaskDateFilter(t: Task, dateFilter: string | null): boolean {
-    if (!dateFilter) return true;
-    const createdDate = t.createdAt ? t.createdAt.split('T')[0] : '';
-    const dueDate = t.dueDate ? t.dueDate.split('T')[0] : '';
-    const updatedDate = t.updatedAt ? t.updatedAt.split('T')[0] : '';
-    return createdDate === dateFilter || dueDate === dateFilter || updatedDate === dateFilter;
+    return isTaskMatchingDate(t, dateFilter || '');
   }
 
   private matchesTaskStatusFilter(t: Task, filter: string): boolean {
@@ -723,7 +719,7 @@ export class DesignerDashboardComponent implements OnInit {
         }
         const blob = new Blob([u8arr], { type: mime });
         docUrl = URL.createObjectURL(blob);
-      } catch (e) {}
+      } catch (error_) { console.log('[Designer Dashboard Notice] Skipped:', error_); }
     }
 
     this.activeDocName.set(docName);

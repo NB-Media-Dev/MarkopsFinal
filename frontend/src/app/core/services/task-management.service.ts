@@ -44,7 +44,7 @@ export class TaskManagementService {
     if (this.isBrowser) {
       try {
         localStorage.removeItem('markops_tasks_db_store');
-      } catch {}
+      } catch (error_) { console.log('[Task Storage Notice] Skipped:', error_); }
       this.initRealtimeSocket();
       setTimeout(() => { void this.initTaskData(); }, 0);
     }
@@ -145,7 +145,7 @@ export class TaskManagementService {
       if (stored === 'my' || stored === 'all') {
         return stored;
       }
-    } catch {}
+    } catch (error_) { console.log('[Task Storage Notice] Skipped:', error_); }
     return 'all';
   }
 
@@ -180,7 +180,7 @@ export class TaskManagementService {
       try {
         sessionStorage.setItem('markops_task_view', view);
         localStorage.setItem('markops_task_view', view);
-      } catch {}
+      } catch (error_) { console.log('[Task Storage Notice] Skipped:', error_); }
     }
     await this.fetchTasksEndpoint(`/api/tasks?view=${view}`);
   }
@@ -192,7 +192,7 @@ export class TaskManagementService {
       try {
         sessionStorage.setItem('markops_task_view', 'my');
         localStorage.setItem('markops_task_view', 'my');
-      } catch {}
+      } catch (error_) { console.log('[Task Storage Notice] Skipped:', error_); }
     }
     await this.fetchTasksEndpoint('/api/tasks?view=my');
   }
@@ -204,7 +204,7 @@ export class TaskManagementService {
       try {
         sessionStorage.setItem('markops_task_view', 'all');
         localStorage.setItem('markops_task_view', 'all');
-      } catch {}
+      } catch (error_) { console.log('[Task Storage Notice] Skipped:', error_); }
     }
     await this.fetchTasksEndpoint('/api/tasks?view=all');
   }
