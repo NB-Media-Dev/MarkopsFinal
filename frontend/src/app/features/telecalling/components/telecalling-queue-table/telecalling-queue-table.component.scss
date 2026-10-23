@@ -55,16 +55,16 @@
       }
 
       &:hover {
-        color: #FF9F1C;
+        color: #C2410C;
         background-color: #FFF5E6;
 
         .tab-icon {
-          color: #FF9F1C;
+          color: #C2410C;
         }
       }
 
       &.active {
-        background-color: #FF9F1C;
+        background-color: #C2410C;
         color: #FFFFFF !important;
         font-weight: 700;
         box-shadow: none;
@@ -283,7 +283,7 @@
     thead tr,
     thead th {
       background-color: #FFF5E6 !important;
-      color: #E28704 !important;
+      color: #C2410C !important;
       font-weight: 700 !important;
       font-size: 0.725rem !important;
       letter-spacing: 0.05em !important;
@@ -745,7 +745,7 @@
         line-height: 1;
 
         .material-symbols-outlined {
-          color: #FF9F1C;
+          color: #C2410C;
           font-size: 13px;
         }
 
@@ -1119,7 +1119,7 @@
     height: 38px;
     min-width: 38px;
     border-radius: 50%;
-    background: #EF4444;
+    background: #DC2626;
     display: flex;
     align-items: center;
     justify-content: center;

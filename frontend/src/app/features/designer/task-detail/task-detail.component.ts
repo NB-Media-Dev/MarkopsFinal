@@ -109,11 +109,7 @@ export class TaskDetailComponent implements OnInit {
   }
 
   goToAvailablePackage(event?: Event): void {
-    if (event) event.preventDefault();
-    const scope = this.resolvedScope();
-    this.router.navigate(['/package-works'], {
-      queryParams: { package: scope.productName || 'Careermate' },
-    });
+    this.goToProduct(event);
   }
 
   goToDepartmentOperations(event?: Event): void {
@@ -573,36 +569,48 @@ export class TaskDetailComponent implements OnInit {
   }
 
  
+  private resolveWorkflowStages(status: string): {
+    stage1State: 'completed' | 'current' | 'upcoming';
+    stage2State: 'completed' | 'current' | 'upcoming';
+    stage3State: 'completed' | 'current' | 'upcoming';
+    stage4State: 'completed' | 'current' | 'upcoming' | 'revision';
+  } {
+    if (status === 'DRAFT' || status === 'ASSIGNED') {
+      return { stage1State: 'current', stage2State: 'upcoming', stage3State: 'upcoming', stage4State: 'upcoming' };
+    }
+    if (status === 'ACCEPTED' || status === 'IN_PROGRESS') {
+      return { stage1State: 'completed', stage2State: 'current', stage3State: 'upcoming', stage4State: 'upcoming' };
+    }
+    if (status === 'SUBMITTED' || status === 'RESUBMITTED' || status === 'UNDER_REVIEW') {
+      return { stage1State: 'completed', stage2State: 'completed', stage3State: 'current', stage4State: 'upcoming' };
+    }
+    if (status === 'REVISION_REQUIRED' || status === 'REDESIGN_REQUIRED') {
+      return { stage1State: 'completed', stage2State: 'completed', stage3State: 'completed', stage4State: 'revision' };
+    }
+    if (status === 'APPROVED' || status === 'PUBLISHED' || status === 'COMPLETED') {
+      return { stage1State: 'completed', stage2State: 'completed', stage3State: 'completed', stage4State: 'completed' };
+    }
+    return { stage1State: 'completed', stage2State: 'upcoming', stage3State: 'upcoming', stage4State: 'upcoming' };
+  }
+
+  private getCreativeStageSubtitle(status: string, stage2State: string): string {
+    if (status === 'IN_PROGRESS') return 'Active Work';
+    if (status === 'ACCEPTED') return 'Accepted';
+    if (stage2State === 'completed') return 'Canvas Complete';
+    return 'Pending Start';
+  }
+
+  private getFinalStageSubtitle(stage4State: string): string {
+    if (stage4State === 'completed') return 'Approved & Ready';
+    if (stage4State === 'revision') return 'Feedback Requested';
+    return 'Pending Review';
+  }
+
   getWorkflowSteps(t: Task | null) {
     if (!t) return [];
     const status = t.status;
     const versionCount = t.versions?.length || 0;
-
-    let stage1State: 'completed' | 'current' | 'upcoming' = 'completed';
-    let stage2State: 'completed' | 'current' | 'upcoming' = 'upcoming';
-    let stage3State: 'completed' | 'current' | 'upcoming' = 'upcoming';
-    let stage4State: 'completed' | 'current' | 'upcoming' | 'revision' = 'upcoming';
-
-    if (status === 'DRAFT' || status === 'ASSIGNED') {
-      stage1State = 'current';
-    } else if (status === 'ACCEPTED' || status === 'IN_PROGRESS') {
-      stage1State = 'completed';
-      stage2State = 'current';
-    } else if (status === 'SUBMITTED' || status === 'RESUBMITTED' || status === 'UNDER_REVIEW') {
-      stage1State = 'completed';
-      stage2State = 'completed';
-      stage3State = 'current';
-    } else if (status === 'REVISION_REQUIRED' || status === 'REDESIGN_REQUIRED') {
-      stage1State = 'completed';
-      stage2State = 'completed';
-      stage3State = 'completed';
-      stage4State = 'revision';
-    } else if (status === 'APPROVED' || status === 'PUBLISHED' || status === 'COMPLETED') {
-      stage1State = 'completed';
-      stage2State = 'completed';
-      stage3State = 'completed';
-      stage4State = 'completed';
-    }
+    const { stage1State, stage2State, stage3State, stage4State } = this.resolveWorkflowStages(status);
 
     return [
       {
@@ -615,7 +623,7 @@ export class TaskDetailComponent implements OnInit {
       {
         id: 2,
         title: 'Creative Started',
-        subtitle: status === 'IN_PROGRESS' ? 'Active Work' : status === 'ACCEPTED' ? 'Accepted' : stage2State === 'completed' ? 'Canvas Complete' : 'Pending Start',
+        subtitle: this.getCreativeStageSubtitle(status, stage2State),
         icon: 'palette',
         state: stage2State,
       },
@@ -629,7 +637,7 @@ export class TaskDetailComponent implements OnInit {
       {
         id: 4,
         title: stage4State === 'revision' ? 'Revision Needed' : 'Completed',
-        subtitle: stage4State === 'completed' ? 'Approved & Ready' : stage4State === 'revision' ? 'Feedback Requested' : 'Pending Review',
+        subtitle: this.getFinalStageSubtitle(stage4State),
         icon: stage4State === 'revision' ? 'rate_review' : 'verified',
         state: stage4State,
       },

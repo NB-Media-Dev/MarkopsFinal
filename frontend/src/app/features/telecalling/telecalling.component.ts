@@ -2,7 +2,7 @@ import { Component, inject, OnInit, OnDestroy, signal, computed, Input } from '@
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { LeadTelecallingService, LeadItem, CallActivityItem, isClientDuplicateCall } from '../../core/services/lead-telecalling.service';
+import { LeadTelecallingService, LeadItem, CallActivityItem, FollowUpItem, isClientDuplicateCall } from '../../core/services/lead-telecalling.service';
 import { UserManagementService } from '../../core/services/user-management.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CampaignService } from '../../core/services/campaign.service';
@@ -864,7 +864,53 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     return this.getLeadMetrics(lead).calls;
   });
 
-  getLeadMetrics(lead: LeadItem) {
+  private matchesLeadCallItem(c: CallActivityItem, lId: string, lNum: string, lPhone: string, lName: string): boolean {
+    const cLeadId = String(c.leadId || '').trim().toLowerCase();
+    const cNum = cLeadId.replace(/\D/g, '');
+    if ((cLeadId && lId && cLeadId === lId) || (cNum && lNum && cNum === lNum)) return true;
+
+    const cPhone = String(c.leadPhone || c.phone || '').replace(/\D/g, '');
+    if (lPhone && cPhone) {
+      if (lPhone === cPhone) return true;
+      if (lPhone.length >= 10 && cPhone.length >= 10 && lPhone.slice(-10) === cPhone.slice(-10)) return true;
+      if (lPhone.length >= 7 && (lPhone.endsWith(cPhone) || cPhone.endsWith(lPhone))) return true;
+    }
+    const cLeadName = String(c.leadName || '').trim().toLowerCase();
+    return Boolean(cLeadName && lName && lName.length >= 3 && (cLeadName === lName || cLeadName.includes(lName) || lName.includes(cLeadName)));
+  }
+
+  private matchesPendingFollowUp(f: FollowUpItem, lId: string, lPhone: string, lName: string): boolean {
+    const fLeadId = String(f.leadId || '').trim().toLowerCase();
+    const fPhone = String(f.leadPhone || '').replace(/\D/g, '');
+    const fLeadName = String(f.leadName || '').trim().toLowerCase();
+    const match = (fLeadId && lId && (fLeadId === lId || fLeadId.replace(/\D/g, '') === lId.replace(/\D/g, ''))) ||
+                  (lPhone && fPhone && lPhone.length >= 7 && (lPhone === fPhone || lPhone.endsWith(fPhone) || fPhone.endsWith(lPhone))) ||
+                  (!lPhone && !fPhone && fLeadName && lName && fLeadName === lName);
+    return Boolean(match && f.status === 'PENDING' && !!f.dueDate);
+  }
+
+  private parseFollowUpParts(rawDate: string, rawTime: string): { cleanDate: string; cleanTime: string } {
+    let cleanDate = rawDate;
+    let cleanTime = rawTime;
+    if (cleanDate.includes('T')) {
+      const parts = cleanDate.split('T');
+      cleanDate = parts[0];
+      if (!cleanTime && parts[1]) cleanTime = parts[1].slice(0, 5);
+    } else if (cleanDate.includes(' ')) {
+      const parts = cleanDate.split(/\s+/);
+      cleanDate = parts[0];
+      if (!cleanTime && parts[1]) cleanTime = parts[1].slice(0, 5);
+    }
+    return { cleanDate, cleanTime };
+  }
+
+  getLeadMetrics(lead: LeadItem): {
+    callsCount: number;
+    attended: number;
+    missed: number;
+    avgDuration: number;
+    calls: CallActivityItem[];
+  } {
     if (!lead) {
       return { callsCount: 0, attended: 0, missed: 0, avgDuration: 0, calls: [] };
     }
@@ -874,22 +920,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     const lPhone = String(lead.phone || '').replace(/\D/g, '');
     const lName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim().toLowerCase();
 
-    const rawCalls = allCalls.filter((c) => {
-      const cLeadId = String(c.leadId || '').trim().toLowerCase();
-      const cNum = cLeadId.replace(/\D/g, '');
-      const cPhone = String(c.leadPhone || c.phone || '').replace(/\D/g, '');
-      const cLeadName = String(c.leadName || '').trim().toLowerCase();
-
-      if (cLeadId && lId && cLeadId === lId) return true;
-      if (cNum && lNum && cNum === lNum) return true;
-      if (lPhone && cPhone) {
-        if (lPhone === cPhone) return true;
-        if (lPhone.length >= 10 && cPhone.length >= 10 && lPhone.slice(-10) === cPhone.slice(-10)) return true;
-        if (lPhone.length >= 7 && (lPhone.endsWith(cPhone) || cPhone.endsWith(lPhone))) return true;
-      }
-      if (cLeadName && lName && lName.length >= 3 && (cLeadName === lName || cLeadName.includes(lName) || lName.includes(cLeadName))) return true;
-      return false;
-    });
+    const rawCalls = allCalls.filter((c) => this.matchesLeadCallItem(c, lId, lNum, lPhone, lName));
 
     const leadCalls: CallActivityItem[] = [];
     for (const call of rawCalls) {
@@ -899,17 +930,17 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     }
     leadCalls.sort((a, b) => new Date(b.calledAt || 0).getTime() - new Date(a.calledAt || 0).getTime());
 
-    const attendedList = ['CONNECTED', 'INTERESTED', 'QUALIFIED', 'PAID', 'CONVERTED', 'NOT_INTERESTED', 'FOLLOW_UP', 'FOLLOW_UP_SCHEDULED', 'WRONG_NUMBER'];
-    const missedList = ['NO_ANSWER', 'BUSY', 'LINE_BUSY', 'MISSED', 'UNANSWERED'];
+    const attendedSet = new Set(['CONNECTED', 'INTERESTED', 'QUALIFIED', 'PAID', 'CONVERTED', 'NOT_INTERESTED', 'FOLLOW_UP', 'FOLLOW_UP_SCHEDULED', 'WRONG_NUMBER']);
+    const missedSet = new Set(['NO_ANSWER', 'BUSY', 'LINE_BUSY', 'MISSED', 'UNANSWERED']);
 
     const attended = leadCalls.filter((c) => {
       const out = String(c.outcome || '').toUpperCase().replace(/\s+/g, '_');
-      return attendedList.includes(out);
+      return attendedSet.has(out);
     }).length;
 
     const missed = leadCalls.filter((c) => {
       const out = String(c.outcome || '').toUpperCase().replace(/\s+/g, '_');
-      return missedList.includes(out);
+      return missedSet.has(out);
     }).length;
 
     const totalDuration = leadCalls.reduce((acc, c) => acc + (Number(c.durationSeconds) || 0), 0);
@@ -960,37 +991,33 @@ export class TelecallingComponent implements OnInit, OnDestroy {
 
   getLeadCurrentStatus(lead: LeadItem): string {
     if (!lead) return 'ASSIGNED';
+    const statusMap: Record<string, string> = {
+      BUSY: 'LINE_BUSY',
+      LINE_BUSY: 'LINE_BUSY',
+      NO_ANSWER: 'NO_ANSWER',
+      WRONG_NUMBER: 'WRONG_NUMBER',
+      FOLLOW_UP: 'FOLLOW_UP',
+      FOLLOW_UP_SCHEDULED: 'FOLLOW_UP',
+      INTERESTED: 'INTERESTED',
+      NOT_INTERESTED: 'NOT_INTERESTED',
+      QUALIFIED: 'PAID',
+      CONVERTED: 'PAID',
+      PAID: 'PAID',
+      CONNECTED: 'CONNECTED',
+    };
+
     const metrics = this.getLeadMetrics(lead);
     if (metrics.calls && metrics.calls.length > 0) {
       const latestCall = metrics.calls[0];
       const rawOut = String(latestCall.outcome || '').toUpperCase().replace(/\s+/g, '_');
-      if (rawOut === 'BUSY' || rawOut === 'LINE_BUSY') return 'LINE_BUSY';
-      if (rawOut === 'NO_ANSWER') return 'NO_ANSWER';
-      if (rawOut === 'WRONG_NUMBER') return 'WRONG_NUMBER';
-      if (rawOut === 'FOLLOW_UP' || rawOut === 'FOLLOW_UP_SCHEDULED') return 'FOLLOW_UP';
-      if (rawOut === 'INTERESTED') return 'INTERESTED';
-      if (rawOut === 'NOT_INTERESTED') return 'NOT_INTERESTED';
-      if (rawOut === 'QUALIFIED' || rawOut === 'CONVERTED' || rawOut === 'PAID') return 'PAID';
       if (rawOut === 'CONNECTED') {
-        if (latestCall.followUpDate || this.hasScheduledCallback(lead)) {
-          return 'FOLLOW_UP';
-        }
-        return 'CONNECTED';
+        return (latestCall.followUpDate || this.hasScheduledCallback(lead)) ? 'FOLLOW_UP' : 'CONNECTED';
       }
-      return rawOut;
+      return statusMap[rawOut] || rawOut;
     }
 
     const rawSt = String(lead.status || '').toUpperCase().replace(/\s+/g, '_');
-    if (rawSt === 'QUALIFIED' || rawSt === 'CONVERTED' || rawSt === 'PAID') return 'PAID';
-    if (rawSt === 'INTERESTED') return 'INTERESTED';
-    if (rawSt === 'NOT_INTERESTED') return 'NOT_INTERESTED';
-    if (rawSt === 'BUSY' || rawSt === 'LINE_BUSY') return 'LINE_BUSY';
-    if (rawSt === 'NO_ANSWER') return 'NO_ANSWER';
-    if (rawSt === 'WRONG_NUMBER') return 'WRONG_NUMBER';
-    if (rawSt === 'FOLLOW_UP' || rawSt === 'FOLLOW_UP_SCHEDULED') return 'FOLLOW_UP';
-    if (rawSt === 'CONNECTED') return 'CONNECTED';
-
-    return lead.status || 'ASSIGNED';
+    return statusMap[rawSt] || lead.status || 'ASSIGNED';
   }
 
   isFollowUpDue(lead: LeadItem): boolean {
@@ -1019,15 +1046,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     const lName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim().toLowerCase();
 
     const allFollowUps = this.leadService.followUps();
-    const pendingFollowUp = allFollowUps.find((f) => {
-      const fLeadId = String(f.leadId || '').trim().toLowerCase();
-      const fPhone = String(f.leadPhone || '').replace(/\D/g, '');
-      const fLeadName = String(f.leadName || '').trim().toLowerCase();
-      const match = (fLeadId && lId && (fLeadId === lId || fLeadId.replace(/\D/g, '') === lId.replace(/\D/g, ''))) ||
-                    (lPhone && fPhone && lPhone.length >= 7 && (lPhone === fPhone || lPhone.endsWith(fPhone) || fPhone.endsWith(lPhone))) ||
-                    (!lPhone && !fPhone && fLeadName && lName && fLeadName === lName);
-      return match && f.status === 'PENDING' && !!f.dueDate;
-    });
+    const pendingFollowUp = allFollowUps.find((f) => this.matchesPendingFollowUp(f, lId, lPhone, lName));
 
     if (pendingFollowUp && pendingFollowUp.dueDate) {
       const dt = parseFollowUpDateTime(pendingFollowUp.dueDate, pendingFollowUp.dueTime);
@@ -1058,15 +1077,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     const lName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim().toLowerCase();
 
     const allFollowUps = this.leadService.followUps();
-    return allFollowUps.some((f) => {
-      const fLeadId = String(f.leadId || '').trim().toLowerCase();
-      const fPhone = String(f.leadPhone || '').replace(/\D/g, '');
-      const fLeadName = String(f.leadName || '').trim().toLowerCase();
-      const match = (fLeadId && lId && (fLeadId === lId || fLeadId.replace(/\D/g, '') === lId.replace(/\D/g, ''))) ||
-                    (lPhone && fPhone && lPhone.length >= 7 && (lPhone === fPhone || lPhone.endsWith(fPhone) || fPhone.endsWith(lPhone))) ||
-                    (!lPhone && !fPhone && fLeadName && lName && fLeadName === lName);
-      return match && f.status === 'PENDING' && !!f.dueDate;
-    });
+    return allFollowUps.some((f) => this.matchesPendingFollowUp(f, lId, lPhone, lName));
   }
 
   getFollowUpTimeLabel(lead: LeadItem): string | null {
@@ -1091,17 +1102,9 @@ export class TelecallingComponent implements OnInit, OnDestroy {
       const lName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim().toLowerCase();
 
       const allFollowUps = this.leadService.followUps();
-      const f = allFollowUps.find((item) => {
-        const fLeadId = String(item.leadId || '').trim().toLowerCase();
-        const fPhone = String(item.leadPhone || '').replace(/\D/g, '');
-        const fLeadName = String(item.leadName || '').trim().toLowerCase();
-        const match = (fLeadId && lId && (fLeadId === lId || fLeadId.replace(/\D/g, '') === lId.replace(/\D/g, ''))) ||
-                      (lPhone && fPhone && lPhone.length >= 7 && (lPhone === fPhone || lPhone.endsWith(fPhone) || fPhone.endsWith(lPhone))) ||
-                      (!lPhone && !fPhone && fLeadName && lName && fLeadName === lName);
-        return match && !!item.dueDate && item.status === 'PENDING';
-      });
+      const f = allFollowUps.find((item) => this.matchesPendingFollowUp(item, lId, lPhone, lName));
 
-      if (f && f.dueDate) {
+      if (f?.dueDate) {
         fDate = f.dueDate;
         fTime = f.dueTime || '';
       }
@@ -1109,17 +1112,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
 
     if (!fDate) return null;
 
-    let cleanDate = fDate;
-    if (cleanDate.includes('T')) {
-      const parts = cleanDate.split('T');
-      cleanDate = parts[0];
-      if (!fTime && parts[1]) fTime = parts[1].slice(0, 5);
-    } else if (cleanDate.includes(' ')) {
-      const parts = cleanDate.split(/\s+/);
-      cleanDate = parts[0];
-      if (!fTime && parts[1]) fTime = parts[1].slice(0, 5);
-    }
-
+    const { cleanDate, cleanTime } = this.parseFollowUpParts(fDate, fTime);
     const todayStr = new Date().toISOString().split('T')[0];
     const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
@@ -1130,7 +1123,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
       dayLabel = 'Tomorrow';
     }
 
-    return fTime ? `${dayLabel} @ ${fTime}` : dayLabel;
+    return cleanTime ? `${dayLabel} @ ${cleanTime}` : dayLabel;
   }
 
   getLeadHistoryCalls(lead: LeadItem | null): CallActivityItem[] {

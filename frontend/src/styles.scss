@@ -202,7 +202,7 @@ html, body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1.5rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
   flex-wrap: wrap;
 
   .header-titles-block {
@@ -212,7 +212,7 @@ html, body {
 
     .page-main-orange-title {
       font-family: var(--mo-font-sans);
-      font-size: 1.5rem;
+      font-size: 1.625rem;
       font-weight: 800;
       color: #F59E0B;
       margin: 0;
@@ -897,7 +897,7 @@ label {
     font-size: 1.35rem;
     font-weight: 700;
     color: var(--mo-text-main);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
   }
 
   p {
@@ -1522,7 +1522,7 @@ html, body {
 
 .content-viewport {
   width: 100%;
-  //max-width: 1520px;
+
   padding: auto;
   margin: 0 auto;
   box-sizing: border-box;
@@ -2105,73 +2105,6 @@ html, body {
     table-layout: auto;
   }
 }
-
-.page-clean-branding-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1.5rem;
-  margin-bottom: 0.75rem;
-  flex-wrap: wrap;
-
-  .header-titles-block {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-
-    .page-main-orange-title {
-      font-family: var(--mo-font-sans);
-      font-size: 1.625rem;
-      font-weight: 800;
-      color: #F59E0B;
-      margin: 0;
-      letter-spacing: -0.01em;
-      line-height: 1.2;
-    }
-
-    .page-breadcrumb-subrow {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-family: var(--mo-font-sans);
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: #1E293B;
-      flex-wrap: wrap;
-
-      .bc-link,
-      .bc-link-btn {
-        color: #1E293B;
-        text-decoration: none;
-        background: transparent;
-        border: none;
-        padding: 0;
-        font: inherit;
-        font-weight: 600;
-        cursor: pointer;
-        transition: color 0.15s ease;
-
-        &:hover {
-          color: #F59E0B;
-          text-decoration: underline;
-        }
-      }
-
-      .bc-sep {
-        color: #1E293B;
-        font-size: 0.82rem;
-        user-select: none;
-      }
-
-      .bc-current {
-        color: #1E293B;
-        font-weight: 600;
-      }
-    }
-  }
-}
-
-
 
 .sr-only {
   position: absolute;

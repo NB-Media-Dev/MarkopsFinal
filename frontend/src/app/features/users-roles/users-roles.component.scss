@@ -39,7 +39,7 @@
       font-family: var(--mo-font-sans);
       font-size: 1.5rem;
       font-weight: 800;
-      color: #FF9F1C;
+      color: #C2410C;
       margin: 0;
       letter-spacing: -0.01em;
       line-height: 1.2;
@@ -72,7 +72,7 @@
         transition: color 0.15s ease;
 
         &:hover {
-          color: #FF9F1C;
+          color: #C2410C;
           text-decoration: underline;
         }
       }
@@ -122,11 +122,11 @@
         &:hover {
           border-color: #FFB35B;
           background: #FFF5E6;
-          color: #FF9F1C;
+          color: #C2410C;
           box-shadow: 0 2px 8px rgba(255, 159, 28, 0.2);
 
           .arrow-char {
-            color: #FF9F1C;
+            color: #C2410C;
             transform: translateX(-2px);
           }
         }
@@ -347,7 +347,7 @@
 
     &.pill-amber {
       background: #FFF5E6;
-      color: #E28704;
+      color: #C2410C;
     }
   }
 
@@ -428,7 +428,7 @@
 
       &.pill-amber {
         background: #FFF5E6;
-        color: #E28704;
+        color: #C2410C;
         border: 1px solid rgba(255, 159, 28, 0.25);
       }
     }
@@ -475,7 +475,7 @@
       box-shadow: 0 0 0 3px rgba(255, 159, 28, 0.15);
 
       .search-icon {
-        color: #FF9F1C;
+        color: #C2410C;
       }
     }
 
@@ -546,13 +546,13 @@
       &:hover {
         background: #FFF5E6;
         border-color: rgba(255, 159, 28, 0.4);
-        color: #E28704;
+        color: #C2410C;
       }
 
       &.active {
-        background: #FF9F1C !important;
+        background: #C2410C !important;
         color: #FFFFFF !important;
-        border-color: #FF9F1C !important;
+        border-color: #C2410C !important;
         box-shadow: 0 2px 8px rgba(255, 159, 28, 0.35);
 
         .pill-dot {
@@ -587,7 +587,7 @@
         height: 36px;
         border-radius: 8px;
         background: #FFF5E6;
-        color: #FF9F1C;
+        color: #C2410C;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -631,10 +631,10 @@
 
       tr, th {
         background-color: #FFF5E6 !important;
-        color: #E28704 !important;
+        color: #C2410C !important;
         font-weight: 700 !important;
         font-size: 0.725rem !important;
-        letter-spacing: 0.05em !important;
+        letter-spacing: 0.05em;
         text-transform: uppercase !important;
         padding: 0.75rem 1.25rem !important;
         border-bottom: 1px solid rgba(255, 159, 28, 0.2) !important;
@@ -840,7 +840,7 @@
       &:hover {
         background: #FFF5E6;
         border-color: rgba(255, 159, 28, 0.4);
-        color: #E28704;
+        color: #C2410C;
         transform: translateY(-1px);
         box-shadow: 0 2px 6px rgba(255, 159, 28, 0.2);
       }
@@ -880,7 +880,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #FF9F1C;
+    color: #C2410C;
 
     .material-symbols-outlined {
       font-size: 26px;
@@ -1170,7 +1170,7 @@
 
       &:hover .select-dropdown-icon,
       &:focus-within .select-dropdown-icon {
-        color: #FF9F1C;
+        color: #C2410C;
       }
     }
 

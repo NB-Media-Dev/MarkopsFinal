@@ -212,13 +212,13 @@
       transition: all 0.2s ease;
 
       &:hover:not(:disabled) {
-        border-color: #F59E0B;
+        border-color: #B45309;
         color: #F59E0B;
       }
 
       &.active {
-        background: #F59E0B;
-        border-color: #F59E0B;
+        background: #B45309;
+        border-color: #B45309;
         color: #FFFFFF;
       }
 

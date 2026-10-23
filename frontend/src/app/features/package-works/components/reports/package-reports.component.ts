@@ -357,17 +357,104 @@ export class PackageReportsComponent implements OnInit, OnChanges {
     return tasks;
   }
 
-  getTelecallerReportsForUser(user: UserPerformanceRecord): TelecallerCampaignReport[] {
-    if (!user || user.role !== 'TELECALLER') return [];
-    const tasks = this.getUserTasks(user);
-    const pkgDisplayName = this.activePackageDisplayName() || this.activePackageMeta?.name || 'current affairs oct';
-    const targetInfo = this.targetService.getTargetForTelecaller(user.userId || '5');
-    const baseDailyTarget = targetInfo?.dailyCallsTarget || 50;
+  private getReportLeadKey(lead: any): string {
+    const leadId = String(lead.id || lead.leadId || '').trim().toLowerCase();
+    if (leadId) return `id_${leadId}`;
+    const leadPhone = String(lead.phone || lead.leadPhone || '').replace(/\D/g, '');
+    if (leadPhone) return `p_${leadPhone}`;
+    return `ref_${lead.title || lead.name || ''}`;
+  }
 
-    if (tasks.length === 0 && (!user.tasks || user.tasks.length === 0)) {
-      return [];
+  private getReportLeadOutcome(hasValidOutcome: boolean, rawOutcome: string, hasValidStatus: boolean, rawStatus: string): string {
+    if (hasValidOutcome) return rawOutcome.toUpperCase();
+    if (hasValidStatus) return rawStatus.toUpperCase();
+    return '';
+  }
+
+  private aggregateGroupLeadStats(groupLeads: any[]): { totalCalls: number; interested: number; paid: number } {
+    const calledLeadIds = new Set<string>();
+    const interestedLeadIds = new Set<string>();
+    const paidLeadIds = new Set<string>();
+    const uncalledStatuses = new Set(['NEW', 'UNASSIGNED', 'ASSIGNED', '—', '', 'NULL', 'UNDEFINED']);
+
+    for (const lead of groupLeads) {
+      const leadKey = this.getReportLeadKey(lead);
+      const rawOutcome = String(lead.callOutcome || '').toUpperCase().trim();
+      const rawStatus = String(lead.status || '').toUpperCase().trim();
+
+      const hasValidOutcome = Boolean(rawOutcome && !uncalledStatuses.has(rawOutcome));
+      const hasValidStatus = Boolean(rawStatus && !uncalledStatuses.has(rawStatus));
+      const hasValidCalls = Array.isArray(lead.calls) && lead.calls.length > 0;
+      const hasValidAttempts = typeof lead.callAttempts === 'number' && lead.callAttempts > 0;
+      const hasValidCallDate = Boolean(lead.calledAt) || Boolean(lead.lastCalledAt);
+
+      const hasBeenCalled = hasValidCalls || hasValidAttempts || hasValidCallDate || hasValidOutcome || hasValidStatus;
+      if (hasBeenCalled && leadKey) {
+        calledLeadIds.add(leadKey);
+      }
+
+      const outcome = this.getReportLeadOutcome(hasValidOutcome, rawOutcome, hasValidStatus, rawStatus);
+      if (['PAID', 'CONVERTED'].includes(outcome) || lead.isPaid || lead.paidAmount > 0) {
+        if (leadKey) {
+          paidLeadIds.add(leadKey);
+          interestedLeadIds.add(leadKey);
+        }
+      } else if (['INTERESTED', 'QUALIFIED', 'HOT'].includes(outcome)) {
+        if (leadKey) {
+          interestedLeadIds.add(leadKey);
+        }
+      }
     }
 
+    return {
+      totalCalls: calledLeadIds.size,
+      interested: interestedLeadIds.size,
+      paid: paidLeadIds.size,
+    };
+  }
+
+  private formatReportDate(dateRaw: string): string {
+    if (dateRaw && dateRaw.includes('-')) {
+      const parts = dateRaw.split('-');
+      if (parts.length === 3) {
+        const dObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        if (!Number.isNaN(dObj.getTime())) {
+          return dObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+      }
+    }
+    return dateRaw;
+  }
+
+  private buildReportRow(key: string, groupLeads: any[], sNo: number, baseDailyTarget: number): TelecallerCampaignReport {
+    const [cName, aName, dateRaw] = key.split('___');
+    const totalLeads = groupLeads.length;
+    const { totalCalls, interested, paid } = this.aggregateGroupLeadStats(groupLeads);
+
+    const avgCalls = totalLeads > 0 ? Number((totalCalls / totalLeads).toFixed(1)) : 0;
+    const rowTarget = baseDailyTarget > 0 ? baseDailyTarget : 50;
+    const ratioVal = rowTarget > 0 ? (totalCalls / rowTarget) * 100 : 0;
+    const formattedRatio = ratioVal % 1 === 0 ? `${ratioVal}%` : `${ratioVal.toFixed(1)}%`;
+    const displayDate = this.formatReportDate(dateRaw);
+
+    return {
+      sNo,
+      campaignName: cName,
+      adName: aName,
+      assignedDate: displayDate,
+      assignedDateRaw: dateRaw,
+      totalCountLeads: totalLeads,
+      totalCalls,
+      averageCalls: avgCalls,
+      interested,
+      targets: rowTarget,
+      callerRatio: formattedRatio,
+      paid,
+      leads: groupLeads,
+    };
+  }
+
+  private buildTelecallerCampaignReportsFromTasks(tasks: any[], pkgDisplayName: string, baseDailyTarget: number): TelecallerCampaignReport[] {
     const groups = new Map<string, any[]>();
     for (const t of tasks) {
       const campName = t.campaignName && t.campaignName !== '—' ? t.campaignName : pkgDisplayName;
@@ -381,94 +468,28 @@ export class PackageReportsComponent implements OnInit, OnChanges {
       groups.get(groupKey)!.push(t);
     }
 
-    const reports: TelecallerCampaignReport[] = [];
-    let sNo = 1;
     const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
       const dateA = a.split('___')[2] || '';
       const dateB = b.split('___')[2] || '';
       return dateB.localeCompare(dateA);
     });
 
-    for (const key of sortedKeys) {
-      const [cName, aName, dateRaw] = key.split('___');
-      const groupLeads = groups.get(key) || [];
-      const totalLeads = groupLeads.length;
-      const calledLeadIds = new Set<string>();
-      const interestedLeadIds = new Set<string>();
-      const paidLeadIds = new Set<string>();
+    let sNo = 1;
+    return sortedKeys.map((key) => this.buildReportRow(key, groups.get(key) || [], sNo++, baseDailyTarget));
+  }
 
-      for (const lead of groupLeads) {
-        const leadId = String(lead.id || lead.leadId || '').trim().toLowerCase();
-        const leadPhone = String(lead.phone || lead.leadPhone || '').replace(/\D/g, '');
-        const leadKey = leadId ? `id_${leadId}` : (leadPhone ? `p_${leadPhone}` : `ref_${lead.title || lead.name || ''}`);
+  getTelecallerReportsForUser(user: UserPerformanceRecord): TelecallerCampaignReport[] {
+    if (!user || user.role !== 'TELECALLER') return [];
+    const tasks = this.getUserTasks(user);
+    const pkgDisplayName = this.activePackageDisplayName() || this.activePackageMeta?.name || 'current affairs oct';
+    const targetInfo = this.targetService.getTargetForTelecaller(user.userId || '5');
+    const baseDailyTarget = targetInfo?.dailyCallsTarget || 50;
 
-        const uncalledStatuses = new Set(['NEW', 'UNASSIGNED', 'ASSIGNED', '—', '', 'NULL', 'UNDEFINED']);
-        const rawOutcome = String(lead.callOutcome || '').toUpperCase().trim();
-        const rawStatus = String(lead.status || '').toUpperCase().trim();
-
-        const hasValidOutcome = Boolean(rawOutcome && !uncalledStatuses.has(rawOutcome));
-        const hasValidStatus = Boolean(rawStatus && !uncalledStatuses.has(rawStatus));
-        const hasValidCalls = Array.isArray(lead.calls) && lead.calls.length > 0;
-        const hasValidAttempts = typeof lead.callAttempts === 'number' && lead.callAttempts > 0;
-        const hasValidCallDate = Boolean(lead.calledAt) || Boolean(lead.lastCalledAt);
-
-        const hasBeenCalled = hasValidCalls || hasValidAttempts || hasValidCallDate || hasValidOutcome || hasValidStatus;
-
-        if (hasBeenCalled && leadKey) {
-          calledLeadIds.add(leadKey);
-        }
-
-        const outcome = (hasValidOutcome ? rawOutcome : (hasValidStatus ? rawStatus : '')).toUpperCase();
-        if (['PAID', 'CONVERTED'].includes(outcome) || lead.isPaid || lead.paidAmount > 0) {
-          if (leadKey) {
-            paidLeadIds.add(leadKey);
-            interestedLeadIds.add(leadKey);
-          }
-        } else if (['INTERESTED', 'QUALIFIED', 'HOT'].includes(outcome)) {
-          if (leadKey) {
-            interestedLeadIds.add(leadKey);
-          }
-        }
-      }
-
-      const totalCalls = calledLeadIds.size;
-      const interested = interestedLeadIds.size;
-      const paid = paidLeadIds.size;
-
-      const avgCalls = totalLeads > 0 ? Number((totalCalls / totalLeads).toFixed(1)) : 0;
-      const rowTarget = baseDailyTarget > 0 ? baseDailyTarget : 50;
-      const ratioVal = rowTarget > 0 ? (totalCalls / rowTarget) * 100 : 0;
-      const formattedRatio = ratioVal % 1 === 0 ? `${ratioVal}%` : `${ratioVal.toFixed(1)}%`;
-
-      let displayDate = dateRaw;
-      if (dateRaw && dateRaw.includes('-')) {
-        const parts = dateRaw.split('-');
-        if (parts.length === 3) {
-          const dObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-          if (!Number.isNaN(dObj.getTime())) {
-            displayDate = dObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-          }
-        }
-      }
-
-      reports.push({
-        sNo: sNo++,
-        campaignName: cName,
-        adName: aName,
-        assignedDate: displayDate,
-        assignedDateRaw: dateRaw,
-        totalCountLeads: totalLeads,
-        totalCalls,
-        averageCalls: avgCalls,
-        interested,
-        targets: rowTarget,
-        callerRatio: formattedRatio,
-        paid,
-        leads: groupLeads,
-      });
+    if (tasks.length === 0 && (!user.tasks || user.tasks.length === 0)) {
+      return [];
     }
 
-    return reports;
+    return this.buildTelecallerCampaignReportsFromTasks(tasks, pkgDisplayName, baseDailyTarget);
   }
 
   formatDisplayDate(d: any): string {
@@ -822,109 +843,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
       return [];
     }
 
-    const groups = new Map<string, any[]>();
-    for (const t of tasks) {
-      const campName = t.campaignName && t.campaignName !== '—' ? t.campaignName : pkgDisplayName;
-      const adName = t.adName && t.adName !== '—' ? t.adName : (t.title || 'Lead');
-      const rawDate = this.getTaskAssignedLocalDate(t) || this.toLocalDateString(t.createdAt || t.assignedDate) || this.todayDateString;
-      const groupKey = `${campName}___${adName}___${rawDate}`;
-
-      if (!groups.has(groupKey)) {
-        groups.set(groupKey, []);
-      }
-      groups.get(groupKey)!.push(t);
-    }
-
-    const reports: TelecallerCampaignReport[] = [];
-    let sNo = 1;
-
-    const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
-      const dateA = a.split('___')[2] || '';
-      const dateB = b.split('___')[2] || '';
-      return dateB.localeCompare(dateA);
-    });
-
-    for (const key of sortedKeys) {
-      const [cName, aName, dateRaw] = key.split('___');
-      const groupLeads = groups.get(key) || [];
-      const totalLeads = groupLeads.length;
-
-      const calledLeadIds = new Set<string>();
-      const interestedLeadIds = new Set<string>();
-      const paidLeadIds = new Set<string>();
-
-      for (const lead of groupLeads) {
-        const leadId = String(lead.id || lead.leadId || '').trim().toLowerCase();
-        const leadPhone = String(lead.phone || lead.leadPhone || '').replace(/\D/g, '');
-        const leadKey = leadId ? `id_${leadId}` : (leadPhone ? `p_${leadPhone}` : `ref_${lead.title || lead.name || ''}`);
-
-        const uncalledStatuses = new Set(['NEW', 'UNASSIGNED', 'ASSIGNED', '—', '', 'NULL', 'UNDEFINED']);
-        const rawOutcome = String(lead.callOutcome || '').toUpperCase().trim();
-        const rawStatus = String(lead.status || '').toUpperCase().trim();
-
-        const hasValidOutcome = Boolean(rawOutcome && !uncalledStatuses.has(rawOutcome));
-        const hasValidStatus = Boolean(rawStatus && !uncalledStatuses.has(rawStatus));
-        const hasValidCalls = Array.isArray(lead.calls) && lead.calls.length > 0;
-        const hasValidAttempts = typeof lead.callAttempts === 'number' && lead.callAttempts > 0;
-        const hasValidCallDate = Boolean(lead.calledAt) || Boolean(lead.lastCalledAt);
-
-        const hasBeenCalled = hasValidCalls || hasValidAttempts || hasValidCallDate || hasValidOutcome || hasValidStatus;
-
-        if (hasBeenCalled && leadKey) {
-          calledLeadIds.add(leadKey);
-        }
-
-        const outcome = (hasValidOutcome ? rawOutcome : (hasValidStatus ? rawStatus : '')).toUpperCase();
-        if (['PAID', 'CONVERTED'].includes(outcome) || lead.isPaid || lead.paidAmount > 0) {
-          if (leadKey) {
-            paidLeadIds.add(leadKey);
-            interestedLeadIds.add(leadKey);
-          }
-        } else if (['INTERESTED', 'QUALIFIED', 'HOT'].includes(outcome)) {
-          if (leadKey) {
-            interestedLeadIds.add(leadKey);
-          }
-        }
-      }
-
-      const totalCalls = calledLeadIds.size;
-      const interested = interestedLeadIds.size;
-      const paid = paidLeadIds.size;
-
-      const avgCalls = totalLeads > 0 ? Number((totalCalls / totalLeads).toFixed(1)) : 0;
-      const rowTarget = baseDailyTarget > 0 ? baseDailyTarget : 50;
-      const ratioVal = rowTarget > 0 ? (totalCalls / rowTarget) * 100 : 0;
-      const formattedRatio = ratioVal % 1 === 0 ? `${ratioVal}%` : `${ratioVal.toFixed(1)}%`;
-
-      let displayDate = dateRaw;
-      if (dateRaw && dateRaw.includes('-')) {
-        const parts = dateRaw.split('-');
-        if (parts.length === 3) {
-          const dObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-          if (!Number.isNaN(dObj.getTime())) {
-            displayDate = dObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-          }
-        }
-      }
-
-      reports.push({
-        sNo: sNo++,
-        campaignName: cName,
-        adName: aName,
-        assignedDate: displayDate,
-        assignedDateRaw: dateRaw,
-        totalCountLeads: totalLeads,
-        totalCalls,
-        averageCalls: avgCalls,
-        interested,
-        targets: rowTarget,
-        callerRatio: formattedRatio,
-        paid,
-        leads: groupLeads,
-      });
-    }
-
-    return reports;
+    return this.buildTelecallerCampaignReportsFromTasks(tasks, pkgDisplayName, baseDailyTarget);
   }
 
   get paginatedCampaignReports(): TelecallerCampaignReport[] {

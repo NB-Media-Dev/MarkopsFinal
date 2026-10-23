@@ -1128,147 +1128,7 @@ export class PackageWorksComponent implements OnInit {
         const pkgDisplayName = ws ? ws.name : pkgMeta.name;
 
         const userLeadRecords = userLeads.map((l) => {
-          const lId = String(l.id).trim();
-          const lPhone = String(l.phone || '').replace(/\D/g, '');
-          const lNameLower = `${l.firstName || ''} ${l.lastName || ''}`.trim().toLowerCase();
-
-          const callsForLead = allCalls.filter((c) => {
-            const cLeadId = String(c.leadId || (c as any).lead_id || '').trim().toLowerCase();
-            const cPhone = String(c.leadPhone || (c as any).lead_phone || (c as any).phone || '').replace(/\D/g, '');
-            const cLeadName = String(c.leadName || (c as any).lead_name || '').trim().toLowerCase();
-            if (cLeadId && lId && cLeadId === lId.toLowerCase()) return true;
-            if (lPhone && cPhone && lPhone === cPhone) return true;
-            if (cLeadName && lNameLower && cLeadName === lNameLower && lNameLower !== 'lead' && lNameLower !== 'lead customer' && lNameLower.length > 3) {
-              return true;
-            }
-            return false;
-          });
-
-          const sortedCalls = [...callsForLead].sort(
-            (a, b) => new Date(b.calledAt || (b as any).callDate || (b as any).createdAt || 0).getTime() - new Date(a.calledAt || (a as any).callDate || (a as any).createdAt || 0).getTime()
-          );
-          const latestCall = sortedCalls[0] || null;
-
-          let durationText = '—';
-          if (latestCall && typeof latestCall.durationSeconds === 'number' && latestCall.durationSeconds > 0) {
-            const mins = Math.floor(latestCall.durationSeconds / 60);
-            const secs = latestCall.durationSeconds % 60;
-            durationText = `${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
-          } else if (latestCall && (latestCall as any).duration) {
-            durationText = String((latestCall as any).duration);
-          }
-
-          const rawPhone = String(l.phone || (l as any).phoneNumber || (l as any).mobile || (l as any).contact || '').trim();
-          const cleanPhone = (rawPhone && !rawPhone.includes('@') && rawPhone !== '—')
-            ? rawPhone
-            : (String((l as any).mobile || '').trim() && !String((l as any).mobile).includes('@')
-                ? String((l as any).mobile).trim()
-                : '—');
-
-          const callAttempts = sortedCalls.length;
-          const callAttemptsText = callAttempts === 0 ? '0 Attempts' : (callAttempts === 1 ? '1st Call' : `${callAttempts} Calls`);
-          const rawFullName = `${l.firstName || ''} ${l.lastName || ''}`.trim();
-          const leadFullName = (rawFullName && !rawFullName.includes('@'))
-            ? rawFullName
-            : (cleanPhone !== '—' ? cleanPhone : 'Lead #' + String(l.id).slice(-4));
-
-          const resolvedLead = resolveTaskProductAndPackage({
-            packageName: (l as any).packageName || (l as any).package || '',
-            campaignName: l.campaignName || '',
-            title: l.campaignName || l.source || '',
-            productId: (l as any).productId || (l as any).product_id || '',
-            productName: (l as any).productName || (l as any).product || '',
-          }, allPkgs);
-
-          const finalProdName = resolvedLead.productName || (ws ? prodName : pkgMeta.name);
-          const finalPkgName = resolvedLead.packageName || (ws ? pkgDisplayName : pkgMeta.name);
-
-          const resolvedAdName = (() => {
-            const direct = (l as any).adName || (l as any).ad_name || (l as any).ad;
-            if (direct && direct !== '—' && String(direct).trim()) return String(direct).trim();
-            const adId = String((l as any).adId || (l as any).ad_id || '').trim().toLowerCase();
-            if (adId) {
-              const matchedAd = this.campaignService.ads().find((a) => String(a.id).toLowerCase() === adId || String(a.platformAdId || '').toLowerCase() === adId);
-              if (matchedAd && matchedAd.name) return matchedAd.name;
-            }
-            const cmpId = String(l.campaignId || (l as any).campaign_id || '').toLowerCase().trim();
-            if (cmpId) {
-              const foundByCmpId = this.campaignService.ads().find((a) => String(a.campaignId || '').toLowerCase().trim() === cmpId);
-              if (foundByCmpId && foundByCmpId.name) return foundByCmpId.name;
-            }
-            const cmpName = String(l.campaignName || '').toLowerCase().trim();
-            if (cmpName) {
-              const foundByCmp = this.campaignService.ads().find((a) => a.campaignName && (a.campaignName.toLowerCase().trim() === cmpName || cmpName.includes(a.campaignName.toLowerCase().trim()) || a.campaignName.toLowerCase().trim().includes(cmpName)));
-              if (foundByCmp && foundByCmp.name) return foundByCmp.name;
-            }
-            const allAds = this.campaignService.ads();
-            if (allAds.length > 0 && cmpName && cmpName !== '—') {
-              const matchByKeyword = allAds.find((a) => cmpName.split(' ').some((word) => word.length > 3 && a.name.toLowerCase().includes(word)));
-              if (matchByKeyword && matchByKeyword.name) return matchByKeyword.name;
-            }
-            if ((l as any).ad_title && String((l as any).ad_title).trim()) return String((l as any).ad_title).trim();
-            if ((l as any).adTitle && String((l as any).adTitle).trim()) return String((l as any).adTitle).trim();
-            return '—';
-          })();
-
-          const resolvedRemarks = (() => {
-            if (latestCall?.remarks && latestCall.remarks !== '—' && String(latestCall.remarks).trim()) {
-              return String(latestCall.remarks).trim();
-            }
-            if ((l as any).remarks && (l as any).remarks !== '—' && String((l as any).remarks).trim()) {
-              return String((l as any).remarks).trim();
-            }
-            if ((l as any).notes && (l as any).notes !== '—' && String((l as any).notes).trim()) {
-              return String((l as any).notes).trim();
-            }
-            for (const callItem of sortedCalls) {
-              if (callItem.remarks && callItem.remarks !== '—' && String(callItem.remarks).trim()) {
-                return String(callItem.remarks).trim();
-              }
-            }
-            if (latestCall?.nextAction && latestCall.nextAction !== '—' && String(latestCall.nextAction).trim()) {
-              return String(latestCall.nextAction).trim();
-            }
-            return '—';
-          })();
-
-          const uncalledStatuses = new Set(['NEW', 'UNASSIGNED', 'ASSIGNED', '—', '']);
-          const rawLeadStatus = String(l.status || 'ASSIGNED').toUpperCase().trim();
-          const isStatusUpdated = Boolean(rawLeadStatus && !uncalledStatuses.has(rawLeadStatus));
-
-          const currentOutcome = latestCall?.outcome
-            ? String(latestCall.outcome).toUpperCase().trim()
-            : (isStatusUpdated ? rawLeadStatus : '');
-
-          const finalStatus = latestCall?.outcome
-            ? String(latestCall.outcome).toUpperCase().trim()
-            : rawLeadStatus;
-
-          return {
-            id: l.id,
-            leadId: l.id,
-            title: leadFullName,
-            leadName: leadFullName,
-            leadPhone: cleanPhone,
-            source: l.source || l.campaignName || '—',
-            campaignName: l.campaignName || l.source || '—',
-            adName: resolvedAdName,
-            adId: (l as any).adId || (l as any).ad_id || '',
-            productName: finalProdName,
-            packageName: finalPkgName,
-            createdAt: l.createdAt,
-            assignedDate: l.createdAt,
-            calledAt: latestCall ? (latestCall.calledAt || (latestCall as any).callDate) : null,
-            callDurationText: durationText,
-            callDurationSeconds: latestCall?.durationSeconds || 0,
-            callOutcome: currentOutcome,
-            status: finalStatus,
-            callAttempts,
-            callAttemptsText,
-            followUpDate: latestCall?.followUpDate || (l as any).followUpDate || null,
-            remarks: resolvedRemarks,
-            calls: sortedCalls,
-          };
+          return this.mapLeadToPerformanceItem(l, allCalls, allPkgs, ws, prodName, pkgDisplayName, pkgMeta);
         });
 
         const callsMade = userLeadRecords.filter((r) => r.calledAt || r.callAttempts > 0).length;
@@ -1548,6 +1408,250 @@ export class PackageWorksComponent implements OnInit {
 
   private latestQueryParams: any = null;
 
+    private mapLeadToPerformanceItem(
+    l: any,
+    allCalls: any[],
+    allPkgs: any[],
+    ws: any,
+    prodName: string,
+    pkgDisplayName: string,
+    pkgMeta: any
+  ) {
+    const lId = String(l.id).trim();
+    const lPhone = String(l.phone || '').replace(/\D/g, '');
+    const lNameLower = `${l.firstName || ''} ${l.lastName || ''}`.trim().toLowerCase();
+
+    const callsForLead = allCalls.filter((c) => {
+      const cLeadId = String(c.leadId || (c as any).lead_id || '').trim().toLowerCase();
+      const cPhone = String(c.leadPhone || (c as any).lead_phone || (c as any).phone || '').replace(/\D/g, '');
+      const cLeadName = String(c.leadName || (c as any).lead_name || '').trim().toLowerCase();
+      if (cLeadId && lId && cLeadId === lId?.toLowerCase()) return true;
+      if (lPhone && cPhone && lPhone === cPhone) return true;
+      return Boolean(cLeadName && lNameLower && cLeadName === lNameLower && lNameLower !== 'lead' && lNameLower !== 'lead customer' && lNameLower.length > 3);
+    });
+
+    const sortedCalls = [...callsForLead].sort(
+      (a, b) => new Date(b.calledAt || (b as any).callDate || (b as any).createdAt || 0).getTime() - new Date(a.calledAt || (a as any).callDate || (a as any).createdAt || 0).getTime()
+    );
+    const latestCall = sortedCalls[0] || null;
+
+    let durationText = '—';
+    if (latestCall && typeof latestCall.durationSeconds === 'number' && latestCall.durationSeconds > 0) {
+      const mins = Math.floor(latestCall.durationSeconds / 60);
+      const secs = latestCall.durationSeconds % 60;
+      durationText = `${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+    } else if (latestCall && (latestCall as any).duration) {
+      durationText = String((latestCall as any).duration);
+    }
+
+    const rawPhone = String(l.phone || (l as any).phoneNumber || (l as any).mobile || (l as any).contact || '').trim();
+    const cleanPhone = (rawPhone && !rawPhone.includes('@') && rawPhone !== '—')
+      ? rawPhone
+      : (String((l as any).mobile || '').trim() && !String((l as any).mobile).includes('@')
+          ? String((l as any).mobile).trim()
+          : '—');
+
+    const callAttempts = sortedCalls.length;
+    const callAttemptsText = callAttempts === 0 ? '0 Attempts' : (callAttempts === 1 ? '1st Call' : `${callAttempts} Calls`);
+    const rawFullName = `${l.firstName || ''} ${l.lastName || ''}`.trim();
+    const leadFullName = (rawFullName && !rawFullName.includes('@'))
+      ? rawFullName
+      : (cleanPhone !== '—' ? cleanPhone : 'Lead #' + String(l.id).slice(-4));
+
+    const resolvedLead = resolveTaskProductAndPackage({
+      packageName: (l as any).packageName || (l as any).package || '',
+      campaignName: l.campaignName || '',
+      title: l.campaignName || l.source || '',
+      productId: (l as any).productId || (l as any).product_id || '',
+      productName: (l as any).productName || (l as any).product || '',
+    }, allPkgs);
+
+    const finalProdName = resolvedLead.productName || (ws ? prodName : pkgMeta.name);
+    const finalPkgName = resolvedLead.packageName || (ws ? pkgDisplayName : pkgMeta.name);
+
+    const resolvedAdName = (() => {
+      const direct = (l as any).adName || (l as any).ad_name || (l as any).ad;
+      if (direct && direct !== '—' && String(direct).trim()) return String(direct).trim();
+      const adId = String((l as any).adId || (l as any).ad_id || '').trim().toLowerCase();
+      if (adId) {
+        const matchedAd = this.campaignService.ads().find((a) => String(a.id).toLowerCase() === adId || String(a.platformAdId || '').toLowerCase() === adId);
+        if (matchedAd && matchedAd.name) return matchedAd.name;
+      }
+      const cmpId = String(l.campaignId || (l as any).campaign_id || '').toLowerCase().trim();
+      if (cmpId) {
+        const foundByCmpId = this.campaignService.ads().find((a) => String(a.campaignId || '').toLowerCase().trim() === cmpId);
+        if (foundByCmpId && foundByCmpId.name) return foundByCmpId.name;
+      }
+      const cmpName = String(l.campaignName || '').toLowerCase().trim();
+      if (cmpName) {
+        const foundByCmp = this.campaignService.ads().find((a) => a.campaignName && (a.campaignName.toLowerCase().trim() === cmpName || cmpName.includes(a.campaignName.toLowerCase().trim()) || a.campaignName.toLowerCase().trim().includes(cmpName)));
+        if (foundByCmp && foundByCmp.name) return foundByCmp.name;
+      }
+      const allAds = this.campaignService.ads();
+      if (allAds.length > 0 && cmpName && cmpName !== '—') {
+        const matchByKeyword = allAds.find((a) => cmpName.split(' ').some((word) => word.length > 3 && a.name.toLowerCase().includes(word)));
+        if (matchByKeyword && matchByKeyword.name) return matchByKeyword.name;
+      }
+      if ((l as any).ad_title && String((l as any).ad_title).trim()) return String((l as any).ad_title).trim();
+      if ((l as any).adTitle && String((l as any).adTitle).trim()) return String((l as any).adTitle).trim();
+      return '—';
+    })();
+
+    const resolvedRemarks = (() => {
+      if (latestCall?.remarks && latestCall.remarks !== '—' && String(latestCall.remarks).trim()) {
+        return String(latestCall.remarks).trim();
+      }
+      if ((l as any).remarks && (l as any).remarks !== '—' && String((l as any).remarks).trim()) {
+        return String((l as any).remarks).trim();
+      }
+      if ((l as any).notes && (l as any).notes !== '—' && String((l as any).notes).trim()) {
+        return String((l as any).notes).trim();
+      }
+      for (const callItem of sortedCalls) {
+        if (callItem.remarks && callItem.remarks !== '—' && String(callItem.remarks).trim()) {
+          return String(callItem.remarks).trim();
+        }
+      }
+      if (latestCall?.nextAction && latestCall.nextAction !== '—' && String(latestCall.nextAction).trim()) {
+        return String(latestCall.nextAction).trim();
+      }
+      return '—';
+    })();
+
+    const uncalledStatuses = new Set(['NEW', 'UNASSIGNED', 'ASSIGNED', '—', '']);
+    const rawLeadStatus = String(l.status || 'ASSIGNED').toUpperCase().trim();
+    const isStatusUpdated = Boolean(rawLeadStatus && !uncalledStatuses.has(rawLeadStatus));
+
+    let currentOutcome = '';
+    if (latestCall?.outcome) {
+      currentOutcome = String(latestCall.outcome).toUpperCase().trim();
+    } else if (isStatusUpdated) {
+      currentOutcome = rawLeadStatus;
+    }
+
+    const finalStatus = latestCall?.outcome
+      ? String(latestCall.outcome).toUpperCase().trim()
+      : rawLeadStatus;
+
+    return {
+      id: l.id,
+      leadId: l.id,
+      title: leadFullName,
+      leadName: leadFullName,
+      leadPhone: cleanPhone,
+      source: l.source || l.campaignName || '—',
+      campaignName: l.campaignName || l.source || '—',
+      adName: resolvedAdName,
+      adId: (l as any).adId || (l as any).ad_id || '',
+      productName: finalProdName,
+      packageName: finalPkgName,
+      createdAt: l.createdAt,
+      assignedDate: l.createdAt,
+      assignedTo: l.assignedTo || (l as any).assigned_to,
+      assigneeName: l.assigneeName || (l as any).assignee_name,
+      status: finalStatus,
+      callOutcome: currentOutcome,
+      callAttempts,
+      callAttemptsText,
+      durationText,
+      remarks: resolvedRemarks,
+      calledAt: latestCall?.calledAt,
+      calls: sortedCalls,
+      isPaid: ['PAID', 'CONVERTED'].includes(currentOutcome) || ['PAID', 'CONVERTED'].includes(finalStatus),
+      paidAmount: ['PAID', 'CONVERTED'].includes(currentOutcome) ? 1000 : 0,
+    };
+  }
+
+  private applyProductParam(reqProduct: any): void {
+    if (!reqProduct) return;
+    const cleanProd = String(reqProduct).toLowerCase().trim();
+    const matched = FIXED_PACKAGES.find((p) =>
+      p.name.toLowerCase() === cleanProd ||
+      p.id.toLowerCase() === cleanProd ||
+      cleanProd.includes(p.name.toLowerCase()) ||
+      p.name.toLowerCase().includes(cleanProd)
+    );
+    if (matched) {
+      this.activePackageName.set(matched.name);
+    } else {
+      this.activePackageName.set(String(reqProduct));
+    }
+  }
+
+  private findTargetProductPackage(allPkgs: ProductPackage[], requestedWorkspace: any, requestedDept: any, requestedTab: any): ProductPackage | null {
+    if (requestedWorkspace) {
+      const normWs = String(requestedWorkspace).toLowerCase().replace(/[^a-z0-9]/g, '');
+      const found = allPkgs.find((p) => {
+        const pNameNorm = String(p.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const pIdNorm = String(p.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return pNameNorm === normWs || pIdNorm === normWs || String(p.id) === String(requestedWorkspace) ||
+               String(p.name || '').toLowerCase().includes(String(requestedWorkspace).toLowerCase()) ||
+               String(requestedWorkspace).toLowerCase().includes(String(p.name || '').toLowerCase());
+      });
+      if (found) return found;
+
+      const prodMeta = this.activePackageMeta();
+      return {
+        id: 4,
+        name: String(requestedWorkspace),
+        productId: prodMeta?.id || 'pkg_careermate',
+        status: 'ACTIVE',
+      } as ProductPackage;
+    }
+
+    if (requestedDept === 'TELECALLING' || requestedTab === 'TELECALLER_MEMBERS' || requestedTab === 'TARGETS') {
+      return allPkgs.find((p) => String(p.name).toLowerCase().includes('current') || String(p.name).toLowerCase().includes('affair'))
+        || allPkgs.find((p) => (p.productId || '').toLowerCase().includes('career'))
+        || allPkgs[0]
+        || null;
+    }
+    return null;
+  }
+
+  private applyDepartmentParam(requestedDept: any, requestedTab: any): void {
+    if (requestedDept) {
+      const validDepts: Array<'DESIGNER' | 'DIGITAL_MARKETING' | 'TELECALLING' | 'ANALYTICS'> = [
+        'DESIGNER', 'DIGITAL_MARKETING', 'TELECALLING', 'ANALYTICS'
+      ];
+      const upperDept = String(requestedDept).toUpperCase();
+      if (validDepts.includes(upperDept as any)) {
+        this.activeDepartment.set(upperDept as any);
+      }
+    } else if (requestedTab === 'TELECALLER_MEMBERS' || requestedTab === 'TARGETS' || requestedTab === 'TELECALLING') {
+      this.activeDepartment.set('TELECALLING');
+    } else {
+      this.activeDepartment.set(null);
+    }
+  }
+
+  private applyOperationTabParam(requestedTab: any): void {
+    if (requestedTab) {
+      if (this.activeOperationTab() !== requestedTab) {
+        this.selectOperationTab(requestedTab);
+      }
+      return;
+    }
+    const dept = this.activeDepartment();
+    if (dept === 'TELECALLING') {
+      const role = this.currentRole();
+      if (role === 'ADMINISTRATOR' || role === 'MARKETING_MANAGER') {
+        if (this.activeOperationTab() !== 'TELECALLER_MEMBERS') this.selectOperationTab('TELECALLER_MEMBERS');
+      } else if (this.activeOperationTab() !== 'TELECALLING') {
+        this.selectOperationTab('TELECALLING');
+      }
+    } else if (dept === 'DESIGNER') {
+      if (this.activeOperationTab() !== 'TASKS') this.selectOperationTab('TASKS');
+    } else if (dept === 'DIGITAL_MARKETING') {
+      if (this.activeOperationTab() !== 'MARKETING_OVERVIEW' && !this.hasActiveSubTab()) {
+        this.selectOperationTab('MARKETING_OVERVIEW');
+      }
+    } else if (dept === 'ANALYTICS') {
+      if (this.activeOperationTab() !== 'ANALYTICS_OVERVIEW' && !this.hasActiveSubTab()) {
+        this.selectOperationTab('ANALYTICS_OVERVIEW');
+      }
+    }
+  }
+
   private applyRouteQueryParams(params: any): void {
     if (!params) return;
 
@@ -1560,51 +1664,10 @@ export class PackageWorksComponent implements OnInit {
       return;
     }
 
-    if (reqProduct) {
-      const cleanProd = String(reqProduct).toLowerCase().trim();
-      const matched = FIXED_PACKAGES.find((p) =>
-        p.name.toLowerCase() === cleanProd ||
-        p.id.toLowerCase() === cleanProd ||
-        cleanProd.includes(p.name.toLowerCase()) ||
-        p.name.toLowerCase().includes(cleanProd)
-      );
-      if (matched) {
-        this.activePackageName.set(matched.name);
-      } else {
-        this.activePackageName.set(String(reqProduct));
-      }
-    }
+    this.applyProductParam(reqProduct);
 
     const allPkgs = this.packageService.packages();
-    let targetPkg: ProductPackage | null = null;
-
-    if (requestedWorkspace) {
-      const normWs = String(requestedWorkspace).toLowerCase().replace(/[^a-z0-9]/g, '');
-      targetPkg = allPkgs.find((p) => {
-        const pNameNorm = String(p.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        const pIdNorm = String(p.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-        return pNameNorm === normWs || pIdNorm === normWs || String(p.id) === String(requestedWorkspace) ||
-               String(p.name || '').toLowerCase().includes(String(requestedWorkspace).toLowerCase()) ||
-               String(requestedWorkspace).toLowerCase().includes(String(p.name || '').toLowerCase());
-      }) || null;
-    }
-
-    if (!targetPkg && requestedWorkspace) {
-      const prodMeta = this.activePackageMeta();
-      targetPkg = {
-        id: 4,
-        name: String(requestedWorkspace),
-        productId: prodMeta?.id || 'pkg_careermate',
-        status: 'ACTIVE',
-      } as ProductPackage;
-    }
-
-    if (!targetPkg && !requestedWorkspace && (requestedDept === 'TELECALLING' || requestedTab === 'TELECALLER_MEMBERS' || requestedTab === 'TARGETS')) {
-      targetPkg = allPkgs.find((p) => String(p.name).toLowerCase().includes('current') || String(p.name).toLowerCase().includes('affair'))
-        || allPkgs.find((p) => (p.productId || '').toLowerCase().includes('career'))
-        || allPkgs[0]
-        || null;
-    }
+    const targetPkg = this.findTargetProductPackage(allPkgs, requestedWorkspace, requestedDept, requestedTab);
 
     if (targetPkg) {
       this.selectedProductPackage.set(targetPkg);
@@ -1612,54 +1675,18 @@ export class PackageWorksComponent implements OnInit {
 
       if (!reqProduct && targetPkg.productId) {
         const prodObj = this.availablePackages.find(
-          (p) => p.id.toLowerCase() === targetPkg!.productId.toLowerCase()
+          (p) => p.id.toLowerCase() === targetPkg.productId.toLowerCase()
         );
         if (prodObj) {
           this.activePackageName.set(prodObj.name);
         }
       }
 
-      if (requestedDept) {
-        const validDepts: Array<'DESIGNER' | 'DIGITAL_MARKETING' | 'TELECALLING' | 'ANALYTICS'> = [
-          'DESIGNER', 'DIGITAL_MARKETING', 'TELECALLING', 'ANALYTICS'
-        ];
-        const upperDept = String(requestedDept).toUpperCase();
-        if (validDepts.includes(upperDept as any)) {
-          this.activeDepartment.set(upperDept as any);
-        }
-      } else if (requestedTab === 'TELECALLER_MEMBERS' || requestedTab === 'TARGETS' || requestedTab === 'TELECALLING') {
-        this.activeDepartment.set('TELECALLING');
-      } else {
-        this.activeDepartment.set(null);
-      }
-
-      if (requestedTab) {
-        if (this.activeOperationTab() !== requestedTab) {
-          this.selectOperationTab(requestedTab);
-        }
-      } else if (this.activeDepartment() === 'TELECALLING') {
-        const role = this.currentRole();
-        if (role === 'ADMINISTRATOR' || role === 'MARKETING_MANAGER') {
-          if (this.activeOperationTab() !== 'TELECALLER_MEMBERS') this.selectOperationTab('TELECALLER_MEMBERS');
-        } else {
-          if (this.activeOperationTab() !== 'TELECALLING') this.selectOperationTab('TELECALLING');
-        }
-      } else if (this.activeDepartment() === 'DESIGNER') {
-        if (this.activeOperationTab() !== 'TASKS') this.selectOperationTab('TASKS');
-      } else if (this.activeDepartment() === 'DIGITAL_MARKETING') {
-        if (this.activeOperationTab() !== 'MARKETING_OVERVIEW' && !this.hasActiveSubTab()) {
-          this.selectOperationTab('MARKETING_OVERVIEW');
-        }
-      } else if (this.activeDepartment() === 'ANALYTICS') {
-        if (this.activeOperationTab() !== 'ANALYTICS_OVERVIEW' && !this.hasActiveSubTab()) {
-          this.selectOperationTab('ANALYTICS_OVERVIEW');
-        }
-      }
-    } else {
-      if (!requestedWorkspace) {
-        this.activeWorkspacePackage.set(null);
-        this.activeDepartment.set(null);
-      }
+      this.applyDepartmentParam(requestedDept, requestedTab);
+      this.applyOperationTabParam(requestedTab);
+    } else if (!requestedWorkspace) {
+      this.activeWorkspacePackage.set(null);
+      this.activeDepartment.set(null);
     }
   }
 

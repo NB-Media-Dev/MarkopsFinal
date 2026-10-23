@@ -30,7 +30,7 @@
         font-family: var(--mo-font-sans);
         font-size: 1.5rem;
         font-weight: 800;
-        color: #FF9F1C;
+        color: #C2410C;
         margin: 0;
         letter-spacing: -0.01em;
         line-height: 1.2;
@@ -46,7 +46,7 @@
         padding: 0.15rem 0.55rem;
         border-radius: 9999px;
         background: #FFF5E6;
-        color: #E28704;
+        color: #C2410C;
         border: 1px solid rgba(255, 159, 28, 0.3);
         letter-spacing: 0.02em;
       }
@@ -75,7 +75,7 @@
         transition: color 0.15s ease;
 
         &:hover {
-          color: #FF9F1C;
+          color: #C2410C;
           text-decoration: underline;
         }
       }
@@ -101,7 +101,7 @@
       padding: 0.45rem 0.85rem;
       font-size: 0.75rem;
       font-weight: 700;
-      color: #E28704;
+      color: #C2410C;
       background: #FFF5E6;
       border: 1px solid rgba(255, 159, 28, 0.35);
       border-radius: 8px;
@@ -161,20 +161,20 @@
 
       .tab-count.unread-pill {
         background: #FFF5E6;
-        color: #E28704;
+        color: #C2410C;
         border: 1px solid rgba(255, 159, 28, 0.25);
       }
 
       &:hover {
         background: #FFF5E6;
-        color: #E28704;
+        color: #C2410C;
         border-color: rgba(255, 159, 28, 0.35);
       }
 
       &.active {
-        background: #FF9F1C !important;
+        background: #C2410C !important;
         color: #FFFFFF !important;
-        border-color: #FF9F1C !important;
+        border-color: #C2410C !important;
         box-shadow: 0 2px 8px rgba(255, 159, 28, 0.35);
 
         .tab-count {
@@ -218,12 +218,12 @@
         transition: all 0.12s ease;
 
         &:hover {
-          color: #E28704;
+          color: #C2410C;
           background: #FFF5E6;
         }
 
         &.active {
-          background: #FF9F1C;
+          background: #C2410C;
           color: #FFFFFF;
           font-weight: 700;
           box-shadow: 0 1px 4px rgba(255, 159, 28, 0.3);
@@ -354,7 +354,7 @@
       gap: 0.35rem;
 
       .group-icon {
-        color: #FF9F1C;
+        color: #C2410C;
       }
 
       .group-label {
@@ -369,7 +369,7 @@
     .group-badge {
       font-size: 0.6875rem;
       font-weight: 700;
-      color: #E28704;
+      color: #C2410C;
       background: #FFF5E6;
       border: 1px solid rgba(255, 159, 28, 0.25);
       padding: 0.05rem 0.45rem;
@@ -403,7 +403,7 @@
     box-shadow: 0 2px 8px rgba(255, 159, 28, 0.08);
 
     .notif-action-zone .nav-arrow {
-      color: #FF9F1C;
+      color: #C2410C;
       transform: translateX(2px);
     }
   }
@@ -495,7 +495,7 @@
         .badge-new {
           font-size: 0.5625rem;
           font-weight: 800;
-          background: #FF9F1C;
+          background: #C2410C;
           color: #FFFFFF;
           padding: 0.08rem 0.35rem;
           border-radius: 4px;
@@ -580,7 +580,7 @@
     align-items: center;
     justify-content: center;
     margin-bottom: 0.75rem;
-    color: #FF9F1C;
+    color: #C2410C;
   }
 
   h3 {

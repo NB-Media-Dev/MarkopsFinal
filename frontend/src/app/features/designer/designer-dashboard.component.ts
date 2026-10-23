@@ -500,6 +500,80 @@ export class DesignerDashboardComponent implements OnInit {
   readonly activeDocUrl = signal<string>('');
   readonly activeDocContent = signal<string>('');
 
+  private matchesTaskRoleAssignment(t: Task, currentRole: string | undefined, currentUserId: string, currentUserEmail: string, currentUserName: string, selDesigner: any): boolean {
+    const tAssignedToStr = String(t.assignedTo || '').toLowerCase().trim();
+    const tAssigneeNameStr = String(t.assigneeName || '').toLowerCase().trim();
+
+    if (currentRole === 'DESIGNER') {
+      return Boolean(
+        (tAssignedToStr && (tAssignedToStr === currentUserId || (currentUserEmail && tAssignedToStr === currentUserEmail))) ||
+        (tAssigneeNameStr && currentUserName && (tAssigneeNameStr === currentUserName || tAssigneeNameStr.includes(currentUserName)))
+      );
+    }
+
+    if (this.activeTaskView() === 'my' && !this.isTaskCreator(t)) {
+      return false;
+    }
+
+    if (selDesigner) {
+      const dIdStr = String(selDesigner.id || '').toLowerCase().trim();
+      const dNameStr = String(selDesigner.name || '').toLowerCase().trim();
+      const dEmailStr = String(selDesigner.email || '').toLowerCase().trim();
+
+      const matches =
+        (tAssignedToStr && (tAssignedToStr === dIdStr || (dEmailStr && tAssignedToStr === dEmailStr))) ||
+        (tAssigneeNameStr && (tAssigneeNameStr === dNameStr || tAssigneeNameStr.includes(dNameStr) || dNameStr.includes(tAssigneeNameStr)));
+
+      if (!matches) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private matchesTaskDateFilter(t: Task, dateFilter: string | null): boolean {
+    if (!dateFilter) return true;
+    const createdDate = t.createdAt ? t.createdAt.split('T')[0] : '';
+    const dueDate = t.dueDate ? t.dueDate.split('T')[0] : '';
+    const updatedDate = t.updatedAt ? t.updatedAt.split('T')[0] : '';
+    return createdDate === dateFilter || dueDate === dateFilter || updatedDate === dateFilter;
+  }
+
+  private matchesTaskStatusFilter(t: Task, filter: string): boolean {
+    if (filter === 'IN_PROGRESS') {
+      return t.status === 'IN_PROGRESS' || t.status === 'ACCEPTED';
+    }
+    if (filter === 'REVISION_REQUIRED') {
+      return t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED';
+    }
+    if (filter === 'SUBMITTED') {
+      return t.status === 'SUBMITTED' || t.status === 'RESUBMITTED' || t.status === 'UNDER_REVIEW';
+    }
+    if (filter === 'COMPLETED') {
+      return t.status === 'APPROVED' || t.status === 'PUBLISHED' || t.status === 'COMPLETED';
+    }
+    if (filter === 'BDM_FLOW') {
+      return t.creatorRole === 'BDM' || Boolean(t.createdBy && String(t.createdBy).toLowerCase().includes('bdm'));
+    }
+    if (filter === 'COMMENTS') {
+      return Boolean(t.reviewerFeedback || (t.comments && t.comments.length > 0));
+    }
+    if (filter === 'FILES') {
+      return Boolean((t.versions && t.versions.length > 0) || t.attachmentUrl);
+    }
+    return true;
+  }
+
+  private matchesTaskSearchQuery(t: Task, query: string): boolean {
+    if (!query) return true;
+    return Boolean(
+      String(t.title || '').toLowerCase().includes(query) ||
+      String(t.campaignName || '').toLowerCase().includes(query) ||
+      String(t.description || '').toLowerCase().includes(query) ||
+      String(t.content || '').toLowerCase().includes(query)
+    );
+  }
+
   readonly filteredTasks = computed(() => {
     const list = this.taskService.tasks();
     const query = String(this.searchQuery() || '').toLowerCase().trim();
@@ -513,94 +587,30 @@ export class DesignerDashboardComponent implements OnInit {
     const seenIds = new Set<string>();
 
     return list.filter((t) => {
-      if (!t || !t.id) return false;
+      if (!t?.id) return false;
       const tid = String(t.id);
       if (seenIds.has(tid)) return false;
       seenIds.add(tid);
 
-      const tAssignedToStr = String(t.assignedTo || '').toLowerCase().trim();
-      const tAssigneeNameStr = String(t.assigneeName || '').toLowerCase().trim();
-
-      if (currentRole === 'DESIGNER') {
-        const isAssignedToMe =
-          (tAssignedToStr && (tAssignedToStr === currentUserId || (currentUserEmail && tAssignedToStr === currentUserEmail))) ||
-          (tAssigneeNameStr && currentUserName && (tAssigneeNameStr === currentUserName || tAssigneeNameStr.includes(currentUserName)));
-
-        if (!isAssignedToMe) {
-          return false;
-        }
-      } else {
-        if (this.activeTaskView() === 'my') {
-          const isCreatedByMe = this.isTaskCreator(t);
-          if (!isCreatedByMe) {
-            return false;
-          }
-        }
-
-        if (selDesigner) {
-          const dIdStr = String(selDesigner.id || '').toLowerCase().trim();
-          const dNameStr = String(selDesigner.name || '').toLowerCase().trim();
-          const dEmailStr = String(selDesigner.email || '').toLowerCase().trim();
-
-          const matches =
-            (tAssignedToStr && (tAssignedToStr === dIdStr || (dEmailStr && tAssignedToStr === dEmailStr))) ||
-            (tAssigneeNameStr && (tAssigneeNameStr === dNameStr || tAssigneeNameStr.includes(dNameStr) || dNameStr.includes(tAssigneeNameStr)));
-
-          if (!matches) {
-            return false;
-          }
-        }
+      if (!this.matchesTaskRoleAssignment(t, currentRole, currentUserId, currentUserEmail, currentUserName, selDesigner)) {
+        return false;
       }
 
       const pkgFilter = this.packageFilterSignal();
-      if (pkgFilter) {
-        if (!isTaskForPackage(t, pkgFilter, this.packageService.packages())) {
-          return false;
-        }
+      if (pkgFilter && !isTaskForPackage(t, pkgFilter, this.packageService.packages())) {
+        return false;
       }
 
-      const dateFilter = this.selectedDateFilter();
-      if (dateFilter) {
-        const createdDate = t.createdAt ? t.createdAt.split('T')[0] : '';
-        const dueDate = t.dueDate ? t.dueDate.split('T')[0] : '';
-        const updatedDate = t.updatedAt ? t.updatedAt.split('T')[0] : '';
-        if (createdDate !== dateFilter && dueDate !== dateFilter && updatedDate !== dateFilter) {
-          return false;
-        }
+      if (!this.matchesTaskDateFilter(t, this.selectedDateFilter())) {
+        return false;
       }
 
       const priority = this.priorityFilter();
-      if (priority && priority !== 'ALL') {
-        if (String(t.priority || '').toUpperCase() !== priority.toUpperCase()) {
-          return false;
-        }
+      if (priority && priority !== 'ALL' && String(t.priority || '').toUpperCase() !== priority.toUpperCase()) {
+        return false;
       }
 
-      const matchesSearch =
-        !query ||
-        String(t.title || '').toLowerCase().includes(query) ||
-        String(t.campaignName || '').toLowerCase().includes(query) ||
-        String(t.description || '').toLowerCase().includes(query) ||
-        String(t.content || '').toLowerCase().includes(query);
-
-      let matchesStatus = true;
-      if (filter === 'IN_PROGRESS') {
-        matchesStatus = t.status === 'IN_PROGRESS' || t.status === 'ACCEPTED';
-      } else if (filter === 'REVISION_REQUIRED') {
-        matchesStatus = t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED';
-      } else if (filter === 'SUBMITTED') {
-        matchesStatus = t.status === 'SUBMITTED' || t.status === 'RESUBMITTED' || t.status === 'UNDER_REVIEW';
-      } else if (filter === 'COMPLETED') {
-        matchesStatus = t.status === 'APPROVED' || t.status === 'PUBLISHED' || t.status === 'COMPLETED';
-      } else if (filter === 'BDM_FLOW') {
-        matchesStatus = t.creatorRole === 'BDM' || Boolean(t.createdBy && String(t.createdBy).toLowerCase().includes('bdm'));
-      } else if (filter === 'COMMENTS') {
-        matchesStatus = Boolean(t.reviewerFeedback || (t.comments && t.comments.length > 0));
-      } else if (filter === 'FILES') {
-        matchesStatus = Boolean((t.versions && t.versions.length > 0) || t.attachmentUrl);
-      }
-
-      return matchesSearch && matchesStatus;
+      return this.matchesTaskSearchQuery(t, query) && this.matchesTaskStatusFilter(t, filter);
     });
   });
 

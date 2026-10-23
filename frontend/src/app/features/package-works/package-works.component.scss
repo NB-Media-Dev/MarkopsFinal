@@ -139,7 +139,7 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      background-color: #F59E0B;
+      background-color: #B45309;
       color: #FFFFFF;
       font-size: 0.82rem;
       font-weight: 700;
@@ -1125,7 +1125,7 @@
     }
 
     &.active {
-      background-color: #F59E0B;
+      background-color: #B45309;
       color: #FFFFFF;
       font-weight: 700;
       box-shadow: 0 2px 8px rgba(18, 24, 38, 0.2);
@@ -2827,17 +2827,17 @@
     &:hover:not(.active) {
       background: #FFF5E6;
       border-color: transparent;
-      color: #FF9F1C;
+      color: #C2410C;
       transform: none;
 
       .subtab-icon {
-        color: #FF9F1C;
+        color: #C2410C;
       }
     }
 
     &.active {
-      background: #FF9F1C;
-      border-color: #FF9F1C;
+      background: #C2410C;
+      border-color: #C2410C;
       color: #FFFFFF !important;
       box-shadow: none;
       font-weight: 700;
@@ -2890,13 +2890,13 @@
     transform: none;
 
     .subtab-icon {
-      color: #FF9F1C;
+      color: #C2410C;
     }
   }
 
   &.active {
-    background: #FF9F1C;
-    border-color: #FF9F1C;
+    background: #C2410C;
+    border-color: #C2410C;
     color: #FFFFFF !important;
     box-shadow: none;
     font-weight: 700;
@@ -3006,7 +3006,7 @@
     padding: 0.875rem 1.25rem;
     font-size: 0.75rem;
     font-weight: 700;
-    color: #E28704 !important;
+    color: #C2410C !important;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border-bottom: 1px solid rgba(255, 159, 28, 0.2) !important;
