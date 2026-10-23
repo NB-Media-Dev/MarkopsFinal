@@ -1,4 +1,4 @@
-﻿```yaml
+﻿$yamlContent = @"
 name: SonarQube CI Pipeline
 
 on:
@@ -24,8 +24,8 @@ jobs:
       - name: Verify SonarQube connection
         shell: bash
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: `${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: `${{ secrets.SONAR_HOST_URL }}
         run: |
           set -e
 
@@ -56,8 +56,8 @@ jobs:
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: `${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: `${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
             -Dsonar.projectKey=MarkopsFinal
@@ -69,27 +69,27 @@ jobs:
         uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: `${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: `${{ secrets.SONAR_HOST_URL }}
 
       - name: Publish Unresolved Issue Report
         if: always()
         shell: bash
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: `${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: `${{ secrets.SONAR_HOST_URL }}
           SONAR_PROJECT_KEY: MarkopsFinal
         run: |
           set -u
 
           echo "## SonarQube Unresolved Issue Report" \
-            >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
+            >> "`$GITHUB_STEP_SUMMARY"
+          echo "" >> "`$GITHUB_STEP_SUMMARY"
 
           if [ -z "${SONAR_TOKEN:-}" ] || \
              [ -z "${SONAR_HOST_URL:-}" ]; then
             echo "⚠️ SONAR_TOKEN or SONAR_HOST_URL is missing." \
-              >> "$GITHUB_STEP_SUMMARY"
+              >> "`$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
@@ -98,8 +98,8 @@ jobs:
           REPORT_URL="${BASE_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
 
           echo "[Open SonarQube dashboard](${REPORT_URL})" \
-            >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
+            >> "`$GITHUB_STEP_SUMMARY"
+          echo "" >> "`$GITHUB_STEP_SUMMARY"
 
           HTTP_CODE=$(curl --silent --show-error --get \
             --connect-timeout 15 \
@@ -118,16 +118,16 @@ jobs:
             --write-out "%{http_code}" \
             "$API_URL") || {
               echo "⚠️ Could not connect to the SonarQube issues API." \
-                >> "$GITHUB_STEP_SUMMARY"
+                >> "`$GITHUB_STEP_SUMMARY"
               exit 0
             }
 
           if [ "$HTTP_CODE" -lt 200 ] || \
              [ "$HTTP_CODE" -ge 300 ]; then
             echo "⚠️ SonarQube issues API returned HTTP ${HTTP_CODE}." \
-              >> "$GITHUB_STEP_SUMMARY"
+              >> "`$GITHUB_STEP_SUMMARY"
             echo "Check token permissions, URL, and API filters." \
-              >> "$GITHUB_STEP_SUMMARY"
+              >> "`$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
@@ -212,4 +212,9 @@ jobs:
           NODE
 
           echo "Issue report step completed."
-```
+"@
+
+[System.IO.File]::WriteAllText("$PWD/.github/workflows/sonar.yml", $yamlContent, (New-Object System.Text.UTF8Encoding $false))
+git add .github/workflows/sonar.yml
+git commit -m "ci: finalize complete SonarQube pipeline with issue report"
+git push origin main
