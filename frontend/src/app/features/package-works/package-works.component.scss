@@ -749,7 +749,7 @@
             display: inline-flex;
             align-items: center;
             gap: 0.25rem;
-            color: #ea580c;
+            color: #c2410c;
             font-weight: 700;
             background: #fff7ed;
             border: 1px solid #fed7aa;
@@ -759,13 +759,13 @@
 
             .bc-crumb-back-icon {
               font-size: 13px;
-              color: #ea580c;
+              color: #c2410c;
               transition: transform 0.16s ease;
             }
 
             &:hover {
-              background: #ea580c;
-              border-color: #ea580c;
+              background: #c2410c;
+              border-color: #c2410c;
               color: #ffffff;
 
               .bc-crumb-back-icon {
@@ -2886,7 +2886,7 @@
   &:hover:not(.active) {
     background: #FFF5E6;
     border-color: transparent;
-    color: #FF9F1C;
+    color: #C2410C;
     transform: none;
 
     .subtab-icon {

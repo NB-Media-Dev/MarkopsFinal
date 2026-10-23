@@ -1,8 +1,8 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { dbPool, dbUsersStore } = require('../db');
 const { recordAuditLog } = require('../services/audit.service');
 
@@ -243,100 +243,109 @@ router.post('/logout', async (req, res) => {
   return res.json({ message: 'Logged out successfully.' });
 });
 
-router.get('/me', async (req, res) => {
-  let token = null;
+
+function extractTokenFromRequest(req) {
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.split(' ')[1];
-  } else if (req.cookies?.markops_token) {
-    token = req.cookies.markops_token;
-  } else if (req.cookies?.accessToken) {
-    token = req.cookies.accessToken;
+  if (authHeader?.startsWith('Bearer ')) {
+    return authHeader.split(' ')[1];
+  }
+  return req.cookies?.markops_token || req.cookies?.accessToken || null;
+}
+
+function resolveMockMeUser(token) {
+  let role = 'ADMINISTRATOR';
+  let userId = '1';
+  let email = 'admin@markops.io';
+  let fullName = 'System Administrator';
+  let department = 'System Administration';
+  if (token.includes('designer')) {
+    role = 'DESIGNER';
+    userId = '3';
+    email = 'designer@markops.io';
+    fullName = 'Creative Designer';
+    department = 'Creative & Design';
+  } else if (token.includes('marketing_manager')) {
+    role = 'MARKETING_MANAGER';
+    userId = '2';
+    email = 'manager@markops.io';
+    fullName = 'Marketing Manager';
+    department = 'Marketing Operations';
+  }
+  return { id: userId, email, fullName, role, department, isActive: true };
+}
+
+async function findUserProfile(decoded) {
+  let user = null;
+  if (dbPool) {
+    try {
+      const [rows] = await dbPool.query(
+        `SELECT u.id, u.email, u.full_name as fullName, COALESCE(r.code, 'ADMINISTRATOR') as role, u.department, u.is_active as isActive, u.avatar_url as avatarUrl
+         FROM users u
+         LEFT JOIN roles r ON u.role_id = r.id
+         WHERE u.id = ? OR LOWER(u.email) = ?`,
+        [decoded.sub, String(decoded.email || '').toLowerCase()]
+      );
+      if (Array.isArray(rows) && rows.length > 0) {
+        user = {
+          id: rows[0].id,
+          email: rows[0].email,
+          fullName: rows[0].fullName,
+          role: rows[0].role,
+          department: rows[0].department,
+          isActive: Boolean(rows[0].isActive),
+          avatarUrl: rows[0].avatarUrl,
+        };
+      }
+    } catch (e) {
+      console.error('[Auth Error] Profile query failed:', e?.message || e);
+    }
   }
 
+  if (!user) {
+    const foundInStore = dbUsersStore.find(
+      (u) => String(u.id) === String(decoded.sub) || u.email.toLowerCase() === String(decoded.email).toLowerCase()
+    );
+    if (foundInStore) {
+      user = {
+        id: foundInStore.id,
+        email: foundInStore.email,
+        fullName: foundInStore.fullName,
+        role: foundInStore.role,
+        department: foundInStore.department,
+        isActive: foundInStore.isActive !== false,
+        avatarUrl: foundInStore.avatarUrl,
+      };
+    }
+  }
+
+  if (!user) {
+    user = {
+      id: decoded.sub || decoded.id || 'usr_default',
+      email: decoded.email || 'user@markops.io',
+      fullName: decoded.fullName || decoded.name || 'Platform User',
+      role: decoded.role || 'ADMINISTRATOR',
+      department: decoded.department || 'Operations',
+      isActive: decoded.isActive !== false,
+      avatarUrl: decoded.avatarUrl,
+    };
+  }
+  return user;
+}
+
+router.get('/me', async (req, res) => {
+  const token = extractTokenFromRequest(req);
   if (!token) {
     return res.status(401).json({ error: 'Missing or invalid Authorization token' });
   }
 
-
   if (token === 'mo_jwt_default' || token.startsWith('mo_jwt_')) {
-    let role = 'ADMINISTRATOR';
-    let userId = '1';
-    let email = 'admin@markops.io';
-    let fullName = 'System Administrator';
-    if (token.includes('designer')) {
-      role = 'DESIGNER';
-      userId = '3';
-      email = 'designer@markops.io';
-      fullName = 'Creative Designer';
-
-    } else if (token.includes('marketing_manager')) {
-      role = 'MARKETING_MANAGER';
-      userId = '2';
-      email = 'manager@markops.io';
-      fullName = 'Marketing Manager';
-      department = 'Marketing Operations';
-    }
-    return res.json({
-      user: { id: userId, email, fullName, role, department, isActive: true },
-    });
+    const mockUser = resolveMockMeUser(token);
+    return res.json({ user: mockUser });
   }
 
   try {
     const decoded = jwt.verify(token, JWT_ACCESS_SECRET);
-    let user = null;
-
-    if (dbPool) {
-      try {
-        const [rows] = await dbPool.query(
-          `SELECT u.id, u.email, u.full_name as fullName, COALESCE(r.code, 'ADMINISTRATOR') as role, u.department, u.is_active as isActive, u.avatar_url as avatarUrl
-           FROM users u
-           LEFT JOIN roles r ON u.role_id = r.id
-           WHERE u.id = ? OR LOWER(u.email) = ?`,
-          [decoded.sub, String(decoded.email || '').toLowerCase()]
-        );
-        if (Array.isArray(rows) && rows.length > 0) {
-          user = {
-            id: rows[0].id,
-            email: rows[0].email,
-            fullName: rows[0].fullName,
-            role: rows[0].role,
-            department: rows[0].department,
-            isActive: Boolean(rows[0].isActive),
-            avatarUrl: rows[0].avatarUrl,
-          };
-        }
-      } catch (e) {}
-    }
-
-    if (!user) {
-      const foundInStore = dbUsersStore.find(
-        (u) => String(u.id) === String(decoded.sub) || u.email.toLowerCase() === String(decoded.email).toLowerCase()
-      );
-      if (foundInStore) {
-        user = {
-          id: foundInStore.id,
-          email: foundInStore.email,
-          fullName: foundInStore.fullName,
-          role: foundInStore.role,
-          department: foundInStore.department,
-          isActive: foundInStore.isActive !== false,
-          avatarUrl: foundInStore.avatarUrl,
-        };
-      }
-    }
-
-    if (!user) {
-      user = {
-        id: decoded.sub,
-        email: decoded.email,
-        fullName: decoded.fullName || 'MarkOps User',
-        role: decoded.role || 'ADMINISTRATOR',
-        department: decoded.department || 'General Operations',
-        isActive: decoded.isActive !== false,
-        avatarUrl: decoded.avatarUrl,
-      };
-    }
+    const user = await findUserProfile(decoded);
 
     if (user.isActive === false) {
       return res.status(403).json({ error: 'Account is inactive. Access denied.' });
@@ -349,15 +358,7 @@ router.get('/me', async (req, res) => {
 });
 
 function getAuthUser(req) {
-  let token = null;
-  const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.split(' ')[1];
-  } else if (req.cookies?.markops_token) {
-    token = req.cookies.markops_token;
-  } else if (req.cookies?.accessToken) {
-    token = req.cookies.accessToken;
-  }
+  const token = extractTokenFromRequest(req);
   if (!token) return null;
 
   if (token === 'mo_jwt_default' || token.startsWith('mo_jwt_')) {
@@ -388,7 +389,51 @@ function getAuthUser(req) {
       fullName: decoded.fullName,
     };
   } catch (e) {
+    console.error('[Auth Error] getAuthUser verify failed:', e?.message || e);
     return null;
+  }
+}
+
+
+function resolveMimeExtension(mime) {
+  if (mime === 'image/jpeg') return 'jpg';
+  if (mime === 'image/png') return 'png';
+  return 'webp';
+}
+
+function writeAvatarFiles(fileName, imageBuffer) {
+  const targetDirs = [
+    path.resolve(__dirname, '../../frontend/public/uploads/avatars'),
+    path.resolve(__dirname, '../uploads/avatars'),
+    path.resolve('public/uploads/avatars'),
+    path.resolve('uploads/avatars'),
+  ];
+  for (const dir of targetDirs) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, fileName), imageBuffer);
+    } catch (e) {
+      console.log('Avatar write directory notice:', e?.message || e);
+    }
+  }
+}
+
+async function persistUserAvatar(userId, email, relativeUrl) {
+  if (dbPool) {
+    try {
+      const numId = Number.parseInt(userId, 10);
+      if (!Number.isNaN(numId)) {
+        await dbPool.query('UPDATE users SET avatar_url = ? WHERE id = ?', [relativeUrl, numId]);
+      } else {
+        await dbPool.query('UPDATE users SET avatar_url = ? WHERE id = ? OR LOWER(email) = ?', [relativeUrl, userId, email.toLowerCase()]);
+      }
+    } catch (e) {
+      console.error('[MySQL DB Error] Failed to update avatar_url:', e?.message || e);
+    }
+  }
+  const userInStore = dbUsersStore.find((u) => String(u.id) === String(userId) || u.email.toLowerCase() === email.toLowerCase());
+  if (userInStore) {
+    userInStore.avatarUrl = relativeUrl;
   }
 }
 
@@ -411,10 +456,8 @@ router.post('/profile/avatar', async (req, res) => {
     return res.status(400).json({ error: 'Image must be a valid PNG, JPG, JPEG, or WEBP file.' });
   }
 
-  const mime = match[1];
-  const ext = mime === 'image/jpeg' ? 'jpg' : mime === 'image/png' ? 'png' : 'webp';
+  const ext = resolveMimeExtension(match[1]);
   const imageBuffer = Buffer.from(avatarDataUrl.substring(commaIdx + 1), 'base64');
-
   if (imageBuffer.length > 5 * 1024 * 1024) {
     return res.status(400).json({ error: 'Image file size exceeds the 5MB limit.' });
   }
@@ -423,48 +466,8 @@ router.post('/profile/avatar', async (req, res) => {
   const fileName = `avatar_${safeUserId}_${Date.now()}.${ext}`;
   const relativeUrl = `/uploads/avatars/${fileName}`;
 
-  const targetDirs = [
-    path.resolve(__dirname, '../../frontend/public/uploads/avatars'),
-    path.resolve(__dirname, '../uploads/avatars'),
-    path.resolve('public/uploads/avatars'),
-    path.resolve('uploads/avatars'),
-  ];
-
-  for (const dir of targetDirs) {
-    try {
-      fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(dir, fileName), imageBuffer);
-    } catch (e) {
-      console.log('Avatar write directory notice:', e?.message || e);
-    }
-  }
-
-  if (dbPool) {
-    try {
-      const numId = Number.parseInt(authUser.id, 10);
-      if (!Number.isNaN(numId)) {
-        await dbPool.query('UPDATE users SET avatar_url = ? WHERE id = ?', [relativeUrl, numId]);
-      } else {
-        await dbPool.query('UPDATE users SET avatar_url = ? WHERE id = ? OR LOWER(email) = ?', [relativeUrl, authUser.id, authUser.email.toLowerCase()]);
-      }
-    } catch (e) {
-      console.error('[MySQL DB Error] Updating avatar failed:', e?.message || e);
-    }
-  }
-
-  let userInStore = dbUsersStore.find((u) => String(u.id) === String(authUser.id) || u.email.toLowerCase() === authUser.email.toLowerCase());
-  if (userInStore) {
-    userInStore.avatarUrl = relativeUrl;
-  } else {
-    dbUsersStore.push({
-      id: authUser.id,
-      email: authUser.email,
-      fullName: authUser.fullName,
-      role: authUser.role,
-      avatarUrl: relativeUrl,
-      isActive: true,
-    });
-  }
+  writeAvatarFiles(fileName, imageBuffer);
+  await persistUserAvatar(authUser.id, authUser.email, relativeUrl);
 
   await recordAuditLog(dbPool, {
     actorId: authUser.id,
@@ -511,30 +514,9 @@ router.delete('/profile/avatar', async (req, res) => {
   });
 });
 
-const handleChangePassword = async (req, res) => {
-  const authUser = getAuthUser(req);
-  if (!authUser) {
-    return res.status(401).json({ error: 'Unauthorized. Please sign in again.' });
-  }
 
-  const { currentPassword, newPassword, confirmPassword } = req.body;
-
-  if (!currentPassword) {
-    return res.status(400).json({ error: 'Please enter your current password.' });
-  }
-
-  if (!newPassword || String(newPassword).length < 8) {
-    return res.status(400).json({ error: 'New password must contain at least 8 characters.' });
-  }
-
-  if (confirmPassword !== undefined && newPassword !== confirmPassword) {
-    return res.status(400).json({ error: 'New password and confirmation do not match.' });
-  }
-
+async function fetchPasswordHash(authUser) {
   let existingHash = null;
-  let rawPassword = null;
-  const isDefaultAdmin = authUser.email === 'admin@markops.io' || authUser.id === '1' || authUser.id === 'usr_admin_01';
-
   if (dbPool) {
     try {
       const [rows] = await dbPool.query(
@@ -544,20 +526,21 @@ const handleChangePassword = async (req, res) => {
       if (Array.isArray(rows) && rows.length > 0) {
         existingHash = rows[0].passwordHash;
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('[Auth Error] Password hash query failed:', e?.message || e);
+    }
   }
+  return existingHash;
+}
 
-  const userInStore = dbUsersStore.find((u) => String(u.id) === String(authUser.id) || u.email.toLowerCase() === authUser.email.toLowerCase());
-  if (userInStore) {
-    if (!existingHash && userInStore.passwordHash) existingHash = userInStore.passwordHash;
-    if (userInStore.rawPassword) rawPassword = userInStore.rawPassword;
-  }
-
+async function verifyCurrentPassword(currentPassword, existingHash, rawPassword, isDefaultAdmin) {
   let isMatch = false;
   if (existingHash) {
     try {
       isMatch = await bcrypt.compare(currentPassword, existingHash);
-    } catch (e) {}
+    } catch (e) {
+      console.error('[Auth Error] bcrypt compare failed:', e?.message || e);
+    }
   }
   if (!isMatch && rawPassword && rawPassword === currentPassword) {
     isMatch = true;
@@ -565,13 +548,10 @@ const handleChangePassword = async (req, res) => {
   if (!isMatch && (currentPassword === 'admin123' || (isDefaultAdmin && currentPassword === 'admin123'))) {
     isMatch = true;
   }
+  return isMatch;
+}
 
-  if (!isMatch) {
-    return res.status(400).json({ error: 'Current password is incorrect. Please verify and try again.' });
-  }
-
-  const newHash = await bcrypt.hash(newPassword, 10);
-
+async function updatePasswordRecord(authUser, newHash, newPassword) {
   if (dbPool) {
     try {
       const numId = Number.parseInt(authUser.id, 10);
@@ -585,10 +565,45 @@ const handleChangePassword = async (req, res) => {
     }
   }
 
+  const userInStore = dbUsersStore.find((u) => String(u.id) === String(authUser.id) || u.email.toLowerCase() === authUser.email.toLowerCase());
   if (userInStore) {
     userInStore.passwordHash = newHash;
     userInStore.rawPassword = newPassword;
   }
+}
+
+const handleChangePassword = async (req, res) => {
+  const authUser = getAuthUser(req);
+  if (!authUser) {
+    return res.status(401).json({ error: 'Unauthorized. Please sign in again.' });
+  }
+
+  const { currentPassword, newPassword, confirmPassword } = req.body;
+  if (!currentPassword) {
+    return res.status(400).json({ error: 'Please enter your current password.' });
+  }
+  if (!newPassword || String(newPassword).length < 8) {
+    return res.status(400).json({ error: 'New password must contain at least 8 characters.' });
+  }
+  if (confirmPassword !== undefined && newPassword !== confirmPassword) {
+    return res.status(400).json({ error: 'New password and confirmation do not match.' });
+  }
+
+  const userInStore = dbUsersStore.find((u) => String(u.id) === String(authUser.id) || u.email.toLowerCase() === authUser.email.toLowerCase());
+  let existingHash = await fetchPasswordHash(authUser);
+  if (!existingHash && userInStore?.passwordHash) {
+    existingHash = userInStore.passwordHash;
+  }
+  const rawPassword = userInStore?.rawPassword || null;
+  const isDefaultAdmin = authUser.email === 'admin@markops.io' || authUser.id === '1' || authUser.id === 'usr_admin_01';
+
+  const isMatch = await verifyCurrentPassword(currentPassword, existingHash, rawPassword, isDefaultAdmin);
+  if (!isMatch) {
+    return res.status(400).json({ error: 'Current password is incorrect. Please verify and try again.' });
+  }
+
+  const newHash = await bcrypt.hash(newPassword, 10);
+  await updatePasswordRecord(authUser, newHash, newPassword);
 
   await recordAuditLog(dbPool, {
     actorId: authUser.id,

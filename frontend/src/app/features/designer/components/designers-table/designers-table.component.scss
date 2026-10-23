@@ -176,7 +176,7 @@
         transition: all 0.15s ease;
 
         &:hover:not(:disabled) {
-          color: #EA580C;
+          color: #C2410C;
           background: #FEF3EE;
         }
 
@@ -204,11 +204,11 @@
 
         &:hover:not(.active) {
           background: #FEF3EE;
-          color: #EA580C;
+          color: #C2410C;
         }
 
         &.active {
-          background: #F97316;
+          background: #C2410C;
           color: #FFFFFF;
           box-shadow: 0 2px 6px rgba(249, 115, 22, 0.35);
         }
@@ -399,7 +399,7 @@
 
     &.tone-optimal {
       background-color: #ECFDF5;
-      color: #059669;
+      color: #047857;
       border: 1px solid rgba(5, 150, 105, 0.18);
 
       .pill-dot {
@@ -457,12 +457,12 @@
 
       &.btn-trash:hover {
         background-color: #FEF2F2;
-        color: #DC2626;
+        color: #B91C1C;
       }
 
       &.btn-edit:hover {
         background-color: #FFF7ED;
-        color: #EA580C;
+        color: #C2410C;
       }
     }
 
@@ -519,7 +519,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #EA580C;
+      color: #C2410C;
 
       .material-symbols-outlined {
         font-size: 24px;

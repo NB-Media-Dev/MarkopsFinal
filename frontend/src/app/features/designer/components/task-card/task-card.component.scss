@@ -127,7 +127,7 @@
         &.priority-high,
         &.priority-urgent {
           background: #FEF2F2;
-          color: #DC2626;
+          color: #B91C1C;
           border: 1px solid #FECACA;
         }
         &.priority-medium {
@@ -444,7 +444,7 @@
 
         &.btn-card-preview {
           background: #E8F5E9;
-          color: #059669;
+          color: #047857;
           padding: 0.32rem 0.7rem;
 
           &:hover {
@@ -456,7 +456,7 @@
 
         &.btn-card-download,
         &.btn-card-solid-action {
-          background: #059669;
+          background: #047857;
           color: #FFFFFF;
           padding: 0.32rem 0.8rem;
           box-shadow: 0 2px 8px rgba(5, 150, 105, 0.22);

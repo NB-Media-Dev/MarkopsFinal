@@ -1033,66 +1033,75 @@ function formatFollowUpDueDate(followUpDate, followUpTime) {
   return `${followUpDate.split(' ')[0]} ${timePart}`;
 }
 
+async function updateLeadInDatabase(pool, numId, rawPhone, newStatus, remarks) {
+  const remarkText = remarks || 'Call logged.';
+  if (!Number.isNaN(numId)) {
+    await pool.query('UPDATE leads SET status = ?, remarks = ?, notes = ?, updated_at = NOW() WHERE id = ?', [newStatus, remarkText, remarkText, numId]);
+  } else if (rawPhone) {
+    await pool.query('UPDATE leads SET status = ?, remarks = ?, notes = ?, updated_at = NOW() WHERE phone LIKE ?', [newStatus, remarkText, remarkText, `%${rawPhone}%`]);
+  }
+}
+
+async function fetchLeadRowFromDatabase(pool, numId, rawPhone) {
+  let fetchSql = `
+    SELECT l.*, 
+           c.full_name as creator_full_name, 
+           c.email as creator_user_email,
+           u.full_name as assignee_full_name,
+           u.email as assignee_user_email
+    FROM leads l
+    LEFT JOIN users c ON l.creator_id = c.id
+    LEFT JOIN users u ON l.assigned_to = u.id
+  `;
+  let params = [];
+  if (!Number.isNaN(numId)) {
+    fetchSql += ' WHERE l.id = ?';
+    params = [numId];
+  } else if (rawPhone) {
+    fetchSql += ' WHERE l.phone LIKE ?';
+    params = [`%${rawPhone}%`];
+  } else {
+    return null;
+  }
+  const [rows] = await pool.query(fetchSql, params);
+  return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+}
+
+function mapLeadDatabaseRow(row, remarks) {
+  return {
+    id: row.id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    email: row.email,
+    phone: row.phone,
+    source: row.source,
+    status: row.status,
+    assignedTo: row.assigned_to,
+    assigned_to: row.assigned_to,
+    assigneeName: row.assignee_full_name || (row.assigned_to ? 'Telecaller' : 'Unassigned'),
+    creatorId: row.creator_id,
+    creator_id: row.creator_id,
+    creatorName: row.creator_full_name || row.creator_name || 'System Administrator',
+    creatorEmail: row.creator_user_email || row.creator_email || 'admin@markops.io',
+    campaignId: row.campaign_id,
+    campaignName: row.campaign_name || '',
+    remarks: remarks || '',
+    notes: remarks || '',
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
+  };
+}
+
 async function findLeadInDatabase(pool, numId, rawPhone, newStatus, remarks) {
   if (!pool) return null;
   try {
-    if (!Number.isNaN(numId)) {
-      await pool.query('UPDATE leads SET status = ?, remarks = ?, notes = ?, updated_at = NOW() WHERE id = ?', [newStatus, remarks || 'Call logged.', remarks || 'Call logged.', numId]);
-    } else if (rawPhone) {
-      await pool.query('UPDATE leads SET status = ?, remarks = ?, notes = ?, updated_at = NOW() WHERE phone LIKE ?', [newStatus, remarks || 'Call logged.', remarks || 'Call logged.', `%${rawPhone}%`]);
-    }
-
-    let fetchSql = `
-      SELECT l.*, 
-             c.full_name as creator_full_name, 
-             c.email as creator_user_email,
-             u.full_name as assignee_full_name,
-             u.email as assignee_user_email
-      FROM leads l
-      LEFT JOIN users c ON l.creator_id = c.id
-      LEFT JOIN users u ON l.assigned_to = u.id
-    `;
-    let params = [];
-    if (!Number.isNaN(numId)) {
-      fetchSql += ' WHERE l.id = ?';
-      params = [numId];
-    } else if (rawPhone) {
-      fetchSql += ' WHERE l.phone LIKE ?';
-      params = [`%${rawPhone}%`];
-    }
-
-    if (params.length > 0) {
-      const [rows] = await pool.query(fetchSql, params);
-      if (Array.isArray(rows) && rows.length > 0) {
-        const row = rows[0];
-        return {
-          id: row.id,
-          firstName: row.first_name,
-          lastName: row.last_name,
-          email: row.email,
-          phone: row.phone,
-          source: row.source,
-          status: row.status,
-          assignedTo: row.assigned_to,
-          assigned_to: row.assigned_to,
-          assigneeName: row.assignee_full_name || (row.assigned_to ? 'Telecaller' : 'Unassigned'),
-          creatorId: row.creator_id,
-          creator_id: row.creator_id,
-          creatorName: row.creator_full_name || row.creator_name || 'System Administrator',
-          creatorEmail: row.creator_user_email || row.creator_email || 'admin@markops.io',
-          campaignId: row.campaign_id,
-          campaignName: row.campaign_name || '',
-          remarks: remarks || '',
-          notes: remarks || '',
-          createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
-          updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
-        };
-      }
-    }
+    await updateLeadInDatabase(pool, numId, rawPhone, newStatus, remarks);
+    const row = await fetchLeadRowFromDatabase(pool, numId, rawPhone);
+    return row ? mapLeadDatabaseRow(row, remarks) : null;
   } catch (error) {
     console.error('[MySQL Error] Failed to update and fetch lead in POST /calls:', error?.message || error);
+    return null;
   }
-  return null;
 }
 
 function findOrCreateLeadInMemory(rawLeadId, rawPhone, rawName, body, newStatus, remarks) {

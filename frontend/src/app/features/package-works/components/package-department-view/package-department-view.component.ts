@@ -353,6 +353,17 @@ export class PackageDepartmentViewComponent {
     return '';
   }
 
+  private isReportLeadCalled(lead: any, hasValidOutcome: boolean, hasValidStatus: boolean): boolean {
+    if (Array.isArray(lead.calls) && lead.calls.length > 0) return true;
+    if (typeof lead.callAttempts === 'number' && lead.callAttempts > 0) return true;
+    if (lead.calledAt || lead.lastCalledAt) return true;
+    return hasValidOutcome || hasValidStatus;
+  }
+
+  private isReportLeadPaid(lead: any, outcome: string): boolean {
+    return outcome === 'PAID' || outcome === 'CONVERTED' || Boolean(lead.isPaid) || (Number(lead.paidAmount) > 0);
+  }
+
   private aggregateGroupLeadStats(groupLeads: any[]): { totalCalls: number; interested: number; paid: number } {
     const calledLeadIds = new Set<string>();
     const interestedLeadIds = new Set<string>();
@@ -366,17 +377,13 @@ export class PackageDepartmentViewComponent {
 
       const hasValidOutcome = Boolean(rawOutcome && !uncalledStatuses.has(rawOutcome));
       const hasValidStatus = Boolean(rawStatus && !uncalledStatuses.has(rawStatus));
-      const hasValidCalls = Array.isArray(lead.calls) && lead.calls.length > 0;
-      const hasValidAttempts = typeof lead.callAttempts === 'number' && lead.callAttempts > 0;
-      const hasValidCallDate = Boolean(lead.calledAt) || Boolean(lead.lastCalledAt);
 
-      const hasBeenCalled = hasValidCalls || hasValidAttempts || hasValidCallDate || hasValidOutcome || hasValidStatus;
-      if (hasBeenCalled && leadKey) {
+      if (this.isReportLeadCalled(lead, hasValidOutcome, hasValidStatus) && leadKey) {
         calledLeadIds.add(leadKey);
       }
 
       const outcome = this.getReportLeadOutcome(hasValidOutcome, rawOutcome, hasValidStatus, rawStatus);
-      if (['PAID', 'CONVERTED'].includes(outcome) || lead.isPaid || lead.paidAmount > 0) {
+      if (this.isReportLeadPaid(lead, outcome)) {
         if (leadKey) {
           paidLeadIds.add(leadKey);
           interestedLeadIds.add(leadKey);

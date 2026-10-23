@@ -13,7 +13,7 @@ import { getApiUrl } from '../../../../core/utils/api-url.utils';
   styleUrl: './task-card.component.scss',
 })
 export class TaskCardComponent {
-  private userService = inject(UserManagementService);
+  private readonly userService = inject(UserManagementService);
 
   @Input({ required: true }) task!: Task;
   @Input() isSelected = false;
@@ -160,7 +160,7 @@ export class TaskCardComponent {
     if (!name) return 'S';
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return (parts[0][0] + (parts.at(-1)?.[0] || "")).toUpperCase();
   }
 
   getShortCreator(): string {

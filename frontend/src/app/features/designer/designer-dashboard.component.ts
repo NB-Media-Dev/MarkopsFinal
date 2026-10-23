@@ -22,6 +22,133 @@ import { CreateTaskModalComponent } from './components/modals/create-task-modal/
 import { ReviewModalComponent } from './components/modals/review-modal/review-modal.component';
 import { DocViewerModalComponent } from './components/modals/doc-viewer-modal/doc-viewer-modal.component';
 
+function initializeDesignerSummaryMap(designers: Array<{ id: string; name: string; email?: string; department?: string; avatarUrl?: string }>, getAvatarColor: (name: string) => string): Map<string, DesignerSummary> {
+  const map = new Map<string, DesignerSummary>();
+  for (const d of designers) {
+    const dIdStr = String(d.id || '');
+    const dNameStr = String(d.name || '');
+    const dEmailStr = String(d.email || `${dNameStr.toLowerCase().replace(/\s+/g, '.')}@markops.io`);
+    map.set(dIdStr, {
+      id: dIdStr,
+      name: dNameStr,
+      email: dEmailStr,
+      department: d.department || 'Creative Design',
+      avatarColor: getAvatarColor(dNameStr),
+      avatarUrl: d.avatarUrl,
+      totalCount: 0,
+      completedCount: 0,
+      pendingCount: 0,
+      inProgressCount: 0,
+      submittedCount: 0,
+      revisionCount: 0,
+      completionRate: 0,
+    });
+  }
+  return map;
+}
+
+function isTaskEligibleForDesignerSummary(
+  t: Task,
+  currentRole: string | undefined,
+  currentUserId: string,
+  currentUserEmail: string,
+  pkgFilter: string | null | undefined,
+  dateFilter: string,
+  packages: any[]
+): boolean {
+  if (currentRole === 'DESIGNER') {
+    const isAssignedToMe =
+      (t.assignedTo !== undefined && String(t.assignedTo).toLowerCase().trim() === currentUserId) ||
+      (currentUserEmail && t.assignedTo !== undefined && String(t.assignedTo).toLowerCase().trim() === currentUserEmail);
+    if (!isAssignedToMe) return false;
+  }
+  if (pkgFilter && !isTaskForPackage(t, pkgFilter, packages)) {
+    return false;
+  }
+  if (dateFilter) {
+    const createdDate = t.createdAt ? t.createdAt.split('T')[0] : '';
+    const dueDate = t.dueDate ? t.dueDate.split('T')[0] : '';
+    const updatedDate = t.updatedAt ? t.updatedAt.split('T')[0] : '';
+    if (createdDate !== dateFilter && dueDate !== dateFilter && updatedDate !== dateFilter) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function resolveTaskMatchedDesignerId(
+  t: Task,
+  designers: Array<{ id: string; name: string; email?: string }>,
+  designerMap: Map<string, DesignerSummary>,
+  getAvatarColor: (name: string) => string
+): string | null {
+  const tAssignedToStr = String(t.assignedTo || '').toLowerCase().trim();
+  const tAssigneeNameStr = String(t.assigneeName || '').toLowerCase().trim();
+
+  for (const d of designers) {
+    const dIdStr = String(d.id || '').toLowerCase().trim();
+    const dNameStr = String(d.name || '').toLowerCase().trim();
+    const dEmailStr = String(d.email || '').toLowerCase().trim();
+
+    if (
+      (tAssignedToStr && (tAssignedToStr === dIdStr || tAssignedToStr === dEmailStr)) ||
+      (tAssigneeNameStr && (tAssigneeNameStr === dNameStr || tAssigneeNameStr.includes(dNameStr) || dNameStr.includes(tAssigneeNameStr)))
+    ) {
+      return String(d.id);
+    }
+  }
+
+  const ignorableNames = new Set(['Assigned User', 'Designer', 'Assigned Designer', 'Unassigned']);
+  if (t.assigneeName && !ignorableNames.has(t.assigneeName)) {
+    const customId = `d_${String(t.assigneeName).toLowerCase().replace(/\s+/g, '_')}`;
+    if (!designerMap.has(customId)) {
+      designerMap.set(customId, {
+        id: customId,
+        name: String(t.assigneeName),
+        email: `${String(t.assigneeName).toLowerCase().replace(/\s+/g, '.')}@markops.io`,
+        department: 'Creative Design',
+        avatarColor: getAvatarColor(String(t.assigneeName)),
+        totalCount: 0,
+        completedCount: 0,
+        pendingCount: 0,
+        inProgressCount: 0,
+        submittedCount: 0,
+        revisionCount: 0,
+        completionRate: 0,
+      });
+    }
+    return customId;
+  }
+  return null;
+}
+
+function recordTaskStatusForDesigner(entry: DesignerSummary, status?: string) {
+  entry.totalCount++;
+  const isCompleted = status === 'APPROVED' || status === 'PUBLISHED' || status === 'COMPLETED';
+  const isInProgress =
+    status === 'IN_PROGRESS' ||
+    status === 'ACCEPTED' ||
+    status === 'SUBMITTED' ||
+    status === 'RESUBMITTED' ||
+    status === 'UNDER_REVIEW' ||
+    status === 'REVISION_REQUIRED' ||
+    status === 'REDESIGN_REQUIRED';
+  const isReview = status === 'SUBMITTED' || status === 'RESUBMITTED' || status === 'UNDER_REVIEW';
+  const isRevision = status === 'REVISION_REQUIRED' || status === 'REDESIGN_REQUIRED';
+
+  if (isCompleted) {
+    entry.completedCount++;
+  } else if (isInProgress) {
+    entry.inProgressCount = (entry.inProgressCount || 0) + 1;
+  } else {
+    entry.pendingCount++;
+  }
+
+  if (isReview) entry.submittedCount = (entry.submittedCount || 0) + 1;
+  if (isRevision) entry.revisionCount = (entry.revisionCount || 0) + 1;
+}
+
+
 @Component({
   selector: 'app-designer-dashboard',
   standalone: true,
@@ -43,6 +170,7 @@ import { DocViewerModalComponent } from './components/modals/doc-viewer-modal/do
   templateUrl: './designer-dashboard.component.html',
   styleUrl: './designer-dashboard.component.scss',
 })
+
 export class DesignerDashboardComponent implements OnInit {
   readonly packageFilterSignal = signal<string | undefined>(undefined);
   @Input() set packageFilter(val: string | undefined) {
@@ -271,142 +399,30 @@ export class DesignerDashboardComponent implements OnInit {
     const designers = this.realDesignersList();
     const allTasks = this.taskService.tasks();
     const pkgFilter = this.packageFilterSignal();
-
-    const designerMap = new Map<string, DesignerSummary>();
-
-    for (const d of designers) {
-      const dIdStr = String(d.id || '');
-      const dNameStr = String(d.name || '');
-      const dEmailStr = String(d.email || `${dNameStr.toLowerCase().replace(/\s+/g, '.')}@markops.io`);
-      designerMap.set(dIdStr, {
-        id: dIdStr,
-        name: dNameStr,
-        email: dEmailStr,
-        department: d.department || 'Creative Design',
-        avatarColor: this.getAvatarColor(dNameStr),
-        avatarUrl: d.avatarUrl,
-        totalCount: 0,
-        completedCount: 0,
-        pendingCount: 0,
-        inProgressCount: 0,
-        submittedCount: 0,
-        revisionCount: 0,
-        completionRate: 0,
-      });
-    }
+    const designerMap = initializeDesignerSummaryMap(designers, (name) => this.getAvatarColor(name));
 
     const currentUser = this.authService.currentUser();
     const currentRole = currentUser?.role;
     const currentUserId = String(currentUser?.id || '').toLowerCase().trim();
     const currentUserEmail = String(currentUser?.email || '').toLowerCase().trim();
-
     const dateFilter = this.selectedDateFilter();
-    const tasksToCount = allTasks.filter((t) => {
-      if (currentRole === 'DESIGNER') {
-        const isAssignedToMe =
-          (t.assignedTo !== undefined && String(t.assignedTo).toLowerCase().trim() === currentUserId) ||
-          (currentUserEmail && t.assignedTo !== undefined && String(t.assignedTo).toLowerCase().trim() === currentUserEmail);
-        if (!isAssignedToMe) return false;
-      }
+    const pkgs = this.packageService.packages();
 
-      if (pkgFilter && !isTaskForPackage(t, pkgFilter, this.packageService.packages())) {
-        return false;
-      }
-      if (dateFilter) {
-        const createdDate = t.createdAt ? t.createdAt.split('T')[0] : '';
-        const dueDate = t.dueDate ? t.dueDate.split('T')[0] : '';
-        const updatedDate = t.updatedAt ? t.updatedAt.split('T')[0] : '';
-        if (createdDate !== dateFilter && dueDate !== dateFilter && updatedDate !== dateFilter) {
-          return false;
-        }
-      }
-      return true;
-    });
+    const tasksToCount = allTasks.filter((t) =>
+      isTaskEligibleForDesignerSummary(t, currentRole, currentUserId, currentUserEmail, pkgFilter, dateFilter, pkgs)
+    );
 
     for (const t of tasksToCount) {
-      let matchedId: string | null = null;
-      const tAssignedToStr = String(t.assignedTo || '').toLowerCase().trim();
-      const tAssigneeNameStr = String(t.assigneeName || '').toLowerCase().trim();
-
-      for (const d of designers) {
-        const dIdStr = String(d.id || '').toLowerCase().trim();
-        const dNameStr = String(d.name || '').toLowerCase().trim();
-        const dEmailStr = String(d.email || '').toLowerCase().trim();
-
-        if (
-          (tAssignedToStr && (tAssignedToStr === dIdStr || tAssignedToStr === dEmailStr)) ||
-          (tAssigneeNameStr && (tAssigneeNameStr === dNameStr || tAssigneeNameStr.includes(dNameStr) || dNameStr.includes(tAssigneeNameStr)))
-        ) {
-          matchedId = String(d.id);
-          break;
-        }
-      }
-
-      if (!matchedId) {
-        if (
-          t.assigneeName &&
-          t.assigneeName !== 'Assigned User' &&
-          t.assigneeName !== 'Designer' &&
-          t.assigneeName !== 'Assigned Designer' &&
-          t.assigneeName !== 'Unassigned'
-        ) {
-          const customId = `d_${String(t.assigneeName).toLowerCase().replace(/\s+/g, '_')}`;
-          if (!designerMap.has(customId)) {
-            designerMap.set(customId, {
-              id: customId,
-              name: String(t.assigneeName),
-              email: `${String(t.assigneeName).toLowerCase().replace(/\s+/g, '.')}@markops.io`,
-              department: 'Creative Design',
-              avatarColor: this.getAvatarColor(String(t.assigneeName)),
-              totalCount: 0,
-              completedCount: 0,
-              pendingCount: 0,
-              inProgressCount: 0,
-              submittedCount: 0,
-              revisionCount: 0,
-              completionRate: 0,
-            });
-          }
-          matchedId = customId;
-        }
-      }
-
+      const matchedId = resolveTaskMatchedDesignerId(t, designers, designerMap, (name) => this.getAvatarColor(name));
       if (matchedId && designerMap.has(matchedId)) {
-        const entry = designerMap.get(matchedId)!;
-        entry.totalCount++;
-
-        const isCompleted = t.status === 'APPROVED' || t.status === 'PUBLISHED' || t.status === 'COMPLETED';
-        const isInProgress =
-          t.status === 'IN_PROGRESS' ||
-          t.status === 'ACCEPTED' ||
-          t.status === 'SUBMITTED' ||
-          t.status === 'RESUBMITTED' ||
-          t.status === 'UNDER_REVIEW' ||
-          t.status === 'REVISION_REQUIRED' ||
-          t.status === 'REDESIGN_REQUIRED';
-        const isReview = t.status === 'SUBMITTED' || t.status === 'RESUBMITTED' || t.status === 'UNDER_REVIEW';
-        const isRevision = t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED';
-
-        if (isCompleted) {
-          entry.completedCount++;
-        } else if (isInProgress) {
-          entry.inProgressCount = (entry.inProgressCount || 0) + 1;
-        } else {
-          entry.pendingCount++;
-        }
-
-        if (isReview) entry.submittedCount = (entry.submittedCount || 0) + 1;
-        if (isRevision) entry.revisionCount = (entry.revisionCount || 0) + 1;
+        recordTaskStatusForDesigner(designerMap.get(matchedId)!, t.status);
       }
     }
 
-    return Array.from(designerMap.values()).map((d) => {
-      const rate = d.totalCount > 0 ? Math.round((d.completedCount / d.totalCount) * 100) : 0;
-      return {
-        ...d,
-        completionRate: rate,
-      };
-    });
+    return Array.from(designerMap.values()).map((d) => ({
+      ...d,
+      completionRate: d.totalCount > 0 ? Math.round((d.completedCount / d.totalCount) * 100) : 0,
+    }));
   });
 
   readonly filteredDesigners = computed(() => {

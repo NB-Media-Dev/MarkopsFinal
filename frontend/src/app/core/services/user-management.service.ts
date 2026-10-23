@@ -162,7 +162,7 @@ export class UserManagementService {
             role: updatedData.role || user.role,
             department: updatedData.department ? String(updatedData.department).trim() : user.department,
             isActive: updatedData.isActive !== undefined ? updatedData.isActive : user.isActive,
-            avatarUrl: updatedData.avatarUrl !== undefined ? updatedData.avatarUrl : user.avatarUrl,
+            avatarUrl: updatedData.avatarUrl ?? user.avatarUrl,
           };
           return updatedUser;
         }

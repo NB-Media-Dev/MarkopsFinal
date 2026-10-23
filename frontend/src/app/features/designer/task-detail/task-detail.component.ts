@@ -20,6 +20,9 @@ import { PackageService } from '../../../core/services/package.service';
 import { resolveTaskProductAndPackage } from '../../../core/models/package.model';
 import { UploadDesignModalComponent } from '../components/modals/upload-design-modal/upload-design-modal.component';
 
+type WorkflowStepState = 'completed' | 'current' | 'upcoming';
+type WorkflowFinalStepState = WorkflowStepState | 'revision';
+
 @Component({
   selector: 'app-task-detail',
   standalone: true,
@@ -343,7 +346,7 @@ export class TaskDetailComponent implements OnInit {
     if (!name || name === 'Unassigned') return 'D';
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return (parts[0][0] + (parts.at(-1)?.[0] || "")).toUpperCase();
   }
 
   getCreatorUser(t: Task | null): any {
@@ -384,7 +387,7 @@ export class TaskDetailComponent implements OnInit {
     if (!name) return 'A';
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return (parts[0][0] + (parts.at(-1)?.[0] || "")).toUpperCase();
   }
 
   getTaskProgress(t: Task | null): number {
@@ -569,11 +572,12 @@ export class TaskDetailComponent implements OnInit {
   }
 
  
+
   private resolveWorkflowStages(status: string): {
-    stage1State: 'completed' | 'current' | 'upcoming';
-    stage2State: 'completed' | 'current' | 'upcoming';
-    stage3State: 'completed' | 'current' | 'upcoming';
-    stage4State: 'completed' | 'current' | 'upcoming' | 'revision';
+    stage1State: WorkflowStepState;
+    stage2State: WorkflowStepState;
+    stage3State: WorkflowStepState;
+    stage4State: WorkflowFinalStepState;
   } {
     if (status === 'DRAFT' || status === 'ASSIGNED') {
       return { stage1State: 'current', stage2State: 'upcoming', stage3State: 'upcoming', stage4State: 'upcoming' };
