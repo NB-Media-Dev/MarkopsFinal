@@ -1,3 +1,4 @@
+$yamlContent = @"
 name: SonarQube CI Pipeline
 
 on:
@@ -23,8 +24,8 @@ jobs:
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: `${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: `${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
             -Dsonar.projectKey=MarkopsFinal
@@ -36,48 +37,48 @@ jobs:
         uses: sonarsource/sonarqube-quality-gate-action@master
         timeout-minutes: 5
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: `${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: `${{ secrets.SONAR_HOST_URL }}
 
       - name: Publish Unresolved Bug Report
         if: always()
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: `${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: `${{ secrets.SONAR_HOST_URL }}
           SONAR_PROJECT_KEY: MarkopsFinal
         shell: bash
         run: |
           set -u
           echo "## SonarQube Unresolved Bug Report" \
-            >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          if [ -z "${SONAR_TOKEN:-}" ] ||
-             [ -z "${SONAR_HOST_URL:-}" ]; then
+            >> "`$GITHUB_STEP_SUMMARY"
+          echo "" >> "`$GITHUB_STEP_SUMMARY"
+          if [ -z "`$SONAR_TOKEN:-" ] ||
+             [ -z "`$SONAR_HOST_URL:-" ]; then
             echo "⚠️ SonarQube URL or token is missing." \
-              >> "$GITHUB_STEP_SUMMARY"
+              >> "`$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          BASE_URL="${SONAR_HOST_URL%/}"
-          API_URL="${BASE_URL}/api/issues/search"
+          BASE_URL="`${SONAR_HOST_URL%/}"
+          API_URL="`$BASE_URL/api/issues/search"
           if ! curl --fail --silent --show-error --get \
             --connect-timeout 15 --max-time 60 \
-            --user "${SONAR_TOKEN}:" \
+            --user "`$SONAR_TOKEN:" \
             --header "Bypass-Tunnel-Reminder: true" \
             --header "User-Agent: GitHub-Actions-SonarQube-Report" \
             --data-urlencode \
-              "componentKeys=${SONAR_PROJECT_KEY}" \
+              "componentKeys=`$SONAR_PROJECT_KEY" \
             --data-urlencode "resolved=false" \
             --data-urlencode "types=BUG" \
             --data-urlencode "ps=100" \
-            "$API_URL" \
+            "`$API_URL" \
             --output sonar-issues.json; then
             echo "⚠️ Could not retrieve issues from SonarQube." \
-              >> "$GITHUB_STEP_SUMMARY"
+              >> "`$GITHUB_STEP_SUMMARY"
             echo "Check server connectivity, token permissions, and tunnel access." \
-              >> "$GITHUB_STEP_SUMMARY"
+              >> "`$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          export SONAR_REPORT_URL="${BASE_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
+          export SONAR_REPORT_URL="`$BASE_URL/dashboard?id=`$SONAR_PROJECT_KEY"
           node <<'NODE'
           const fs = require("fs");
           const summary = process.env.GITHUB_STEP_SUMMARY;
@@ -131,3 +132,6 @@ jobs:
           fs.appendFileSync(summary, output);
           NODE
           echo "Report generation step completed."
+"@
+
+Set-Content -Path ".github/workflows/sonar.yml" -Value $yamlContent -Encoding utf8
