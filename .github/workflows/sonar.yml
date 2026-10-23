@@ -2,16 +2,21 @@
 
 on:
   push:
-    branches: [ main, master, development ]
+    branches: [main, master, development]
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+
 jobs:
   sonarQube:
-    name: SonarQube Scan
+    name: SonarQube Scan and Gate
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -19,9 +24,68 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://calibration-alcohol-intro-productive.trycloudflare.com
+          SONAR_HOST_URL: https://reading-stationery-richard-naturals.trycloudflare.com
         with:
           args: >
             -Dsonar.projectKey=MarkopsFinal
             -Dsonar.projectName=MarkopsFinal
             -Dsonar.sources=.
+
+      - name: SonarQube Quality Gate check
+        id: sonarqube-quality-gate-check
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://reading-stationery-richard-naturals.trycloudflare.com
+
+      - name: Publish Unresolved Bug Report
+        if: always()
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://reading-stationery-richard-naturals.trycloudflare.com
+          SONAR_PROJECT_KEY: MarkopsFinal
+        shell: bash
+        run: |
+          set -u
+          echo "## SonarQube Unresolved Bug Report" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [ -z "$SONAR_TOKEN:-" ] || [ -z "$SONAR_HOST_URL:-" ]; then
+            echo "⚠️ SonarQube URL or token is missing." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          BASE_URL="${SONAR_HOST_URL%/}"
+          API_URL="$BASE_URL/api/issues/search"
+          if ! curl --fail --silent --show-error --get \
+            --connect-timeout 15 --max-time 60 \
+            --user "$SONAR_TOKEN:" \
+            --header "Bypass-Tunnel-Reminder: true" \
+            --header "User-Agent: GitHub-Actions-SonarQube-Report" \
+            --data-urlencode "componentKeys=$SONAR_PROJECT_KEY" \
+            --data-urlencode "resolved=false" \
+            --data-urlencode "types=BUG" \
+            --data-urlencode "ps=100" \
+            "$API_URL" \
+            --output sonar-issues.json; then
+            echo "⚠️ Could not retrieve issues from SonarQube." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          export SONAR_REPORT_URL="$BASE_URL/dashboard?id=$SONAR_PROJECT_KEY"
+          node <<'NODE'
+          const fs = require("fs");
+          const summary = process.env.GITHUB_STEP_SUMMARY;
+          const reportUrl = process.env.SONAR_REPORT_URL;
+          const raw = fs.readFileSync("sonar-issues.json", "utf8");
+          function md(value) {
+            return String(value ?? "-").replace(/\r?\n/g, " ").replace(/\|/g, "\\|").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          }
+          let data = JSON.parse(raw);
+          const issues = data.issues || [];
+          let output = **Unresolved bugs in this API response: **\n\n;
+          output += "| Severity | File | Line | Bug description |\n|---|---|---:|---|\n";
+          for (const issue of issues) {
+            output += |  |  |  |  |\n;
+          }
+          output += \n[Open full SonarQube report]()\n;
+          fs.appendFileSync(summary, output);
+          NODE
