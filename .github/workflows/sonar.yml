@@ -1,4 +1,5 @@
-﻿name: SonarQube CI Pipeline
+﻿```yaml
+name: SonarQube CI Pipeline
 
 on:
   push:
@@ -20,11 +21,43 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify SonarQube connection
+        shell: bash
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          set -e
+
+          if [ -z "${SONAR_TOKEN:-}" ]; then
+            echo "::error::SONAR_TOKEN repository secret is missing."
+            exit 1
+          fi
+
+          if [ -z "${SONAR_HOST_URL:-}" ]; then
+            echo "::error::SONAR_HOST_URL repository secret is missing."
+            exit 1
+          fi
+
+          BASE_URL="${SONAR_HOST_URL%/}"
+
+          echo "Checking SonarQube server availability..."
+
+          curl --fail --silent --show-error \
+            --connect-timeout 15 \
+            --max-time 30 \
+            --user "${SONAR_TOKEN}:" \
+            -H "Bypass-Tunnel-Reminder: true" \
+            "${BASE_URL}/api/system/status"
+
+          echo
+          echo "SonarQube connection check completed."
+
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://reading-stationery-richard-naturals.trycloudflare.com
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         with:
           args: >
             -Dsonar.projectKey=MarkopsFinal
@@ -37,55 +70,146 @@ jobs:
         timeout-minutes: 5
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://reading-stationery-richard-naturals.trycloudflare.com
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-      - name: Publish Unresolved Bug Report
+      - name: Publish Unresolved Issue Report
         if: always()
+        shell: bash
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: https://reading-stationery-richard-naturals.trycloudflare.com
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
           SONAR_PROJECT_KEY: MarkopsFinal
-        shell: bash
         run: |
           set -u
-          echo "## SonarQube Unresolved Bug Report" >> "$GITHUB_STEP_SUMMARY"
+
+          echo "## SonarQube Unresolved Issue Report" \
+            >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          if [ -z "$SONAR_TOKEN:-" ] || [ -z "$SONAR_HOST_URL:-" ]; then
-            echo "⚠️ SonarQube URL or token is missing." >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -z "${SONAR_TOKEN:-}" ] || \
+             [ -z "${SONAR_HOST_URL:-}" ]; then
+            echo "⚠️ SONAR_TOKEN or SONAR_HOST_URL is missing." \
+              >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
+
           BASE_URL="${SONAR_HOST_URL%/}"
-          API_URL="$BASE_URL/api/issues/search"
-          if ! curl --fail --silent --show-error --get \
-            --connect-timeout 15 --max-time 60 \
-            --user "$SONAR_TOKEN:" \
-            --header "Bypass-Tunnel-Reminder: true" \
-            --header "User-Agent: GitHub-Actions-SonarQube-Report" \
-            --data-urlencode "componentKeys=$SONAR_PROJECT_KEY" \
-            --data-urlencode "resolved=false" \
-            --data-urlencode "types=BUG" \
+          API_URL="${BASE_URL}/api/issues/search"
+          REPORT_URL="${BASE_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
+
+          echo "[Open SonarQube dashboard](${REPORT_URL})" \
+            >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          HTTP_CODE=$(curl --silent --show-error --get \
+            --connect-timeout 15 \
+            --max-time 60 \
+            --user "${SONAR_TOKEN}:" \
+            -H "Bypass-Tunnel-Reminder: true" \
+            -H "User-Agent: GitHub-Actions-SonarQube-Report" \
+            --data-urlencode \
+              "componentKeys=${SONAR_PROJECT_KEY}" \
+            --data-urlencode \
+              "issueStatuses=OPEN,CONFIRMED" \
+            --data-urlencode \
+              "impactSoftwareQualities=SECURITY,RELIABILITY,MAINTAINABILITY" \
             --data-urlencode "ps=100" \
-            "$API_URL" \
-            --output sonar-issues.json; then
-            echo "⚠️ Could not retrieve issues from SonarQube." >> "$GITHUB_STEP_SUMMARY"
+            --output sonar-issues.json \
+            --write-out "%{http_code}" \
+            "$API_URL") || {
+              echo "⚠️ Could not connect to the SonarQube issues API." \
+                >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            }
+
+          if [ "$HTTP_CODE" -lt 200 ] || \
+             [ "$HTTP_CODE" -ge 300 ]; then
+            echo "⚠️ SonarQube issues API returned HTTP ${HTTP_CODE}." \
+              >> "$GITHUB_STEP_SUMMARY"
+            echo "Check token permissions, URL, and API filters." \
+              >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
-          export SONAR_REPORT_URL="$BASE_URL/dashboard?id=$SONAR_PROJECT_KEY"
+
+          export SONAR_REPORT_URL="$REPORT_URL"
+
           node <<'NODE'
           const fs = require("fs");
+
           const summary = process.env.GITHUB_STEP_SUMMARY;
           const reportUrl = process.env.SONAR_REPORT_URL;
           const raw = fs.readFileSync("sonar-issues.json", "utf8");
+
           function md(value) {
-            return String(value ?? "-").replace(/\r?\n/g, " ").replace(/\|/g, "\\|").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            return String(value ?? "-")
+              .replace(/\r?\n/g, " ")
+              .replace(/\|/g, "\\|")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;");
           }
-          let data = JSON.parse(raw);
-          const issues = data.issues || [];
-          let output = **Unresolved bugs in this API response: **\n\n;
-          output += "| Severity | File | Line | Bug description |\n|---|---|---:|---|\n";
-          for (const issue of issues) {
-            output += |  |  |  |  |\n;
+
+          let data;
+
+          try {
+            data = JSON.parse(raw);
+          } catch {
+            fs.appendFileSync(
+              summary,
+              "⚠️ SonarQube returned an invalid JSON response.\n"
+            );
+            process.exit(0);
           }
-          output += \n[Open full SonarQube report]()\n;
+
+          if (!Array.isArray(data.issues)) {
+            fs.appendFileSync(
+              summary,
+              "⚠️ The API response did not contain an issues list. " +
+              "Check the API response and permissions.\n"
+            );
+            process.exit(0);
+          }
+
+          const issues = data.issues;
+          let output = "";
+
+          output += `**Total matching unresolved issues: ${data.total ?? issues.length}**\n\n`;
+          output += `Showing ${issues.length} issue(s) in this report. Maximum: 100.\n\n`;
+          output += "| Software Quality | Impact | File | Line | Issue Description |\n";
+          output += "|---|---|---|---:|---|\n";
+
+          if (issues.length === 0) {
+            output += "| - | - | - | - | No matching unresolved issues returned |\n";
+          } else {
+            for (const issue of issues) {
+              const impacts = Array.isArray(issue.impacts)
+                ? issue.impacts
+                : [];
+
+              const quality = impacts
+                .map(item => item.softwareQuality)
+                .filter(Boolean)
+                .join(", ") || issue.type || "-";
+
+              const impact = impacts
+                .map(item => item.severity)
+                .filter(Boolean)
+                .join(", ") || issue.severity || "-";
+
+              const component = issue.component || "-";
+              const file = component.includes(":")
+                ? component.substring(component.indexOf(":") + 1)
+                : component;
+
+              const line = issue.line ?? "-";
+              const message = md(issue.message);
+
+              output += `| ${md(quality)} | ${md(impact)} | ${md(file)} | ${md(line)} | ${message} |\n`;
+            }
+          }
+
+          output += `\n[Open full SonarQube report](${reportUrl})\n`;
           fs.appendFileSync(summary, output);
           NODE
+
+          echo "Issue report step completed."
+```
