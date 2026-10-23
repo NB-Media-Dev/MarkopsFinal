@@ -142,5 +142,5 @@ jobs:
 
 [System.IO.File]::WriteAllText("$PWD/.github/workflows/sonar.yml", $yamlContent, (New-Object System.Text.UTF8Encoding $false))
 git add .github/workflows/sonar.yml
-git commit -m "fix: write workflow file with correct LF encoding to clear line 2 syntax error"
+git commit -m "fix: properly format workflow yaml without line flattening"
 git push origin main
