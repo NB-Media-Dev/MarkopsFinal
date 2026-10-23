@@ -1,4 +1,10 @@
 const LEAD_PUNCT_CHARS = new Set(['<', '(', '[', '{', '"', "'", '>', ']', '}', ')', '.', ',', ';', ':']);
+function stringifyCellValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'object') return JSON.stringify(value);
+  return String(value).trim();
+}
+
 function extractLeadEmail(text: string): string {
   if (!text?.includes('@')) return '';
   const tokens = text.split(/\s+/);
@@ -348,12 +354,12 @@ export class LeadsComponent implements OnInit {
         raw: false,
       });
       const leads: Partial<LeadItem>[] = (rows as Record<string, unknown>[])
-        .filter((row: Record<string, unknown>) => Object.values(row).some((value) => String(value ?? '').trim() !== ''))
+        .filter((row: Record<string, unknown>) => Object.values(row).some((value) => stringifyCellValue(value) !== ''))
         .map((row: Record<string, unknown>, index: number) => {
           const fields = new Map<string, string>(
             Object.entries(row).map(([header, value]) => [
               header.trim().toLowerCase().replace(/[\s_-]+/g, ''),
-              String(value ?? '').trim(),
+              stringifyCellValue(value),
             ])
           );
           const get = (...names: string[]): string => {

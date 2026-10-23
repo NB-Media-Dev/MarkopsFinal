@@ -53,6 +53,122 @@ function formatReportCleanName(raw?: string): string {
   return String(raw).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
 }
 
+function collectTaskReportDates(task: any, toLocalDateString: (val: any) => string, assignedDate?: string): string[] {
+  const dates: string[] = [];
+  if (assignedDate) dates.push(assignedDate);
+  const candidates = [task.launchDate, task.calledAt, task.createdAt, task.submittedAt, task.updatedAt, task.dueDate];
+  for (const c of candidates) {
+    if (c) {
+      const d = toLocalDateString(c);
+      if (d) dates.push(d);
+    }
+  }
+  return dates;
+}
+
+function isDateInRange(d: string, startDate?: string, endDate?: string): boolean {
+  if (startDate && endDate) return d >= startDate && d <= endDate;
+  if (startDate) return d >= startDate;
+  if (endDate) return d <= endDate;
+  return true;
+}
+
+function resolveVersionStartTimeFromHistory(sortedHistory: any[], uploadTime: number): number | null {
+  let primaryStart: number | null = null;
+  let fallbackStart: number | null = null;
+  for (const h of sortedHistory) {
+    const hTime = new Date(h.createdAt).getTime();
+    if (hTime <= uploadTime) {
+      const s = (h.newStatus || '').toUpperCase();
+      if (s === 'IN_PROGRESS' || s === 'REVISION_REQUIRED') {
+        primaryStart = hTime;
+      } else if (s === 'ACCEPTED' || s === 'ASSIGNED') {
+        fallbackStart = hTime;
+      }
+    }
+  }
+  return primaryStart ?? fallbackStart;
+}
+
+function resolveVersionStartTime(ver: any, task?: any, uploadTime?: number): number | null {
+  if (task?.statusHistory && task.statusHistory.length > 0 && uploadTime) {
+    const sorted = [...task.statusHistory].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const fromHistory = resolveVersionStartTimeFromHistory(sorted, uploadTime);
+    if (fromHistory) return fromHistory;
+  }
+  if (task?.versions && task.versions.length > 1) {
+    const sortedVers = [...task.versions].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const currIdx = sortedVers.findIndex((v: any) => (v.id && v.id === ver.id) || v.versionNumber === ver.versionNumber);
+    if (currIdx > 0) return new Date(sortedVers[currIdx - 1].createdAt).getTime();
+  }
+  if (task?.createdAt) return new Date(task.createdAt).getTime();
+  return null;
+}
+
+function formatDurationDiff(diffMs: number): string {
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffDays > 0) {
+    const remHours = diffHours % 24;
+    return remHours > 0 ? `${diffDays}d ${remHours}h` : `${diffDays}d`;
+  }
+  if (diffHours > 0) {
+    const remMins = diffMinutes % 60;
+    return remMins > 0 ? `${diffHours}h ${remMins}m` : `${diffHours}h`;
+  }
+  if (diffMinutes > 0) return `${diffMinutes} min`;
+  if (diffSec > 0) return `${diffSec}s`;
+  return '—';
+}
+
+function formatActiveDuration(start: number): string {
+  const now = Date.now();
+  if (Number.isNaN(start) || now <= start) return 'In Progress';
+  const diffMs = now - start;
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays > 0) return `${diffDays}d active`;
+  if (diffHours > 0) return `${diffHours}h active`;
+  const diffMins = Math.floor(diffMs / 60000);
+  return diffMins > 0 ? `${diffMins}m active` : 'Active';
+}
+
+function resolveModalTargetDate(modalDateFilter: string, customFilterDate: string, toLocalDateString: (d: Date) => string): string {
+  if (modalDateFilter === 'TODAY') return toLocalDateString(new Date());
+  if (modalDateFilter === 'YESTERDAY') {
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    return toLocalDateString(y);
+  }
+  if (modalDateFilter === 'CUSTOM') return customFilterDate;
+  return '';
+}
+
+function matchesModalSubFilter(t: any, subFilter: string, isTelecaller: boolean): boolean {
+  if (subFilter === 'COMPLETED') {
+    if (isTelecaller) {
+      return Boolean(t.calledAt || t.callAttempts > 0 || ['CONNECTED', 'QUALIFIED', 'CONVERTED', 'PAID', 'INTERESTED'].includes(t.status));
+    }
+    return t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED';
+  }
+  if (subFilter === 'IN_QUEUE') {
+    if (isTelecaller) {
+      return !t.calledAt && t.callAttempts === 0 && !['CONNECTED', 'QUALIFIED', 'CONVERTED', 'PAID'].includes(t.status);
+    }
+    return t.status !== 'APPROVED' && t.status !== 'COMPLETED' && t.status !== 'PUBLISHED';
+  }
+  if (subFilter === 'REVISIONS') {
+    if (isTelecaller) {
+      return t.status === 'FOLLOW_UP' || t.status === 'LINE_BUSY' || t.status === 'NO_ANSWER' || t.status === 'BUSY';
+    }
+    return t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED';
+  }
+  return true;
+}
+
 @Component({
   selector: 'app-package-reports',
   standalone: true,
@@ -973,138 +1089,29 @@ export class PackageReportsComponent implements OnInit, OnChanges {
 
   taskMatchesDateRange(task: any, startDate?: string, endDate?: string): boolean {
     if (!startDate && !endDate) return true;
-
-    const dates: string[] = [];
     const assigned = this.getTaskAssignedLocalDate(task);
-    if (assigned) dates.push(assigned);
-
-    if (task.launchDate) {
-      const lDate = this.toLocalDateString(task.launchDate);
-      if (lDate) dates.push(lDate);
-    }
-    if (task.calledAt) {
-      const cDate = this.toLocalDateString(task.calledAt);
-      if (cDate) dates.push(cDate);
-    }
-    if (task.createdAt) {
-      const crDate = this.toLocalDateString(task.createdAt);
-      if (crDate) dates.push(crDate);
-    }
-    if (task.submittedAt) {
-      const sDate = this.toLocalDateString(task.submittedAt);
-      if (sDate) dates.push(sDate);
-    }
-    if (task.updatedAt) {
-      const uDate = this.toLocalDateString(task.updatedAt);
-      if (uDate) dates.push(uDate);
-    }
-    if (task.dueDate) {
-      const dDate = this.toLocalDateString(task.dueDate);
-      if (dDate) dates.push(dDate);
-    }
-
+    const dates = collectTaskReportDates(task, (val) => this.toLocalDateString(val), assigned);
     if (dates.length === 0) return true;
-
-    return dates.some((d) => {
-      if (startDate && endDate) {
-        return d >= startDate && d <= endDate;
-      }
-      if (startDate) {
-        return d >= startDate;
-      }
-      if (endDate) {
-        return d <= endDate;
-      }
-      return true;
-    });
+    return dates.some((d) => isDateInRange(d, startDate, endDate));
   }
 
   getVersionDuration(ver: any, task?: any): string {
-    if (!ver || !ver.createdAt) return '';
+    if (!ver?.createdAt) return '';
     const uploadTime = new Date(ver.createdAt).getTime();
     if (Number.isNaN(uploadTime)) return '';
 
-    let startTime: number | null = null;
-
-    if (task?.statusHistory && task.statusHistory.length > 0) {
-      const sortedHistory = [...task.statusHistory].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-
-      for (const h of sortedHistory) {
-        const hTime = new Date(h.createdAt).getTime();
-        if (hTime <= uploadTime) {
-          const s = (h.newStatus || '').toUpperCase();
-          if (s === 'IN_PROGRESS' || s === 'REVISION_REQUIRED') {
-            startTime = hTime;
-          }
-        }
-      }
-
-      if (!startTime) {
-        for (const h of sortedHistory) {
-          const hTime = new Date(h.createdAt).getTime();
-          if (hTime <= uploadTime) {
-            const s = (h.newStatus || '').toUpperCase();
-            if (s === 'ACCEPTED' || s === 'ASSIGNED') {
-              startTime = hTime;
-            }
-          }
-        }
-      }
-    }
-
-    if (!startTime && task?.versions && task.versions.length > 1) {
-      const sortedVers = [...task.versions].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-      const currIdx = sortedVers.findIndex(
-        (v: any) => (v.id && v.id === ver.id) || v.versionNumber === ver.versionNumber
-      );
-      if (currIdx > 0) {
-        startTime = new Date(sortedVers[currIdx - 1].createdAt).getTime();
-      }
-    }
-
-    if (!startTime && task?.createdAt) {
-      startTime = new Date(task.createdAt).getTime();
-    }
-
+    const startTime = resolveVersionStartTime(ver, task, uploadTime);
     if (!startTime || Number.isNaN(startTime) || uploadTime < startTime) {
       return '—';
     }
-
-    const diffMs = Math.max(0, uploadTime - startTime);
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMinutes = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMinutes / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffDays > 0) {
-      const remHours = diffHours % 24;
-      return remHours > 0 ? `${diffDays}d ${remHours}h` : `${diffDays}d`;
-    }
-    if (diffHours > 0) {
-      const remMins = diffMinutes % 60;
-      return remMins > 0 ? `${diffHours}h ${remMins}m` : `${diffHours}h`;
-    }
-    if (diffMinutes > 0) {
-      return `${diffMinutes} min`;
-    }
-    if (diffSec > 0) {
-      return `${diffSec}s`;
-    }
-    return '—';
+    return formatDurationDiff(Math.max(0, uploadTime - startTime));
   }
 
   getTaskDuration(task: any): string {
     if (!task) return '—';
     if (task.timeDuration) return task.timeDuration;
     if (task.duration) return task.duration;
-
-    if (task.workCycle?.durationText) {
-      return task.workCycle.durationText;
-    }
+    if (task.workCycle?.durationText) return task.workCycle.durationText;
 
     if (Array.isArray(task.versions) && task.versions.length > 0) {
       const latestVer = task.versions[task.versions.length - 1];
@@ -1112,32 +1119,12 @@ export class PackageReportsComponent implements OnInit, OnChanges {
       if (dur && dur !== '—') return dur;
     }
 
-    if (
-      task.status === 'APPROVED' ||
-      task.status === 'COMPLETED' ||
-      task.status === 'PUBLISHED' ||
-      task.status === 'SUBMITTED' ||
-      task.status === 'UNDER_REVIEW'
-    ) {
+    if (['APPROVED', 'COMPLETED', 'PUBLISHED', 'SUBMITTED', 'UNDER_REVIEW'].includes(task.status)) {
       if (task.createdAt && task.updatedAt) {
         const start = new Date(task.createdAt).getTime();
         const end = new Date(task.updatedAt).getTime();
         if (!Number.isNaN(start) && !Number.isNaN(end) && end >= start) {
-          const diffMs = end - start;
-          const diffMinutes = Math.floor(diffMs / 60000);
-          const diffHours = Math.floor(diffMinutes / 60);
-          const diffDays = Math.floor(diffHours / 24);
-          if (diffDays > 0) {
-            const remHours = diffHours % 24;
-            return remHours > 0 ? `${diffDays}d ${remHours}h` : `${diffDays}d`;
-          }
-          if (diffHours > 0) {
-            const remMins = diffMinutes % 60;
-            return remMins > 0 ? `${diffHours}h ${remMins}m` : `${diffHours}h`;
-          }
-          if (diffMinutes > 0) return `${diffMinutes} min`;
-          const diffSec = Math.floor(diffMs / 1000);
-          return diffSec > 0 ? `${diffSec}s` : '—';
+          return formatDurationDiff(end - start);
         }
       }
     }
@@ -1145,16 +1132,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
     if (task.status === 'IN_PROGRESS' || task.status === 'ACCEPTED') {
       if (task.createdAt) {
         const start = new Date(task.createdAt).getTime();
-        const now = Date.now();
-        if (!Number.isNaN(start) && now > start) {
-          const diffMs = now - start;
-          const diffHours = Math.floor(diffMs / 3600000);
-          const diffDays = Math.floor(diffHours / 24);
-          if (diffDays > 0) return `${diffDays}d active`;
-          if (diffHours > 0) return `${diffHours}h active`;
-          const diffMins = Math.floor(diffMs / 60000);
-          return diffMins > 0 ? `${diffMins}m active` : 'Active';
-        }
+        return formatActiveDuration(start);
       }
       return 'In Progress';
     }
@@ -1175,7 +1153,7 @@ export class PackageReportsComponent implements OnInit, OnChanges {
         return `${day}/${month}/${year}`;
       }
     }
-    if (t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED') {
+    if (['APPROVED', 'COMPLETED', 'PUBLISHED'].includes(t.status)) {
       const refDate = t.updatedAt || t.createdAt;
       if (refDate) {
         const d = new Date(refDate);
@@ -1196,9 +1174,11 @@ export class PackageReportsComponent implements OnInit, OnChanges {
     if (t.revisions !== undefined) return Number(t.revisions);
     if (Array.isArray(t.versions) && t.versions.length > 1) {
       return t.versions.length - 1;
-    } else if (t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED') {
+    }
+    if (t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED') {
       return 1;
-    } else if (t.revisionCount !== undefined) {
+    }
+    if (t.revisionCount !== undefined) {
       return Number(t.revisionCount) || 0;
     }
     return 0;
@@ -1222,40 +1202,15 @@ export class PackageReportsComponent implements OnInit, OnChanges {
     if (this.filterStartDate || this.filterEndDate) {
       tasks = tasks.filter((t) => this.taskMatchesDateRange(t, this.filterStartDate, this.filterEndDate));
     } else if (this.modalDateFilter !== 'ALL') {
-      let targetDate = '';
-      if (this.modalDateFilter === 'TODAY') {
-        targetDate = this.toLocalDateString(new Date());
-      } else if (this.modalDateFilter === 'YESTERDAY') {
-        const y = new Date();
-        y.setDate(y.getDate() - 1);
-        targetDate = this.toLocalDateString(y);
-      } else if (this.modalDateFilter === 'CUSTOM') {
-        targetDate = this.customFilterDate;
-      }
+      const targetDate = resolveModalTargetDate(this.modalDateFilter, this.customFilterDate, (d) => this.toLocalDateString(d));
       if (targetDate) {
         tasks = tasks.filter((t) => this.taskMatchesDate(t, targetDate));
       }
     }
 
     const isTelecaller = this.selectedPerformanceUser?.role === 'TELECALLER';
-    if (this.taskStatusSubFilter === 'COMPLETED') {
-      if (isTelecaller) {
-        tasks = tasks.filter((t) => t.calledAt || t.callAttempts > 0 || ['CONNECTED', 'QUALIFIED', 'CONVERTED', 'PAID', 'INTERESTED'].includes(t.status));
-      } else {
-        tasks = tasks.filter((t) => t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED');
-      }
-    } else if (this.taskStatusSubFilter === 'IN_QUEUE') {
-      if (isTelecaller) {
-        tasks = tasks.filter((t) => !t.calledAt && t.callAttempts === 0 && !['CONNECTED', 'QUALIFIED', 'CONVERTED', 'PAID'].includes(t.status));
-      } else {
-        tasks = tasks.filter((t) => t.status !== 'APPROVED' && t.status !== 'COMPLETED' && t.status !== 'PUBLISHED');
-      }
-    } else if (this.taskStatusSubFilter === 'REVISIONS') {
-      if (isTelecaller) {
-        tasks = tasks.filter((t) => t.status === 'FOLLOW_UP' || t.status === 'LINE_BUSY' || t.status === 'NO_ANSWER' || t.status === 'BUSY');
-      } else {
-        tasks = tasks.filter((t) => t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED');
-      }
+    if (this.taskStatusSubFilter) {
+      tasks = tasks.filter((t) => matchesModalSubFilter(t, this.taskStatusSubFilter, isTelecaller));
     }
 
     if (this.taskSearchQuery.trim()) {

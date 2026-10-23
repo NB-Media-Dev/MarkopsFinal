@@ -780,6 +780,7 @@
             width: 32px;
             height: 32px;
             border-radius: 50%;
+            background-color: #c2410c;
             background: linear-gradient(135deg, #ea580c, #c2410c);
             color: #ffffff;
             font-size: 0.85rem;
@@ -1091,7 +1092,8 @@
           font-size: 1.35rem;
           font-weight: 800;
           color: #ffffff;
-          background: linear-gradient(135deg, #f59e0b, #ea580c);
+          background-color: #c2410c;
+          background: linear-gradient(135deg, #ea580c, #c2410c);
           text-transform: uppercase;
           box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3);
           user-select: none;
@@ -1100,9 +1102,9 @@
             font-size: 1.05rem;
           }
 
-          &.avatar-amber { background: linear-gradient(135deg, #f59e0b, #d97706); }
-          &.avatar-rose { background: linear-gradient(135deg, #e11d48, #be123c); }
-          &.avatar-blue { background: linear-gradient(135deg, #0284c7, #0369a1); }
+          &.avatar-amber { background-color: #b45309; background: linear-gradient(135deg, #d97706, #b45309); }
+          &.avatar-rose { background-color: #be123c; background: linear-gradient(135deg, #e11d48, #be123c); }
+          &.avatar-blue { background-color: #0369a1; background: linear-gradient(135deg, #0284c7, #0369a1); }
           &.avatar-emerald { background: linear-gradient(135deg, #059669, #047857); }
         }
       }
@@ -1151,6 +1153,7 @@
       }
 
       .btn-report-download {
+        background-color: #c2410c;
         background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
         color: #ffffff;
         border: none;

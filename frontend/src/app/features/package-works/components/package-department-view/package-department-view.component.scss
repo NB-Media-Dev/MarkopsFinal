@@ -613,7 +613,7 @@
         font-size: 0.72rem;
         font-weight: 700;
         background: #F1F5F9;
-        color: #64748B;
+        color: #475569;
         padding: 0.1rem 0.4rem;
         border-radius: 999px;
         transition: all 0.18s ease;
@@ -631,7 +631,7 @@
         color: #FFFFFF;
 
         .chip-count {
-          background: rgba(255, 255, 255, 0.2);
+          background-color: #334155;
           color: #FFFFFF;
         }
       }
@@ -769,7 +769,7 @@
       border-radius: 999px;
       background: #FFF1F2;
       border: 1px solid #FFE4E6;
-      color: #E11D48;
+      color: #BE123C;
       font-size: 0.7rem;
       font-weight: 700;
       transition: all 0.18s ease;
@@ -1498,7 +1498,7 @@
           border-radius: 999px;
           background: #FFF1F2;
           border: 1px solid #FFE4E6;
-          color: #E11D48;
+          color: #BE123C;
           font-size: 0.7rem;
           font-weight: 700;
           transition: all 0.18s ease;
@@ -1740,10 +1740,10 @@
           &.pill-calls {
             background: #DCFCE7;
             border: 1px solid #BBF7D0;
-            color: #16A34A;
+            color: #15803D;
 
             .icon-calls {
-              color: #16A34A;
+              color: #15803D;
             }
           }
 
@@ -2584,7 +2584,7 @@
               &.badge-platform-youtube {
                 background: #FFF1F2;
                 border: 1px solid #FFE4E6;
-                color: #E11D48;
+                color: #BE123C;
               }
               &.badge-platform-default {
                 background: #F8FAFC;
@@ -2741,17 +2741,17 @@
 
   &.priority-high, &.priority-urgent {
     background: #FEE2E2;
-    color: #DC2626;
+    color: #B91C1C;
   }
 
   &.priority-medium {
     background: #FEF3C7;
-    color: #D97706;
+    color: #92400E;
   }
 
   &.priority-low {
     background: #E0F2FE;
-    color: #0284C7;
+    color: #0369A1;
   }
 }
 
@@ -2832,25 +2832,25 @@
 
         &.icon-orange {
           background: #FFEDD5;
-          color: #EA580C;
+          color: #C2410C;
           border: 1px solid #FED7AA;
         }
 
         &.icon-blue {
           background: #E0F2FE;
-          color: #0284C7;
+          color: #0369A1;
           border: 1px solid #BAE6FD;
         }
 
         &.icon-purple {
           background: #F3E8FF;
-          color: #7C3AED;
+          color: #6D28D9;
           border: 1px solid #E9D5FF;
         }
 
         &.icon-green {
           background: #DCFCE7;
-          color: #10B981;
+          color: #15803D;
           border: 1px solid #BBF7D0;
         }
       }

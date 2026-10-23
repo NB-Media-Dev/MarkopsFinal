@@ -6,7 +6,7 @@ import { LeadTelecallingService, LeadItem, CallActivityItem, FollowUpItem, isCli
 import { UserManagementService } from '../../core/services/user-management.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CampaignService } from '../../core/services/campaign.service';
-import { FIXED_PACKAGES, isItemForPackage, resolveProductContext } from '../../core/models/package.model';
+import { isItemForPackage } from '../../core/models/package.model';
 import { PackageService } from '../../core/services/package.service';
 
 import { TelecallingKpisComponent } from './components/telecalling-kpis/telecalling-kpis.component';
@@ -975,14 +975,14 @@ export class TelecallingComponent implements OnInit, OnDestroy {
 
   private resolveCreatorFromId(cId: string): string | null {
     const matched = this.userService.users().find(
-      (u) => String(u.id).trim().toLowerCase() === cId || (u.email && u.email.trim().toLowerCase() === cId)
+      (u) => String(u.id).trim().toLowerCase() === cId || u.email?.trim().toLowerCase() === cId
     );
     return matched?.fullName || null;
   }
 
   private resolveCreatorFromEmail(email: string): string | null {
     const matched = this.userService.users().find(
-      (u) => u.email && u.email.trim().toLowerCase() === email
+      (u) => u.email?.trim().toLowerCase() === email
     );
     if (matched?.fullName) return matched.fullName;
     const prefix = email.split('@')[0];

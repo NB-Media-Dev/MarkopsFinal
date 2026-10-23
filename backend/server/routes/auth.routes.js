@@ -90,7 +90,9 @@ router.post('/login', async (req, res) => {
     if (foundUser.passwordHash) {
       try {
         isMatch = await bcrypt.compare(password, foundUser.passwordHash);
-      } catch (e) {}
+      } catch (error_) {
+      console.log('[MySQL Notice] Remove avatar from database skipped:', error_?.message || error_);
+    }
     }
     if (!isMatch && foundUser.rawPassword && foundUser.rawPassword === password) {
       isMatch = true;
@@ -223,7 +225,9 @@ router.post('/logout', async (req, res) => {
       const decoded = jwt.verify(authHeader.split(' ')[1], JWT_ACCESS_SECRET);
       actorId = decoded.sub;
       actorEmail = decoded.email;
-    } catch (e) {}
+    } catch (error_) {
+      console.log('[MySQL Notice] Remove avatar from database skipped:', error_?.message || error_);
+    }
   }
 
   res.clearCookie('refreshToken', { path: '/' });
@@ -500,7 +504,9 @@ router.delete('/profile/avatar', async (req, res) => {
       } else {
         await dbPool.query('UPDATE users SET avatar_url = NULL WHERE id = ? OR LOWER(email) = ?', [authUser.id, authUser.email.toLowerCase()]);
       }
-    } catch (e) {}
+    } catch (error_) {
+      console.log('[MySQL Notice] Remove avatar from database skipped:', error_?.message || error_);
+    }
   }
 
   let userInStore = dbUsersStore.find((u) => String(u.id) === String(authUser.id) || u.email.toLowerCase() === authUser.email.toLowerCase());

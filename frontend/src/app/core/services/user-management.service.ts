@@ -10,7 +10,7 @@ function buildCreateUserPayload(req: CreateUserRequest) {
     fullName: String(req.fullName || '').trim(),
     role: req.role,
     department: String(req.department || 'General Operations').trim() || 'General Operations',
-    isActive: req.isActive !== undefined ? req.isActive : true,
+    isActive: req.isActive ?? true,
     password: req.password,
     avatarUrl: req.avatarUrl,
     avatarDataUrl: req.avatarDataUrl,
@@ -125,63 +125,12 @@ export class UserManagementService {
 
 
   async createUser(req: CreateUserRequest): Promise<ManagedUser> {
-    const payload = {
-      email: String(req.email || '').toLowerCase().trim(),
-      fullName: String(req.fullName || '').trim(),
-      role: req.role,
-      department: String(req.department || 'General Operations').trim() || 'General Operations',
-      isActive: req.isActive !== undefined ? req.isActive : true,
-      password: req.password,
-      avatarUrl: req.avatarUrl,
-      avatarDataUrl: req.avatarDataUrl,
-    };
-
-    let createdUser: ManagedUser = {
-      id: `usr_${crypto.randomUUID().replaceAll('-', '').substring(0, 9)}`,
-      email: payload.email,
-      fullName: payload.fullName,
-      role: payload.role,
-      department: payload.department,
-      isActive: payload.isActive,
-      avatarUrl: payload.avatarUrl,
-      lastLoginAt: 'Never',
-      createdAt: new Date().toISOString().split('T')[0],
-    };
+    const payload = buildCreateUserPayload(req);
+    let createdUser = createLocalFallbackUser(payload);
 
     if (this.isBrowser) {
       try {
-        const res = await safeFetch('/api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        const text = await res.text();
-        let data: any = {};
-        try {
-          data = text ? JSON.parse(text) : {};
-        } catch {
-          data = {};
-        }
-
-        if (res.ok) {
-          createdUser = {
-            id: String(data.id || createdUser.id),
-            email: data.email || createdUser.email,
-            fullName: data.fullName || createdUser.fullName,
-            role: data.role || createdUser.role,
-            department: data.department || createdUser.department,
-            isActive: data.isActive !== undefined ? Boolean(data.isActive) : createdUser.isActive,
-            avatarUrl: data.avatarUrl || createdUser.avatarUrl,
-            lastLoginAt: data.lastLoginAt || 'Never',
-            createdAt: data.createdAt || createdUser.createdAt,
-          };
-        } else {
-          const errMsg = data.error || (res.status === 404
-            ? 'Backend server API not found (404). Please ensure the backend server is running on port 4000.'
-            : `Failed to create user (Status ${res.status})`);
-          throw new Error(errMsg);
-        }
+        createdUser = await postUserToBackend(payload, createdUser);
       } catch (err) {
         console.error('Failed to sync newly created user to backend database:', err);
         throw err;

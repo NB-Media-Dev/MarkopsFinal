@@ -33,6 +33,32 @@ export interface ApprovedDesignItem {
   description?: string;
 }
 
+function extractImageFromVersions(versions: any[]): string {
+  for (const ver of versions) {
+    const url = ver.fileUrl || ver.filePath || ver.fileContent;
+    const cleaned = cleanUrlString(url);
+    if (cleaned && isMediaUrl(cleaned)) {
+      return cleaned;
+    }
+  }
+  return '';
+}
+
+function extractImageFromTaskProperties(t: any): string {
+  const directUrl = t.attachmentUrl || t.imageUrl || t.image;
+  if (directUrl) {
+    const cleaned = cleanUrlString(directUrl);
+    if (cleaned) return cleaned;
+  }
+  if (t.content && typeof t.content === 'string') {
+    const trimmed = t.content.trim();
+    if (trimmed.startsWith('data:image/') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+  }
+  return '';
+}
+
 function isTaskApprovedForAds(t: any): { isApproved: boolean; approvalHist?: any } {
   const status = String(t.status || '').toUpperCase().trim();
   const isApprovedStatus = status === 'APPROVED' || status === 'COMPLETED' || status === 'PUBLISHED';
@@ -195,7 +221,7 @@ export class AdFormModalComponent implements OnInit, OnChanges {
           d.title.toLowerCase().includes(q) ||
           d.packageName.toLowerCase().includes(q) ||
           d.approverName.toLowerCase().includes(q) ||
-          (d.campaignName && d.campaignName.toLowerCase().includes(q))
+          Boolean(d.campaignName?.toLowerCase().includes(q))
       );
     }
 
@@ -339,63 +365,26 @@ export class AdFormModalComponent implements OnInit, OnChanges {
     t: Task,
     approvalHist?: any
   ): { name: string; role: 'BDM' | 'ADMIN' | 'MANAGER'; label: string } {
+    const roleStr = String(approvalHist ? approvalHist.actorRole || '' : t.creatorRole || '').toUpperCase();
+    const nameStr = (approvalHist ? approvalHist.actorName : t.creatorName) || (approvalHist ? 'Supervisor' : 'Operations');
+    if (roleStr.includes('BDM')) {
+      return { name: nameStr, role: 'BDM', label: `Approved by BDM (${nameStr})` };
+    }
+    if (roleStr.includes('ADMIN')) {
+      return { name: nameStr, role: 'ADMIN', label: `Approved by Admin (${nameStr})` };
+    }
     if (approvalHist) {
-      const actorRole = String(approvalHist.actorRole || '').toUpperCase();
-      const actorName = approvalHist.actorName || 'Supervisor';
-      if (actorRole.includes('BDM')) {
-        return { name: actorName, role: 'BDM', label: `Approved by BDM (${actorName})` };
-      }
-      if (actorRole.includes('ADMIN')) {
-        return { name: actorName, role: 'ADMIN', label: `Approved by Admin (${actorName})` };
-      }
-      return { name: actorName, role: 'MANAGER', label: `Approved by ${actorName}` };
-    }
-
-    const creatorRole = String(t.creatorRole || '').toUpperCase();
-    const creatorName = t.creatorName || 'Operations';
-    if (creatorRole.includes('BDM')) {
-      return { name: creatorName, role: 'BDM', label: `Approved by BDM (${creatorName})` };
-    }
-    if (creatorRole.includes('ADMIN')) {
-      return { name: creatorName, role: 'ADMIN', label: `Approved by Admin (${creatorName})` };
+      return { name: nameStr, role: 'MANAGER', label: `Approved by ${nameStr}` };
     }
     return { name: 'BDM & Admin Review', role: 'ADMIN', label: 'Approved by Admin' };
   }
 
   private extractTaskImage(t: Task): string {
     if (t.versions && t.versions.length > 0) {
-      for (const ver of t.versions) {
-        const url = (ver as any).fileUrl || ver.filePath || ver.fileContent;
-        const cleaned = cleanUrlString(url);
-        if (cleaned && isMediaUrl(cleaned)) {
-          return cleaned;
-        }
-      }
+      const fromVer = extractImageFromVersions(t.versions);
+      if (fromVer) return fromVer;
     }
-
-    if (t.attachmentUrl) {
-      const cleaned = cleanUrlString(t.attachmentUrl);
-      if (cleaned) return cleaned;
-    }
-
-    if ((t as any).imageUrl) {
-      const cleaned = cleanUrlString((t as any).imageUrl);
-      if (cleaned) return cleaned;
-    }
-
-    if ((t as any).image) {
-      const cleaned = cleanUrlString((t as any).image);
-      if (cleaned) return cleaned;
-    }
-
-    if (t.content && typeof t.content === 'string') {
-      const trimmed = t.content.trim();
-      if (trimmed.startsWith('data:image/') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-        return trimmed;
-      }
-    }
-
-    return '';
+    return extractImageFromTaskProperties(t);
   }
 
   onCampaignChange(campaignId: string) {

@@ -1,3 +1,9 @@
+function resolveSafePackageName(packageName, productName) {
+  if (packageName) return String(packageName).trim();
+  if (productName) return String(productName).trim();
+  return 'Careermate';
+}
+
 function validateCreateTaskInput(body, headers, user) {
   const userRole = String(headers['x-user-role'] || user?.role || body.creatorRole || '').toUpperCase();
   if (userRole && !['ADMINISTRATOR', 'MARKETING_MANAGER', 'BDM'].includes(userRole)) {
@@ -9,6 +15,20 @@ function validateCreateTaskInput(body, headers, user) {
     return { error: 'All fields (Title, Package, Designer, Priority, and Deadline) are required.', status: 400 };
   }
   return null;
+}
+
+function resolveInitialCreatorId(creatorId, authUserId) {
+  if (typeof creatorId === 'number') return creatorId;
+  const parsed = Number.parseInt(creatorId, 10);
+  if (!Number.isNaN(parsed) && parsed > 0) return parsed;
+  if (typeof authUserId === 'number') return authUserId;
+  return 1;
+}
+
+function resolveNumericAssignedTo(assignedTo) {
+  if (!assignedTo) return null;
+  if (typeof assignedTo === 'number') return assignedTo;
+  return Number.parseInt(assignedTo, 10) || null;
 }
 
 function resolveTaskTypeFallback(taskType, title) {
@@ -244,15 +264,32 @@ async function findTask(taskId) {
   return memTask || null;
 }
 
-async function populateTaskRelations(tasksList) {
-  if (!Array.isArray(tasksList) || tasksList.length === 0) return tasksList;
-  if (!dbPool) return tasksList;
+function resolveTaskProductFromPackage(normPkg, matched) {
+  if (matched) {
+    const pId = (matched.product_id || '').toLowerCase();
+    if (pId.includes('jesus') || pId.includes('messang')) {
+      return { productId: matched.product_id, productName: 'Jesus the messanger' };
+    }
+    if (pId.includes('class')) {
+      return { productId: matched.product_id, productName: 'Classmate' };
+    }
+    return { productId: matched.product_id, productName: 'Careermate' };
+  }
+  if (normPkg.includes('jesus') || normPkg.includes('messang')) {
+    return { productId: 'pkg_jesus_messanger', productName: 'Jesus the messanger' };
+  }
+  if (normPkg.includes('class')) {
+    return { productId: 'pkg_classmate', productName: 'Classmate' };
+  }
+  if (normPkg.includes('career')) {
+    return { productId: 'pkg_careermate', productName: 'Careermate' };
+  }
+  return null;
+}
 
-  const taskIds = tasksList.map(t => t.id).filter(id => id !== undefined && id !== null);
-  if (taskIds.length === 0) return tasksList;
-
+async function populateTaskVersions(pool, taskIds, tasksList) {
   try {
-    const [verRows] = await dbPool.query(`
+    const [verRows] = await pool.query(`
       SELECT v.*, u.full_name as author_name
       FROM task_versions v
       LEFT JOIN users u ON v.submitted_by = u.id
@@ -260,8 +297,8 @@ async function populateTaskRelations(tasksList) {
       ORDER BY v.version_number DESC
     `, [taskIds]);
 
-    const versionsByTask = {};
     if (Array.isArray(verRows)) {
+      const versionsByTask = {};
       verRows.forEach((v) => {
         const tid = String(v.task_id);
         if (!versionsByTask[tid]) versionsByTask[tid] = [];
@@ -279,9 +316,19 @@ async function populateTaskRelations(tasksList) {
           createdAt: v.created_at ? new Date(v.created_at).toISOString() : new Date().toISOString(),
         });
       });
+      for (const t of tasksList) {
+        const tid = String(t.id);
+        if (versionsByTask[tid]) t.versions = versionsByTask[tid];
+      }
     }
+  } catch (error_) {
+    console.log('[MySQL Notice] populateTaskVersions notice:', error_?.message || error_);
+  }
+}
 
-    const [histRows] = await dbPool.query(`
+async function populateTaskHistory(pool, taskIds, tasksList) {
+  try {
+    const [histRows] = await pool.query(`
       SELECT h.*, u.full_name as actor_name
       FROM task_status_history h
       LEFT JOIN users u ON h.actor_id = u.id
@@ -289,8 +336,8 @@ async function populateTaskRelations(tasksList) {
       ORDER BY h.created_at DESC
     `, [taskIds]);
 
-    const historyByTask = {};
     if (Array.isArray(histRows)) {
+      const historyByTask = {};
       histRows.forEach((h) => {
         const tid = String(h.task_id);
         if (!historyByTask[tid]) historyByTask[tid] = [];
@@ -305,55 +352,45 @@ async function populateTaskRelations(tasksList) {
           createdAt: h.created_at ? new Date(h.created_at).toISOString() : new Date().toISOString(),
         });
       });
-    }
-
-    for (const t of tasksList) {
-      const tid = String(t.id);
-      if (versionsByTask[tid]) {
-        t.versions = versionsByTask[tid];
-      }
-      if (historyByTask[tid]) {
-        t.statusHistory = historyByTask[tid];
+      for (const t of tasksList) {
+        const tid = String(t.id);
+        if (historyByTask[tid]) t.statusHistory = historyByTask[tid];
       }
     }
-
-    try {
-      const [pkgRows] = await dbPool.query('SELECT id, product_id, name FROM packages');
-      if (Array.isArray(pkgRows)) {
-        for (const t of tasksList) {
-          const normPkg = (t.packageName || '').toLowerCase().trim();
-          const matched = pkgRows.find((p) => (p.name || '').toLowerCase().trim() === normPkg);
-          if (matched) {
-            t.productId = matched.product_id;
-            const pId = (matched.product_id || '').toLowerCase();
-            if (pId.includes('jesus') || pId.includes('messang')) {
-              t.productName = 'Jesus the messanger';
-            } else if (pId.includes('class')) {
-              t.productName = 'Classmate';
-            } else {
-              t.productName = 'Careermate';
-            }
-          } else {
-            if (normPkg.includes('jesus') || normPkg.includes('messang')) {
-              t.productId = 'pkg_jesus_messanger';
-              t.productName = 'Jesus the messanger';
-            } else if (normPkg.includes('class')) {
-              t.productId = 'pkg_classmate';
-              t.productName = 'Classmate';
-            } else if (normPkg.includes('career')) {
-              t.productId = 'pkg_careermate';
-              t.productName = 'Careermate';
-            }
-          }
-        }
-      }
-    } catch (pe) {}
-  } catch (e) {
-    console.error('[populateTaskRelations Error]:', e?.message || e);
+  } catch (error_) {
+    console.log('[MySQL Notice] populateTaskHistory notice:', error_?.message || error_);
   }
-  return tasksList;
 }
 
+async function populateTaskPackages(pool, tasksList) {
+  try {
+    const [pkgRows] = await pool.query('SELECT id, product_id, name FROM packages');
+    if (Array.isArray(pkgRows)) {
+      for (const t of tasksList) {
+        const normPkg = (t.packageName || '').toLowerCase().trim();
+        const matched = pkgRows.find((p) => (p.name || '').toLowerCase().trim() === normPkg);
+        const resolved = resolveTaskProductFromPackage(normPkg, matched);
+        if (resolved) {
+          t.productId = resolved.productId;
+          t.productName = resolved.productName;
+        }
+      }
+    }
+  } catch (error_) {
+    console.log('[MySQL Notice] populateTaskPackages notice:', error_?.message || error_);
+  }
+}
+
+async function populateTaskRelations(tasksList) {
+  if (!Array.isArray(tasksList) || tasksList.length === 0 || !dbPool) return tasksList;
+  const taskIds = tasksList.map((t) => t.id).filter((id) => id !== undefined && id !== null);
+  if (taskIds.length === 0) return tasksList;
+
+  await populateTaskVersions(dbPool, taskIds, tasksList);
+  await populateTaskHistory(dbPool, taskIds, tasksList);
+  await populateTaskPackages(dbPool, tasksList);
+  return tasksList;
+}
 
 router.get('/tasks', async (req, res) => {
   const { status, assignedTo, createdBy, view } = req.query;
@@ -687,65 +724,113 @@ router.get('/tasks/:id', async (req, res) => {
 });
 
 
+function resolveTaskTypeFallback(title, taskType) {
+  if (taskType) return taskType;
+  const lower = String(title || '').toLowerCase();
+  if (lower.includes('video')) return 'VIDEO';
+  if (lower.includes('post') || lower.includes('social')) return 'POST_DESIGN';
+  return 'BANNER_DESIGN';
+}
+
+async function verifyAndFetchTaskUsers(pool, numericCreatorId, numericAssignedTo, creatorUserEmail, creatorName, assigneeName) {
+  let creatorFullName = creatorName;
+  let assigneeFullName = assigneeName || 'Designer';
+  let verifiedCreatorId = numericCreatorId;
+
+  try {
+    const [users] = await pool.query('SELECT id, full_name, email, role_id FROM users WHERE id IN (?, ?) OR email = ?', [
+      numericCreatorId,
+      numericAssignedTo,
+      creatorUserEmail || '___none___'
+    ]);
+    if (Array.isArray(users)) {
+      const cUser = users.find((u) => u.id === numericCreatorId || (creatorUserEmail && u.email === creatorUserEmail));
+      const aUser = users.find((u) => u.id === numericAssignedTo);
+      if (cUser) {
+        creatorFullName = cUser.full_name;
+        verifiedCreatorId = cUser.id;
+      }
+      if (aUser) {
+        assigneeFullName = aUser.full_name;
+        if (aUser.role_id !== 4) {
+          return { error: 'Tasks can only be assigned to users with the DESIGNER role.' };
+        }
+      }
+    }
+  } catch (error_) {
+    console.log('[MySQL Notice] Fetch user details for task assignment skipped:', error_?.message || error_);
+  }
+
+  return { creatorFullName, assigneeFullName, verifiedCreatorId };
+}
+
+async function notifyAndAuditTask(pool, dbTask, numericAssignedTo, numericCreatorId, assigneeFullName, creatorEmail, req) {
+  dbTasksStore.unshift(dbTask);
+  emitRealtimeEvent('task:assigned', dbTask);
+
+  if (numericAssignedTo) {
+    await dispatchNotification({
+      userIds: [numericAssignedTo],
+      title: `Task Assigned: ${dbTask.title}`,
+      message: `You have been assigned to task "${dbTask.title}". Priority: ${dbTask.priority || 'MEDIUM'}. Due date: ${dbTask.dueDate || 'Flexible'}.`,
+      type: 'INFO',
+      targetRoute: '/designer-tasks',
+    });
+    if (numericCreatorId && numericCreatorId !== numericAssignedTo) {
+      await dispatchNotification({
+        userIds: [numericCreatorId],
+        title: 'Task Assigned Successfully',
+        message: `Task "${dbTask.title}" has been assigned to ${assigneeFullName}.`,
+        type: 'INFO',
+        targetRoute: `/tasks?view=my&taskId=${dbTask.id}`,
+      });
+    }
+  }
+
+  await recordAuditLog(pool, {
+    actorId: numericCreatorId,
+    actorEmail: creatorEmail || 'admin@markops.io',
+    action: 'TASK_CREATED',
+    entityType: 'Task',
+    entityId: dbTask.id,
+    newState: { title: dbTask.title, status: dbTask.status, assignedTo: dbTask.assignedTo },
+    ipAddress: req.ip || req.socket.remoteAddress,
+    userAgent: req.headers['user-agent'],
+  });
+}
+
 router.post('/tasks', async (req, res) => {
   const userRole = String(req.headers['x-user-role'] || req.user?.role || req.body.creatorRole || '').toUpperCase();
   if (userRole && !['ADMINISTRATOR', 'MARKETING_MANAGER', 'BDM'].includes(userRole)) {
     return res.status(403).json({ error: 'Permission Denied: Only Admin, Marketing Manager, and BDM can create tasks.' });
   }
 
-  const { title, taskType, description, content, attachmentUrl, attachmentName, campaignId, campaignName, priority, assignedTo, dueDate, creatorId, creatorName, creatorEmail, packageName } = req.body;
+  const { title, taskType, description, content, attachmentUrl, attachmentName, priority, assignedTo, dueDate, creatorId, creatorName, creatorEmail, packageName } = req.body;
   if (!title || !priority || !packageName || !assignedTo || !dueDate) {
     return res.status(400).json({ error: 'All fields (Title, Package, Designer, Priority, and Deadline) are required.' });
   }
 
   const authUserId = req.user?.id ? (Number.parseInt(req.user.id, 10) || req.user.id) : null;
-  let numericCreatorId = typeof creatorId === 'number' ? creatorId : (Number.parseInt(creatorId, 10) || (typeof authUserId === 'number' ? authUserId : 1));
-  let numericAssignedTo = null;
-  if (assignedTo) {
-    numericAssignedTo = typeof assignedTo === 'number' ? assignedTo : (Number.parseInt(assignedTo, 10) || null);
-  }
+  const initialCreatorId = resolveInitialCreatorId(creatorId, authUserId);
+  const numericAssignedTo = resolveNumericAssignedTo(assignedTo);
 
-  let safeTaskType = taskType || req.body.task_type;
-  if (!safeTaskType) {
-    const lower = String(title || '').toLowerCase();
-    if (lower.includes('video')) safeTaskType = 'VIDEO';
-    else if (lower.includes('post') || lower.includes('social')) safeTaskType = 'POST_DESIGN';
-    else safeTaskType = 'BANNER_DESIGN';
-  }
+  const safeTaskType = resolveTaskTypeFallback(title, taskType || req.body.task_type);
+  const safeDueDate = formatDueDate(dueDate);
+  const safePackageName = resolveSafePackageName(packageName, req.body.productName);
+  const savedAttachmentUrl = saveBase64Attachment(attachmentUrl, attachmentName, 'briefs');
+
+  let creatorFullName = creatorName || req.user?.fullName || req.headers['x-user-name'] || 'Manager';
+  let creatorUserEmail = creatorEmail || req.user?.email || '';
+  let assigneeFullName = req.body.assigneeName || 'Designer';
+  let numericCreatorId = initialCreatorId;
 
   if (dbPool) {
     try {
-     
-      let creatorFullName = creatorName || req.user?.fullName || req.headers['x-user-name'] || 'Manager';
-      let creatorUserEmail = creatorEmail || req.user?.email || '';
-      let assigneeFullName = req.body.assigneeName || 'Designer';
-
-      try {
-        const [users] = await dbPool.query('SELECT id, full_name, email, role_id FROM users WHERE id IN (?, ?) OR email = ?', [
-          numericCreatorId,
-          numericAssignedTo,
-          creatorUserEmail || '___none___'
-        ]);
-        if (Array.isArray(users)) {
-          const cUser = users.find((u) => u.id === numericCreatorId || (creatorUserEmail && u.email === creatorUserEmail));
-          const aUser = users.find((u) => u.id === numericAssignedTo);
-          if (cUser) {
-            creatorFullName = cUser.full_name;
-            numericCreatorId = cUser.id;
-          }
-          if (aUser) {
-            assigneeFullName = aUser.full_name;
-         
-            if (aUser.role_id !== 4) {
-              return res.status(400).json({ error: 'Tasks can only be assigned to users with the DESIGNER role.' });
-            }
-          }
-        }
-      } catch (ue) { console.log('[MySQL Notice] Fetch user details for task assignment skipped:', ue?.message || ue); }
-
-      const safeDueDate = formatDueDate(dueDate);
-      const safePackageName = packageName ? String(packageName).trim() : (req.body.productName ? String(req.body.productName).trim() : 'Careermate');
-      const savedAttachmentUrl = saveBase64Attachment(attachmentUrl, attachmentName, 'briefs');
+      const userCheck = await verifyAndFetchTaskUsers(dbPool, numericCreatorId, numericAssignedTo, creatorUserEmail, creatorFullName, assigneeFullName);
+      if (userCheck.error) return res.status(400).json({ error: userCheck.error });
+      creatorFullName = userCheck.creatorFullName;
+      assigneeFullName = userCheck.assigneeFullName;
+      numericCreatorId = userCheck.verifiedCreatorId;
 
       const [result] = await dbPool.query(
         `INSERT INTO tasks (title, task_type, description, content, attachment_url, attachment_name, package_name, status, priority, created_by, assigned_to, due_date, created_at, updated_at)
@@ -766,10 +851,8 @@ router.post('/tasks', async (req, res) => {
         ]
       );
 
-      if (result && result.insertId) {
+      if (result?.insertId) {
         const newTaskId = result.insertId;
-
-      
         await dbPool.query(
           `INSERT INTO task_status_history (task_id, actor_id, previous_status, new_status, remark, created_at)
            VALUES (?, ?, NULL, ?, ?, NOW())`,
@@ -795,39 +878,7 @@ router.post('/tasks', async (req, res) => {
             } catch (attErr) { console.log('[MySQL Notice] Insert task attachment skipped:', attErr?.message || attErr); }
           }
 
-          dbTasksStore.unshift(dbTask);
-          emitRealtimeEvent('task:assigned', dbTask);
-
-          if (numericAssignedTo) {
-            await dispatchNotification({
-              userIds: [numericAssignedTo],
-              title: `Task Assigned: ${dbTask.title}`,
-              message: `You have been assigned to task "${dbTask.title}". Priority: ${dbTask.priority || 'MEDIUM'}. Due date: ${dbTask.dueDate || 'Flexible'}.`,
-              type: 'INFO',
-              targetRoute: '/designer-tasks',
-            });
-            if (numericCreatorId && numericCreatorId !== numericAssignedTo) {
-              await dispatchNotification({
-                userIds: [numericCreatorId],
-                title: `Task Assigned Successfully`,
-                message: `Task "${dbTask.title}" has been assigned to ${assigneeFullName}.`,
-                type: 'INFO',
-                targetRoute: `/tasks?view=my&taskId=${newTaskId}`,
-              });
-            }
-          }
-
-          await recordAuditLog(dbPool, {
-            actorId: numericCreatorId,
-            actorEmail: creatorEmail || 'admin@markops.io',
-            action: 'TASK_CREATED',
-            entityType: 'Task',
-            entityId: newTaskId,
-            newState: { title: dbTask.title, status: dbTask.status, assignedTo: dbTask.assignedTo },
-            ipAddress: req.ip || req.socket.remoteAddress,
-            userAgent: req.headers['user-agent'],
-          });
-
+          await notifyAndAuditTask(dbPool, dbTask, numericAssignedTo, numericCreatorId, assigneeFullName, creatorEmail, req);
           return res.status(201).json(dbTask);
         }
       }
@@ -836,510 +887,46 @@ router.post('/tasks', async (req, res) => {
     }
   }
 
- 
-  const taskId = `task_${crypto.randomBytes(5).toString('hex')}`;
-  const now = new Date().toISOString();
-  const targetUser = dbUsersStore.find((u) => String(u.id) === String(assignedTo));
-  const assigneeName = targetUser ? targetUser.fullName : (req.body.assigneeName || 'Assigned User');
-
   const newTask = {
-    id: taskId,
+    id: String(Date.now()),
     title: String(title).trim(),
-    packageName: packageName || req.body.packageName || '',
-    description: description ? String(description).trim() : '',
-    content: content ? String(content).trim() : '',
-    attachmentUrl: attachmentUrl || '',
-    attachmentName: attachmentName || '',
-    campaignId: campaignId || '',
-    campaignName: campaignName || '',
-    status: assignedTo ? 'ASSIGNED' : 'DRAFT',
+    taskType: safeTaskType,
+    description: (description && !String(description).startsWith('Document File:')) ? String(description).trim() : null,
+    content: content || null,
+    attachmentUrl: savedAttachmentUrl || null,
+    attachmentName: attachmentName || null,
+    packageName: safePackageName,
+    package: safePackageName,
+    productName: req.body.productName || 'Careermate',
+    productId: req.body.productId || 'pkg_careermate',
+    status: numericAssignedTo ? 'ASSIGNED' : 'DRAFT',
     priority: String(priority),
-    createdBy: creatorId || req.headers['x-user-id'] || 'usr_admin_01',
-    creatorName: creatorName || req.headers['x-user-name'] || 'System Administrator',
-    creatorRole: userRole || 'ADMINISTRATOR',
-    assignedTo: assignedTo || '',
-    assigneeName,
-    progressPercent: computeTaskProgress(assignedTo ? 'ASSIGNED' : 'DRAFT', 10),
-    dueDate: dueDate || new Date(Date.now() + 86400000 * 3).toISOString().split('T')[0],
-    createdAt: now,
-    updatedAt: now,
+    createdBy: String(numericCreatorId),
+    creatorName: creatorFullName,
+    creatorRole: userRole || 'Marketing Manager',
+    assignedTo: numericAssignedTo ? String(numericAssignedTo) : null,
+    assigneeName: numericAssignedTo ? assigneeFullName : 'Unassigned',
+    dueDate: safeDueDate || new Date(Date.now() + 86400000 * 3).toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     versions: [],
     statusHistory: [
       {
-        id: `hist_${crypto.randomBytes(4).toString('hex')}`,
-        taskId,
-        actorId: creatorId || req.headers['x-user-id'] || 'usr_admin_01',
-        actorName: creatorName || req.headers['x-user-name'] || 'System Administrator',
+        id: Date.now(),
+        taskId: Date.now(),
         previousStatus: null,
-        newStatus: assignedTo ? 'ASSIGNED' : 'DRAFT',
-        remark: `Task created and assigned to ${assigneeName}.`,
-        createdAt: now,
+        newStatus: numericAssignedTo ? 'ASSIGNED' : 'DRAFT',
+        remark: `Task created and assigned to ${assigneeFullName}.`,
+        actorName: creatorFullName,
+        createdAt: new Date().toISOString(),
       },
     ],
-    comments: [],
   };
 
   dbTasksStore.unshift(newTask);
   emitRealtimeEvent('task:assigned', newTask);
-
-  if (newTask.assignedTo) {
-    dispatchNotification({
-      userIds: [newTask.assignedTo],
-      title: `Task Assigned: ${newTask.title}`,
-      message: `You have been assigned to task "${newTask.title}". Priority: ${newTask.priority || 'MEDIUM'}. Due date: ${newTask.dueDate || 'Flexible'}.`,
-      type: 'INFO',
-      targetRoute: '/designer-tasks',
-    }).catch(() => {});
-
-    if (newTask.createdBy && String(newTask.createdBy) !== String(newTask.assignedTo)) {
-      dispatchNotification({
-        userIds: [newTask.createdBy],
-        title: `Task Assigned Successfully`,
-        message: `Task "${newTask.title}" has been assigned to ${assigneeName}.`,
-        type: 'INFO',
-        targetRoute: `/tasks?view=my&taskId=${newTask.id}`,
-      }).catch(() => {});
-    }
-  }
-
   return res.status(201).json(newTask);
 });
-
-
-async function handleStatusTransition(req, res) {
-  const { status, remark, actorId, actorName, actorEmail } = req.body;
-  const taskId = req.params.id;
-
-  const task = await findTask(taskId);
-  if (!task) {
-    return res.status(404).json({ error: `Task #${taskId} not found.` });
-  }
-
-  const previousStatus = task.status;
-  const newStatus = String(status);
-
- 
-  const validTransitions = {
-    DRAFT: ['ASSIGNED', 'IN_PROGRESS'],
-    ASSIGNED: ['IN_PROGRESS'],
-    ACCEPTED: ['IN_PROGRESS'],
-    IN_PROGRESS: ['SUBMITTED', 'UNDER_REVIEW'],
-    SUBMITTED: ['APPROVED', 'REDESIGN_REQUIRED', 'REVISION_REQUIRED', 'IN_PROGRESS'],
-    RESUBMITTED: ['APPROVED', 'REDESIGN_REQUIRED', 'REVISION_REQUIRED', 'IN_PROGRESS'],
-    UNDER_REVIEW: ['APPROVED', 'REDESIGN_REQUIRED', 'REVISION_REQUIRED', 'IN_PROGRESS'],
-    REDESIGN_REQUIRED: ['IN_PROGRESS'],
-    REVISION_REQUIRED: ['IN_PROGRESS'],
-    APPROVED: ['PUBLISHED', 'COMPLETED'],
-    PUBLISHED: ['COMPLETED'],
-    COMPLETED: [],
-  };
-
-  if (validTransitions[previousStatus] && !validTransitions[previousStatus].includes(newStatus)) {
-    return res.status(400).json({
-      error: `Invalid task status transition: Cannot transition task from "${previousStatus}" to "${newStatus}". Allowed next: [${(validTransitions[previousStatus] || []).join(', ')}]`,
-    });
-  }
-
-
-  if (newStatus === 'APPROVED' || newStatus === 'REDESIGN_REQUIRED' || newStatus === 'REVISION_REQUIRED') {
-    const userId = req.user?.id ? String(req.user.id).trim() : (req.headers['x-user-id'] ? String(req.headers['x-user-id']).trim() : null);
-    const userEmail = req.user?.email ? String(req.user.email).toLowerCase().trim() : null;
-    const taskCreatorId = String(task.createdBy || task.created_by || '').trim();
-    const taskCreatorEmail = String(task.creatorEmail || task.creator_email || '').toLowerCase().trim();
-
-    const isCreator = (userId && taskCreatorId && userId === taskCreatorId) ||
-                      (userEmail && taskCreatorEmail && userEmail === taskCreatorEmail);
-
-    if (!isCreator) {
-      return res.status(403).json({
-        error: `Permission Denied: Only the user who created this task can ${newStatus === 'APPROVED' ? 'approve' : 'request redesign for'} it.`,
-      });
-    }
-  }
-
-  const now = new Date().toISOString();
-  task.status = newStatus;
-  task.updatedAt = now;
-  if (remark) {
-    task.reviewerFeedback = remark;
-  }
-
-  const computedProgress = computeTaskProgress(newStatus);
-  task.progressPercent = computedProgress;
-
-  const effectiveActorId = req.user?.id || actorId || req.headers['x-user-id'] || 1;
-  const effectiveActorName = req.user?.fullName || actorName || req.headers['x-user-name'] || 'User';
-
-  const historyEntry = {
-    id: `hist_${crypto.randomBytes(4).toString('hex')}`,
-    taskId,
-    actorId: effectiveActorId,
-    actorName: effectiveActorName,
-    previousStatus,
-    newStatus,
-    remark: remark || `Transitioned status from ${previousStatus} to ${newStatus}`,
-    createdAt: now,
-  };
-
-  const lastHistory = task.statusHistory && task.statusHistory.length > 0 ? task.statusHistory[0] : null;
-  const isDuplicateHistory = Boolean(
-    lastHistory &&
-    lastHistory.newStatus === newStatus &&
-    (new Date(now).getTime() - new Date(lastHistory.createdAt).getTime() < 15000)
-  );
-
-  if (!isDuplicateHistory) {
-    if (!task.statusHistory) task.statusHistory = [];
-    task.statusHistory.unshift(historyEntry);
-  }
-
-  emitRealtimeEvent('task:status_changed', task);
-  emitRealtimeEvent(`task:${newStatus.toLowerCase()}`, task);
-  emitRealtimeEvent('task:updated', task);
-  emitRealtimeEvent('task:progress_updated', { taskId, progressPercent: task.progressPercent });
-
-  
-  if (newStatus === 'IN_PROGRESS') {
-    const isRedesign = previousStatus === 'REDESIGN_REQUIRED' || previousStatus === 'REVISION_REQUIRED';
-    const creatorId = task.createdBy || task.created_by;
-    const assignedId = task.assignedTo || task.assigned_to;
-
-    if (creatorId) {
-      await dispatchNotification({
-        userIds: [creatorId],
-        title: isRedesign ? `Redesign Started: ${task.title}` : `Work Started: ${task.title}`,
-        message: isRedesign
-          ? `${effectiveActorName} has started working on the requested redesign for "${task.title}".`
-          : `${effectiveActorName} has started working on task "${task.title}". Status is now IN PROGRESS.`,
-        type: 'INFO',
-        targetRoute: `/tasks?view=my&taskId=${task.id}`,
-      });
-    }
-
-    if (assignedId) {
-      await dispatchNotification({
-        userIds: [assignedId],
-        title: isRedesign ? `Redesign In Progress: ${task.title}` : `Work Started: ${task.title}`,
-        message: `You started work on "${task.title}". Status updated to IN PROGRESS.`,
-        type: 'INFO',
-        targetRoute: '/designer-tasks',
-      });
-    }
-  }
- 
-  else if (newStatus === 'REDESIGN_REQUIRED' || newStatus === 'REVISION_REQUIRED') {
-    const assignedId = task.assignedTo || task.assigned_to;
-    const creatorId = task.createdBy || task.created_by || effectiveActorId;
-
-    if (assignedId) {
-      await dispatchNotification({
-        userIds: [assignedId],
-        title: `Redesign Requested: ${task.title}`,
-        message: `Redesign requested on "${task.title}". Feedback: "${remark || 'Please review feedback remarks and upload revision'}".`,
-        type: 'WARNING',
-        targetRoute: '/revisions',
-      });
-    }
-
-    if (creatorId && String(creatorId) === String(effectiveActorId)) {
-      await dispatchNotification({
-        userIds: [creatorId],
-        title: `Redesign Feedback Submitted`,
-        message: `Redesign request sent for "${task.title}". Designer has been notified.`,
-        type: 'INFO',
-        targetRoute: `/tasks?view=my&taskId=${task.id}`,
-      });
-    }
-  }
-
-  else if (newStatus === 'APPROVED') {
-    const assignedId = task.assignedTo || task.assigned_to;
-    const creatorId = task.createdBy || task.created_by || effectiveActorId;
-
-    if (assignedId) {
-      await dispatchNotification({
-        userIds: [assignedId],
-        title: `Creative Design Approved!`,
-        message: `Congratulations! Your creative design for "${task.title}" has been approved by ${effectiveActorName}.`,
-        type: 'SUCCESS',
-        targetRoute: '/submissions',
-      });
-    }
-
-    if (creatorId) {
-      await dispatchNotification({
-        userIds: [creatorId],
-        title: `Task Approved: ${task.title}`,
-        message: `Task "${task.title}" has been approved and marked as completed (100%).`,
-        type: 'SUCCESS',
-        targetRoute: `/tasks?view=my&taskId=${task.id}`,
-      });
-    }
-  }
-
-  else if (newStatus === 'ASSIGNED') {
-    const assignedId = task.assignedTo || task.assigned_to;
-    if (assignedId) {
-      await dispatchNotification({
-        userIds: [assignedId],
-        title: `Task Assigned: ${task.title}`,
-        message: `You have been assigned to task "${task.title}". Priority: ${task.priority || 'MEDIUM'}.`,
-        type: 'INFO',
-        targetRoute: '/designer-tasks',
-      });
-    }
-  }
- 
-  else if (newStatus === 'SUBMITTED' || newStatus === 'RESUBMITTED' || newStatus === 'UNDER_REVIEW') {
-    const creatorId = task.createdBy || task.created_by;
-    const assignedId = task.assignedTo || task.assigned_to;
-
-    if (creatorId) {
-      await dispatchNotification({
-        userIds: [creatorId],
-        title: `Design Uploaded for Review: ${task.title}`,
-        message: `${effectiveActorName} submitted creative design for task "${task.title}". Ready for your review.`,
-        type: 'INFO',
-        targetRoute: `/tasks?view=my&taskId=${task.id}`,
-      });
-    }
-
-    if (assignedId) {
-      await dispatchNotification({
-        userIds: [assignedId],
-        title: `Design Submitted: ${task.title}`,
-        message: `Creative design for "${task.title}" has been submitted for review.`,
-        type: 'SUCCESS',
-        targetRoute: '/submissions',
-      });
-    }
-  }
-
-  if (dbPool) {
-    try {
-      const numericTaskId = typeof taskId === 'number' ? taskId : (Number.parseInt(taskId, 10) || null);
-      let numericActorId = typeof effectiveActorId === 'number' ? effectiveActorId : Number.parseInt(effectiveActorId, 10);
-      if (Number.isNaN(numericActorId) || !numericActorId) numericActorId = 1;
-
-      if (numericTaskId) {
-        await dbPool.query(
-          `UPDATE tasks SET status = ?, reviewer_feedback = ?, updated_at = NOW() WHERE id = ?`,
-          [newStatus, remark || null, numericTaskId]
-        );
-        if (!isDuplicateHistory) {
-          await dbPool.query(
-            `INSERT INTO task_status_history (task_id, actor_id, previous_status, new_status, remark, created_at)
-             VALUES (?, ?, ?, ?, ?, NOW())`,
-            [numericTaskId, numericActorId, previousStatus, newStatus, remark || null]
-          );
-        }
-        try {
-          await dbPool.query(
-            `INSERT INTO task_progress_history (task_id, actor_id, progress_percent, notes, created_at)
-             VALUES (?, ?, ?, ?, NOW())`,
-            [numericTaskId, numericActorId, computedProgress, remark || `Status changed to ${newStatus}`]
-          );
-        } catch (pe) {}
-      }
-    } catch (e) {
-      console.error('[MySQL DB Error] Task status UPDATE failed:', e?.message || e);
-    }
-  }
-
-
-  const memIndex = dbTasksStore.findIndex((t) => String(t.id) === String(taskId));
-  if (memIndex !== -1) {
-    dbTasksStore[memIndex] = { ...dbTasksStore[memIndex], ...task };
-  }
-
-  await recordAuditLog(dbPool, {
-    actorId: effectiveActorId,
-    actorEmail: actorEmail || req.user?.email || 'admin@markops.io',
-    action: `TASK_STATUS_${newStatus}`,
-    entityType: 'Task',
-    entityId: taskId,
-    previousState: { status: previousStatus },
-    newState: { status: newStatus, remark },
-    ipAddress: req.ip || req.socket.remoteAddress,
-    userAgent: req.headers['user-agent'],
-  });
-
-  return res.json(task);
-}
-
-async function handleVersionSubmission(req, res, targetTask) {
-  const { fileName, changelog, fileSize, filePath, fileContent, submittedBy, submittedByName, submittedByEmail } = req.body;
-  const taskId = req.params.id;
-
-  const task = targetTask || (await findTask(taskId));
-  if (!task) {
-    return res.status(404).json({ error: 'Task not found.' });
-  }
-
-  if (task.status === 'ASSIGNED' || task.status === 'REDESIGN_REQUIRED' || task.status === 'REVISION_REQUIRED') {
-    task.status = 'IN_PROGRESS';
-  }
-
-  if (task.status !== 'IN_PROGRESS') {
-    return res.status(400).json({
-      error: `Invalid task status transition: Cannot submit design when task status is "${task.status}". Expected "IN_PROGRESS".`,
-    });
-  }
-
-  if (!task.versions) task.versions = [];
-  const newVersionNumber = task.versions.length + 1;
-  const now = new Date().toISOString();
-
-  const effectiveUser = req.user?.id || submittedBy || req.headers['x-user-id'] || 'usr_admin_01';
-  const effectiveUserName = req.user?.fullName || submittedByName || req.headers['x-user-name'] || 'Designer';
-  const fileMimeType =
-    (/^data:([^;,]+)/.exec(String(filePath || fileContent || '')))?.[1] || 'application/octet-stream';
-
-  let savedFilePath = filePath;
-  if (filePath && typeof filePath === 'string' && filePath.startsWith('data:')) {
-    savedFilePath = saveBase64Attachment(filePath, fileName, 'creatives');
-  } else if (fileContent && typeof fileContent === 'string' && fileContent.startsWith('data:')) {
-    savedFilePath = saveBase64Attachment(fileContent, fileName, 'creatives');
-  }
-  if (!savedFilePath || (typeof savedFilePath === 'string' && savedFilePath.startsWith('data:'))) {
-    savedFilePath = `/uploads/creatives/${fileName || `version_${newVersionNumber}.png`}`;
-  }
-
-  const safeFileSize = typeof fileSize === 'number' ? Math.round(fileSize) : 2048000;
-
-  const newVersion = {
-    id: `ver_${crypto.randomBytes(4).toString('hex')}`,
-    taskId,
-    versionNumber: newVersionNumber,
-    submittedBy: effectiveUser,
-    submittedByName: effectiveUserName,
-    fileName: fileName || `creative_version_v${newVersionNumber}.png`,
-    filePath: savedFilePath,
-    fileSize: safeFileSize,
-    mimeType: fileMimeType,
-    changelog: changelog || `Version ${newVersionNumber}.0 creative asset submission.`,
-    fileContent: fileContent || changelog || '',
-    createdAt: now,
-  };
-
-  task.versions.unshift(newVersion);
-
-  const creatorId = task.createdBy || task.created_by;
-  const assignedId = task.assignedTo || task.assigned_to || effectiveUser;
-
-
-  if (creatorId) {
-    await dispatchNotification({
-      userIds: [creatorId],
-      title: `Design Uploaded for Review: ${task.title}`,
-      message: `${effectiveUserName} uploaded creative version v${newVersionNumber}.0 (${newVersion.fileName}) for task "${task.title}". Ready for review.`,
-      type: 'INFO',
-      targetRoute: `/tasks?view=my&taskId=${task.id}`,
-    });
-  }
-
-
-  if (assignedId) {
-    await dispatchNotification({
-      userIds: [assignedId],
-      title: `Design Uploaded Successfully: ${task.title}`,
-      message: `Creative version v${newVersionNumber}.0 (${newVersion.fileName}) for "${task.title}" has been submitted for review.`,
-      type: 'SUCCESS',
-      targetRoute: '/submissions',
-    });
-  }
-
-  const previousStatus = task.status;
-  const nextStatus = 'SUBMITTED';
-  task.status = nextStatus;
-  task.progressPercent = computeTaskProgress(nextStatus);
-  task.updatedAt = now;
-
-  if (!task.statusHistory) task.statusHistory = [];
-  task.statusHistory.unshift({
-    id: `hist_${crypto.randomBytes(4).toString('hex')}`,
-    taskId,
-    actorId: effectiveUser,
-    actorName: effectiveUserName,
-    previousStatus,
-    newStatus: nextStatus,
-    remark: `Uploaded Creative Version ${newVersionNumber}.0 (${newVersion.fileName})`,
-    createdAt: now,
-  });
-
-  if (dbPool) {
-    try {
-      const numericTaskId = typeof taskId === 'number' ? taskId : (Number.parseInt(taskId, 10) || null);
-      let numericSubmittedBy = typeof effectiveUser === 'number' ? effectiveUser : Number.parseInt(effectiveUser, 10);
-      if (Number.isNaN(numericSubmittedBy) || !numericSubmittedBy) {
-        if (task.assignedTo) {
-          numericSubmittedBy = typeof task.assignedTo === 'number' ? task.assignedTo : Number.parseInt(task.assignedTo, 10);
-        }
-      }
-      if (Number.isNaN(numericSubmittedBy) || !numericSubmittedBy) numericSubmittedBy = 1;
-
-      if (numericTaskId) {
-        await dbPool.query(
-          `INSERT INTO task_versions (task_id, version_number, submitted_by, file_name, file_path, storage_key, file_size, mime_type, changelog, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-          [
-            numericTaskId,
-            newVersionNumber,
-            numericSubmittedBy,
-            newVersion.fileName,
-            savedFilePath,
-            newVersion.fileName,
-            safeFileSize,
-            fileMimeType,
-            newVersion.changelog,
-          ]
-        );
-        await dbPool.query(
-          `UPDATE tasks SET status = ?, updated_at = NOW() WHERE id = ?`,
-          [nextStatus, numericTaskId]
-        );
-        await dbPool.query(
-          `INSERT INTO task_status_history (task_id, actor_id, previous_status, new_status, remark, created_at)
-           VALUES (?, ?, ?, ?, ?, NOW())`,
-          [numericTaskId, numericSubmittedBy, previousStatus, nextStatus, `Uploaded Creative Version ${newVersionNumber}.0 (${newVersion.fileName})`]
-        );
-        try {
-          await dbPool.query(
-            `INSERT INTO task_progress_history (task_id, actor_id, progress_percent, notes, created_at)
-             VALUES (?, ?, ?, ?, NOW())`,
-            [numericTaskId, numericSubmittedBy, computeTaskProgress(nextStatus), `Uploaded Creative Version ${newVersionNumber}.0 (${newVersion.fileName})`]
-          );
-        } catch (pe) {}
-      }
-    } catch (e) {
-      console.error('[MySQL DB Error] Version INSERT failed:', e?.message || e);
-    }
-  }
-
-
-  const memIndex = dbTasksStore.findIndex((t) => String(t.id) === String(taskId));
-  if (memIndex !== -1) {
-    dbTasksStore[memIndex] = { ...dbTasksStore[memIndex], ...task };
-  }
-
-  emitRealtimeEvent('task:updated', task);
-  emitRealtimeEvent('task:version:added', { taskId, version: newVersion });
-  emitRealtimeEvent('task:submitted', task);
-
-  await recordAuditLog(dbPool, {
-    actorId: effectiveUser,
-    actorEmail: submittedByEmail || 'admin@markops.io',
-    action: 'TASK_VERSION_SUBMITTED',
-    entityType: 'Task',
-    entityId: newVersion.id,
-    newState: { versionNumber: newVersionNumber, fileName: newVersion.fileName },
-    ipAddress: req.ip || req.socket.remoteAddress,
-    userAgent: req.headers['user-agent'],
-  });
-
-  return res.status(201).json({ task, version: newVersion });
-}
-
 
 router.post('/tasks/:id/start', async (req, res) => {
   const taskId = req.params.id;

@@ -47,6 +47,20 @@ function initializeDesignerSummaryMap(designers: Array<{ id: string; name: strin
   return map;
 }
 
+function isTaskMatchingDate(t: Task, dateFilter: string): boolean {
+  if (!dateFilter) return true;
+  const createdDate = t.createdAt ? t.createdAt.split('T')[0] : '';
+  const dueDate = t.dueDate ? t.dueDate.split('T')[0] : '';
+  const updatedDate = t.updatedAt ? t.updatedAt.split('T')[0] : '';
+  return createdDate === dateFilter || dueDate === dateFilter || updatedDate === dateFilter;
+}
+
+function isTaskMatchingDesignerRole(t: Task, currentRole: string | undefined, currentUserId: string, currentUserEmail: string): boolean {
+  if (currentRole !== 'DESIGNER') return true;
+  const assigned = t.assignedTo !== undefined ? String(t.assignedTo).toLowerCase().trim() : '';
+  return assigned === currentUserId || (Boolean(currentUserEmail) && assigned === currentUserEmail);
+}
+
 function isTaskEligibleForDesignerSummary(
   t: Task,
   currentRole: string | undefined,
@@ -56,24 +70,9 @@ function isTaskEligibleForDesignerSummary(
   dateFilter: string,
   packages: any[]
 ): boolean {
-  if (currentRole === 'DESIGNER') {
-    const isAssignedToMe =
-      (t.assignedTo !== undefined && String(t.assignedTo).toLowerCase().trim() === currentUserId) ||
-      (currentUserEmail && t.assignedTo !== undefined && String(t.assignedTo).toLowerCase().trim() === currentUserEmail);
-    if (!isAssignedToMe) return false;
-  }
-  if (pkgFilter && !isTaskForPackage(t, pkgFilter, packages)) {
-    return false;
-  }
-  if (dateFilter) {
-    const createdDate = t.createdAt ? t.createdAt.split('T')[0] : '';
-    const dueDate = t.dueDate ? t.dueDate.split('T')[0] : '';
-    const updatedDate = t.updatedAt ? t.updatedAt.split('T')[0] : '';
-    if (createdDate !== dateFilter && dueDate !== dateFilter && updatedDate !== dateFilter) {
-      return false;
-    }
-  }
-  return true;
+  if (!isTaskMatchingDesignerRole(t, currentRole, currentUserId, currentUserEmail)) return false;
+  if (pkgFilter && !isTaskForPackage(t, pkgFilter, packages)) return false;
+  return isTaskMatchingDate(t, dateFilter);
 }
 
 function matchesDesigner(d: { id: string; name: string; email?: string }, tAssignedToStr: string, tAssigneeNameStr: string): boolean {
@@ -177,7 +176,7 @@ function populatePackagesForActiveProduct(
   const activeProdId = (fixedProd?.id || activeProd).toLowerCase();
   const activeProdName = fixedProd?.name || activeProd;
 
-  if (filterPkg && (!fixedProd || filterPkg.toLowerCase() !== fixedProd.name.toLowerCase())) {
+  if (filterPkg && filterPkg.toLowerCase() !== fixedProd?.name.toLowerCase()) {
     map.set(filterPkg.toLowerCase(), { name: filterPkg, icon: 'inventory_2' });
   }
 
