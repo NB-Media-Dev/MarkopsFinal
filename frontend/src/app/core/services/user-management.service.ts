@@ -4,6 +4,71 @@ import { ManagedUser, CreateUserRequest } from '../models/user-management.model'
 import { UserRole } from '../models/auth.model';
 import { safeFetch } from '../utils/api-url.utils';
 
+function buildCreateUserPayload(req: CreateUserRequest) {
+  return {
+    email: String(req.email || '').toLowerCase().trim(),
+    fullName: String(req.fullName || '').trim(),
+    role: req.role,
+    department: String(req.department || 'General Operations').trim() || 'General Operations',
+    isActive: req.isActive !== undefined ? req.isActive : true,
+    password: req.password,
+    avatarUrl: req.avatarUrl,
+    avatarDataUrl: req.avatarDataUrl,
+  };
+}
+
+function createLocalFallbackUser(payload: ReturnType<typeof buildCreateUserPayload>): ManagedUser {
+  return {
+    id: `usr_${crypto.randomUUID().replaceAll('-', '').substring(0, 9)}`,
+    email: payload.email,
+    fullName: payload.fullName,
+    role: payload.role,
+    department: payload.department,
+    isActive: payload.isActive,
+    avatarUrl: payload.avatarUrl,
+    lastLoginAt: 'Never',
+    createdAt: new Date().toISOString().split('T')[0],
+  };
+}
+
+function parseResponseData(text: string): any {
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return {};
+  }
+}
+
+async function postUserToBackend(payload: ReturnType<typeof buildCreateUserPayload>, fallbackUser: ManagedUser): Promise<ManagedUser> {
+  const res = await safeFetch('/api/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  const data = parseResponseData(text);
+
+  if (!res.ok) {
+    const errMsg = data.error || (res.status === 404
+      ? 'Backend server API not found (404). Please ensure the backend server is running on port 4000.'
+      : `Failed to create user (Status ${res.status})`);
+    throw new Error(errMsg);
+  }
+
+  return {
+    id: String(data.id || fallbackUser.id),
+    email: data.email || fallbackUser.email,
+    fullName: data.fullName || fallbackUser.fullName,
+    role: data.role || fallbackUser.role,
+    department: data.department || fallbackUser.department,
+    isActive: data.isActive !== undefined ? Boolean(data.isActive) : fallbackUser.isActive,
+    avatarUrl: data.avatarUrl || fallbackUser.avatarUrl,
+    lastLoginAt: data.lastLoginAt || 'Never',
+    createdAt: data.createdAt || fallbackUser.createdAt,
+  };
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -44,7 +109,8 @@ export class UserManagementService {
       const res = await safeFetch('/api/users');
       if (res.ok) {
         const text = await res.text();
-        if (text && text.trim().startsWith('[') || text.trim().startsWith('{')) {
+        const trimmed = text?.trim() ?? '';
+        if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
           const data = JSON.parse(text);
           if (Array.isArray(data) && data.length > 0) {
             this._users.set(data);
@@ -161,7 +227,7 @@ export class UserManagementService {
             email: updatedData.email ? String(updatedData.email).toLowerCase().trim() : user.email,
             role: updatedData.role || user.role,
             department: updatedData.department ? String(updatedData.department).trim() : user.department,
-            isActive: updatedData.isActive !== undefined ? updatedData.isActive : user.isActive,
+            isActive: updatedData.isActive ?? user.isActive,
             avatarUrl: updatedData.avatarUrl ?? user.avatarUrl,
           };
           return updatedUser;

@@ -63,13 +63,13 @@ router.get('/users', async (_req, res) => {
        ORDER BY u.id ASC`
     );
     const users = rows.map((r) => {
-      const roleName = r.role_name || (r.role_code ? r.role_code.replace(/_/g, ' ') : 'Designer');
+      const roleName = r.role_name || (r.role_code ? r.role_code.replaceAll('_', ' ') : 'Designer');
       return {
         id: String(r.id),
         email: r.email,
         fullName: r.full_name,
         role: roleName,
-        department: r.role_code ? r.role_code.replace(/_/g, ' ') : 'Operations',
+        department: r.role_code ? r.role_code.replaceAll('_', ' ') : 'Operations',
         isActive: Boolean(r.is_active),
         avatarUrl: r.avatar_url || undefined,
         lastLoginAt: 'Recently',
@@ -127,7 +127,7 @@ async function insertUserToDb(userData) {
      VALUES (?, ?, ?, ?, ?, ?)`,
     [userData.normalizedEmail, userData.hashedPassword, userData.fullName, userData.targetRoleId, userData.userActive ? 1 : 0, userData.savedAvatar]
   );
-  if (!insertRes || !insertRes.insertId) return null;
+  if (!insertRes?.insertId) return null;
 
   const insertedUserId = insertRes.insertId;
   console.log(`[MySQL DB] Successfully inserted new user ${userData.normalizedEmail} (ID: ${insertedUserId}) into table 'users'.`);

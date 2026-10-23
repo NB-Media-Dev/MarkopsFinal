@@ -48,6 +48,11 @@ export interface RoleTeamCard {
   overflowCount: number;
 }
 
+function formatReportCleanName(raw?: string): string {
+  if (!raw) return '';
+  return String(raw).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+}
+
 @Component({
   selector: 'app-package-reports',
   standalone: true,
@@ -142,7 +147,8 @@ export class PackageReportsComponent implements OnInit, OnChanges {
   }
 
   activePackageDisplayName(): string {
-    return this.activePackageDisplayNameFn ? this.activePackageDisplayNameFn() : (this.activePackageMeta?.name || 'Package');
+    if (this.activePackageDisplayNameFn) return this.activePackageDisplayNameFn();
+    return this.activePackageMeta?.name || 'Package';
   }
 
   get reportEligibleMembers(): UserPerformanceRecord[] {
@@ -1380,35 +1386,34 @@ export class PackageReportsComponent implements OnInit, OnChanges {
   formatProductName(rawName?: string, task?: any): string {
     if (task) {
       if (task.productName && !task.productName.toLowerCase().includes('careermate') && !task.productName.toLowerCase().includes('package')) {
-        return String(task.productName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+        return formatReportCleanName(task.productName);
       }
       const resolved = resolveTaskProductAndPackage(task, this.productPackages);
       if (resolved?.productName) {
-        return String(resolved.productName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+        return formatReportCleanName(resolved.productName);
       }
     }
     if (rawName?.trim() && !rawName.toLowerCase().includes('careermate')) {
-      return String(rawName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+      return formatReportCleanName(rawName);
     }
-    const raw = this.activePackageMeta?.name || 'Product';
-    return String(raw).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+    return formatReportCleanName(this.activePackageMeta?.name || 'Product');
   }
 
   formatPackageName(rawName?: string, task?: any): string {
     if (task) {
       if (task.packageName?.trim()) {
-        return String(task.packageName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+        return formatReportCleanName(task.packageName);
       }
       const resolved = resolveTaskProductAndPackage(task, this.productPackages);
       if (resolved?.packageName) {
-        return String(resolved.packageName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+        return formatReportCleanName(resolved.packageName);
       }
     }
     if (rawName?.trim()) {
-      return String(rawName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+      return formatReportCleanName(rawName);
     }
     const raw = this.activePackageDisplayName() || this.activePackageMeta?.name || 'Package';
-    return String(raw).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+    return formatReportCleanName(raw);
   }
 
   private filterTasksForUserExport(user: UserPerformanceRecord): any[] {

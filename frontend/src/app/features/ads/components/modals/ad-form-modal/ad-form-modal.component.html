@@ -250,7 +250,7 @@
                 @if (selectedDesign?.imageUrl) {
                   @if (selectedDesign?.isVideo) {
                     <div class="video-preview-wrap">
-                      <video [src]="selectedDesign?.imageUrl" controls preload="metadata" class="preview-img-tag"></video>
+                      <video [src]="selectedDesign?.imageUrl" controls preload="metadata" class="preview-img-tag"><track kind="captions" label="Captions" default></video>
                       <div class="video-overlay-badge">
                         <span class="material-symbols-outlined">play_circle</span>
                         <span>Video Creative</span>

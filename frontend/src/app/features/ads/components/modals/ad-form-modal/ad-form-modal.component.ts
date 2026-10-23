@@ -33,6 +33,46 @@ export interface ApprovedDesignItem {
   description?: string;
 }
 
+function isTaskApprovedForAds(t: any): { isApproved: boolean; approvalHist?: any } {
+  const status = String(t.status || '').toUpperCase().trim();
+  const isApprovedStatus = status === 'APPROVED' || status === 'COMPLETED' || status === 'PUBLISHED';
+  const creatorRole = String(t.creatorRole || '').toUpperCase();
+  const isBdmOrAdminCreator =
+    creatorRole === 'BDM' ||
+    creatorRole === 'ADMINISTRATOR' ||
+    creatorRole === 'ADMIN' ||
+    creatorRole === 'MARKETING_MANAGER' ||
+    !creatorRole;
+
+  const approvalHist = t.statusHistory?.find(
+    (h: any) => String(h.newStatus || '').toUpperCase() === 'APPROVED'
+  );
+
+  return {
+    isApproved: isApprovedStatus || isBdmOrAdminCreator || Boolean(approvalHist),
+    approvalHist,
+  };
+}
+
+const MEDIA_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif', '.mp4', '.mov', '.webm'];
+
+function cleanUrlString(raw?: string | null): string {
+  if (!raw || typeof raw !== 'string') return '';
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+  if (trimmed.startsWith('data:image/') || trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('blob:') || trimmed.startsWith('/')) {
+    return trimmed;
+  }
+  return `/${trimmed}`;
+}
+
+function isMediaUrl(cleaned: string): boolean {
+  const lower = cleaned.toLowerCase();
+  if (lower.startsWith('data:image/') || lower.includes('/uploads/')) return true;
+  if (MEDIA_EXTENSIONS.some((ext) => lower.endsWith(ext))) return true;
+  return cleaned.startsWith('http') && !cleaned.endsWith('.pdf');
+}
+
 @Component({
   selector: 'app-ad-form-modal',
   standalone: true,
@@ -92,62 +132,50 @@ export class AdFormModalComponent implements OnInit, OnChanges {
     }
   }
 
+  private buildApprovedDesignItem(t: any, approvalHist: any): ApprovedDesignItem {
+    const approverInfo = this.extractApproverInfo(t, approvalHist);
+    const thumbUrl = this.extractTaskImage(t);
+    const designTypeInfo = this.detectDesignType(t, thumbUrl);
+    const verNum =
+      t.versions && t.versions.length > 0
+        ? t.versions[0].versionNumber || t.versions.length
+        : 1;
+
+    return {
+      id: String(t.id),
+      title: t.title,
+      packageName: t.packageName || 'Careermate',
+      campaignName: t.campaignName || (t.packageName ? `${t.packageName} Campaign` : undefined),
+      campaignId: t.campaignId,
+      versionNumber: verNum,
+      imageUrl: thumbUrl,
+      isVideo: designTypeInfo.isVideo,
+      videoUrl: designTypeInfo.isVideo ? thumbUrl : undefined,
+      designType: designTypeInfo.type,
+      designTypeLabel: designTypeInfo.label,
+      approverName: approverInfo.name,
+      approverRole: approverInfo.role,
+      approvedAt: approverInfo.label,
+      status: t.status,
+      description: t.description || 'Approved design asset ready for campaign ads attribution.',
+    };
+  }
+
   get allApprovedDesigns(): ApprovedDesignItem[] {
     const list: ApprovedDesignItem[] = [];
     const activePkg = this.packageFilter?.trim().toLowerCase();
 
-    if (this.tasks && this.tasks.length > 0) {
-      for (const t of this.tasks) {
-        const status = String(t.status || '').toUpperCase().trim();
-        const isApprovedStatus = status === 'APPROVED' || status === 'COMPLETED' || status === 'PUBLISHED';
-        const creatorRole = String(t.creatorRole || '').toUpperCase();
-        const isBdmOrAdminCreator =
-          creatorRole === 'BDM' ||
-          creatorRole === 'ADMINISTRATOR' ||
-          creatorRole === 'ADMIN' ||
-          creatorRole === 'MARKETING_MANAGER' ||
-          !creatorRole;
+    if (!this.tasks?.length) return list;
 
-        const approvalHist = t.statusHistory?.find(
-          (h) => String(h.newStatus || '').toUpperCase() === 'APPROVED'
-        );
+    for (const t of this.tasks) {
+      const { isApproved, approvalHist } = isTaskApprovedForAds(t);
+      if (!isApproved) continue;
 
-        if (isApprovedStatus || isBdmOrAdminCreator || approvalHist) {
-
-          if (activePkg && activePkg !== 'all') {
-            if (!isTaskForPackage(t, this.packageFilter)) {
-              continue;
-            }
-          }
-
-          const approverInfo = this.extractApproverInfo(t, approvalHist);
-          const thumbUrl = this.extractTaskImage(t);
-          const designTypeInfo = this.detectDesignType(t, thumbUrl);
-          const verNum =
-            t.versions && t.versions.length > 0
-              ? t.versions[0].versionNumber || t.versions.length
-              : 1;
-
-          list.push({
-            id: String(t.id),
-            title: t.title,
-            packageName: t.packageName || 'Careermate',
-            campaignName: t.campaignName || (t.packageName ? `${t.packageName} Campaign` : undefined),
-            campaignId: t.campaignId,
-            versionNumber: verNum,
-            imageUrl: thumbUrl,
-            isVideo: designTypeInfo.isVideo,
-            videoUrl: designTypeInfo.isVideo ? thumbUrl : undefined,
-            designType: designTypeInfo.type,
-            designTypeLabel: designTypeInfo.label,
-            approverName: approverInfo.name,
-            approverRole: approverInfo.role,
-            approvedAt: approverInfo.label,
-            status: t.status,
-            description: t.description || 'Approved design asset ready for campaign ads attribution.',
-          });
-        }
+      if (activePkg && activePkg !== 'all' && !isTaskForPackage(t, this.packageFilter)) {
+        continue;
       }
+
+      list.push(this.buildApprovedDesignItem(t, approvalHist));
     }
 
     return list;
@@ -195,8 +223,8 @@ export class AdFormModalComponent implements OnInit, OnChanges {
     this.selectedDesignType = type;
     const matching = this.allApprovedDesigns.filter((d) => d.designType === type);
     if (matching.length > 0) {
-      const currentMatch = matching.find((d) => String(d.id) === String(this.selectedDesignId));
-      if (!currentMatch) {
+      const hasCurrentMatch = matching.some((d) => String(d.id) === String(this.selectedDesignId));
+      if (!hasCurrentMatch) {
         this.selectDesign(matching[0]);
       }
     } else {
@@ -335,57 +363,28 @@ export class AdFormModalComponent implements OnInit, OnChanges {
   }
 
   private extractTaskImage(t: Task): string {
-    const cleanUrl = (raw?: string | null): string => {
-      if (!raw || typeof raw !== 'string') return '';
-      const trimmed = raw.trim();
-      if (!trimmed) return '';
-      if (trimmed.startsWith('data:image/') || trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('blob:')) {
-        return trimmed;
-      }
-      if (trimmed.startsWith('/')) {
-        return trimmed;
-      }
-      return `/${trimmed}`;
-    };
-
     if (t.versions && t.versions.length > 0) {
       for (const ver of t.versions) {
         const url = (ver as any).fileUrl || ver.filePath || ver.fileContent;
-        const cleaned = cleanUrl(url);
-        if (cleaned) {
-          const lower = cleaned.toLowerCase();
-          if (
-            lower.startsWith('data:image/') ||
-            lower.includes('/uploads/') ||
-            lower.endsWith('.png') ||
-            lower.endsWith('.jpg') ||
-            lower.endsWith('.jpeg') ||
-            lower.endsWith('.webp') ||
-            lower.endsWith('.svg') ||
-            lower.endsWith('.gif') ||
-            lower.endsWith('.mp4') ||
-            lower.endsWith('.mov') ||
-            lower.endsWith('.webm') ||
-            (cleaned.startsWith('http') && !cleaned.endsWith('.pdf'))
-          ) {
-            return cleaned;
-          }
+        const cleaned = cleanUrlString(url);
+        if (cleaned && isMediaUrl(cleaned)) {
+          return cleaned;
         }
       }
     }
 
     if (t.attachmentUrl) {
-      const cleaned = cleanUrl(t.attachmentUrl);
+      const cleaned = cleanUrlString(t.attachmentUrl);
       if (cleaned) return cleaned;
     }
 
     if ((t as any).imageUrl) {
-      const cleaned = cleanUrl((t as any).imageUrl);
+      const cleaned = cleanUrlString((t as any).imageUrl);
       if (cleaned) return cleaned;
     }
 
     if ((t as any).image) {
-      const cleaned = cleanUrl((t as any).image);
+      const cleaned = cleanUrlString((t as any).image);
       if (cleaned) return cleaned;
     }
 

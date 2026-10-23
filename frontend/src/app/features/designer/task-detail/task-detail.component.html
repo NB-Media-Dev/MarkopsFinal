@@ -384,7 +384,7 @@
                             controls
                             preload="metadata"
                             [attr.aria-label]="'Video deliverable: ' + ver.fileName"
-                          ></video>
+                          ><track kind="captions" label="Captions" default></video>
                         } @else if (isImage(versionAssetUrl) || isImage(ver.fileName)) {
                           <div
                             class="asset-img-container"
@@ -644,7 +644,7 @@
       </div>
       <div class="lightbox-image-box">
         @if (isVideo(imageViewerUrl()) || isVideo(imageViewerTitle())) {
-          <video [src]="imageViewerUrl()" controls autoplay aria-label="Video deliverable preview"></video>
+          <video [src]="imageViewerUrl()" controls autoplay aria-label="Video deliverable preview"><track kind="captions" label="Captions" default></video>
         } @else {
           <img [src]="imageViewerUrl()" [alt]="deliverableAltText()" />
         }

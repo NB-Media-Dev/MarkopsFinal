@@ -403,7 +403,7 @@ export class PackageDepartmentViewComponent {
   }
 
   private formatReportDate(dateRaw: string): string {
-    if (dateRaw && dateRaw.includes('-')) {
+    if (dateRaw?.includes('-')) {
       const parts = dateRaw.split('-');
       if (parts.length === 3) {
         const dObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
@@ -505,7 +505,7 @@ export class PackageDepartmentViewComponent {
   }
 
   get telecallerCampaignReports(): TelecallerCampaignReport[] {
-    if (!this.selectedPerformanceUser || this.selectedPerformanceUser.role !== 'TELECALLER') {
+    if (this.selectedPerformanceUser?.role !== 'TELECALLER') {
       return [];
     }
 
@@ -1224,8 +1224,7 @@ export class PackageDepartmentViewComponent {
         'Caller Ratio',
         'Paid',
       ];
-      lines.push('--- CAMPAIGN SUMMARY BREAKDOWN ---');
-      lines.push(summaryHeaders.map(escapeCsv).join(','));
+      lines.push('--- CAMPAIGN SUMMARY BREAKDOWN ---', summaryHeaders.map(escapeCsv).join(','));
       this.telecallerCampaignReports.forEach((r) => {
         lines.push(
           [
@@ -1245,8 +1244,7 @@ export class PackageDepartmentViewComponent {
             .join(',')
         );
       });
-      lines.push('');
-      lines.push('--- DETAILED LEAD RECORDS ---');
+      lines.push('', '--- DETAILED LEAD RECORDS ---');
 
       const telecallerHeaders = [
         'S.No',
@@ -1285,7 +1283,12 @@ export class PackageDepartmentViewComponent {
           const status = t.callOutcome || t.status || '—';
           const attempts = t.callAttemptsText || (t.callAttempts ? `${t.callAttempts} Calls` : '0 Attempts');
           const followUp = t.followUpDate ? new Date(t.followUpDate).toLocaleDateString() : '—';
-          const remarks = (t.remarks && t.remarks !== '—') ? t.remarks : ((t.notes && t.notes !== '—') ? t.notes : '—');
+          let remarks = '—';
+          if (t.remarks && t.remarks !== '—') {
+            remarks = t.remarks;
+          } else if (t.notes && t.notes !== '—') {
+            remarks = t.notes;
+          }
 
           const row = [
             sNo,
@@ -1333,7 +1336,8 @@ export class PackageDepartmentViewComponent {
           const product = this.formatProductName(t.productName, t);
           const pkg = this.formatPackageName(t.packageName, t);
           const platform = t.platform || 'Meta Ads';
-          const date = t.launchDate ? new Date(t.launchDate).toLocaleDateString() : (t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—');
+          const rawDate = t.launchDate || t.createdAt;
+          const date = rawDate ? new Date(rawDate).toLocaleDateString() : '—';
           const leads = t.leadsCount !== undefined ? t.leadsCount : 0;
           const status = t.status || 'ACTIVE';
 

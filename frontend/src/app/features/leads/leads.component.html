@@ -51,7 +51,7 @@
   }
 
   @if (leadUploadStatus()) {
-    <div class="alert-banner alert-success" role="status">
+    <output class="alert-banner alert-success">
       <div class="alert-icon-wrap">
         <span class="material-symbols-outlined">check_circle</span>
       </div>
@@ -59,7 +59,7 @@
       <button type="button" class="alert-dismiss-btn" (click)="leadUploadStatus.set(null)" title="Dismiss">
         <span class="material-symbols-outlined">close</span>
       </button>
-    </div>
+    </output>
   }
   @if (leadUploadError()) {
     <div class="alert-banner alert-danger" role="alert">

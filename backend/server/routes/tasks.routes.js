@@ -1,6 +1,47 @@
+function validateCreateTaskInput(body, headers, user) {
+  const userRole = String(headers['x-user-role'] || user?.role || body.creatorRole || '').toUpperCase();
+  if (userRole && !['ADMINISTRATOR', 'MARKETING_MANAGER', 'BDM'].includes(userRole)) {
+    return { error: 'Permission Denied: Only Admin, Marketing Manager, and BDM can create tasks.', status: 403 };
+  }
+
+  const { title, priority, packageName, assignedTo, dueDate } = body;
+  if (!title || !priority || !packageName || !assignedTo || !dueDate) {
+    return { error: 'All fields (Title, Package, Designer, Priority, and Deadline) are required.', status: 400 };
+  }
+  return null;
+}
+
+function resolveTaskTypeFallback(taskType, title) {
+  if (taskType) return taskType;
+  const lower = String(title || '').toLowerCase();
+  if (lower.includes('video')) return 'VIDEO';
+  if (lower.includes('post') || lower.includes('social')) return 'POST_DESIGN';
+  return 'BANNER_DESIGN';
+}
+
+async function notifyTaskAssignment(taskId, title, priority, dueDate, assigneeId, assigneeName, creatorId) {
+  if (!assigneeId) return;
+  await dispatchNotification({
+    userIds: [assigneeId],
+    title: `Task Assigned: ${title}`,
+    message: `You have been assigned to task "${title}". Priority: ${priority || 'MEDIUM'}. Due date: ${dueDate || 'Flexible'}.`,
+    type: 'INFO',
+    targetRoute: '/designer-tasks',
+  });
+  if (creatorId && String(creatorId) !== String(assigneeId)) {
+    await dispatchNotification({
+      userIds: [creatorId],
+      title: 'Task Assigned Successfully',
+      message: `Task "${title}" has been assigned to ${assigneeName}.`,
+      type: 'INFO',
+      targetRoute: `/tasks?view=my&taskId=${taskId}`,
+    });
+  }
+}
+
 const crypto = require('node:crypto');
 const express = require('express');
-const fs = require('fs');
+const fs = require('node:fs');
 const path = require('path');
 const { dbPool, dbTasksStore, dbUsersStore, dbNotificationsStore } = require('../db');
 const { recordAuditLog } = require('../services/audit.service');
@@ -700,7 +741,7 @@ router.post('/tasks', async (req, res) => {
             }
           }
         }
-      } catch (ue) {}
+      } catch (ue) { console.log('[MySQL Notice] Fetch user details for task assignment skipped:', ue?.message || ue); }
 
       const safeDueDate = formatDueDate(dueDate);
       const safePackageName = packageName ? String(packageName).trim() : (req.body.productName ? String(req.body.productName).trim() : 'Careermate');
@@ -751,7 +792,7 @@ router.post('/tasks', async (req, res) => {
                  VALUES (?, ?, ?, ?, ?, NOW())`,
                 [newTaskId, attachmentName || 'Document.pdf', savedAttachmentUrl || '', 1024, numericCreatorId]
               );
-            } catch (attErr) {}
+            } catch (attErr) { console.log('[MySQL Notice] Insert task attachment skipped:', attErr?.message || attErr); }
           }
 
           dbTasksStore.unshift(dbTask);
@@ -1152,7 +1193,7 @@ async function handleVersionSubmission(req, res, targetTask) {
   const effectiveUser = req.user?.id || submittedBy || req.headers['x-user-id'] || 'usr_admin_01';
   const effectiveUserName = req.user?.fullName || submittedByName || req.headers['x-user-name'] || 'Designer';
   const fileMimeType =
-    String(filePath || fileContent || '').match(/^data:([^;,]+)/)?.[1] || 'application/octet-stream';
+    (/^data:([^;,]+)/.exec(String(filePath || fileContent || '')))?.[1] || 'application/octet-stream';
 
   let savedFilePath = filePath;
   if (filePath && typeof filePath === 'string' && filePath.startsWith('data:')) {

@@ -1,3 +1,18 @@
+function resolveLeadRowStatus(row) {
+  if (row.assigned_to && (!row.status || row.status === 'NEW' || row.status === 'CONNECTED')) {
+    return 'ASSIGNED';
+  }
+  if (row.status === 'QUALIFIED' || row.status === 'CONVERTED') {
+    return 'PAID';
+  }
+  return row.status;
+}
+
+function resolveCalledAt(r) {
+  const raw = r.called_at || r.calledAt;
+  return raw ? new Date(raw).toISOString() : new Date().toISOString();
+}
+
 const PUNCT_CHARS = new Set(['<', '(', '[', '{', '"', "'", '>', ']', '}', ')', '.', ',', ';', ':']);
 function extractFirstEmail(text) {
   if (!text?.includes('@')) return '';
@@ -122,7 +137,7 @@ function mapDbRowToCall(r) {
     nextAction: r.next_action || r.nextAction || '',
     followUpDate: r.follow_up_date || r.followUpDate || '',
     followUpTime: r.follow_up_time || r.followUpTime || '',
-    calledAt: r.called_at ? new Date(r.called_at).toISOString() : (r.calledAt ? new Date(r.calledAt).toISOString() : new Date().toISOString()),
+    calledAt: resolveCalledAt(r),
   };
 }
 
@@ -219,127 +234,122 @@ function enrichLeadWithCreator(lead, usersStore) {
   }
 }
 
-router.get('/leads', async (req, res) => {
-  const currentRole = String(req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
-  const currentUserId = req.user?.id ? String(req.user.id) : (req.headers['x-user-id'] ? String(req.headers['x-user-id']) : null);
-  const currentUserEmail = (req.user?.email || req.headers['x-user-email'] || '').toLowerCase().trim();
-  const currentUserName = (req.user?.fullName || req.headers['x-user-name'] || '').toLowerCase().trim();
-  const isTelecallerRole = currentRole === 'TELECALLER';
+async function fetchLeadsFromDatabase(currentUserId, currentUserEmail, currentUserName, isTelecallerRole) {
+  try {
+    let queryStr = `
+      SELECT l.*, 
+             c.full_name as creator_full_name, 
+             c.email as creator_user_email,
+             u.full_name as assignee_full_name,
+             u.email as assignee_user_email,
+             a.name as ad_name
+      FROM leads l
+      LEFT JOIN users c ON l.creator_id = c.id
+      LEFT JOIN users u ON (l.assigned_to = u.id OR CAST(l.assigned_to AS CHAR) = CAST(u.id AS CHAR) OR LOWER(l.assigned_to) = LOWER(u.full_name) OR LOWER(l.assigned_to) = LOWER(u.email))
+      LEFT JOIN ads a ON l.ad_id = a.id
+    `;
+    const queryParams = [];
 
-  if (dbPool) {
-    try {
-      let queryStr = `
-        SELECT l.*, 
-               c.full_name as creator_full_name, 
-               c.email as creator_user_email,
-               u.full_name as assignee_full_name,
-               u.email as assignee_user_email,
-               a.name as ad_name
-        FROM leads l
-        LEFT JOIN users c ON l.creator_id = c.id
-        LEFT JOIN users u ON (l.assigned_to = u.id OR CAST(l.assigned_to AS CHAR) = CAST(u.id AS CHAR) OR LOWER(l.assigned_to) = LOWER(u.full_name) OR LOWER(l.assigned_to) = LOWER(u.email))
-        LEFT JOIN ads a ON l.ad_id = a.id
+    if (isTelecallerRole) {
+      const numUid = Number.parseInt(String(currentUserId || '').replace(/\D/g, ''), 10);
+      queryStr += `
+        WHERE (
+          l.assigned_to = ?
+          OR l.assigned_to = ?
+          OR CAST(l.assigned_to AS CHAR) = ?
+          OR LOWER(l.assigned_to) = ?
+          OR LOWER(l.assigned_to) = ?
+          OR (u.id IS NOT NULL AND (u.id = ? OR CAST(u.id AS CHAR) = ?))
+          OR (u.email IS NOT NULL AND LOWER(u.email) = ?)
+          OR (u.full_name IS NOT NULL AND (LOWER(u.full_name) = ? OR LOWER(u.full_name) LIKE ?))
+        )
       `;
-      const queryParams = [];
-
-      if (isTelecallerRole) {
-        const numUid = Number.parseInt(String(currentUserId || '').replace(/\D/g, ''), 10);
-        queryStr += `
-          WHERE (
-            l.assigned_to = ?
-            OR l.assigned_to = ?
-            OR CAST(l.assigned_to AS CHAR) = ?
-            OR LOWER(l.assigned_to) = ?
-            OR LOWER(l.assigned_to) = ?
-            OR (u.id IS NOT NULL AND (u.id = ? OR CAST(u.id AS CHAR) = ?))
-            OR (u.email IS NOT NULL AND LOWER(u.email) = ?)
-            OR (u.full_name IS NOT NULL AND (LOWER(u.full_name) = ? OR LOWER(u.full_name) LIKE ?))
-          )
-        `;
-        queryParams.push(
-          currentUserId || -1,
-          Number.isNaN(numUid) ? -1 : numUid,
-          currentUserId || '__none__',
-          currentUserEmail || '__none__',
-          currentUserName || '__none__',
-          Number.isNaN(numUid) ? -1 : numUid,
-          currentUserId || '__none__',
-          currentUserEmail || '__none__',
-          currentUserName || '__none__',
-          `%${currentUserName || '__none__'}%`
-        );
-      }
-
-      queryStr += ` ORDER BY l.created_at DESC`;
-
-      try {
-        const [callRows] = await dbPool.query(`
-          SELECT ca.*, l.phone as lead_phone, l.first_name, l.last_name, u.full_name as telecaller_name, u.email as telecaller_email
-          FROM call_activities ca
-          LEFT JOIN leads l ON ca.lead_id = l.id
-          LEFT JOIN users u ON ca.telecaller_id = u.id
-          ORDER BY ca.called_at DESC
-        `);
-        if (Array.isArray(callRows)) {
-          reconcileCallActivities(callRows);
-        }
-      } catch (callErr) {
-      }
-
-      const [rows] = await dbPool.query(queryStr, queryParams);
-      if (Array.isArray(rows)) {
-        const leads = rows.map((row) => {
-          const inMem = dbLeadsStore.find((m) => String(m.id) === String(row.id) || (m.phone && row.phone && m.phone.replace(/\D/g, '') === row.phone.replace(/\D/g, '')));
-          const matchedAd = dbAdsStore.find((ad) => String(ad.id) === String(row.ad_id) || String(ad.platformAdId) === String(row.ad_id));
-          const matchedAdByCmp = dbAdsStore.find((ad) => (row.campaign_id && String(ad.campaignId) === String(row.campaign_id)) || (row.campaign_name && ad.campaignName && ad.campaignName.toLowerCase().trim() === String(row.campaign_name).toLowerCase().trim()));
-          const finalAdName = row.ad_name || inMem?.adName || inMem?.ad_name || (matchedAd ? matchedAd.name : '') || (matchedAdByCmp ? matchedAdByCmp.name : '') || (row.adName || '');
-          const finalAdId = row.ad_id ? String(row.ad_id) : (inMem?.adId || row.adId || '');
-          const finalCreatorName = row.creator_full_name || row.creator_name || inMem?.creatorName || 'System Administrator';
-          const finalCreatorEmail = row.creator_user_email || row.creator_email || inMem?.creatorEmail || 'admin@markops.io';
-          return {
-            id: row.id,
-            firstName: row.first_name,
-            lastName: row.last_name,
-            email: row.email,
-            phone: row.phone,
-            source: row.source,
-            status: (row.assigned_to && (!row.status || row.status === 'NEW' || row.status === 'CONNECTED')) ? 'ASSIGNED' : (row.status === 'QUALIFIED' || row.status === 'CONVERTED' ? 'PAID' : row.status),
-            assignedTo: row.assigned_to,
-            assigned_to: row.assigned_to,
-            assigneeName: row.assignee_full_name || (row.assigned_to ? 'Telecaller' : 'Unassigned'),
-            creatorId: row.creator_id,
-            creator_id: row.creator_id,
-            creatorName: finalCreatorName,
-            creator_name: finalCreatorName,
-            creatorEmail: finalCreatorEmail,
-            creator_email: finalCreatorEmail,
-            campaignId: row.campaign_id,
-            campaignName: row.campaign_name || '',
-            packageName: row.package_name || inMem?.packageName || inMem?.package || '',
-            package: row.package_name || inMem?.package || inMem?.packageName || '',
-            productId: row.product_id || inMem?.productId || '',
-            productName: row.product_name || inMem?.productName || '',
-            adId: finalAdId,
-            adName: finalAdName,
-            remarks: inMem?.remarks || inMem?.notes || '',
-            notes: inMem?.notes || inMem?.remarks || '',
-            createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
-            updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
-          };
-        });
-
-        if (Array.isArray(dbCallActivitiesStore)) {
-          leads.forEach((lead) => enrichLeadWithCallActivities(lead, dbCallActivitiesStore));
-        }
-
-        return res.json(leads);
-      }
-    } catch (e) {
-      console.error('[MySQL DB Error] Failed to fetch leads from MySQL:', e?.message || e);
+      queryParams.push(
+        currentUserId || -1,
+        Number.isNaN(numUid) ? -1 : numUid,
+        currentUserId || '__none__',
+        currentUserEmail || '__none__',
+        currentUserName || '__none__',
+        Number.isNaN(numUid) ? -1 : numUid,
+        currentUserId || '__none__',
+        currentUserEmail || '__none__',
+        currentUserName || '__none__',
+        `%${currentUserName || '__none__'}%`
+      );
     }
-  }
 
-  
+    queryStr += ` ORDER BY l.created_at DESC`;
+
+    try {
+      const [callRows] = await dbPool.query(`
+        SELECT ca.*, l.phone as lead_phone, l.first_name, l.last_name, u.full_name as telecaller_name, u.email as telecaller_email
+        FROM call_activities ca
+        LEFT JOIN leads l ON ca.lead_id = l.id
+        LEFT JOIN users u ON ca.telecaller_id = u.id
+        ORDER BY ca.called_at DESC
+      `);
+      if (Array.isArray(callRows)) {
+        reconcileCallActivities(callRows);
+      }
+    } catch (callErr) {
+      console.log('[MySQL Notice] Call activities fetch skipped:', callErr?.message || callErr);
+    }
+
+    const [rows] = await dbPool.query(queryStr, queryParams);
+    if (!Array.isArray(rows)) return null;
+
+    const leads = rows.map((row) => {
+      const inMem = dbLeadsStore.find((m) => String(m.id) === String(row.id) || (m.phone && row.phone && m.phone.replace(/\D/g, '') === row.phone.replace(/\D/g, '')));
+      const matchedAd = dbAdsStore.find((ad) => String(ad.id) === String(row.ad_id) || String(ad.platformAdId) === String(row.ad_id));
+      const matchedAdByCmp = dbAdsStore.find((ad) => (row.campaign_id && String(ad.campaignId) === String(row.campaign_id)) || (row.campaign_name && ad.campaignName && ad.campaignName.toLowerCase().trim() === String(row.campaign_name).toLowerCase().trim()));
+      const finalAdName = row.ad_name || inMem?.adName || inMem?.ad_name || (matchedAd ? matchedAd.name : '') || (matchedAdByCmp ? matchedAdByCmp.name : '') || (row.adName || '');
+      const finalAdId = row.ad_id ? String(row.ad_id) : (inMem?.adId || row.adId || '');
+      const finalCreatorName = row.creator_full_name || row.creator_name || inMem?.creatorName || 'System Administrator';
+      const finalCreatorEmail = row.creator_user_email || row.creator_email || inMem?.creatorEmail || 'admin@markops.io';
+      return {
+        id: row.id,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        email: row.email,
+        phone: row.phone,
+        source: row.source,
+        status: resolveLeadRowStatus(row),
+        assignedTo: row.assigned_to,
+        assigned_to: row.assigned_to,
+        assigneeName: row.assignee_full_name || (row.assigned_to ? 'Telecaller' : 'Unassigned'),
+        creatorId: row.creator_id,
+        creator_id: row.creator_id,
+        creatorName: finalCreatorName,
+        creator_name: finalCreatorName,
+        creatorEmail: finalCreatorEmail,
+        creator_email: finalCreatorEmail,
+        campaignId: row.campaign_id,
+        campaignName: row.campaign_name || '',
+        packageName: row.package_name || inMem?.packageName || inMem?.package || '',
+        package: row.package_name || inMem?.package || inMem?.packageName || '',
+        productId: row.product_id || inMem?.productId || '',
+        productName: row.product_name || inMem?.productName || '',
+        adId: finalAdId,
+        adName: finalAdName,
+        remarks: inMem?.remarks || inMem?.notes || '',
+        notes: inMem?.notes || inMem?.remarks || '',
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+        updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
+      };
+    });
+
+    if (Array.isArray(dbCallActivitiesStore)) {
+      leads.forEach((lead) => enrichLeadWithCallActivities(lead, dbCallActivitiesStore));
+    }
+
+    return leads;
+  } catch (e) {
+    console.error('[MySQL DB Error] Failed to fetch leads from MySQL:', e?.message || e);
+    return null;
+  }
+}
+
+function fetchLeadsFromMemory(currentUserId, currentUserEmail, currentUserName, isTelecallerRole) {
   let leads = [...dbLeadsStore];
   if (isTelecallerRole) {
     leads = leads.filter((l) => {
@@ -363,6 +373,22 @@ router.get('/leads', async (req, res) => {
     });
   }
 
+  return leads;
+}
+
+router.get('/leads', async (req, res) => {
+  const currentRole = String(req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
+  const currentUserId = req.user?.id ? String(req.user.id) : (req.headers['x-user-id'] ? String(req.headers['x-user-id']) : null);
+  const currentUserEmail = (req.user?.email || req.headers['x-user-email'] || '').toLowerCase().trim();
+  const currentUserName = (req.user?.fullName || req.headers['x-user-name'] || '').toLowerCase().trim();
+  const isTelecallerRole = currentRole === 'TELECALLER';
+
+  if (dbPool) {
+    const dbLeads = await fetchLeadsFromDatabase(currentUserId, currentUserEmail, currentUserName, isTelecallerRole);
+    if (dbLeads) return res.json(dbLeads);
+  }
+
+  const leads = fetchLeadsFromMemory(currentUserId, currentUserEmail, currentUserName, isTelecallerRole);
   return res.json(leads);
 });
 
@@ -708,6 +734,7 @@ router.post('/leads/:id/assign', async (req, res) => {
             ]
           );
         } catch (colErr) {
+          console.log('[MySQL Notice] Fallback to basic lead update columns:', colErr?.message || colErr);
           await dbPool.query(
             `UPDATE leads
              SET assigned_to = ?, status = ?, updated_at = NOW()
@@ -1919,6 +1946,7 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
               ]
             );
           } catch (colErr) {
+            console.log('[MySQL Notice] Batch insert with full columns failed, falling back to minimal columns:', colErr?.message || colErr);
             try {
               await importConnection.query(
                 `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, creator_id, creator_name, creator_email, campaign_id, campaign_name, created_at, updated_at)
@@ -2107,7 +2135,7 @@ router.get('/leads/telecalling-summary', async (req, res) => {
       if (Array.isArray(callRows) && callRows.length > 0) {
         allCalls = callRows;
       }
-    } catch (ce) {}
+    } catch (ce) { console.log('[MySQL Notice] Telecalling summary check skipped:', ce?.message || ce); }
   }
 
  

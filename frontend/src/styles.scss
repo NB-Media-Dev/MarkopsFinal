@@ -1605,7 +1605,7 @@ html, body {
   .page-heading {
     font-size: clamp(1.2rem, 3.5vw, 1.75rem);
     flex-wrap: wrap;
-    word-break: break-word;
+    overflow-wrap: break-word;
 
     @media (max-width: 480px) {
       gap: 0.45rem;
@@ -1970,7 +1970,7 @@ html, body {
       color: #334155 !important;
       font-style: normal !important;
       font-weight: 500 !important;
-      word-break: break-word !important;
+      overflow-wrap: break-word !important;
     }
   }
 }

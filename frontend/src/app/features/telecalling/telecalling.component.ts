@@ -15,6 +15,43 @@ import { TelecallingQueueTableComponent } from './components/telecalling-queue-t
 import { CallHistoryModalComponent } from './components/modals/call-history-modal/call-history-modal.component';
 import { CallLogModalComponent } from './components/modals/call-log-modal/call-log-modal.component';
 
+function isSameUserId(uId: string, lAssignedTo: string): boolean {
+  if (!uId || !lAssignedTo) return false;
+  if (lAssignedTo === uId || lAssignedTo.toLowerCase() === uId.toLowerCase()) return true;
+  const numUId = Number.parseInt(uId.replace(/\D/g, ''), 10);
+  const numLId = Number.parseInt(lAssignedTo.replace(/\D/g, ''), 10);
+  return !Number.isNaN(numUId) && !Number.isNaN(numLId) && numUId === numLId;
+}
+
+function isSameUserEmail(uEmail: string, lAssignedTo: string, lAssigneeEmail: string, lAssigneeName: string): boolean {
+  if (!uEmail) return false;
+  const target = uEmail.toLowerCase();
+  return (
+    lAssignedTo.toLowerCase() === target ||
+    lAssigneeEmail.toLowerCase() === target ||
+    lAssigneeName.toLowerCase() === target
+  );
+}
+
+function isSameUserName(uName: string, lAssigneeName: string, lAssignedTo: string): boolean {
+  if (!uName) return false;
+  const target = uName.toLowerCase();
+  const aName = lAssigneeName.toLowerCase();
+  const aTo = lAssignedTo.toLowerCase();
+  if (aName === target || aTo === target) return true;
+  if (aName && (aName.includes(target) || target.includes(aName))) return true;
+  return Boolean(aTo && (aTo.includes(target) || target.includes(aTo)));
+}
+
+function hasMatchingToken(uTokens: string[], lTokens: string[]): boolean {
+  for (const ut of uTokens) {
+    for (const lt of lTokens) {
+      if (ut === lt || ut.includes(lt) || lt.includes(ut)) return true;
+    }
+  }
+  return false;
+}
+
 export function isLeadAssignedToUser(l: any, user: any): boolean {
   if (!l || !user) return false;
   const uId = String(user.id || '').trim();
@@ -25,36 +62,13 @@ export function isLeadAssignedToUser(l: any, user: any): boolean {
   const lAssigneeName = String(l.assigneeName || l.assignee_name || l.assigneeFullName || l.assignedToName || '').toLowerCase().trim();
   const lAssigneeEmail = String(l.assigneeEmail || l.assignee_email || '').toLowerCase().trim();
 
-
-  if (uId && lAssignedTo) {
-    if (lAssignedTo === uId || lAssignedTo.toLowerCase() === uId.toLowerCase()) return true;
-    const numUId = Number.parseInt(uId.replace(/\D/g, ''), 10);
-    const numLId = Number.parseInt(lAssignedTo.replace(/\D/g, ''), 10);
-    if (!Number.isNaN(numUId) && !Number.isNaN(numLId) && numUId === numLId) return true;
-  }
-
-
-  if (uEmail && (lAssignedTo.toLowerCase() === uEmail || lAssigneeEmail === uEmail || lAssigneeName === uEmail)) {
-    return true;
-  }
-
-
-  if (uName) {
-    if (lAssigneeName === uName || lAssignedTo.toLowerCase() === uName) return true;
-    if (lAssigneeName && (lAssigneeName.includes(uName) || uName.includes(lAssigneeName))) return true;
-    if (lAssignedTo && (lAssignedTo.toLowerCase().includes(uName) || uName.includes(lAssignedTo.toLowerCase()))) return true;
-  }
-
+  if (isSameUserId(uId, lAssignedTo)) return true;
+  if (isSameUserEmail(uEmail, lAssignedTo, lAssigneeEmail, lAssigneeName)) return true;
+  if (isSameUserName(uName, lAssigneeName, lAssignedTo)) return true;
 
   const uTokens = [uName, uEmail.split('@')[0], uId].filter((t) => t && t.length >= 3);
   const lTokens = [lAssigneeName, lAssignedTo.toLowerCase(), lAssigneeEmail.split('@')[0]].filter((t) => t && t.length >= 3);
-  for (const ut of uTokens) {
-    for (const lt of lTokens) {
-      if (ut === lt || ut.includes(lt) || lt.includes(ut)) return true;
-    }
-  }
-
-  return false;
+  return hasMatchingToken(uTokens, lTokens);
 }
 
 export function normalizeCampaignName(name?: string): string {
@@ -864,17 +878,21 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     return this.getLeadMetrics(lead).calls;
   });
 
+  private matchesCallPhone(lPhone: string, cPhone: string): boolean {
+    if (!lPhone || !cPhone) return false;
+    if (lPhone === cPhone) return true;
+    if (lPhone.length >= 10 && cPhone.length >= 10 && lPhone.slice(-10) === cPhone.slice(-10)) return true;
+    return lPhone.length >= 7 && (lPhone.endsWith(cPhone) || cPhone.endsWith(lPhone));
+  }
+
   private matchesLeadCallItem(c: CallActivityItem, lId: string, lNum: string, lPhone: string, lName: string): boolean {
     const cLeadId = String(c.leadId || '').trim().toLowerCase();
     const cNum = cLeadId.replace(/\D/g, '');
     if ((cLeadId && lId && cLeadId === lId) || (cNum && lNum && cNum === lNum)) return true;
 
     const cPhone = String(c.leadPhone || c.phone || '').replace(/\D/g, '');
-    if (lPhone && cPhone) {
-      if (lPhone === cPhone) return true;
-      if (lPhone.length >= 10 && cPhone.length >= 10 && lPhone.slice(-10) === cPhone.slice(-10)) return true;
-      if (lPhone.length >= 7 && (lPhone.endsWith(cPhone) || cPhone.endsWith(lPhone))) return true;
-    }
+    if (this.matchesCallPhone(lPhone, cPhone)) return true;
+
     const cLeadName = String(c.leadName || '').trim().toLowerCase();
     return Boolean(cLeadName && lName && lName.length >= 3 && (cLeadName === lName || cLeadName.includes(lName) || lName.includes(cLeadName)));
   }
@@ -955,35 +973,36 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     };
   }
 
+  private resolveCreatorFromId(cId: string): string | null {
+    const matched = this.userService.users().find(
+      (u) => String(u.id).trim().toLowerCase() === cId || (u.email && u.email.trim().toLowerCase() === cId)
+    );
+    return matched?.fullName || null;
+  }
+
+  private resolveCreatorFromEmail(email: string): string | null {
+    const matched = this.userService.users().find(
+      (u) => u.email && u.email.trim().toLowerCase() === email
+    );
+    if (matched?.fullName) return matched.fullName;
+    const prefix = email.split('@')[0];
+    return prefix ? prefix.charAt(0).toUpperCase() + prefix.slice(1) : null;
+  }
+
   getLeadCreatorName(lead: LeadItem): string {
     if (!lead) return 'System Administrator';
-
-    if (lead.creatorName && lead.creatorName.trim()) {
-      return lead.creatorName.trim();
-    }
+    if (lead.creatorName?.trim()) return lead.creatorName.trim();
 
     const cId = String(lead.creatorId || lead.uploaderId || '').trim().toLowerCase();
     if (cId) {
-      const matchedUser = this.userService.users().find(
-        (u) => String(u.id).trim().toLowerCase() === cId || (u.email && u.email.trim().toLowerCase() === cId)
-      );
-      if (matchedUser && matchedUser.fullName) {
-        return matchedUser.fullName;
-      }
+      const name = this.resolveCreatorFromId(cId);
+      if (name) return name;
     }
 
-    const creatorEmail = (lead.creatorEmail || lead.uploaderEmail || '').trim().toLowerCase();
-    if (creatorEmail) {
-      const matchedUser = this.userService.users().find(
-        (u) => u.email && u.email.trim().toLowerCase() === creatorEmail
-      );
-      if (matchedUser && matchedUser.fullName) {
-        return matchedUser.fullName;
-      }
-      const emailPrefix = creatorEmail.split('@')[0];
-      if (emailPrefix) {
-        return emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
-      }
+    const email = (lead.creatorEmail || lead.uploaderEmail || '').trim().toLowerCase();
+    if (email) {
+      const name = this.resolveCreatorFromEmail(email);
+      if (name) return name;
     }
 
     return 'System Administrator';
@@ -1080,6 +1099,25 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     return allFollowUps.some((f) => this.matchesPendingFollowUp(f, lId, lPhone, lName));
   }
 
+  private resolveLeadFollowUpRawDateTime(lead: LeadItem, leadCalls: CallActivityItem[]): { fDate: string; fTime: string } {
+    if (leadCalls && leadCalls.length > 0 && leadCalls[0].followUpDate) {
+      return {
+        fDate: leadCalls[0].followUpDate,
+        fTime: leadCalls[0].followUpTime || '',
+      };
+    }
+    const lId = String(lead.id || '').trim().toLowerCase();
+    const lPhone = String(lead.phone || '').replace(/\D/g, '');
+    const lName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim().toLowerCase();
+
+    const allFollowUps = this.leadService.followUps();
+    const f = allFollowUps.find((item) => this.matchesPendingFollowUp(item, lId, lPhone, lName));
+    if (f?.dueDate) {
+      return { fDate: f.dueDate, fTime: f.dueTime || '' };
+    }
+    return { fDate: '', fTime: '' };
+  }
+
   getFollowUpTimeLabel(lead: LeadItem): string | null {
     if (!lead) return null;
     const currentStatus = String(lead.status || '').toUpperCase();
@@ -1088,28 +1126,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     }
 
     const metrics = this.getLeadMetrics(lead);
-    const leadCalls = metrics.calls;
-
-    let fDate = '';
-    let fTime = '';
-
-    if (leadCalls && leadCalls.length > 0 && leadCalls[0].followUpDate) {
-      fDate = leadCalls[0].followUpDate;
-      fTime = leadCalls[0].followUpTime || '';
-    } else {
-      const lId = String(lead.id || '').trim().toLowerCase();
-      const lPhone = String(lead.phone || '').replace(/\D/g, '');
-      const lName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim().toLowerCase();
-
-      const allFollowUps = this.leadService.followUps();
-      const f = allFollowUps.find((item) => this.matchesPendingFollowUp(item, lId, lPhone, lName));
-
-      if (f?.dueDate) {
-        fDate = f.dueDate;
-        fTime = f.dueTime || '';
-      }
-    }
-
+    const { fDate, fTime } = this.resolveLeadFollowUpRawDateTime(lead, metrics.calls);
     if (!fDate) return null;
 
     const { cleanDate, cleanTime } = this.parseFollowUpParts(fDate, fTime);

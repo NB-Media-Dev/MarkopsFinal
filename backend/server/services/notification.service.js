@@ -63,6 +63,33 @@ function resolveUserAliases(userIdentifier, role = '', email = '', name = '') {
 }
 
 
+
+function resolveNumericUserId(rId, recipient) {
+  if (typeof rId === 'number') return rId;
+  if (/^\d+$/.test(recipient)) return Number(recipient);
+  return null;
+}
+
+function isRecentDuplicateNotification(notifObj) {
+  return dbNotificationsStore.slice(0, 10).some(
+    (n) =>
+      String(n.userId).toLowerCase() === String(notifObj.userId).toLowerCase() &&
+      n.title === notifObj.title &&
+      n.message === notifObj.message &&
+      Math.abs(new Date(n.createdAt).getTime() - new Date(notifObj.createdAt).getTime()) < 5000
+  );
+}
+
+async function persistNotificationToDb(numericUserId, cleanTitle, cleanMessage, type, targetRoute) {
+  const [res] = await dbPool.queryStrict(
+    `INSERT INTO notifications (user_id, title, message, type, target_route, is_read, created_at)
+     VALUES (?, ?, ?, ?, ?, 0, NOW())`,
+    [numericUserId, cleanTitle, cleanMessage, type, targetRoute || null]
+  );
+  if (!res?.insertId) throw new Error('Notification was not persisted by the database.');
+  return String(res.insertId);
+}
+
 async function dispatchNotification({ userIds = [], title, message, type = 'INFO', targetRoute = null }) {
   const recipients = new Set();
   const arr = Array.isArray(userIds) ? userIds : [userIds];
@@ -81,12 +108,11 @@ async function dispatchNotification({ userIds = [], title, message, type = 'INFO
       throw new Error('Notification recipients must be explicit user IDs; ALL is not supported.');
     }
     const recipient = String(rId).trim();
-    const numericUserId = typeof rId === 'number'
-      ? rId
-      : (/^\d+$/.test(recipient) ? Number(recipient) : null);
+    const numericUserId = resolveNumericUserId(rId, recipient);
     if (dbPool.isConnected() && (!Number.isSafeInteger(numericUserId) || numericUserId < 1)) {
       throw new Error(`Notification recipient "${rId}" is not a valid database user ID.`);
     }
+
     const notifObj = {
       id: `notif_${Date.now()}_${crypto.randomBytes(3).toString('hex')}`,
       userId: numericUserId || recipient,
@@ -98,35 +124,22 @@ async function dispatchNotification({ userIds = [], title, message, type = 'INFO
       targetRoute: targetRoute || null,
     };
 
-
-    const isDuplicate = dbNotificationsStore.slice(0, 10).some(
-      (n) =>
-        String(n.userId).toLowerCase() === String(notifObj.userId).toLowerCase() &&
-        n.title === notifObj.title &&
-        n.message === notifObj.message &&
-        Math.abs(new Date(n.createdAt).getTime() - new Date(notifObj.createdAt).getTime()) < 5000
-    );
-
     if (dbPool.isConnected() && numericUserId) {
       try {
-        const [res] = await dbPool.queryStrict(
-          `INSERT INTO notifications (user_id, title, message, type, target_route, is_read, created_at)
-           VALUES (?, ?, ?, ?, ?, 0, NOW())`,
-          [numericUserId, cleanTitle, cleanMessage, type, targetRoute || null]
-        );
-        if (!res?.insertId) throw new Error('Notification was not persisted by the database.');
-        notifObj.id = String(res.insertId);
+        notifObj.id = await persistNotificationToDb(numericUserId, cleanTitle, cleanMessage, type, targetRoute);
       } catch (error) {
         console.error(`[Notification Service] Persistence failed for recipient ${numericUserId}:`, error?.message || error);
-
+        throw error;
       }
     }
 
-    if (!isDuplicate) {
+    if (!isRecentDuplicateNotification(notifObj)) {
       dbNotificationsStore.unshift(notifObj);
+      if (dbNotificationsStore.length > 500) {
+        dbNotificationsStore.pop();
+      }
     }
 
-    emitUserRealtimeEvent('notification:created', notifObj, [notifObj.userId]);
     createdNotifs.push(notifObj);
   }
 

@@ -31,7 +31,7 @@ import { CampaignService } from '../../core/services/campaign.service';
 import * as XLSX from '@e965/xlsx';
 import { firstValueFrom } from 'rxjs';
 import { isLeadAssignedToUser } from '../telecalling/telecalling.component';
-import { FIXED_PACKAGES, isItemForPackage, resolveProductContext } from '../../core/models/package.model';
+import { isItemForPackage, resolveProductContext } from '../../core/models/package.model';
 import { PackageService } from '../../core/services/package.service';
 import { LeadsToolbarComponent } from './components/leads-toolbar/leads-toolbar.component';
 import { LeadsTableComponent } from './components/leads-table/leads-table.component';

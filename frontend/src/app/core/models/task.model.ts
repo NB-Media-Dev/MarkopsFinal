@@ -60,7 +60,7 @@ export interface TaskComment {
   createdAt: string;
 }
 
-export type TaskType = 'BANNER_DESIGN' | 'POST_DESIGN' | 'VIDEO' | string;
+export type TaskType = 'BANNER_DESIGN' | 'POST_DESIGN' | 'VIDEO' | (string & {});
 
 export interface Task {
   id: string;

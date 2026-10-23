@@ -7,7 +7,7 @@
   aria-label="View task details"
 >
 
-  <!-- Top Header: Designer Avatar & Role matching Image 1 + Priority & Status Badges -->
+  
   <div class="card-designer-header">
     <div class="designer-profile-left">
       <div class="designer-avatar-ring">
@@ -45,7 +45,7 @@
     </div>
   </div>
 
-  <!-- Category & Task Squircle Badge Row (from Image 2) -->
+  
   <div class="task-category-row">
     @if (getTaskTypeLabel()) {
       <span class="task-type-pill">
@@ -56,7 +56,7 @@
     <span class="status-badge" [ngClass]="getStatusBadgeClass(task.status)">{{ task.status }}</span>
   </div>
 
-  <!-- Task Title & Created by Creator Name -->
+  
   <div class="task-title-section">
     <h3 class="task-title" [title]="task.title">{{ task.title }}</h3>
     <div class="task-creator-line">
@@ -65,7 +65,7 @@
     </div>
   </div>
 
-  <!-- Over All Task Status & Progress Bar (matching Image 1) -->
+  
   <div class="task-progress-block">
     <div class="progress-title-row">
       <span class="progress-title-text">Task Status</span>
@@ -78,7 +78,7 @@
     </div>
   </div>
 
-  <!-- Footer Row: Due Date, Version, Preview & Action Buttons (matching Image 1) -->
+  
   <div class="task-card-footer">
     <div class="footer-meta-left">
       <span class="meta-due-date">
@@ -91,7 +91,7 @@
     </div>
 
     <div class="task-card-actions" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
-      <!-- Image 1 Style: Soft Green Pill for Preview / View Detail -->
+      
       <button
         type="button"
         class="btn-card-action btn-card-download"

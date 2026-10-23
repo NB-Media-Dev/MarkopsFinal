@@ -76,6 +76,37 @@ function isTaskEligibleForDesignerSummary(
   return true;
 }
 
+function matchesDesigner(d: { id: string; name: string; email?: string }, tAssignedToStr: string, tAssigneeNameStr: string): boolean {
+  const dIdStr = String(d.id || '').toLowerCase().trim();
+  const dNameStr = String(d.name || '').toLowerCase().trim();
+  const dEmailStr = String(d.email || '').toLowerCase().trim();
+
+  if (tAssignedToStr && (tAssignedToStr === dIdStr || tAssignedToStr === dEmailStr)) return true;
+  if (tAssigneeNameStr && (tAssigneeNameStr === dNameStr || tAssigneeNameStr.includes(dNameStr) || dNameStr.includes(tAssigneeNameStr))) return true;
+  return false;
+}
+
+function createCustomDesignerEntry(name: string, designerMap: Map<string, DesignerSummary>, getAvatarColor: (name: string) => string): string {
+  const customId = `d_${name.toLowerCase().replace(/\s+/g, '_')}`;
+  if (!designerMap.has(customId)) {
+    designerMap.set(customId, {
+      id: customId,
+      name,
+      email: `${name.toLowerCase().replace(/\s+/g, '.')}@markops.io`,
+      department: 'Creative Design',
+      avatarColor: getAvatarColor(name),
+      totalCount: 0,
+      completedCount: 0,
+      pendingCount: 0,
+      inProgressCount: 0,
+      submittedCount: 0,
+      revisionCount: 0,
+      completionRate: 0,
+    });
+  }
+  return customId;
+}
+
 function resolveTaskMatchedDesignerId(
   t: Task,
   designers: Array<{ id: string; name: string; email?: string }>,
@@ -85,39 +116,12 @@ function resolveTaskMatchedDesignerId(
   const tAssignedToStr = String(t.assignedTo || '').toLowerCase().trim();
   const tAssigneeNameStr = String(t.assigneeName || '').toLowerCase().trim();
 
-  for (const d of designers) {
-    const dIdStr = String(d.id || '').toLowerCase().trim();
-    const dNameStr = String(d.name || '').toLowerCase().trim();
-    const dEmailStr = String(d.email || '').toLowerCase().trim();
-
-    if (
-      (tAssignedToStr && (tAssignedToStr === dIdStr || tAssignedToStr === dEmailStr)) ||
-      (tAssigneeNameStr && (tAssigneeNameStr === dNameStr || tAssigneeNameStr.includes(dNameStr) || dNameStr.includes(tAssigneeNameStr)))
-    ) {
-      return String(d.id);
-    }
-  }
+  const found = designers.find((d) => matchesDesigner(d, tAssignedToStr, tAssigneeNameStr));
+  if (found) return String(found.id);
 
   const ignorableNames = new Set(['Assigned User', 'Designer', 'Assigned Designer', 'Unassigned']);
   if (t.assigneeName && !ignorableNames.has(t.assigneeName)) {
-    const customId = `d_${String(t.assigneeName).toLowerCase().replace(/\s+/g, '_')}`;
-    if (!designerMap.has(customId)) {
-      designerMap.set(customId, {
-        id: customId,
-        name: String(t.assigneeName),
-        email: `${String(t.assigneeName).toLowerCase().replace(/\s+/g, '.')}@markops.io`,
-        department: 'Creative Design',
-        avatarColor: getAvatarColor(String(t.assigneeName)),
-        totalCount: 0,
-        completedCount: 0,
-        pendingCount: 0,
-        inProgressCount: 0,
-        submittedCount: 0,
-        revisionCount: 0,
-        completionRate: 0,
-      });
-    }
-    return customId;
+    return createCustomDesignerEntry(String(t.assigneeName), designerMap, getAvatarColor);
   }
   return null;
 }
@@ -148,6 +152,70 @@ function recordTaskStatusForDesigner(entry: DesignerSummary, status?: string) {
   if (isRevision) entry.revisionCount = (entry.revisionCount || 0) + 1;
 }
 
+
+function isDbPackageMatchingProduct(p: any, activeProdId: string, activeProdName: string): boolean {
+  const pProd = (p.productId || '').toLowerCase().trim();
+  const prodNameLower = activeProdName.toLowerCase();
+  if (pProd === activeProdId) return true;
+  if (prodNameLower.includes('career') && (pProd.includes('career') || pProd === 'pkg_careermate')) return true;
+  if (prodNameLower.includes('class') && (pProd.includes('class') || pProd === 'pkg_classmate')) return true;
+  return Boolean(
+    (prodNameLower.includes('jesus') || prodNameLower.includes('messang')) &&
+    (pProd.includes('jesus') || pProd.includes('messang') || pProd === 'pkg_jesus_messanger')
+  );
+}
+
+function populatePackagesForActiveProduct(
+  map: Map<string, { name: string; icon: string }>,
+  activeProd: string,
+  filterPkg: string | undefined,
+  dbPkgs: any[]
+): void {
+  const fixedProd = FIXED_PACKAGES.find(
+    (p) => p.name.toLowerCase() === activeProd.toLowerCase() || p.id.toLowerCase() === activeProd.toLowerCase()
+  );
+  const activeProdId = (fixedProd?.id || activeProd).toLowerCase();
+  const activeProdName = fixedProd?.name || activeProd;
+
+  if (filterPkg && (!fixedProd || filterPkg.toLowerCase() !== fixedProd.name.toLowerCase())) {
+    map.set(filterPkg.toLowerCase(), { name: filterPkg, icon: 'inventory_2' });
+  }
+
+  for (const p of dbPkgs) {
+    if (!p.name?.trim()) continue;
+    if (isDbPackageMatchingProduct(p, activeProdId, activeProdName) && !map.has(p.name.toLowerCase().trim())) {
+      map.set(p.name.toLowerCase().trim(), { name: p.name.trim(), icon: 'inventory_2' });
+    }
+  }
+
+  if (map.size === 0 && fixedProd) {
+    map.set(fixedProd.name.toLowerCase(), { name: fixedProd.name, icon: fixedProd.icon });
+  }
+}
+
+function populateDefaultPackages(
+  map: Map<string, { name: string; icon: string }>,
+  filterPkg: string | undefined,
+  dbPkgs: any[]
+): void {
+  if (filterPkg) {
+    map.set(filterPkg.toLowerCase(), { name: filterPkg, icon: 'inventory_2' });
+  }
+
+  for (const p of dbPkgs) {
+    if (p.name?.trim() && !map.has(p.name.toLowerCase().trim())) {
+      map.set(p.name.toLowerCase().trim(), { name: p.name.trim(), icon: 'inventory_2' });
+    }
+  }
+
+  if (map.size === 0) {
+    for (const pkg of FIXED_PACKAGES) {
+      if (!map.has(pkg.name.toLowerCase())) {
+        map.set(pkg.name.toLowerCase(), { name: pkg.name, icon: pkg.icon });
+      }
+    }
+  }
+}
 
 @Component({
   selector: 'app-designer-dashboard',
@@ -251,64 +319,9 @@ export class DesignerDashboardComponent implements OnInit {
     const dbPkgs = this.packageService.packages();
 
     if (activeProd) {
-      const fixedProd = FIXED_PACKAGES.find(
-        (p) => p.name.toLowerCase() === activeProd.toLowerCase() || p.id.toLowerCase() === activeProd.toLowerCase()
-      );
-      const activeProdId = (fixedProd?.id || activeProd).toLowerCase();
-      const activeProdName = fixedProd?.name || activeProd;
-
-      if (filterPkg && (!fixedProd || filterPkg.toLowerCase() !== fixedProd.name.toLowerCase())) {
-        map.set(filterPkg.toLowerCase(), {
-          name: filterPkg,
-          icon: 'inventory_2',
-        });
-      }
-
-      for (const p of dbPkgs) {
-        if (!p.name || !p.name.trim()) continue;
-        const pProd = (p.productId || '').toLowerCase().trim();
-        const matchesProduct =
-          pProd === activeProdId ||
-          (activeProdName.toLowerCase().includes('career') && (pProd.includes('career') || pProd === 'pkg_careermate')) ||
-          (activeProdName.toLowerCase().includes('class') && (pProd.includes('class') || pProd === 'pkg_classmate')) ||
-          ((activeProdName.toLowerCase().includes('jesus') || activeProdName.toLowerCase().includes('messang')) &&
-            (pProd.includes('jesus') || pProd.includes('messang') || pProd === 'pkg_jesus_messanger'));
-
-        if (matchesProduct && !map.has(p.name.toLowerCase().trim())) {
-          map.set(p.name.toLowerCase().trim(), {
-            name: p.name.trim(),
-            icon: 'inventory_2',
-          });
-        }
-      }
-
-      if (map.size === 0 && fixedProd) {
-        map.set(fixedProd.name.toLowerCase(), {
-          name: fixedProd.name,
-          icon: fixedProd.icon,
-        });
-      }
+      populatePackagesForActiveProduct(map, activeProd, filterPkg, dbPkgs);
     } else {
-      if (filterPkg) {
-        map.set(filterPkg.toLowerCase(), {
-          name: filterPkg,
-          icon: 'inventory_2',
-        });
-      }
-
-      for (const p of dbPkgs) {
-        if (p.name && p.name.trim() && !map.has(p.name.toLowerCase().trim())) {
-          map.set(p.name.toLowerCase().trim(), { name: p.name.trim(), icon: 'inventory_2' });
-        }
-      }
-
-      if (map.size === 0) {
-        for (const pkg of FIXED_PACKAGES) {
-          if (!map.has(pkg.name.toLowerCase())) {
-            map.set(pkg.name.toLowerCase(), { name: pkg.name, icon: pkg.icon });
-          }
-        }
-      }
+      populateDefaultPackages(map, filterPkg, dbPkgs);
     }
 
     return Array.from(map.values());

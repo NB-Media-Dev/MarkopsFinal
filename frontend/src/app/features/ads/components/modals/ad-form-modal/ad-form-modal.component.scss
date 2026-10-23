@@ -91,7 +91,7 @@
 
       &:hover {
         background: #FEE2E2;
-        color: #E11D48;
+        color: #BE123C;
         border-color: #FECDD3;
       }
     }
@@ -220,7 +220,7 @@
             width: 16px;
             height: 16px;
             border-radius: 50%;
-            background: #F59E0B;
+            background: #B45309;
             color: #FFFFFF;
             display: flex;
             align-items: center;
@@ -250,9 +250,9 @@
               font-size: 19px;
             }
 
-            &.icon-orange { background: #FFEDD5; color: #EA580C; }
+            &.icon-orange { background: #FFEDD5; color: #C2410C; }
             &.icon-purple { background: #F3E8FF; color: #7C3AED; }
-            &.icon-blue { background: #E0F2FE; color: #0284C7; }
+            &.icon-blue { background: #E0F2FE; color: #0369A1; }
           }
 
           .type-title-box {
@@ -350,7 +350,7 @@
 
             .check-ico {
               font-size: 18px;
-              color: #16A34A;
+              color: #15803D;
             }
 
             .banner-meta {
@@ -680,7 +680,7 @@
               text-transform: uppercase;
               box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
 
-              &.tag-banner { background: #EA580C; color: #FFFFFF; }
+              &.tag-banner { background: #C2410C; color: #FFFFFF; }
               &.tag-poster { background: #9333EA; color: #FFFFFF; }
               &.tag-video { background: #2563EB; color: #FFFFFF; }
 

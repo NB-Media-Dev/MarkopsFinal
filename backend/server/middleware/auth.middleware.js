@@ -37,7 +37,7 @@ function resolveMockUser(token, req) {
 }
 
 async function fetchDbUser(dbPoolOrStore, userId) {
-  if (!dbPoolOrStore || !dbPoolOrStore.query) return null;
+  if (!dbPoolOrStore?.query) return null;
   try {
     const [users] = await dbPoolOrStore.query(
       `SELECT u.id, u.is_active, u.full_name, u.email, COALESCE(r.code, 'ADMINISTRATOR') as role
@@ -79,7 +79,7 @@ function authenticateJwt(dbPoolOrStore) {
     try {
       const decoded = jwt.verify(token, JWT_ACCESS_SECRET);
       const dbUser = await fetchDbUser(dbPoolOrStore, decoded.sub);
-      if (dbUser && dbUser.is_active === 0) {
+      if (dbUser?.is_active === 0) {
         return res.status(403).json({ error: 'Account is inactive. Access denied by authorization policy.' });
       }
 

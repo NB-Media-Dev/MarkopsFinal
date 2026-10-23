@@ -14,8 +14,8 @@ import { getApiUrl } from '../../../utils/api-url.utils';
   styleUrl: './account-profile-modal.component.scss',
 })
 export class AccountProfileModalComponent {
-  @Output() close = new EventEmitter<void>();
-  @ViewChild('fileInput') private fileInput?: ElementRef<HTMLInputElement>;
+  @Output() closeModal = new EventEmitter<void>();
+  @ViewChild('fileInput') private readonly fileInput?: ElementRef<HTMLInputElement>;
 
   readonly authService = inject(AuthService);
   private readonly notifService = inject(NotificationService);
@@ -94,7 +94,7 @@ export class AccountProfileModalComponent {
   }
 
   onCloseModal(): void {
-    this.close.emit();
+    this.closeModal.emit();
   }
 
   onBackdropClick(event: MouseEvent): void {

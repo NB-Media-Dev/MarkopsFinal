@@ -8,7 +8,7 @@ function isSafeAssetUrl(url: string | null | undefined): boolean {
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+
 import { TaskManagementService } from '../../core/services/task-management.service';
 import { CampaignService } from '../../core/services/campaign.service';
 import { LeadTelecallingService } from '../../core/services/lead-telecalling.service';
@@ -22,7 +22,7 @@ import { UserRole } from '../../core/models/auth.model';
 import { ManagedUser, UserPerformanceRecord } from '../../core/models/user-management.model';
 import { Task, TaskStatus, TaskVersion, computeTaskProgressPercent } from '../../core/models/task.model';
 import { safeFetch, getBackendBaseUrl } from '../../core/utils/api-url.utils';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
+import { FormsModule, FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { TaskPriority } from '../../core/models/task.model';
 
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -140,7 +140,7 @@ export class PackageWorksComponent implements OnInit {
   readonly editPackageImageFile = signal<File | null>(null);
   readonly editPackageImagePreview = signal<string>('');
 
-  private validateCreatePackageName = (control: AbstractControl): ValidationErrors | null => {
+  private readonly validateCreatePackageName = (control: AbstractControl): ValidationErrors | null => {
     if (!control.value) return null;
     const trimmed = String(control.value).trim().toLowerCase();
     if (!trimmed) return null;
@@ -152,7 +152,7 @@ export class PackageWorksComponent implements OnInit {
     return isDuplicate ? { duplicate: true } : null;
   };
 
-  private validateEditPackageName = (control: AbstractControl): ValidationErrors | null => {
+  private readonly validateEditPackageName = (control: AbstractControl): ValidationErrors | null => {
     if (!control.value) return null;
     const trimmed = String(control.value).trim().toLowerCase();
     if (!trimmed) return null;
@@ -1242,7 +1242,8 @@ export class PackageWorksComponent implements OnInit {
             title: ad.name,
           }, allPkgs);
 
-          const adDate = (ad as any).createdAt || ad.lastSyncedAt || (ws ? ws.createdAt : new Date().toISOString());
+          const fallbackDate = ws?.createdAt ?? new Date().toISOString();
+          const adDate = (ad as any).createdAt || ad.lastSyncedAt || fallbackDate;
 
           return {
             id: ad.id,
@@ -1409,6 +1410,17 @@ export class PackageWorksComponent implements OnInit {
   private latestQueryParams: any = null;
 
   
+  private findAdByCampaignName(cmpName: string): string | null {
+    const allAds = this.campaignService.ads();
+    const foundByCmp = allAds.find((a) => a.campaignName && (a.campaignName.toLowerCase().trim() === cmpName || cmpName.includes(a.campaignName.toLowerCase().trim()) || a.campaignName.toLowerCase().trim().includes(cmpName)));
+    if (foundByCmp?.name) return foundByCmp.name;
+    if (allAds.length > 0 && cmpName !== '—') {
+      const matchByKeyword = allAds.find((a) => cmpName.split(' ').some((word) => word.length > 3 && a.name.toLowerCase().includes(word)));
+      if (matchByKeyword?.name) return matchByKeyword.name;
+    }
+    return null;
+  }
+
   private resolvePerformanceAdName(l: any): string {
     const direct = (l as any).adName || (l as any).ad_name || (l as any).ad;
     if (direct && direct !== '—' && String(direct).trim()) return String(direct).trim();
@@ -1424,13 +1436,8 @@ export class PackageWorksComponent implements OnInit {
     }
     const cmpName = String(l.campaignName || '').toLowerCase().trim();
     if (cmpName) {
-      const foundByCmp = this.campaignService.ads().find((a) => a.campaignName && (a.campaignName.toLowerCase().trim() === cmpName || cmpName.includes(a.campaignName.toLowerCase().trim()) || a.campaignName.toLowerCase().trim().includes(cmpName)));
-      if (foundByCmp?.name) return foundByCmp.name;
-    }
-    const allAds = this.campaignService.ads();
-    if (allAds.length > 0 && cmpName && cmpName !== '—') {
-      const matchByKeyword = allAds.find((a) => cmpName.split(' ').some((word) => word.length > 3 && a.name.toLowerCase().includes(word)));
-      if (matchByKeyword?.name) return matchByKeyword.name;
+      const adNameFromCmp = this.findAdByCampaignName(cmpName);
+      if (adNameFromCmp) return adNameFromCmp;
     }
     if ((l as any).ad_title && String((l as any).ad_title).trim()) return String((l as any).ad_title).trim();
     if ((l as any).adTitle && String((l as any).adTitle).trim()) return String((l as any).adTitle).trim();
@@ -1484,10 +1491,31 @@ export class PackageWorksComponent implements OnInit {
       const cLeadId = String(c.leadId || (c as any).lead_id || '').trim().toLowerCase();
       const cPhone = String(c.leadPhone || (c as any).lead_phone || (c as any).phone || '').replace(/\D/g, '');
       const cLeadName = String(c.leadName || (c as any).lead_name || '').trim().toLowerCase();
-      if (cLeadId && lId && cLeadId === lId.toLowerCase()) return true;
+      if (cLeadId && lId && cLeadId === lId?.toLowerCase()) return true;
       if (lPhone && cPhone && lPhone === cPhone) return true;
       return Boolean(cLeadName && lNameLower && cLeadName === lNameLower && lNameLower !== 'lead' && lNameLower !== 'lead customer' && lNameLower.length > 3);
     });
+  }
+
+  private resolveLeadDisplayName(l: any, cleanPhone: string): string {
+    const rawFullName = `${l.firstName || ''} ${l.lastName || ''}`.trim();
+    if (rawFullName && !rawFullName.includes('@')) {
+      return rawFullName;
+    }
+    return cleanPhone !== '—' ? cleanPhone : 'Lead #' + String(l.id).slice(-4);
+  }
+
+  private resolveCurrentOutcome(latestCall: any, l: any, rawLeadStatus: string): string {
+    if (latestCall?.outcome) {
+      return String(latestCall.outcome).toUpperCase().trim();
+    }
+    if (l.callOutcome && l.callOutcome !== '—') {
+      return String(l.callOutcome).toUpperCase().trim();
+    }
+    if (rawLeadStatus !== 'NEW' && rawLeadStatus !== 'UNASSIGNED') {
+      return rawLeadStatus;
+    }
+    return '—';
   }
 
   private mapLeadToPerformanceItem(
@@ -1513,10 +1541,7 @@ export class PackageWorksComponent implements OnInit {
     const cleanPhone = this.resolvePerformancePhone(l);
     const callAttempts = sortedCalls.length;
     const callAttemptsText = callAttempts === 0 ? '0 Attempts' : (callAttempts === 1 ? '1st Call' : `${callAttempts} Calls`);
-    const rawFullName = `${l.firstName || ''} ${l.lastName || ''}`.trim();
-    const leadFullName = (rawFullName && !rawFullName.includes('@'))
-      ? rawFullName
-      : (cleanPhone !== '—' ? cleanPhone : 'Lead #' + String(l.id).slice(-4));
+    const leadFullName = this.resolveLeadDisplayName(l, cleanPhone);
 
     const resolvedLead = resolveTaskProductAndPackage({
       packageName: (l as any).packageName || (l as any).package || '',
@@ -1533,14 +1558,7 @@ export class PackageWorksComponent implements OnInit {
     const resolvedRemarks = this.resolvePerformanceRemarks(latestCall, l, sortedCalls);
 
     const rawLeadStatus = String(l.status || 'NEW').toUpperCase().trim();
-    let currentOutcome = '—';
-    if (latestCall?.outcome) {
-      currentOutcome = String(latestCall.outcome).toUpperCase().trim();
-    } else if (l.callOutcome && l.callOutcome !== '—') {
-      currentOutcome = String(l.callOutcome).toUpperCase().trim();
-    } else if (rawLeadStatus !== 'NEW' && rawLeadStatus !== 'UNASSIGNED') {
-      currentOutcome = rawLeadStatus;
-    }
+    const currentOutcome = this.resolveCurrentOutcome(latestCall, l, rawLeadStatus);
 
     const finalStatus = latestCall?.outcome
       ? String(latestCall.outcome).toUpperCase().trim()

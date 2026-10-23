@@ -5,7 +5,7 @@ import { RouterModule } from '@angular/router';
 import { CampaignService, AdItem, CampaignItem } from '../../core/services/campaign.service';
 import { TaskManagementService } from '../../core/services/task-management.service';
 import { AuthService } from '../../core/services/auth.service';
-import { FIXED_PACKAGES, isItemForPackage, resolveProductContext } from '../../core/models/package.model';
+import { isItemForPackage, resolveProductContext } from '../../core/models/package.model';
 import { PackageService } from '../../core/services/package.service';
 import { AdKpisComponent } from './components/ad-kpis/ad-kpis.component';
 import { AdsToolbarComponent } from './components/ads-toolbar/ads-toolbar.component';
