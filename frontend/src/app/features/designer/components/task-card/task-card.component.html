@@ -102,21 +102,6 @@
         <span>Preview</span>
       </button>
 
-      <!-- Image 1 Style: Solid Green Pill for Download if Attachment -->
-      <!-- @if (task.attachmentUrl) {
-        <a
-          [href]="task.attachmentUrl"
-          target="_blank"
-          download
-          class="btn-card-action btn-card-download"
-          (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()"
-          title="Download Creative"
-        >
-          <span>Download</span>
-          <span class="material-symbols-outlined icon-xs">arrow_downward</span>
-        </a>
-      } -->
-
       @if (canStartWork()) {
         <button
           type="button"
