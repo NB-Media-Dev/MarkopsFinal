@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { Task, TaskVersion, TaskStatus } from '../../../../../core/models/task.model';
+import { Task, TaskVersion } from '../../../../../core/models/task.model';
 import { UserManagementService } from '../../../../../core/services/user-management.service';
 
 @Component({
@@ -147,23 +147,10 @@ export class TaskAuditModalComponent {
     const clean = raw.trim();
     if (!clean) return [];
 
-    const lines = clean.split('\n');
-    const items: string[] = [];
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-      if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
-        const bulletText = trimmed.replace(/^[•*-]\s*/, '').trim();
-        if (bulletText) items.push(bulletText);
-      } else if (/^\d+[.)]\s*/.test(trimmed)) {
-        const numText = trimmed.replace(/^\d+[.)]\s*/, '').trim();
-        if (numText) items.push(numText);
-      } else {
-        const cleanedItem = trimmed.replace(/^[•*-]\s*/, '').trim();
-        if (cleanedItem) items.push(cleanedItem);
-      }
-    }
+    const items = clean
+      .split('\n')
+      .map((l) => l.trim().replace(/^([•*-]|\d+[.)])\s*/, '').trim())
+      .filter(Boolean);
 
     return items.length > 0 ? items : [clean];
   }
@@ -173,6 +160,79 @@ export class TaskAuditModalComponent {
     if (h.newStatus === 'APPROVED') return 'Deliverable approved without further changes.';
     if (h.newStatus === 'IN_PROGRESS') return 'Designer started working on deliverables.';
     return 'Status transition executed.';
+  }
+
+  private resolveStageName(status: string): string {
+    switch (status) {
+      case 'IN_PROGRESS': return ' Work Started';
+      case 'SUBMITTED':
+      case 'RESUBMITTED': return 'Task Submitted';
+      case 'REDESIGN_REQUIRED':
+      case 'REVISION_REQUIRED': return 'Redesign';
+      case 'APPROVED':
+      case 'COMPLETED':
+      case 'PUBLISHED': return 'Design Approved';
+      case 'ACCEPTED': return 'Task Accepted by Designer';
+      default: return 'Status Updated';
+    }
+  }
+
+  private buildFallbackJourneySteps(task: Task, designerName: string, creatorName: string, creatorRole: string, initialIdx: number): any[] {
+    const steps: any[] = [];
+    let stepIdx = initialIdx;
+    const status = task.status;
+    if (status === 'ASSIGNED' || status === 'DRAFT') return steps;
+
+    if (['IN_PROGRESS', 'SUBMITTED', 'APPROVED', 'REDESIGN_REQUIRED', 'COMPLETED'].includes(status)) {
+      steps.push({
+        stepNumber: stepIdx++,
+        stage: ' Work Started',
+        fromStatus: 'ASSIGNED',
+        toStatus: 'IN_PROGRESS',
+        actorName: designerName,
+        actorRole: 'DESIGNER',
+        timestamp: task.updatedAt || task.createdAt,
+        remarks: 'Designer accepted assignment and started design draft production.',
+      });
+    }
+    if (['SUBMITTED', 'APPROVED', 'REDESIGN_REQUIRED', 'COMPLETED'].includes(status)) {
+      const ver0 = task.versions?.[0];
+      steps.push({
+        stepNumber: stepIdx++,
+        stage: 'Creative Deliverable Submitted',
+        fromStatus: 'IN_PROGRESS',
+        toStatus: 'SUBMITTED',
+        actorName: designerName,
+        actorRole: 'DESIGNER',
+        timestamp: ver0?.createdAt || task.updatedAt || task.createdAt,
+        remarks: ver0 ? `Version v${ver0.versionNumber}.0 uploaded (${ver0.fileName})` : 'Designer submitted deliverable for review.',
+      });
+    }
+    if (status === 'REDESIGN_REQUIRED') {
+      steps.push({
+        stepNumber: stepIdx++,
+        stage: 'Redesign / Revision Requested',
+        fromStatus: 'SUBMITTED',
+        toStatus: 'REDESIGN_REQUIRED',
+        actorName: creatorName,
+        actorRole: creatorRole,
+        timestamp: task.updatedAt || task.createdAt,
+        remarks: task.reviewerFeedback || 'Changes requested on deliverable.',
+      });
+    }
+    if (status === 'APPROVED' || status === 'COMPLETED') {
+      steps.push({
+        stepNumber: stepIdx++,
+        stage: 'Design Approved & Finalized',
+        fromStatus: 'SUBMITTED',
+        toStatus: 'APPROVED',
+        actorName: creatorName,
+        actorRole: creatorRole,
+        timestamp: task.updatedAt || task.createdAt,
+        remarks: 'Quality verified and design approved for digital deployment.',
+      });
+    }
+    return steps;
   }
 
   getLifecycleJourney(task: Task | null): {
@@ -214,10 +274,7 @@ export class TaskAuditModalComponent {
       if (h.newStatus === 'ASSIGNED' && (!h.previousStatus || h.previousStatus === 'ASSIGNED')) {
         return false;
       }
-      if (h.previousStatus && h.previousStatus === h.newStatus) {
-        return false;
-      }
-      return true;
+      return !h.previousStatus || h.previousStatus !== h.newStatus;
     });
 
     validHistoryTransitions.sort((a: any, b: any) => {
@@ -229,13 +286,7 @@ export class TaskAuditModalComponent {
     let stepIdx = 2;
     if (validHistoryTransitions.length > 0) {
       validHistoryTransitions.forEach((h: any) => {
-        let stageName = 'Status Updated';
-        if (h.newStatus === 'IN_PROGRESS') stageName = ' Work Started';
-        else if (h.newStatus === 'SUBMITTED' || h.newStatus === 'RESUBMITTED') stageName = 'Task Submitted';
-        else if (h.newStatus === 'REDESIGN_REQUIRED' || h.newStatus === 'REVISION_REQUIRED') stageName = 'Redesign';
-        else if (h.newStatus === 'APPROVED' || h.newStatus === 'COMPLETED' || h.newStatus === 'PUBLISHED') stageName = 'Design Approved';
-        else if (h.newStatus === 'ACCEPTED') stageName = 'Task Accepted by Designer';
-
+        const stageName = this.resolveStageName(h.newStatus);
         const prevStep = steps.at(-1);
         if (prevStep && prevStep.toStatus === h.newStatus) {
           return;
@@ -255,57 +306,7 @@ export class TaskAuditModalComponent {
         });
       });
     } else {
-      const status = task.status;
-      if (status !== 'ASSIGNED' && status !== 'DRAFT') {
-        if (status === 'IN_PROGRESS' || status === 'SUBMITTED' || status === 'APPROVED' || status === 'REDESIGN_REQUIRED' || status === 'COMPLETED') {
-          steps.push({
-            stepNumber: stepIdx++,
-            stage: ' Work Started',
-            fromStatus: 'ASSIGNED',
-            toStatus: 'IN_PROGRESS',
-            actorName: designerName,
-            actorRole: 'DESIGNER',
-            timestamp: task.updatedAt || task.createdAt,
-            remarks: 'Designer accepted assignment and started design draft production.',
-          });
-        }
-        if (status === 'SUBMITTED' || status === 'APPROVED' || status === 'REDESIGN_REQUIRED' || status === 'COMPLETED') {
-          steps.push({
-            stepNumber: stepIdx++,
-            stage: 'Creative Deliverable Submitted',
-            fromStatus: 'IN_PROGRESS',
-            toStatus: 'SUBMITTED',
-            actorName: designerName,
-            actorRole: 'DESIGNER',
-            timestamp: task.versions && task.versions.length > 0 ? task.versions[0].createdAt : (task.updatedAt || task.createdAt),
-            remarks: task.versions && task.versions.length > 0 ? `Version v${task.versions[0].versionNumber}.0 uploaded (${task.versions[0].fileName})` : 'Designer submitted deliverable for review.',
-          });
-        }
-        if (status === 'REDESIGN_REQUIRED') {
-          steps.push({
-            stepNumber: stepIdx++,
-            stage: 'Redesign / Revision Requested',
-            fromStatus: 'SUBMITTED',
-            toStatus: 'REDESIGN_REQUIRED',
-            actorName: creatorName,
-            actorRole: creatorRole,
-            timestamp: task.updatedAt || task.createdAt,
-            remarks: task.reviewerFeedback || 'Changes requested on deliverable.',
-          });
-        }
-        if (status === 'APPROVED' || status === 'COMPLETED') {
-          steps.push({
-            stepNumber: stepIdx++,
-            stage: 'Design Approved & Finalized',
-            fromStatus: 'SUBMITTED',
-            toStatus: 'APPROVED',
-            actorName: creatorName,
-            actorRole: creatorRole,
-            timestamp: task.updatedAt || task.createdAt,
-            remarks: 'Quality verified and design approved for digital deployment.',
-          });
-        }
-      }
+      steps.push(...this.buildFallbackJourneySteps(task, designerName, creatorName, creatorRole, stepIdx));
     }
 
     return steps;

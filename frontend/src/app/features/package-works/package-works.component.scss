@@ -1250,21 +1250,33 @@
     }
 
     &.icon-purple {
-      background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
+      background: linear-gradient(135deg, #6D28D9 0%, #5B21B6 100%);
       color: #FFFFFF;
-      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
+      box-shadow: 0 4px 12px rgba(109, 40, 217, 0.35);
     }
 
     &.icon-emerald {
-      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      background: linear-gradient(135deg, #047857 0%, #065F46 100%);
       color: #FFFFFF;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+      box-shadow: 0 4px 12px rgba(4, 120, 87, 0.35);
     }
 
     &.icon-blue {
-      background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+      background: linear-gradient(135deg, #0369A1 0%, #075985 100%);
       color: #FFFFFF;
-      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+      box-shadow: 0 4px 12px rgba(3, 105, 161, 0.35);
+    }
+
+    &.icon-teal {
+      background: linear-gradient(135deg, #0F766E 0%, #115E59 100%);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(15, 118, 110, 0.35);
+    }
+
+    &.icon-rose {
+      background: linear-gradient(135deg, #BE123C 0%, #9F1239 100%);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(190, 18, 60, 0.35);
     }
 
     .currency-symbol {
@@ -1444,49 +1456,6 @@
     }
   }
 
-  .kpi-squircle-icon {
-    &.icon-amber {
-      background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
-      color: #FFFFFF;
-      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
-    }
-
-    &.icon-indigo {
-      background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
-      color: #FFFFFF;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
-    }
-
-    &.icon-purple {
-      background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
-      color: #FFFFFF;
-      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
-    }
-
-    &.icon-emerald {
-      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
-      color: #FFFFFF;
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
-    }
-
-    &.icon-blue {
-      background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
-      color: #FFFFFF;
-      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
-    }
-
-    &.icon-teal {
-      background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%);
-      color: #FFFFFF;
-      box-shadow: 0 4px 12px rgba(13, 148, 136, 0.35);
-    }
-
-    &.icon-rose {
-      background: linear-gradient(135deg, #F43F5E 0%, #E11D48 100%);
-      color: #FFFFFF;
-      box-shadow: 0 4px 12px rgba(244, 63, 94, 0.35);
-    }
-  }
 
   .kpi-pill-badge,
   .kpi-footer-pill {
@@ -2329,7 +2298,7 @@
       height: 34px;
       border-radius: 9px;
       background: #ECFDF5;
-      color: #10B981;
+      color: #047857;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -2434,7 +2403,7 @@
         justify-content: center;
         flex-shrink: 0;
         background: #E2E8F0;
-        color: #64748B;
+        color: #334155;
         transition: all 0.2s ease;
 
         .material-symbols-outlined {
@@ -2589,7 +2558,7 @@
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: #64748B;
+      color: #475569;
       padding: 0.15rem 0.55rem;
       background: #F1F5F9;
       border-radius: 999px;
@@ -3000,21 +2969,21 @@
       }
 
       &.active {
-        background: #EA580C;
+        background: #C2410C;
         color: #ffffff;
-        border-color: #EA580C;
+        border-color: #C2410C;
         box-shadow: 0 2px 6px rgba(234, 88, 12, 0.25);
 
         .tab-badge {
           background: #ffffff;
-          color: #EA580C;
+          color: #C2410C;
         }
       }
 
       .tab-badge {
         font-size: 0.65rem;
         font-weight: 800;
-        background: #0284c7;
+        background: #0369a1;
         color: #ffffff;
         padding: 0.1rem 0.35rem;
         border-radius: 10px;
@@ -3153,7 +3122,7 @@
         width: 42px;
         height: 42px;
         border-radius: 12px;
-        background: #0284c7;
+        background: #0369a1;
         color: #ffffff;
         display: flex;
         align-items: center;
@@ -3348,7 +3317,7 @@
       height: 38px;
       border-radius: 10px;
       background: #e0f2fe;
-      color: #0284c7;
+      color: #0369a1;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -3396,7 +3365,7 @@
 
       &:hover {
         background: #fee2e2;
-        color: #dc2626;
+        color: #b91c1c;
         border-color: #fecaca;
       }
 
@@ -3444,7 +3413,7 @@
   border-radius: 6px;
   border: 1px solid #fca5a5;
   background: #fef2f2;
-  color: #dc2626;
+  color: #b91c1c;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3503,8 +3472,8 @@
     }
 
     &.active {
-      color: #0284c7;
-      border-bottom-color: #0284c7;
+      color: #0369a1;
+      border-bottom-color: #0369a1;
       background: #ffffff;
     }
   }
@@ -3655,7 +3624,7 @@
     font-size: 0.875rem;
     font-weight: 700;
     border-radius: var(--mo-radius-lg, 8px);
-    background: linear-gradient(135deg, var(--mo-orange-500, #f97316), var(--mo-orange-600, #ea580c));
+    background: linear-gradient(135deg, #c2410c, #9a3412);
     color: #ffffff;
     border: none;
     cursor: pointer;
@@ -3860,7 +3829,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #ea580c;
+        color: #c2410c;
         flex-shrink: 0;
 
         .material-symbols-outlined {
@@ -3914,7 +3883,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -3992,7 +3961,7 @@
   &:hover {
     background: #e0f2fe;
     border-color: #38bdf8;
-    color: #0284c7;
+    color: #0369a1;
     box-shadow: 0 2px 8px rgba(14, 165, 233, 0.15);
     transform: translateY(-1px);
 
@@ -4060,7 +4029,7 @@
 
       &:hover {
         color: #ffffff;
-        background: rgba(255, 255, 255, 0.1);
+        background: #1e293b;
       }
     }
   }
@@ -4185,13 +4154,13 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #64748b;
+      color: #475569;
       cursor: pointer;
       transition: all 0.15s ease;
 
       &:hover {
         background: #fee2e2;
-        color: #dc2626;
+        color: #b91c1c;
       }
 
       .material-symbols-outlined {
@@ -4408,12 +4377,12 @@
       transition: all 0.2s ease;
 
       &.dot-approved {
-        background: #10b981;
+        background: #047857;
         color: #ffffff;
       }
 
       &.dot-revision {
-        background: #f59e0b;
+        background: #b45309;
         color: #ffffff;
       }
     }
@@ -4426,7 +4395,7 @@
 
     &.step-active {
       .step-dot {
-        background: #3b82f6;
+        background: #1d4ed8;
         color: #ffffff;
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
       }
@@ -4549,7 +4518,7 @@
 
       &.file-icon-pdf {
         background: #fee2e2;
-        color: #dc2626;
+        color: #b91c1c;
       }
 
       &.file-icon-img {
@@ -5066,7 +5035,7 @@
         border-radius: 6px;
         border: 1px solid #CBD5E1;
         background: #FFFFFF;
-        color: #94A3B8;
+        color: #475569;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -5075,7 +5044,7 @@
 
         &:hover {
           background: #FEE2E2;
-          color: #DC2626;
+          color: #B91C1C;
           border-color: #FCA5A5;
         }
       }
@@ -5171,7 +5140,7 @@
       width: 36px;
       height: 36px;
       border-radius: 8px;
-      background: #F59E0B;
+      background: #B45309;
       color: #FFFFFF;
       display: flex;
       align-items: center;
@@ -5474,7 +5443,7 @@
         width: 48px;
         height: 48px;
         border-radius: 12px;
-        background: rgba(255, 255, 255, 0.1);
+        background: #1e293b;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -5702,7 +5671,7 @@
     height: 64px;
     border-radius: 18px;
     background: #EFF6FF;
-    color: #3B82F6;
+    color: #1D4ED8;
     display: flex;
     align-items: center;
     justify-content: center;

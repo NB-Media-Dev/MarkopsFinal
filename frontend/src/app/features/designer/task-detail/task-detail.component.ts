@@ -1240,7 +1240,7 @@ export class TaskDetailComponent implements OnInit {
 
   appendChangelog(snippet: string): void {
     const current = (this.uploadForm.get('changelog')?.value || '').trim();
-    const cleanSnippet = snippet.replace(/^[•\-\*]\s*/, '').trim();
+    const cleanSnippet = snippet.replace(/^[•*-]\s*/, '').trim();
     const bulletText = `• ${cleanSnippet}`;
     const newVal = current ? `${current}\n${bulletText}` : bulletText;
     this.uploadForm.patchValue({ changelog: newVal });
@@ -1415,7 +1415,7 @@ export class TaskDetailComponent implements OnInit {
       a.download = finalName;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      a.remove();
       return;
     }
 

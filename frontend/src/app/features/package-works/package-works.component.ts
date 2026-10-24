@@ -20,10 +20,9 @@ import { PackageService } from '../../core/services/package.service';
 import { ProductPackage, FixedPackageMeta, RoleOperationTab, FIXED_PACKAGES, isTaskForPackage, isItemForPackage, resolveTaskProductAndPackage } from '../../core/models/package.model';
 import { UserRole } from '../../core/models/auth.model';
 import { UserPerformanceRecord } from '../../core/models/user-management.model';
-import { Task, TaskStatus, TaskVersion, computeTaskProgressPercent } from '../../core/models/task.model';
+import { Task, TaskStatus, TaskVersion, TaskPriority, computeTaskProgressPercent } from '../../core/models/task.model';
 import { safeFetch, getBackendBaseUrl } from '../../core/utils/api-url.utils';
 import { FormsModule, FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
-import { TaskPriority } from '../../core/models/task.model';
 
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { PackageCatalogComponent } from './components/package-catalog/package-catalog.component';
@@ -36,8 +35,13 @@ import { DocViewerModalComponent } from './components/modals/doc-viewer-modal/do
 import { TaskAuditModalComponent } from './components/modals/task-audit-modal/task-audit-modal.component';
 import { isLeadAssignedToUser } from '../telecalling/telecalling.component';
 
+type WorkflowStepState = 'completed' | 'current' | 'upcoming';
+type WorkflowFinalStepState = WorkflowStepState | 'revision';
+
+export type OperationDepartmentId = 'DESIGNER' | 'DIGITAL_MARKETING' | 'TELECALLING' | 'ANALYTICS';
+
 export interface OperationDepartment {
-  id: 'DESIGNER' | 'DIGITAL_MARKETING' | 'TELECALLING' | 'ANALYTICS';
+  id: OperationDepartmentId;
   label: string;
   icon: string;
   description?: string;
@@ -335,11 +339,11 @@ export class PackageWorksComponent implements OnInit {
 
   private escapeHtml(str: string): string {
     return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
   }
 
   readonly canCreateTask = computed<boolean>(() => {
@@ -375,7 +379,7 @@ export class PackageWorksComponent implements OnInit {
 
   readonly activePackageDisplayName = computed<string>(() => {
     const ws = this.activeWorkspacePackage();
-    if (ws && ws.name) return ws.name;
+    if (ws?.name) return ws.name;
     return this.activePackageName();
   });
 
@@ -473,11 +477,11 @@ export class PackageWorksComponent implements OnInit {
 
   readonly currentFilterTarget = computed<string>(() => {
     const ws = this.activeWorkspacePackage();
-    if (ws && ws.name) return ws.name;
+    if (ws?.name) return ws.name;
     return this.activePackageName();
   });
 
-  readonly activeDepartment = signal<'DESIGNER' | 'DIGITAL_MARKETING' | 'TELECALLING' | 'ANALYTICS' | null>(null);
+  readonly activeDepartment = signal<OperationDepartmentId | null>(null);
 
   readonly operationDepartments = computed<OperationDepartment[]>(() => {
     const role = this.currentRole();
@@ -540,11 +544,12 @@ export class PackageWorksComponent implements OnInit {
 
 
     if (role === 'ADMINISTRATOR') {
-      const mgmtTabs: RoleOperationTab[] = [];
-      mgmtTabs.push({ id: 'ANALYTICS_OVERVIEW', label: 'Overview', icon: 'grid_view' });
-      mgmtTabs.push({ id: 'TRANSACTIONS', label: 'Transactions', icon: 'payments' });
-      mgmtTabs.push({ id: 'REPORTS', label: 'Reports', icon: 'analytics' });
-      mgmtTabs.push({ id: 'AUDITS', label: 'Audit Logs', icon: 'shield' });
+      const mgmtTabs: RoleOperationTab[] = [
+        { id: 'ANALYTICS_OVERVIEW', label: 'Overview', icon: 'grid_view' },
+        { id: 'TRANSACTIONS', label: 'Transactions', icon: 'payments' },
+        { id: 'REPORTS', label: 'Reports', icon: 'analytics' },
+        { id: 'AUDITS', label: 'Audit Logs', icon: 'shield' },
+      ];
 
       depts.push({
         id: 'ANALYTICS',
@@ -793,7 +798,7 @@ export class PackageWorksComponent implements OnInit {
     const allPkgs = this.packageService.packages();
 
     return allLeads.filter((l) => {
-      if (user && user.role === 'TELECALLER') {
+      if (user?.role === 'TELECALLER') {
         if (!isLeadAssignedToUser(l, user)) return false;
       }
 
@@ -912,6 +917,16 @@ export class PackageWorksComponent implements OnInit {
 
   readonly auditLogs = signal<any[]>([]);
 
+  private resolveDefaultAuditAction(status: string): string {
+    switch (status) {
+      case 'APPROVED': return 'TASK_STATUS_APPROVED';
+      case 'SUBMITTED': return 'TASK_VERSION_SUBMITTED';
+      case 'IN_PROGRESS': return 'TASK_STATUS_IN_PROGRESS';
+      case 'REDESIGN_REQUIRED': return 'TASK_STATUS_REDESIGN';
+      default: return 'TASK_CREATED';
+    }
+  }
+
   readonly filteredAuditLogs = computed(() => {
     const ws = this.activeWorkspacePackage();
     const targetFilter = this.currentFilterTarget();
@@ -968,17 +983,7 @@ export class PackageWorksComponent implements OnInit {
         t.createdAt ||
         new Date().toISOString();
 
-      const actionName =
-        latestLog?.action ||
-        (t.status === 'APPROVED'
-          ? 'TASK_STATUS_APPROVED'
-          : t.status === 'SUBMITTED'
-          ? 'TASK_VERSION_SUBMITTED'
-          : t.status === 'IN_PROGRESS'
-          ? 'TASK_STATUS_IN_PROGRESS'
-          : t.status === 'REDESIGN_REQUIRED'
-          ? 'TASK_STATUS_REDESIGN'
-          : 'TASK_CREATED');
+      const actionName = latestLog?.action || this.resolveDefaultAuditAction(t.status);
 
       return {
         id: latestLog?.id ? `log_${latestLog.id}` : `aud_task_${t.id}`,
@@ -1049,7 +1054,12 @@ export class PackageWorksComponent implements OnInit {
     const qualificationRate = totalLeadsCount > 0 ? Number(((qualifiedLeads / totalLeadsCount) * 100).toFixed(1)) : 0;
 
     const avgCpl = totalLeadsCount > 0 ? (totalSpend / totalLeadsCount).toFixed(2) : '0.00';
-    const roi = totalSpend > 0 ? `${Math.round(((totalRevenue - totalSpend) / totalSpend) * 100)}%` : (totalRevenue > 0 ? '100%' : '0%');
+    let roi = '0%';
+    if (totalSpend > 0) {
+      roi = `${Math.round(((totalRevenue - totalSpend) / totalSpend) * 100)}%`;
+    } else if (totalRevenue > 0) {
+      roi = '100%';
+    }
 
     const completedTasksCount = tasks.filter((t) => t.status === 'APPROVED' || t.status === 'PUBLISHED' || t.status === 'COMPLETED').length;
     const completedTasksPct = tasks.length > 0 ? Math.round((completedTasksCount / tasks.length) * 100) : 0;
@@ -1830,7 +1840,7 @@ export class PackageWorksComponent implements OnInit {
     this.editProductPackageForm.reset({
       name: pkg.name || '',
       imageUrl: pkg.imageUrl || '',
-      price: pkg.price !== null && pkg.price !== undefined ? pkg.price : 100,
+      price: pkg.price ?? 100,
       description: pkg.description || '',
     });
     this.editPackageImageFile.set(null);
@@ -2207,7 +2217,7 @@ export class PackageWorksComponent implements OnInit {
 
   onPackageSelectChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
-    if (target && target.value) {
+    if (target?.value) {
       this.selectPackage(target.value);
     }
   }
@@ -2271,11 +2281,7 @@ export class PackageWorksComponent implements OnInit {
         file.name.endsWith('.doc') ||
         file.name.endsWith('.docx')
       ) {
-        const textReader = new FileReader();
-        textReader.onload = (e: ProgressEvent<FileReader>) => {
-          this.createdBriefContent.set((e.target?.result as string) || '');
-        };
-        textReader.readAsText(file);
+        file.text().then((text) => this.createdBriefContent.set(text || '')).catch(() => this.createdBriefContent.set(''));
       } else {
         this.createdBriefContent.set(`Document File: ${file.name}\nFile Size: ${(file.size / 1024).toFixed(1)} KB\nFile Type: ${file.type || 'Binary'}`);
       }
@@ -2337,7 +2343,7 @@ export class PackageWorksComponent implements OnInit {
     link.target = '_blank';
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
   }
 
   getAuditLogTaskTitle(log: any): string {
@@ -2672,6 +2678,86 @@ export class PackageWorksComponent implements OnInit {
     return `${(task.assigneeName || 'designer').toLowerCase().replace(/\s+/g, '.')}@markops.io`;
   }
 
+  private resolvePackageStageName(status: string): string {
+    switch (status) {
+      case 'IN_PROGRESS': return ' Work Started';
+      case 'SUBMITTED':
+      case 'RESUBMITTED': return 'Task Submitted';
+      case 'REDESIGN_REQUIRED':
+      case 'REVISION_REQUIRED': return 'Redesign';
+      case 'APPROVED':
+      case 'COMPLETED':
+      case 'PUBLISHED': return 'Design Approved';
+      case 'ACCEPTED': return 'Task Accepted by Designer';
+      default: return 'Status Updated';
+    }
+  }
+
+  private resolveJourneyTransitionRemark(h: any): string {
+    if (h.remark) return h.remark;
+    if (h.newStatus === 'APPROVED') return 'Deliverable approved without further changes.';
+    if (h.newStatus === 'IN_PROGRESS') return 'Designer started working on deliverables.';
+    return 'Status transition executed.';
+  }
+
+  private buildFallbackPackageJourneySteps(task: Task, designerName: string, creatorName: string, creatorRole: string, initialIdx: number): any[] {
+    const steps: any[] = [];
+    let stepIdx = initialIdx;
+    const status = task.status;
+    if (status === 'ASSIGNED' || status === 'DRAFT') return steps;
+
+    if (['IN_PROGRESS', 'SUBMITTED', 'APPROVED', 'REDESIGN_REQUIRED', 'COMPLETED'].includes(status)) {
+      steps.push({
+        stepNumber: stepIdx++,
+        stage: ' Work Started',
+        fromStatus: 'ASSIGNED',
+        toStatus: 'IN_PROGRESS',
+        actorName: designerName,
+        actorRole: 'DESIGNER',
+        timestamp: task.updatedAt || task.createdAt,
+        remarks: 'Designer accepted assignment and started design draft production.',
+      });
+    }
+    if (['SUBMITTED', 'APPROVED', 'REDESIGN_REQUIRED', 'COMPLETED'].includes(status)) {
+      const ver0 = task.versions?.[0];
+      steps.push({
+        stepNumber: stepIdx++,
+        stage: 'Creative Deliverable Submitted',
+        fromStatus: 'IN_PROGRESS',
+        toStatus: 'SUBMITTED',
+        actorName: designerName,
+        actorRole: 'DESIGNER',
+        timestamp: ver0?.createdAt || task.updatedAt || task.createdAt,
+        remarks: ver0 ? `Version v${ver0.versionNumber}.0 uploaded (${ver0.fileName})` : 'Designer submitted deliverable for review.',
+      });
+    }
+    if (status === 'REDESIGN_REQUIRED') {
+      steps.push({
+        stepNumber: stepIdx++,
+        stage: 'Redesign / Revision Requested',
+        fromStatus: 'SUBMITTED',
+        toStatus: 'REDESIGN_REQUIRED',
+        actorName: creatorName,
+        actorRole: creatorRole,
+        timestamp: task.updatedAt || task.createdAt,
+        remarks: task.reviewerFeedback || 'Changes requested on deliverable.',
+      });
+    }
+    if (status === 'APPROVED' || status === 'COMPLETED') {
+      steps.push({
+        stepNumber: stepIdx++,
+        stage: 'Design Approved & Finalized',
+        fromStatus: 'SUBMITTED',
+        toStatus: 'APPROVED',
+        actorName: creatorName,
+        actorRole: creatorRole,
+        timestamp: task.updatedAt || task.createdAt,
+        remarks: 'Quality verified and design approved for digital deployment.',
+      });
+    }
+    return steps;
+  }
+
   getLifecycleJourney(task: Task | null): {
     stepNumber: number;
     stage: string;
@@ -2691,11 +2777,9 @@ export class PackageWorksComponent implements OnInit {
     const history = task.statusHistory || [];
     const steps: any[] = [];
 
-
     const initialAssignment = history.find(
       (h) => h.newStatus === 'ASSIGNED' && (!h.previousStatus || h.previousStatus === 'ASSIGNED')
     );
-
 
     steps.push({
       stepNumber: 1,
@@ -2708,20 +2792,13 @@ export class PackageWorksComponent implements OnInit {
       remarks: initialAssignment?.remark || `Task created for package "${task.packageName || this.activePackageName()}" and assigned to ${designerName}.`,
     });
 
-
     const validHistoryTransitions = history.filter((h) => {
       if (h === initialAssignment) return false;
-
       if (h.newStatus === 'ASSIGNED' && (!h.previousStatus || h.previousStatus === 'ASSIGNED')) {
         return false;
       }
-
-      if (h.previousStatus && h.previousStatus === h.newStatus) {
-        return false;
-      }
-      return true;
+      return !h.previousStatus || h.previousStatus !== h.newStatus;
     });
-
 
     validHistoryTransitions.sort((a, b) => {
       const timeA = new Date(a.createdAt || 0).getTime();
@@ -2732,18 +2809,14 @@ export class PackageWorksComponent implements OnInit {
     let stepIdx = 2;
     if (validHistoryTransitions.length > 0) {
       validHistoryTransitions.forEach((h) => {
-        let stageName = 'Status Updated';
-        if (h.newStatus === 'IN_PROGRESS') stageName = ' Work Started';
-        else if (h.newStatus === 'SUBMITTED' || h.newStatus === 'RESUBMITTED') stageName = 'Task Submitted';
-        else if (h.newStatus === 'REDESIGN_REQUIRED' || h.newStatus === 'REVISION_REQUIRED') stageName = 'Redesign';
-        else if (h.newStatus === 'APPROVED' || h.newStatus === 'COMPLETED' || h.newStatus === 'PUBLISHED') stageName = 'Design Approved';
-        else if (h.newStatus === 'ACCEPTED') stageName = 'Task Accepted by Designer';
-
+        const stageName = this.resolvePackageStageName(h.newStatus);
         const prevStep = steps.at(-1);
 
         if (prevStep && prevStep.toStatus === h.newStatus) {
           return;
         }
+
+        const transitionRemarks = this.resolveJourneyTransitionRemark(h);
 
         steps.push({
           stepNumber: stepIdx++,
@@ -2753,62 +2826,11 @@ export class PackageWorksComponent implements OnInit {
           actorName: h.actorName || (h.newStatus === 'IN_PROGRESS' || h.newStatus === 'SUBMITTED' ? designerName : creatorName),
           actorRole: h.actorRole || (h.newStatus === 'IN_PROGRESS' || h.newStatus === 'SUBMITTED' ? 'DESIGNER' : creatorRole),
           timestamp: h.createdAt || task.updatedAt || task.createdAt,
-          remarks: h.remark || (h.newStatus === 'APPROVED' ? 'Deliverable approved without further changes.' : (h.newStatus === 'IN_PROGRESS' ? 'Designer started working on deliverables.' : 'Status transition executed.')),
+          remarks: transitionRemarks,
         });
       });
     } else {
-
-      const status = task.status;
-      if (status !== 'ASSIGNED' && status !== 'DRAFT') {
-        if (status === 'IN_PROGRESS' || status === 'SUBMITTED' || status === 'APPROVED' || status === 'REDESIGN_REQUIRED' || status === 'COMPLETED') {
-          steps.push({
-            stepNumber: stepIdx++,
-            stage: ' Work Started',
-            fromStatus: 'ASSIGNED',
-            toStatus: 'IN_PROGRESS',
-            actorName: designerName,
-            actorRole: 'DESIGNER',
-            timestamp: task.updatedAt || task.createdAt,
-            remarks: 'Designer accepted assignment and started design draft production.',
-          });
-        }
-        if (status === 'SUBMITTED' || status === 'APPROVED' || status === 'REDESIGN_REQUIRED' || status === 'COMPLETED') {
-          steps.push({
-            stepNumber: stepIdx++,
-            stage: 'Creative Deliverable Submitted',
-            fromStatus: 'IN_PROGRESS',
-            toStatus: 'SUBMITTED',
-            actorName: designerName,
-            actorRole: 'DESIGNER',
-            timestamp: task.versions && task.versions.length > 0 ? task.versions[0].createdAt : (task.updatedAt || task.createdAt),
-            remarks: task.versions && task.versions.length > 0 ? `Version v${task.versions[0].versionNumber}.0 uploaded (${task.versions[0].fileName})` : 'Designer submitted deliverable for review.',
-          });
-        }
-        if (status === 'REDESIGN_REQUIRED') {
-          steps.push({
-            stepNumber: stepIdx++,
-            stage: 'Redesign / Revision Requested',
-            fromStatus: 'SUBMITTED',
-            toStatus: 'REDESIGN_REQUIRED',
-            actorName: creatorName,
-            actorRole: creatorRole,
-            timestamp: task.updatedAt || task.createdAt,
-            remarks: task.reviewerFeedback || 'Changes requested on deliverable.',
-          });
-        }
-        if (status === 'APPROVED' || status === 'COMPLETED') {
-          steps.push({
-            stepNumber: stepIdx++,
-            stage: 'Design Approved & Finalized',
-            fromStatus: 'SUBMITTED',
-            toStatus: 'APPROVED',
-            actorName: creatorName,
-            actorRole: creatorRole,
-            timestamp: task.updatedAt || task.createdAt,
-            remarks: 'Quality verified and design approved for digital deployment.',
-          });
-        }
-      }
+      steps.push(...this.buildFallbackPackageJourneySteps(task, designerName, creatorName, creatorRole, stepIdx));
     }
 
     return steps;
@@ -2982,11 +3004,7 @@ export class PackageWorksComponent implements OnInit {
         file.name.endsWith('.csv') ||
         file.name.endsWith('.html')
       ) {
-        const textReader = new FileReader();
-        textReader.onload = (e: ProgressEvent<FileReader>) => {
-          this.selectedUploadContent.set((e.target?.result as string) || '');
-        };
-        textReader.readAsText(file);
+        file.text().then((text) => this.selectedUploadContent.set(text || '')).catch(() => this.selectedUploadContent.set(''));
       } else {
         this.selectedUploadContent.set(`Creative Asset: ${file.name}\nFile Size: ${(file.size / 1024).toFixed(1)} KB\nType: ${file.type || 'Binary'}`);
       }
@@ -3035,72 +3053,67 @@ export class PackageWorksComponent implements OnInit {
     }
     if (!clean) return [];
 
-    let rawParts: string[] = [];
-    if (clean.includes('\n')) {
-      rawParts = clean.split('\n');
-    } else if (clean.includes('•')) {
-      rawParts = clean.split('•');
-    } else {
-      rawParts = [clean];
-    }
-
-    const items: string[] = [];
-    for (const part of rawParts) {
-      const trimmed = part.trim();
-      if (!trimmed) continue;
-      if (trimmed.includes('•')) {
-        const sub = trimmed.split('•').map((s) => s.trim()).filter(Boolean);
-        items.push(...sub);
-      } else {
-        const cleanedItem = trimmed.replace(/^[\-\*]\s*/, '').trim();
-        if (cleanedItem) items.push(cleanedItem);
-      }
-    }
+    const items = clean
+      .split('\n')
+      .map((l) => l.trim().replace(/^([•*-]|\d+[.)])\s*/, '').trim())
+      .filter(Boolean);
 
     return items.length > 0 ? items : [clean];
   }
 
+  private resolveHistoryDuration(history: any[], verTime: number): string | null {
+    const sortedHistory = [...history]
+      .filter((h) => h.createdAt && !Number.isNaN(new Date(h.createdAt).getTime()))
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    let lastStart: number | null = null;
+    for (const h of sortedHistory) {
+      const hTime = new Date(h.createdAt).getTime();
+      if (hTime > verTime + 5000) break;
+
+      if (h.newStatus === 'IN_PROGRESS') {
+        lastStart = hTime;
+      } else if (h.newStatus === 'SUBMITTED' && lastStart && Math.abs(hTime - verTime) < 15000) {
+        return this.formatDurationMs(hTime - lastStart);
+      }
+    }
+
+    if (lastStart && lastStart <= verTime) {
+      return this.formatDurationMs(verTime - lastStart);
+    }
+    return null;
+  }
+
+  private resolveVersionDuration(versions: any[], verId: any, verTime: number): string | null {
+    if (!versions || versions.length <= 1) return null;
+    const sortedVers = [...versions]
+      .filter((v) => v.createdAt && !Number.isNaN(new Date(v.createdAt).getTime()))
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    const curIdx = sortedVers.findIndex((v) => v.id === verId);
+    if (curIdx > 0) {
+      const prevTime = new Date(sortedVers[curIdx - 1].createdAt).getTime();
+      if (verTime > prevTime) {
+        return this.formatDurationMs(verTime - prevTime);
+      }
+    }
+    return null;
+  }
+
   getVersionDuration(task: Task | null, ver: TaskVersion): string {
-    if (!task || !ver || !ver.createdAt) return '';
+    if (!task || !ver?.createdAt) return '';
 
     const verTime = new Date(ver.createdAt).getTime();
     if (Number.isNaN(verTime)) return '';
 
     if (task.statusHistory && task.statusHistory.length > 0) {
-      const sortedHistory = [...task.statusHistory]
-        .filter((h) => h.createdAt && !Number.isNaN(new Date(h.createdAt).getTime()))
-        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-      let lastStart: number | null = null;
-      for (const h of sortedHistory) {
-        const hTime = new Date(h.createdAt).getTime();
-        if (hTime > verTime + 5000) break;
-
-        if (h.newStatus === 'IN_PROGRESS') {
-          lastStart = hTime;
-        } else if (h.newStatus === 'SUBMITTED' && lastStart && Math.abs(hTime - verTime) < 15000) {
-          return this.formatDurationMs(hTime - lastStart);
-        }
-      }
-
-      if (lastStart && lastStart <= verTime) {
-        return this.formatDurationMs(verTime - lastStart);
-      }
+      const duration = this.resolveHistoryDuration(task.statusHistory, verTime);
+      if (duration) return duration;
     }
 
-
     if (task.versions && task.versions.length > 1) {
-      const sortedVers = [...task.versions]
-        .filter((v) => v.createdAt && !Number.isNaN(new Date(v.createdAt).getTime()))
-        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-      const curIdx = sortedVers.findIndex((v) => v.id === ver.id);
-      if (curIdx > 0) {
-        const prevTime = new Date(sortedVers[curIdx - 1].createdAt).getTime();
-        if (verTime > prevTime) {
-          return this.formatDurationMs(verTime - prevTime);
-        }
-      }
+      const duration = this.resolveVersionDuration(task.versions, ver.id, verTime);
+      if (duration) return duration;
     }
 
     if (task.createdAt) {
@@ -3130,7 +3143,7 @@ export class PackageWorksComponent implements OnInit {
 
   appendRevisionRemark(snippet: string): void {
     const current = (this.revisionForm.get('remark')?.value || '').trim();
-    const cleanSnippet = snippet.replace(/^[•\-\*]\s*/, '').trim();
+    const cleanSnippet = snippet.replace(/^[•*-]\s*/, '').trim();
     const bulletText = `• ${cleanSnippet}`;
     const newVal = current ? `${current}\n${bulletText}` : bulletText;
     this.revisionForm.patchValue({ remark: newVal });
@@ -3260,7 +3273,7 @@ export class PackageWorksComponent implements OnInit {
     }
   }
 
-  getStatusBadgeClass(status: TaskStatus | string): string {
+  getStatusBadgeClass(status: string): string {
     switch (status) {
       case 'IN_PROGRESS': return 'badge-amber';
       case 'SUBMITTED':
@@ -3275,31 +3288,40 @@ export class PackageWorksComponent implements OnInit {
     }
   }
 
+  private resolveStage2Subtitle(status: string, stage2State: WorkflowStepState): string {
+    if (status === 'IN_PROGRESS') return 'Active Creative Work';
+    if (status === 'ACCEPTED') return 'Task Accepted';
+    if (stage2State === 'completed') return 'Canvas Complete';
+    return 'Pending Start';
+  }
+
+  private resolveStage4Subtitle(stage4State: WorkflowFinalStepState): string {
+    if (stage4State === 'completed') return 'Approved & Ready';
+    if (stage4State === 'revision') return 'Feedback Requested';
+    return 'Pending Review';
+  }
+
   getWorkflowSteps(task: Task) {
     const status = task.status;
     const versionCount = task.versions?.length || 0;
 
-    let stage1State: 'completed' | 'current' | 'upcoming' = 'completed';
-    let stage2State: 'completed' | 'current' | 'upcoming' = 'upcoming';
-    let stage3State: 'completed' | 'current' | 'upcoming' = 'upcoming';
-    let stage4State: 'completed' | 'current' | 'upcoming' | 'revision' = 'upcoming';
+    let stage1State: WorkflowStepState = 'completed';
+    let stage2State: WorkflowStepState = 'upcoming';
+    let stage3State: WorkflowStepState = 'upcoming';
+    let stage4State: WorkflowFinalStepState = 'upcoming';
 
     if (status === 'DRAFT' || status === 'ASSIGNED') {
       stage1State = 'current';
     } else if (status === 'ACCEPTED' || status === 'IN_PROGRESS') {
-      stage1State = 'completed';
       stage2State = 'current';
     } else if (status === 'SUBMITTED' || status === 'RESUBMITTED' || status === 'UNDER_REVIEW') {
-      stage1State = 'completed';
       stage2State = 'completed';
       stage3State = 'current';
     } else if (status === 'REVISION_REQUIRED') {
-      stage1State = 'completed';
       stage2State = 'completed';
       stage3State = 'completed';
       stage4State = 'revision';
     } else if (status === 'APPROVED' || status === 'PUBLISHED' || status === 'COMPLETED') {
-      stage1State = 'completed';
       stage2State = 'completed';
       stage3State = 'completed';
       stage4State = 'completed';
@@ -3316,7 +3338,7 @@ export class PackageWorksComponent implements OnInit {
       {
         id: 2,
         title: 'Started',
-        subtitle: status === 'IN_PROGRESS' ? 'Active Creative Work' : status === 'ACCEPTED' ? 'Task Accepted' : stage2State === 'completed' ? 'Canvas Complete' : 'Pending Start',
+        subtitle: this.resolveStage2Subtitle(status, stage2State),
         icon: 'palette',
         state: stage2State,
       },
@@ -3330,7 +3352,7 @@ export class PackageWorksComponent implements OnInit {
       {
         id: 4,
         title: stage4State === 'revision' ? 'Revision Needed' : 'Completed',
-        subtitle: stage4State === 'completed' ? 'Approved & Ready' : stage4State === 'revision' ? 'Feedback Requested' : 'Pending Review',
+        subtitle: this.resolveStage4Subtitle(stage4State),
         icon: stage4State === 'revision' ? 'rate_review' : 'verified',
         state: stage4State,
       },
