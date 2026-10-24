@@ -54,15 +54,23 @@ function parseTimelineRemarkMessageAndBullets(
   let messageText = rawRemark;
   let bullets: string[] = [];
 
-  const uploadMatch = rawRemark.match(/^Uploaded version (v\d+\.\d+[^:]*):\s*([\s\S]*)$/i);
-  if (uploadMatch) {
-    messageText = `Uploaded version ${uploadMatch[1]}:`;
-    bullets = parseBulletPointsFn(unwrapTextQuotes(uploadMatch[2]));
-  } else if (rawRemark.includes('•')) {
-    const leadMatch = rawRemark.match(/^([^•:\r\n]+):\s*([\s\S]*)$/);
-    if (leadMatch) {
-      messageText = leadMatch[1] + ':';
-      bullets = parseBulletPointsFn(leadMatch[2]);
+  if (rawRemark.toLowerCase().startsWith('uploaded version ')) {
+    const colonIdx = rawRemark.indexOf(':');
+    if (colonIdx > 17) {
+      const verStr = rawRemark.slice(17, colonIdx).trim();
+      messageText = `Uploaded version ${verStr}:`;
+      const rest = rawRemark.slice(colonIdx + 1).trim();
+      bullets = parseBulletPointsFn(unwrapTextQuotes(rest));
+      return { messageText, bullets };
+    }
+  }
+
+  if (rawRemark.includes('•')) {
+    const colonIdx = rawRemark.indexOf(':');
+    const bulletIdx = rawRemark.indexOf('•');
+    if (colonIdx > 0 && (bulletIdx === -1 || colonIdx < bulletIdx) && !rawRemark.slice(0, colonIdx).includes('\n')) {
+      messageText = rawRemark.slice(0, colonIdx + 1);
+      bullets = parseBulletPointsFn(rawRemark.slice(colonIdx + 1));
     } else {
       bullets = parseBulletPointsFn(rawRemark);
       messageText = '';
@@ -550,9 +558,14 @@ export class TaskDetailComponent implements OnInit {
     const clean = unwrapTextQuotes(String(text));
     if (!clean) return [];
 
-    const rawParts = clean.includes('\n')
-      ? clean.split('\n')
-      : (clean.includes('•') ? clean.split('•') : [clean]);
+    let rawParts: string[];
+    if (clean.includes('\n')) {
+      rawParts = clean.split('\n');
+    } else if (clean.includes('•')) {
+      rawParts = clean.split('•');
+    } else {
+      rawParts = [clean];
+    }
 
     const items = extractBulletItems(rawParts);
     return items.length > 0 ? items : [clean];
@@ -934,63 +947,40 @@ export class TaskDetailComponent implements OnInit {
     return nodes.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }
 
-  getVersionDuration(ver: any, task?: Task | null): string {
-    if (!ver || !ver.createdAt) return '';
-    const uploadTime = new Date(ver.createdAt).getTime();
-    if (Number.isNaN(uploadTime)) return '';
-
+  private resolveStartTimeFromHistory(history: any[], uploadTime: number): number | null {
+    const sorted = [...history].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     let startTime: number | null = null;
-
-    if (task?.statusHistory && task.statusHistory.length > 0) {
-      const sortedHistory = [...task.statusHistory].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-
-      for (const h of sortedHistory) {
-        const hTime = new Date(h.createdAt).getTime();
-        if (hTime <= uploadTime) {
-          const s = (h.newStatus || '').toUpperCase();
-          if (s === 'IN_PROGRESS' || s === 'REVISION_REQUIRED') {
-            startTime = hTime;
-          }
-        }
-      }
-
-      if (!startTime) {
-        for (const h of sortedHistory) {
-          const hTime = new Date(h.createdAt).getTime();
-          if (hTime <= uploadTime) {
-            const s = (h.newStatus || '').toUpperCase();
-            if (s === 'ACCEPTED' || s === 'ASSIGNED') {
-              startTime = hTime;
-            }
-          }
+    for (const h of sorted) {
+      const hTime = new Date(h.createdAt).getTime();
+      if (hTime <= uploadTime) {
+        const s = (h.newStatus || '').toUpperCase();
+        if (s === 'IN_PROGRESS' || s === 'REVISION_REQUIRED') {
+          startTime = hTime;
         }
       }
     }
+    if (startTime) return startTime;
 
-    if (!startTime && task?.versions && task.versions.length > 1) {
-      const sortedVers = [...task.versions].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-      const currIdx = sortedVers.findIndex(
-        (v) => (v.id && v.id === ver.id) || v.versionNumber === ver.versionNumber
-      );
-      if (currIdx > 0) {
-        startTime = new Date(sortedVers[currIdx - 1].createdAt).getTime();
+    for (const h of sorted) {
+      const hTime = new Date(h.createdAt).getTime();
+      if (hTime <= uploadTime) {
+        const s = (h.newStatus || '').toUpperCase();
+        if (s === 'ACCEPTED' || s === 'ASSIGNED') {
+          startTime = hTime;
+        }
       }
     }
+    return startTime;
+  }
 
-   
-    if (!startTime && task?.createdAt) {
-      startTime = new Date(task.createdAt).getTime();
-    }
+  private resolveStartTimeFromVersions(versions: any[], ver: any): number | null {
+    if (!versions || versions.length <= 1) return null;
+    const sorted = [...versions].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const currIdx = sorted.findIndex((v) => (v.id && v.id === ver.id) || v.versionNumber === ver.versionNumber);
+    return currIdx > 0 ? new Date(sorted[currIdx - 1].createdAt).getTime() : null;
+  }
 
-    if (!startTime || Number.isNaN(startTime) || uploadTime < startTime) {
-      return '1 min';
-    }
-
-    const diffMs = Math.max(0, uploadTime - startTime);
+  private formatDiffDuration(diffMs: number): string {
     const diffSec = Math.floor(diffMs / 1000);
     const diffMinutes = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMinutes / 60);
@@ -1004,13 +994,33 @@ export class TaskDetailComponent implements OnInit {
       const remMins = diffMinutes % 60;
       return remMins > 0 ? `${diffHours}h ${remMins} min` : `${diffHours}h`;
     }
-    if (diffMinutes > 0) {
-      return `${diffMinutes} min`;
-    }
-    if (diffSec > 0) {
-      return `${diffSec}s`;
-    }
+    if (diffMinutes > 0) return `${diffMinutes} min`;
+    if (diffSec > 0) return `${diffSec}s`;
     return '1 min';
+  }
+
+  getVersionDuration(ver: any, task?: Task | null): string {
+    if (!ver?.createdAt) return '';
+    const uploadTime = new Date(ver.createdAt).getTime();
+    if (Number.isNaN(uploadTime)) return '';
+
+    let startTime = task?.statusHistory && task.statusHistory.length > 0
+      ? this.resolveStartTimeFromHistory(task.statusHistory, uploadTime)
+      : null;
+
+    if (!startTime && task?.versions) {
+      startTime = this.resolveStartTimeFromVersions(task.versions, ver);
+    }
+
+    if (!startTime && task?.createdAt) {
+      startTime = new Date(task.createdAt).getTime();
+    }
+
+    if (!startTime || Number.isNaN(startTime) || uploadTime < startTime) {
+      return '1 min';
+    }
+
+    return this.formatDiffDuration(Math.max(0, uploadTime - startTime));
   }
 
 
@@ -1035,14 +1045,11 @@ export class TaskDetailComponent implements OnInit {
     const currentUser = this.authService.currentUser();
     if (!currentUser) return false;
 
-    const currentId = String(currentUser.id !== undefined && currentUser.id !== null ? currentUser.id : '').trim().toLowerCase();
+    const currentId = String(currentUser.id ?? '').trim().toLowerCase();
     const currentEmail = String(currentUser.email || '').toLowerCase().trim();
 
-    const tCreatorId = String(
-      t.createdBy !== undefined && t.createdBy !== null
-        ? t.createdBy
-        : ((t as any).created_by !== undefined && (t as any).created_by !== null ? (t as any).created_by : '')
-    ).trim().toLowerCase();
+    const rawCreatorId = t.createdBy ?? (t as any).created_by ?? '';
+    const tCreatorId = String(rawCreatorId).trim().toLowerCase();
     const tCreatorEmail = String(t.creatorEmail || (t as any).creator_email || '').toLowerCase().trim();
 
     const matchesId = Boolean(currentId && tCreatorId && currentId === tCreatorId);
@@ -1105,7 +1112,7 @@ export class TaskDetailComponent implements OnInit {
 
   appendRedesignSnippet(snippet: string): void {
     const cur = this.redesignReason().trim();
-    const cleanSnippet = snippet.replace(/^[•\-\*]\s*/, '').trim();
+    const cleanSnippet = snippet.replace(/^[•*-]\s*/, '').trim();
     const bulletText = `• ${cleanSnippet}`;
     const nextVal = cur ? `${cur}\n${bulletText}` : bulletText;
     this.redesignReason.set(nextVal);
@@ -1330,11 +1337,16 @@ export class TaskDetailComponent implements OnInit {
   }
 
   
+  private resolveMediaUrl(url: string): string {
+    if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) {
+      return url;
+    }
+    return url.startsWith('/') ? url : `/${url}`;
+  }
+
   openImageViewer(url?: string, title?: string): void {
     if (!url) return;
-    const resolvedUrl = url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')
-      ? url
-      : (url.startsWith('/') ? url : `/${url}`);
+    const resolvedUrl = this.resolveMediaUrl(url);
     this.imageViewerUrl.set(resolvedUrl);
     this.imageViewerTitle.set(title || 'Creative Asset');
     this.isImageViewerOpen.set(true);
@@ -1349,24 +1361,19 @@ export class TaskDetailComponent implements OnInit {
     if (!url && !content) return;
 
     const resolvedTitle = title || 'Requirement Document';
-    const resolvedUrl = url
-      ? (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')
-          ? url
-          : (url.startsWith('/') ? url : `/${url}`))
-      : '';
+    const resolvedUrl = url ? this.resolveMediaUrl(url) : '';
 
     this.docViewerRawUrl.set(resolvedUrl);
     this.docViewerTitle.set(resolvedTitle);
     this.docViewerContent.set(content || '');
 
-   
     if (resolvedUrl && (this.isImage(resolvedUrl) || this.isImage(resolvedTitle))) {
       this.openImageViewer(resolvedUrl, resolvedTitle);
       return;
     }
 
-    if (resolvedUrl) {
-      this.docViewerUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(resolvedUrl));
+    if (resolvedUrl && isSafeViewerUrl(resolvedUrl)) {
+      this.docViewerUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(resolvedUrl)); // NOSONAR: URL is validated by isSafeViewerUrl
     } else {
       this.docViewerUrl.set(null);
     }
@@ -1397,7 +1404,7 @@ export class TaskDetailComponent implements OnInit {
       a.download = finalName;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      a.remove();
       return;
     }
 
@@ -1428,7 +1435,7 @@ export class TaskDetailComponent implements OnInit {
       a.download = finalName;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      a.remove();
 
       setTimeout(() => window.URL.revokeObjectURL(blobUrl), 2000);
     } catch (err) {
@@ -1439,7 +1446,7 @@ export class TaskDetailComponent implements OnInit {
       a.target = '_blank';
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      a.remove();
     }
   }
 }

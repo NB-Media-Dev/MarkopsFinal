@@ -264,8 +264,8 @@ export class LeadsComponent implements OnInit {
   });
 
   isPhoneValid(phone: string): boolean {
-    if (!phone || !phone.trim()) return false;
-    const clean = phone.replace(/[\s\-\(\)\+]/g, '');
+    if (!phone?.trim()) return false;
+    const clean = phone.replace(/[\s()+-]/g, '');
     if (clean.length === 10 && /^[6-9]\d{9}$/.test(clean)) return true;
     if (clean.length === 12 && clean.startsWith('91') && /^[6-9]\d{9}$/.test(clean.substring(2))) return true;
     if (clean.length === 11 && clean.startsWith('0') && /^[6-9]\d{9}$/.test(clean.substring(1))) return true;
@@ -273,7 +273,7 @@ export class LeadsComponent implements OnInit {
   }
 
   isEmailValid(email: string): boolean {
-    if (!email || !email.trim()) return false;
+    if (!email?.trim()) return false;
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return emailRegex.test(email.trim());
   }
@@ -670,7 +670,7 @@ private assignCampaignsToImportedLeads(
     const prod = this.productFilterSignal()?.trim();
     const dbPkgs = this.packageService.packages();
 
-    if (user && user.role === 'TELECALLER') {
+    if (user?.role === 'TELECALLER') {
       list = list.filter((l) => isLeadAssignedToUser(l, user));
     }
 
@@ -853,7 +853,7 @@ private assignCampaignsToImportedLeads(
     }
   }
 
-  setPageSize(size: number | any): void {
+  setPageSize(size: number | string): void {
     const s = Number(size) || 10;
     this.pageSize.set(s);
     this.currentPage.set(1);
@@ -931,16 +931,13 @@ private assignCampaignsToImportedLeads(
     if (!lead) return false;
     const user = this.authService.currentUser();
     if (!user) return false;
-    const userId = String(user.id !== undefined && user.id !== null ? user.id : '').trim().toLowerCase();
+    const userId = String(user.id ?? '').trim().toLowerCase();
     const userEmail = String(user.email || '').toLowerCase().trim();
     const userName = String(user.fullName || '').toLowerCase().trim();
 
     const rawLead = lead as any;
-    const leadCreatorId = String(
-      rawLead.creatorId !== undefined && rawLead.creatorId !== null
-        ? rawLead.creatorId
-        : (rawLead.creator_id !== undefined && rawLead.creator_id !== null ? rawLead.creator_id : '')
-    ).trim().toLowerCase();
+    const rawLeadCreatorId = rawLead.creatorId ?? rawLead.creator_id ?? '';
+    const leadCreatorId = String(rawLeadCreatorId).trim().toLowerCase();
     const leadCreatorEmail = String(rawLead.creatorEmail || rawLead.creator_email || '').toLowerCase().trim();
     const leadCreatorName = String(rawLead.creatorName || rawLead.creator_name || '').toLowerCase().trim();
 
@@ -1041,7 +1038,12 @@ private assignCampaignsToImportedLeads(
     this.editLeadError.set(null);
 
     const tc = this.activeTelecallers().find((u) => String(u.id) === String(this.editAssignedTo));
-    const assigneeName = tc ? tc.fullName : (this.editAssignedTo ? 'Telecaller' : 'Unassigned');
+    let assigneeName = 'Unassigned';
+    if (tc) {
+      assigneeName = tc.fullName;
+    } else if (this.editAssignedTo) {
+      assigneeName = 'Telecaller';
+    }
 
     this.leadService.updateLead(lead.id, {
       firstName: this.editFirstName.trim(),

@@ -1108,7 +1108,9 @@ export class PackageWorksComponent implements OnInit {
       }
     };
 
-    return this.mapUsersToPerformance(rawUsers, scopedLeads, allCalls, allPkgs, ws, pkgMeta, allAds, enrichedTasks, getRoleInfo);
+    return this.mapUsersToPerformance({
+      rawUsers, scopedLeads, allCalls, allPkgs, ws, pkgMeta, allAds, enrichedTasks, getRoleInfo
+    });
   });
 
   readonly activeUsersCount = computed<number>(() => this.teamPerformanceList().filter((u) => u.isActive).length);
@@ -1153,11 +1155,17 @@ export class PackageWorksComponent implements OnInit {
     return isItemForPackage(a, pkgMeta.id, pkgMeta.id, allPkgs);
   }
 
+  private matchesUserIdentity(id: string, name: string, targetId: string, targetName: string, targetEmail: string): boolean {
+    if (id && (id === targetId || (targetEmail && id === targetEmail))) return true;
+    return Boolean(name && (name === targetName || targetName.includes(name) || name.includes(targetName)));
+  }
+
   private isTaskAssignedOrCreatedByUser(t: any, userIdStr: string, nameLower: string, userEmailLower: string, isDm = false): boolean {
     const assignId = String(t.assignedTo || (t as any).assigned_to || '').trim().toLowerCase();
     const assignName = (t.assigneeName || (t as any).assignee_name || '').toLowerCase().trim();
     const creatorId = String(t.createdBy || (t as any).created_by || '').trim().toLowerCase();
     const creatorName = ((t as any).creatorName || (t as any).creator_name || '').toLowerCase().trim();
+    const targetId = userIdStr.toLowerCase();
 
     if (isDm) {
       const isAssigned = Boolean(
@@ -1165,22 +1173,14 @@ export class PackageWorksComponent implements OnInit {
         (assignName && assignName !== 'unassigned')
       );
       if (isAssigned) {
-        return assignId === userIdStr.toLowerCase() ||
-          Boolean(assignId && userEmailLower && assignId === userEmailLower) ||
-          Boolean(assignName && (assignName === nameLower || nameLower.includes(assignName) || assignName.includes(nameLower)));
+        return this.matchesUserIdentity(assignId, assignName, targetId, nameLower, userEmailLower);
       }
-      return creatorId === userIdStr.toLowerCase() ||
-        Boolean(creatorId && userEmailLower && creatorId === userEmailLower) ||
-        Boolean(creatorName && (creatorName === nameLower || nameLower.includes(creatorName) || creatorName.includes(nameLower)));
+      return this.matchesUserIdentity(creatorId, creatorName, targetId, nameLower, userEmailLower);
     }
 
-    if (assignId === userIdStr.toLowerCase()) return true;
-    if (assignId && userEmailLower && assignId === userEmailLower) return true;
-    if (assignName && (assignName === nameLower || nameLower.includes(assignName) || assignName.includes(nameLower))) return true;
-
-    return creatorId === userIdStr.toLowerCase() ||
-      Boolean(creatorId && userEmailLower && creatorId === userEmailLower) ||
-      Boolean(creatorName && (creatorName === nameLower || nameLower.includes(creatorName) || creatorName.includes(nameLower)));
+    const assignedMatch = this.matchesUserIdentity(assignId, assignName, targetId, nameLower, userEmailLower);
+    if (assignedMatch) return true;
+    return this.matchesUserIdentity(creatorId, creatorName, targetId, nameLower, userEmailLower);
   }
 
   private buildTelecallerPerformance(u: any, scopedLeads: any[], allCalls: any[], allPkgs: any[], ws: any, pkgMeta: any, roleInfo: any): UserPerformanceRecord {
@@ -1276,10 +1276,6 @@ export class PackageWorksComponent implements OnInit {
       };
     });
 
-    const userTasks = enrichedTasks.filter((t) =>
-      this.isTaskAssignedOrCreatedByUser(t, userIdStr, nameLower, userEmailLower, true)
-    );
-
     return {
       user: u,
       userId: String(u.id),
@@ -1360,16 +1356,26 @@ export class PackageWorksComponent implements OnInit {
     };
   }
 
-  private mapUsersToPerformance(rawUsers: any[], scopedLeads: any[], allCalls: any[], allPkgs: any[], ws: any, pkgMeta: any, allAds: any[], enrichedTasks: any[], getRoleInfo: any): UserPerformanceRecord[] {
-    return (rawUsers || []).map((u) => {
-      const roleInfo = getRoleInfo(u.role);
+  private mapUsersToPerformance(ctx: {
+    rawUsers: any[];
+    scopedLeads: any[];
+    allCalls: any[];
+    allPkgs: any[];
+    ws: any;
+    pkgMeta: any;
+    allAds: any[];
+    enrichedTasks: any[];
+    getRoleInfo: (role: string) => any;
+  }): UserPerformanceRecord[] {
+    return (ctx.rawUsers || []).map((u) => {
+      const roleInfo = ctx.getRoleInfo(u.role);
       if (u.role === 'TELECALLER') {
-        return this.buildTelecallerPerformance(u, scopedLeads, allCalls, allPkgs, ws, pkgMeta, roleInfo);
+        return this.buildTelecallerPerformance(u, ctx.scopedLeads, ctx.allCalls, ctx.allPkgs, ctx.ws, ctx.pkgMeta, roleInfo);
       }
       if (u.role === 'DIGITAL_MARKETING') {
-        return this.buildDigitalMarketingPerformance(u, allAds, enrichedTasks, ws, pkgMeta, roleInfo, allPkgs);
+        return this.buildDigitalMarketingPerformance(u, ctx.allAds, ctx.enrichedTasks, ctx.ws, ctx.pkgMeta, roleInfo, ctx.allPkgs);
       }
-      return this.buildStaffPerformance(u, enrichedTasks, roleInfo);
+      return this.buildStaffPerformance(u, ctx.enrichedTasks, roleInfo);
     });
   }
 

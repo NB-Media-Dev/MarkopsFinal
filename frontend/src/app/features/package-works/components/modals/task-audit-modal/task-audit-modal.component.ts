@@ -12,18 +12,18 @@ import { UserManagementService } from '../../../../../core/services/user-managem
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TaskAuditModalComponent {
-  private userService = inject(UserManagementService);
+  private readonly userService = inject(UserManagementService);
 
   @Input({ required: true }) isOpen = false;
   @Input() auditTask: Task | null = null;
   @Input() activePackageMeta: any = {};
 
-  @Output() close = new EventEmitter<void>();
+  @Output() closeModal = new EventEmitter<void>();
   @Output() previewDoc = new EventEmitter<{ event: Event; url?: string; name?: string; content?: string }>();
   @Output() download = new EventEmitter<{ event: Event; url: string; name: string }>();
 
   onClose(): void {
-    this.close.emit();
+    this.closeModal.emit();
   }
 
   onPreviewDoc(event: Event, url?: string, name?: string, content?: string): void {
@@ -36,7 +36,7 @@ export class TaskAuditModalComponent {
     }
   }
 
-  getStatusBadgeClass(status: TaskStatus | string): string {
+  getStatusBadgeClass(status: string): string {
     switch (status) {
       case 'IN_PROGRESS': return 'badge-amber';
       case 'SUBMITTED':
@@ -75,45 +75,58 @@ export class TaskAuditModalComponent {
     return 'Assigned Designer';
   }
 
+  private getDurationFromHistory(history: any[], verTime: number): string | null {
+    const sortedHistory = [...history]
+      .filter((h) => h.createdAt && !Number.isNaN(new Date(h.createdAt).getTime()))
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    let lastStart: number | null = null;
+    for (const h of sortedHistory) {
+      const hTime = new Date(h.createdAt).getTime();
+      if (hTime > verTime + 5000) break;
+
+      if (h.newStatus === 'IN_PROGRESS') {
+        lastStart = hTime;
+      } else if (h.newStatus === 'SUBMITTED' && lastStart && Math.abs(hTime - verTime) < 15000) {
+        return this.formatDurationMs(hTime - lastStart);
+      }
+    }
+
+    if (lastStart && lastStart <= verTime) {
+      return this.formatDurationMs(verTime - lastStart);
+    }
+    return null;
+  }
+
+  private getDurationFromVersions(versions: any[], verId: any, verTime: number): string | null {
+    if (!versions || versions.length <= 1) return null;
+    const sortedVers = [...versions]
+      .filter((v) => v.createdAt && !Number.isNaN(new Date(v.createdAt).getTime()))
+      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+    const curIdx = sortedVers.findIndex((v) => v.id === verId);
+    if (curIdx > 0) {
+      const prevTime = new Date(sortedVers[curIdx - 1].createdAt).getTime();
+      if (verTime > prevTime) {
+        return this.formatDurationMs(verTime - prevTime);
+      }
+    }
+    return null;
+  }
+
   getVersionDuration(task: Task | null, ver: TaskVersion): string {
-    if (!task || !ver || !ver.createdAt) return '';
+    if (!task || !ver?.createdAt) return '';
     const verTime = new Date(ver.createdAt).getTime();
     if (Number.isNaN(verTime)) return '';
 
     if (task.statusHistory && task.statusHistory.length > 0) {
-      const sortedHistory = [...task.statusHistory]
-        .filter((h) => h.createdAt && !Number.isNaN(new Date(h.createdAt).getTime()))
-        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-      let lastStart: number | null = null;
-      for (const h of sortedHistory) {
-        const hTime = new Date(h.createdAt).getTime();
-        if (hTime > verTime + 5000) break;
-
-        if (h.newStatus === 'IN_PROGRESS') {
-          lastStart = hTime;
-        } else if (h.newStatus === 'SUBMITTED' && lastStart && Math.abs(hTime - verTime) < 15000) {
-          return this.formatDurationMs(hTime - lastStart);
-        }
-      }
-
-      if (lastStart && lastStart <= verTime) {
-        return this.formatDurationMs(verTime - lastStart);
-      }
+      const duration = this.getDurationFromHistory(task.statusHistory, verTime);
+      if (duration) return duration;
     }
 
     if (task.versions && task.versions.length > 1) {
-      const sortedVers = [...task.versions]
-        .filter((v) => v.createdAt && !Number.isNaN(new Date(v.createdAt).getTime()))
-        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-      const curIdx = sortedVers.findIndex((v) => v.id === ver.id);
-      if (curIdx > 0) {
-        const prevTime = new Date(sortedVers[curIdx - 1].createdAt).getTime();
-        if (verTime > prevTime) {
-          return this.formatDurationMs(verTime - prevTime);
-        }
-      }
+      const duration = this.getDurationFromVersions(task.versions, ver.id, verTime);
+      if (duration) return duration;
     }
 
     return '';
@@ -141,18 +154,25 @@ export class TaskAuditModalComponent {
       const trimmed = line.trim();
       if (!trimmed) continue;
       if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
-        const bulletText = trimmed.replace(/^[•\-*]\s*/, '').trim();
+        const bulletText = trimmed.replace(/^[•*-]\s*/, '').trim();
         if (bulletText) items.push(bulletText);
-      } else if (trimmed.match(/^\d+[\.\)]\s*/)) {
-        const numText = trimmed.replace(/^\d+[\.\)]\s*/, '').trim();
+      } else if (/^\d+[.)]\s*/.test(trimmed)) {
+        const numText = trimmed.replace(/^\d+[.)]\s*/, '').trim();
         if (numText) items.push(numText);
       } else {
-        const cleanedItem = trimmed.replace(/^[•\-*]\s*/, '').trim();
+        const cleanedItem = trimmed.replace(/^[•*-]\s*/, '').trim();
         if (cleanedItem) items.push(cleanedItem);
       }
     }
 
     return items.length > 0 ? items : [clean];
+  }
+
+  private resolveTransitionRemark(h: any): string {
+    if (h.remark) return h.remark;
+    if (h.newStatus === 'APPROVED') return 'Deliverable approved without further changes.';
+    if (h.newStatus === 'IN_PROGRESS') return 'Designer started working on deliverables.';
+    return 'Status transition executed.';
   }
 
   getLifecycleJourney(task: Task | null): {
@@ -216,10 +236,12 @@ export class TaskAuditModalComponent {
         else if (h.newStatus === 'APPROVED' || h.newStatus === 'COMPLETED' || h.newStatus === 'PUBLISHED') stageName = 'Design Approved';
         else if (h.newStatus === 'ACCEPTED') stageName = 'Task Accepted by Designer';
 
-        const prevStep = steps[steps.length - 1];
+        const prevStep = steps.at(-1);
         if (prevStep && prevStep.toStatus === h.newStatus) {
           return;
         }
+
+        const transitionRemarks = this.resolveTransitionRemark(h);
 
         steps.push({
           stepNumber: stepIdx++,
@@ -229,7 +251,7 @@ export class TaskAuditModalComponent {
           actorName: h.actorName || (h.newStatus === 'IN_PROGRESS' || h.newStatus === 'SUBMITTED' ? designerName : creatorName),
           actorRole: h.actorRole || (h.newStatus === 'IN_PROGRESS' || h.newStatus === 'SUBMITTED' ? 'DESIGNER' : creatorRole),
           timestamp: h.createdAt || task.updatedAt || task.createdAt,
-          remarks: h.remark || (h.newStatus === 'APPROVED' ? 'Deliverable approved without further changes.' : (h.newStatus === 'IN_PROGRESS' ? 'Designer started working on deliverables.' : 'Status transition executed.')),
+          remarks: transitionRemarks,
         });
       });
     } else {

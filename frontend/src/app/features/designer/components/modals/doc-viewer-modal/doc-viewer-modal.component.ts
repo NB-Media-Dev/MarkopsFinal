@@ -35,8 +35,8 @@ export class DocViewerModalComponent {
       url = `${getBackendBaseUrl()}${url}`;
     }
 
-    if (isSafeDocUrl(url) && (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) ) {
-      return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    if (isSafeDocUrl(url) && (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:'))) {
+      return this.sanitizer.bypassSecurityTrustResourceUrl(url); // NOSONAR: URL is validated by isSafeDocUrl
     }
     return null;
   }

@@ -78,8 +78,14 @@ export function getAuthToken(): string | null {
   return null;
 }
 
+function resolveRequestUrl(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  if (input instanceof URL) return input.toString();
+  return input.url;
+}
+
 export async function safeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const urlStr = typeof input === 'string' ? input : (input instanceof URL ? input.toString() : input.url);
+  const urlStr = resolveRequestUrl(input);
   const token = getAuthToken();
 
   const headers = new Headers(init?.headers || {});

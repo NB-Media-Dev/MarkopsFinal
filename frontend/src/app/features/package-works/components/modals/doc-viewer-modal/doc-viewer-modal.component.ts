@@ -19,11 +19,11 @@ export class DocViewerModalComponent {
   @Input() activeIframeUrl: SafeResourceUrl | null = null;
   @Input() activeIframeSrcdoc: string = '';
 
-  @Output() close = new EventEmitter<void>();
+  @Output() closeModal = new EventEmitter<void>();
   @Output() download = new EventEmitter<{ event: Event; url: string; fileName: string }>();
 
   onClose(): void {
-    this.close.emit();
+    this.closeModal.emit();
   }
 
   onDownload(event: Event): void {

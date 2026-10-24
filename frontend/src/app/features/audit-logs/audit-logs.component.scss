@@ -46,10 +46,7 @@
       .arrow-char {
         font-size: 1rem;
         font-weight: 800;
-        color: #4F46E5;
-        background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #EC4899 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #3730A3;
         line-height: 1;
         transition: transform 0.2s ease;
       }
@@ -763,7 +760,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #94A3B8;
+    color: #475569;
 
     .material-symbols-outlined {
       font-size: 26px;

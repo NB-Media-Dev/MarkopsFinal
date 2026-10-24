@@ -109,9 +109,9 @@
       transition: all 0.15s ease;
 
       &:hover {
-        background: #FF9F1C;
+        background: #C2410C;
         color: #FFFFFF;
-        border-color: #FF9F1C;
+        border-color: #C2410C;
         box-shadow: 0 2px 8px rgba(255, 159, 28, 0.3);
       }
     }
@@ -154,7 +154,7 @@
         font-size: 0.6875rem;
         font-weight: 700;
         background: #F1F5F9;
-        color: #64748B;
+        color: #475569;
         padding: 0.05rem 0.4rem;
         border-radius: 6px;
       }
@@ -178,12 +178,12 @@
         box-shadow: 0 2px 8px rgba(255, 159, 28, 0.35);
 
         .tab-count {
-          background: rgba(255, 255, 255, 0.25);
+          background: rgba(0, 0, 0, 0.25);
           color: #FFFFFF;
         }
 
         .tab-count.unread-pill {
-          background: rgba(255, 255, 255, 0.35);
+          background: rgba(0, 0, 0, 0.35);
           color: #FFFFFF;
           border: none;
         }
@@ -316,7 +316,7 @@
       padding: 0.3rem 0.55rem;
       font-size: 0.725rem;
       font-weight: 700;
-      color: #DC2626;
+      color: #B91C1C;
       background: #FEF2F2;
       border: 1px solid #FECACA;
       border-radius: 6px;
@@ -441,7 +441,7 @@
 
     &.type-success {
       background: #ECFDF5;
-      color: #059669;
+      color: #047857;
       border: 1px solid #A7F3D0;
     }
 
@@ -453,7 +453,7 @@
 
     &.type-alert {
       background: #FEF2F2;
-      color: #DC2626;
+      color: #B91C1C;
       border: 1px solid #FECACA;
     }
 
@@ -544,8 +544,8 @@
       transition: all 0.15s ease;
 
       &:hover {
-        background: #FF9F1C;
-        border-color: #FF9F1C;
+        background: #C2410C;
+        border-color: #C2410C;
         color: #FFFFFF;
       }
     }

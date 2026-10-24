@@ -458,7 +458,7 @@
   border: 1px solid #E2E8F0;
   border-radius: 9999px;
   background: #FFFFFF;
-  color: #94A3B8;
+  color: #475569;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   transition: all 0.2s ease;
 
@@ -592,7 +592,7 @@
   padding: 0 1.1rem;
   border: 0;
   border-radius: 9999px;
-  background: #F59E0B;
+  background: #B45309;
   box-shadow: 0 3px 10px rgba(37, 99, 235, 0.25);
   color: #fff;
   cursor: pointer;
@@ -808,10 +808,7 @@
       .arrow-char {
         font-size: 1rem;
         font-weight: 800;
-        color: #4F46E5;
-        background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #EC4899 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #3730A3;
         transition: transform 0.2s ease;
         line-height: 1;
       }
@@ -1159,7 +1156,7 @@
     }
 
     &.active .pkg-pill-count-chip {
-      background: rgba(255, 255, 255, 0.25);
+      background: rgba(0, 0, 0, 0.25);
       color: #FFFFFF;
     }
   }
@@ -1239,6 +1236,36 @@
     flex-shrink: 0;
     color: #FFFFFF;
     transition: transform 0.2s ease;
+
+    &.icon-amber {
+      background: linear-gradient(135deg, #B45309 0%, #92400E 100%);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(180, 83, 9, 0.35);
+    }
+
+    &.icon-indigo {
+      background: linear-gradient(135deg, #4338CA 0%, #3730A3 100%);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(67, 56, 202, 0.35);
+    }
+
+    &.icon-purple {
+      background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.35);
+    }
+
+    &.icon-emerald {
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+    }
+
+    &.icon-blue {
+      background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.35);
+    }
 
     .currency-symbol {
       font-size: 1.1rem;

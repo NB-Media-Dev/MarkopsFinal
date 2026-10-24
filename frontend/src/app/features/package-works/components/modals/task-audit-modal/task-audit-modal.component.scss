@@ -73,13 +73,13 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #64748b;
+      color: #475569;
       cursor: pointer;
       transition: all 0.15s ease;
 
       &:hover {
         background: #fee2e2;
-        color: #dc2626;
+        color: #b91c1c;
       }
 
       .material-symbols-outlined {
@@ -215,12 +215,12 @@
       transition: all 0.2s ease;
 
       &.dot-approved {
-        background: #10b981;
+        background: #047857;
         color: #ffffff;
       }
 
       &.dot-revision {
-        background: #f59e0b;
+        background: #b45309;
         color: #ffffff;
       }
     }
@@ -233,9 +233,9 @@
 
     &.step-active {
       .step-dot {
-        background: #3b82f6;
+        background: #1d4ed8;
         color: #ffffff;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.2);
       }
 
       .step-label {
@@ -349,7 +349,7 @@
 
       &.file-icon-pdf {
         background: #fee2e2;
-        color: #dc2626;
+        color: #b91c1c;
       }
 
       &.file-icon-img {
