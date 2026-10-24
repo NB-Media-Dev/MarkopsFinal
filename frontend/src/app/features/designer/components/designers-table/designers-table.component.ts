@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { getApiUrl } from '../../../../core/utils/api-url.utils';
+import { getUserInitials, getUserAvatarUrl } from '../../../../core/utils/user-display.utils';
 
 export interface DesignerSummary {
   id: string | number;
@@ -58,15 +58,11 @@ export class DesignersTableComponent {
   });
 
   getInitials(name: string): string {
-    if (!name) return 'D';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts.at(-1)![0]).toUpperCase();
+    return getUserInitials(name, 'D');
   }
 
   getAvatarUrl(avatarUrl?: string): string {
-    if (!avatarUrl) return '';
-    return getApiUrl(avatarUrl);
+    return getUserAvatarUrl(avatarUrl);
   }
 
   getWorkloadStatus(activeCount: number): { label: string; tone: 'optimal' | 'heavy' | 'available' } {

@@ -16,6 +16,7 @@ import { NotificationService } from '../../../core/services/notification.service
 import { UserManagementService } from '../../../core/services/user-management.service';
 import { Task, TaskStatus, TaskPriority, TaskVersion, computeTaskProgressPercent } from '../../../core/models/task.model';
 import { getApiUrl } from '../../../core/utils/api-url.utils';
+import { appendBulletSnippet, handleBulletTextareaKeyDown } from '../../../core/utils/bullet-list.utils';
 import { PackageService } from '../../../core/services/package.service';
 import { resolveTaskProductAndPackage } from '../../../core/models/package.model';
 import { UploadDesignModalComponent } from '../components/modals/upload-design-modal/upload-design-modal.component';
@@ -1111,37 +1112,11 @@ export class TaskDetailComponent implements OnInit {
   }
 
   appendRedesignSnippet(snippet: string): void {
-    const cur = this.redesignReason().trim();
-    const cleanSnippet = snippet.replace(/^[•*-]\s*/, '').trim();
-    const bulletText = `• ${cleanSnippet}`;
-    const nextVal = cur ? `${cur}\n${bulletText}` : bulletText;
-    this.redesignReason.set(nextVal);
+    this.redesignReason.set(appendBulletSnippet(this.redesignReason(), snippet));
   }
 
   onRedesignReasonKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Enter') {
-      const textarea = event.target as HTMLTextAreaElement;
-      const { selectionStart, selectionEnd, value } = textarea;
-      const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
-      const currentLine = value.substring(lineStart, selectionStart);
-      if (currentLine.startsWith('• ') || currentLine.startsWith('- ')) {
-        event.preventDefault();
-        if (currentLine.trim() === '•' || currentLine.trim() === '-') {
-          const newValue = value.substring(0, lineStart) + value.substring(selectionEnd);
-          this.redesignReason.set(newValue);
-          setTimeout(() => {
-            textarea.selectionStart = textarea.selectionEnd = lineStart;
-          }, 0);
-          return;
-        }
-        const insert = '\n• ';
-        const newValue = value.substring(0, selectionStart) + insert + value.substring(selectionEnd);
-        this.redesignReason.set(newValue);
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = selectionStart + insert.length;
-        }, 0);
-      }
-    }
+    handleBulletTextareaKeyDown(event, (val) => this.redesignReason.set(val));
   }
 
   async submitRedesign(): Promise<void> {
@@ -1240,36 +1215,11 @@ export class TaskDetailComponent implements OnInit {
 
   appendChangelog(snippet: string): void {
     const current = (this.uploadForm.get('changelog')?.value || '').trim();
-    const cleanSnippet = snippet.replace(/^[•*-]\s*/, '').trim();
-    const bulletText = `• ${cleanSnippet}`;
-    const newVal = current ? `${current}\n${bulletText}` : bulletText;
-    this.uploadForm.patchValue({ changelog: newVal });
+    this.uploadForm.patchValue({ changelog: appendBulletSnippet(current, snippet) });
   }
 
   onChangelogKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Enter') {
-      const textarea = event.target as HTMLTextAreaElement;
-      const { selectionStart, selectionEnd, value } = textarea;
-      const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
-      const currentLine = value.substring(lineStart, selectionStart);
-      if (currentLine.startsWith('• ') || currentLine.startsWith('- ')) {
-        event.preventDefault();
-        if (currentLine.trim() === '•' || currentLine.trim() === '-') {
-          const newValue = value.substring(0, lineStart) + value.substring(selectionEnd);
-          this.uploadForm.patchValue({ changelog: newValue });
-          setTimeout(() => {
-            textarea.selectionStart = textarea.selectionEnd = lineStart;
-          }, 0);
-          return;
-        }
-        const insert = '\n• ';
-        const newValue = value.substring(0, selectionStart) + insert + value.substring(selectionEnd);
-        this.uploadForm.patchValue({ changelog: newValue });
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = selectionStart + insert.length;
-        }, 0);
-      }
-    }
+    handleBulletTextareaKeyDown(event, (val) => this.uploadForm.patchValue({ changelog: val }));
   }
 
   async onHandleSubmitUpload(event: {

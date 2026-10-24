@@ -33,6 +33,8 @@ import { EditPackageModalComponent } from './components/modals/edit-package-moda
 import { PackageDetailModalComponent } from './components/modals/package-detail-modal/package-detail-modal.component';
 import { DocViewerModalComponent } from './components/modals/doc-viewer-modal/doc-viewer-modal.component';
 import { TaskAuditModalComponent } from './components/modals/task-audit-modal/task-audit-modal.component';
+import { JourneyStep, getTaskStatusBadgeClass, calculateVersionDuration, buildTaskLifecycleJourney } from './utils/task-journey.utils';
+import { appendBulletSnippet, handleBulletTextareaKeyDown } from '../../core/utils/bullet-list.utils';
 import { isLeadAssignedToUser } from '../telecalling/telecalling.component';
 
 type WorkflowStepState = 'completed' | 'current' | 'upcoming';
@@ -2678,162 +2680,12 @@ export class PackageWorksComponent implements OnInit {
     return `${(task.assigneeName || 'designer').toLowerCase().replace(/\s+/g, '.')}@markops.io`;
   }
 
-  private resolvePackageStageName(status: string): string {
-    switch (status) {
-      case 'IN_PROGRESS': return ' Work Started';
-      case 'SUBMITTED':
-      case 'RESUBMITTED': return 'Task Submitted';
-      case 'REDESIGN_REQUIRED':
-      case 'REVISION_REQUIRED': return 'Redesign';
-      case 'APPROVED':
-      case 'COMPLETED':
-      case 'PUBLISHED': return 'Design Approved';
-      case 'ACCEPTED': return 'Task Accepted by Designer';
-      default: return 'Status Updated';
-    }
-  }
-
-  private resolveJourneyTransitionRemark(h: any): string {
-    if (h.remark) return h.remark;
-    if (h.newStatus === 'APPROVED') return 'Deliverable approved without further changes.';
-    if (h.newStatus === 'IN_PROGRESS') return 'Designer started working on deliverables.';
-    return 'Status transition executed.';
-  }
-
-  private buildFallbackPackageJourneySteps(task: Task, designerName: string, creatorName: string, creatorRole: string, initialIdx: number): any[] {
-    const steps: any[] = [];
-    let stepIdx = initialIdx;
-    const status = task.status;
-    if (status === 'ASSIGNED' || status === 'DRAFT') return steps;
-
-    if (['IN_PROGRESS', 'SUBMITTED', 'APPROVED', 'REDESIGN_REQUIRED', 'COMPLETED'].includes(status)) {
-      steps.push({
-        stepNumber: stepIdx++,
-        stage: ' Work Started',
-        fromStatus: 'ASSIGNED',
-        toStatus: 'IN_PROGRESS',
-        actorName: designerName,
-        actorRole: 'DESIGNER',
-        timestamp: task.updatedAt || task.createdAt,
-        remarks: 'Designer accepted assignment and started design draft production.',
-      });
-    }
-    if (['SUBMITTED', 'APPROVED', 'REDESIGN_REQUIRED', 'COMPLETED'].includes(status)) {
-      const ver0 = task.versions?.[0];
-      steps.push({
-        stepNumber: stepIdx++,
-        stage: 'Creative Deliverable Submitted',
-        fromStatus: 'IN_PROGRESS',
-        toStatus: 'SUBMITTED',
-        actorName: designerName,
-        actorRole: 'DESIGNER',
-        timestamp: ver0?.createdAt || task.updatedAt || task.createdAt,
-        remarks: ver0 ? `Version v${ver0.versionNumber}.0 uploaded (${ver0.fileName})` : 'Designer submitted deliverable for review.',
-      });
-    }
-    if (status === 'REDESIGN_REQUIRED') {
-      steps.push({
-        stepNumber: stepIdx++,
-        stage: 'Redesign / Revision Requested',
-        fromStatus: 'SUBMITTED',
-        toStatus: 'REDESIGN_REQUIRED',
-        actorName: creatorName,
-        actorRole: creatorRole,
-        timestamp: task.updatedAt || task.createdAt,
-        remarks: task.reviewerFeedback || 'Changes requested on deliverable.',
-      });
-    }
-    if (status === 'APPROVED' || status === 'COMPLETED') {
-      steps.push({
-        stepNumber: stepIdx++,
-        stage: 'Design Approved & Finalized',
-        fromStatus: 'SUBMITTED',
-        toStatus: 'APPROVED',
-        actorName: creatorName,
-        actorRole: creatorRole,
-        timestamp: task.updatedAt || task.createdAt,
-        remarks: 'Quality verified and design approved for digital deployment.',
-      });
-    }
-    return steps;
-  }
-
-  getLifecycleJourney(task: Task | null): {
-    stepNumber: number;
-    stage: string;
-    fromStatus: string;
-    toStatus: string;
-    actorName: string;
-    actorRole: string;
-    timestamp: string;
-    remarks: string;
-  }[] {
+  getLifecycleJourney(task: Task | null): JourneyStep[] {
     if (!task) return [];
-
+    const designerName = this.getAssigneeName(task);
     const creatorName = this.getCreatorName(task);
     const creatorRole = this.getCreatorRoleLabel(task);
-    const designerName = this.getAssigneeName(task);
-
-    const history = task.statusHistory || [];
-    const steps: any[] = [];
-
-    const initialAssignment = history.find(
-      (h) => h.newStatus === 'ASSIGNED' && (!h.previousStatus || h.previousStatus === 'ASSIGNED')
-    );
-
-    steps.push({
-      stepNumber: 1,
-      stage: 'Task Creation & Assignment',
-      fromStatus: 'CREATED',
-      toStatus: 'ASSIGNED',
-      actorName: initialAssignment?.actorName || creatorName,
-      actorRole: initialAssignment?.actorRole || creatorRole,
-      timestamp: initialAssignment?.createdAt || task.createdAt || new Date().toISOString(),
-      remarks: initialAssignment?.remark || `Task created for package "${task.packageName || this.activePackageName()}" and assigned to ${designerName}.`,
-    });
-
-    const validHistoryTransitions = history.filter((h) => {
-      if (h === initialAssignment) return false;
-      if (h.newStatus === 'ASSIGNED' && (!h.previousStatus || h.previousStatus === 'ASSIGNED')) {
-        return false;
-      }
-      return !h.previousStatus || h.previousStatus !== h.newStatus;
-    });
-
-    validHistoryTransitions.sort((a, b) => {
-      const timeA = new Date(a.createdAt || 0).getTime();
-      const timeB = new Date(b.createdAt || 0).getTime();
-      return timeA - timeB;
-    });
-
-    let stepIdx = 2;
-    if (validHistoryTransitions.length > 0) {
-      validHistoryTransitions.forEach((h) => {
-        const stageName = this.resolvePackageStageName(h.newStatus);
-        const prevStep = steps.at(-1);
-
-        if (prevStep?.toStatus === h.newStatus) {
-          return;
-        }
-
-        const transitionRemarks = this.resolveJourneyTransitionRemark(h);
-
-        steps.push({
-          stepNumber: stepIdx++,
-          stage: stageName,
-          fromStatus: h.previousStatus || prevStep?.toStatus || 'ASSIGNED',
-          toStatus: h.newStatus,
-          actorName: h.actorName || (h.newStatus === 'IN_PROGRESS' || h.newStatus === 'SUBMITTED' ? designerName : creatorName),
-          actorRole: h.actorRole || (h.newStatus === 'IN_PROGRESS' || h.newStatus === 'SUBMITTED' ? 'DESIGNER' : creatorRole),
-          timestamp: h.createdAt || task.updatedAt || task.createdAt,
-          remarks: transitionRemarks,
-        });
-      });
-    } else {
-      steps.push(...this.buildFallbackPackageJourneySteps(task, designerName, creatorName, creatorRole, stepIdx));
-    }
-
-    return steps;
+    return buildTaskLifecycleJourney(task, designerName, creatorName, creatorRole, this.activePackageName());
   }
 
   openCreateTaskModal(): void {
@@ -3061,68 +2913,16 @@ export class PackageWorksComponent implements OnInit {
     return items.length > 0 ? items : [clean];
   }
 
-  private resolveHistoryDuration(history: any[], verTime: number): string | null {
-    const sortedHistory = [...history]
-      .filter((h) => h.createdAt && !Number.isNaN(new Date(h.createdAt).getTime()))
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-    let lastStart: number | null = null;
-    for (const h of sortedHistory) {
-      const hTime = new Date(h.createdAt).getTime();
-      if (hTime > verTime + 5000) break;
-
-      if (h.newStatus === 'IN_PROGRESS') {
-        lastStart = hTime;
-      } else if (h.newStatus === 'SUBMITTED' && lastStart && Math.abs(hTime - verTime) < 15000) {
-        return this.formatDurationMs(hTime - lastStart);
-      }
-    }
-
-    if (lastStart && lastStart <= verTime) {
-      return this.formatDurationMs(verTime - lastStart);
-    }
-    return null;
-  }
-
-  private resolveVersionDuration(versions: any[], verId: any, verTime: number): string | null {
-    if (!versions || versions.length <= 1) return null;
-    const sortedVers = [...versions]
-      .filter((v) => v.createdAt && !Number.isNaN(new Date(v.createdAt).getTime()))
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-    const curIdx = sortedVers.findIndex((v) => v.id === verId);
-    if (curIdx > 0) {
-      const prevTime = new Date(sortedVers[curIdx - 1].createdAt).getTime();
-      if (verTime > prevTime) {
-        return this.formatDurationMs(verTime - prevTime);
-      }
-    }
-    return null;
-  }
-
   getVersionDuration(task: Task | null, ver: TaskVersion): string {
-    if (!task || !ver?.createdAt) return '';
-
-    const verTime = new Date(ver.createdAt).getTime();
-    if (Number.isNaN(verTime)) return '';
-
-    if (task.statusHistory && task.statusHistory.length > 0) {
-      const duration = this.resolveHistoryDuration(task.statusHistory, verTime);
-      if (duration) return duration;
-    }
-
-    if (task.versions && task.versions.length > 1) {
-      const duration = this.resolveVersionDuration(task.versions, ver.id, verTime);
-      if (duration) return duration;
-    }
-
-    if (task.createdAt) {
+    const duration = calculateVersionDuration(task, ver);
+    if (duration) return duration;
+    if (task?.createdAt && ver?.createdAt) {
+      const verTime = new Date(ver.createdAt).getTime();
       const taskCreatedTime = new Date(task.createdAt).getTime();
-      if (!Number.isNaN(taskCreatedTime) && verTime >= taskCreatedTime) {
+      if (!Number.isNaN(taskCreatedTime) && !Number.isNaN(verTime) && verTime >= taskCreatedTime) {
         return this.formatDurationMs(verTime - taskCreatedTime);
       }
     }
-
     return '1 min';
   }
 
@@ -3143,70 +2943,20 @@ export class PackageWorksComponent implements OnInit {
 
   appendRevisionRemark(snippet: string): void {
     const current = (this.revisionForm.get('remark')?.value || '').trim();
-    const cleanSnippet = snippet.replace(/^[•*-]\s*/, '').trim();
-    const bulletText = `• ${cleanSnippet}`;
-    const newVal = current ? `${current}\n${bulletText}` : bulletText;
-    this.revisionForm.patchValue({ remark: newVal });
+    this.revisionForm.patchValue({ remark: appendBulletSnippet(current, snippet) });
   }
 
   onRevisionRemarkKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Enter') {
-      const textarea = event.target as HTMLTextAreaElement;
-      const { selectionStart, selectionEnd, value } = textarea;
-      const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
-      const currentLine = value.substring(lineStart, selectionStart);
-      if (currentLine.startsWith('• ') || currentLine.startsWith('- ')) {
-        event.preventDefault();
-        if (currentLine.trim() === '•' || currentLine.trim() === '-') {
-          const newValue = value.substring(0, lineStart) + value.substring(selectionEnd);
-          this.revisionForm.patchValue({ remark: newValue });
-          setTimeout(() => {
-            textarea.selectionStart = textarea.selectionEnd = lineStart;
-          }, 0);
-          return;
-        }
-        const insert = '\n• ';
-        const newValue = value.substring(0, selectionStart) + insert + value.substring(selectionEnd);
-        this.revisionForm.patchValue({ remark: newValue });
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = selectionStart + insert.length;
-        }, 0);
-      }
-    }
+    handleBulletTextareaKeyDown(event, (val) => this.revisionForm.patchValue({ remark: val }));
   }
 
   appendUploadChangelog(snippet: string): void {
     const current = (this.uploadForm.get('changelog')?.value || '').trim();
-    const cleanSnippet = snippet.replace(/^[•*-]\s*/, '').trim();
-    const bulletText = `• ${cleanSnippet}`;
-    const newVal = current ? `${current}\n${bulletText}` : bulletText;
-    this.uploadForm.patchValue({ changelog: newVal });
+    this.uploadForm.patchValue({ changelog: appendBulletSnippet(current, snippet) });
   }
 
   onUploadChangelogKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Enter') {
-      const textarea = event.target as HTMLTextAreaElement;
-      const { selectionStart, selectionEnd, value } = textarea;
-      const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
-      const currentLine = value.substring(lineStart, selectionStart);
-      if (currentLine.startsWith('• ') || currentLine.startsWith('- ')) {
-        event.preventDefault();
-        if (currentLine.trim() === '•' || currentLine.trim() === '-') {
-          const newValue = value.substring(0, lineStart) + value.substring(selectionEnd);
-          this.uploadForm.patchValue({ changelog: newValue });
-          setTimeout(() => {
-            textarea.selectionStart = textarea.selectionEnd = lineStart;
-          }, 0);
-          return;
-        }
-        const insert = '\n• ';
-        const newValue = value.substring(0, selectionStart) + insert + value.substring(selectionEnd);
-        this.uploadForm.patchValue({ changelog: newValue });
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = selectionStart + insert.length;
-        }, 0);
-      }
-    }
+    handleBulletTextareaKeyDown(event, (val) => this.uploadForm.patchValue({ changelog: val }));
   }
 
   triggerPackageUploadInput(): void {
@@ -3274,18 +3024,7 @@ export class PackageWorksComponent implements OnInit {
   }
 
   getStatusBadgeClass(status: string): string {
-    switch (status) {
-      case 'IN_PROGRESS': return 'badge-amber';
-      case 'SUBMITTED':
-      case 'RESUBMITTED':
-      case 'UNDER_REVIEW': return 'badge-purple';
-      case 'APPROVED':
-      case 'COMPLETED':
-      case 'PUBLISHED': return 'badge-green';
-      case 'REVISION_REQUIRED':
-      case 'REDESIGN_REQUIRED': return 'badge-danger';
-      default: return 'badge-blue';
-    }
+    return getTaskStatusBadgeClass(status);
   }
 
   private resolveStage2Subtitle(status: string, stage2State: WorkflowStepState): string {

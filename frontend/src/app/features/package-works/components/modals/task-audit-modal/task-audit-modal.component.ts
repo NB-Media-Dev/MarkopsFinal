@@ -2,6 +2,13 @@ import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, inject
 import { CommonModule, DatePipe } from '@angular/common';
 import { Task, TaskVersion } from '../../../../../core/models/task.model';
 import { UserManagementService } from '../../../../../core/services/user-management.service';
+import {
+  JourneyStep,
+  getTaskStatusBadgeClass,
+  calculateVersionDuration,
+  parseBulletPointLines,
+  buildTaskLifecycleJourney,
+} from '../../../utils/task-journey.utils';
 
 @Component({
   selector: 'app-task-audit-modal',
@@ -9,7 +16,7 @@ import { UserManagementService } from '../../../../../core/services/user-managem
   imports: [CommonModule, DatePipe],
   templateUrl: './task-audit-modal.component.html',
   styleUrls: ['./task-audit-modal.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TaskAuditModalComponent {
   private readonly userService = inject(UserManagementService);
@@ -37,18 +44,7 @@ export class TaskAuditModalComponent {
   }
 
   getStatusBadgeClass(status: string): string {
-    switch (status) {
-      case 'IN_PROGRESS': return 'badge-amber';
-      case 'SUBMITTED':
-      case 'RESUBMITTED':
-      case 'UNDER_REVIEW': return 'badge-purple';
-      case 'APPROVED':
-      case 'COMPLETED':
-      case 'PUBLISHED': return 'badge-green';
-      case 'REVISION_REQUIRED':
-      case 'REDESIGN_REQUIRED': return 'badge-danger';
-      default: return 'badge-blue';
-    }
+    return getTaskStatusBadgeClass(status);
   }
 
   getCreatorName(task: Task | null): string {
@@ -75,240 +71,22 @@ export class TaskAuditModalComponent {
     return 'Assigned Designer';
   }
 
-  private getDurationFromHistory(history: any[], verTime: number): string | null {
-    const sortedHistory = [...history]
-      .filter((h) => h.createdAt && !Number.isNaN(new Date(h.createdAt).getTime()))
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-    let lastStart: number | null = null;
-    for (const h of sortedHistory) {
-      const hTime = new Date(h.createdAt).getTime();
-      if (hTime > verTime + 5000) break;
-
-      if (h.newStatus === 'IN_PROGRESS') {
-        lastStart = hTime;
-      } else if (h.newStatus === 'SUBMITTED' && lastStart && Math.abs(hTime - verTime) < 15000) {
-        return this.formatDurationMs(hTime - lastStart);
-      }
-    }
-
-    if (lastStart && lastStart <= verTime) {
-      return this.formatDurationMs(verTime - lastStart);
-    }
-    return null;
-  }
-
-  private getDurationFromVersions(versions: any[], verId: any, verTime: number): string | null {
-    if (!versions || versions.length <= 1) return null;
-    const sortedVers = [...versions]
-      .filter((v) => v.createdAt && !Number.isNaN(new Date(v.createdAt).getTime()))
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-    const curIdx = sortedVers.findIndex((v) => v.id === verId);
-    if (curIdx > 0) {
-      const prevTime = new Date(sortedVers[curIdx - 1].createdAt).getTime();
-      if (verTime > prevTime) {
-        return this.formatDurationMs(verTime - prevTime);
-      }
-    }
-    return null;
-  }
-
   getVersionDuration(task: Task | null, ver: TaskVersion): string {
-    if (!task || !ver?.createdAt) return '';
-    const verTime = new Date(ver.createdAt).getTime();
-    if (Number.isNaN(verTime)) return '';
-
-    if (task.statusHistory && task.statusHistory.length > 0) {
-      const duration = this.getDurationFromHistory(task.statusHistory, verTime);
-      if (duration) return duration;
-    }
-
-    if (task.versions && task.versions.length > 1) {
-      const duration = this.getDurationFromVersions(task.versions, ver.id, verTime);
-      if (duration) return duration;
-    }
-
-    return '';
-  }
-
-  private formatDurationMs(ms: number): string {
-    if (ms <= 0) return '0m';
-    const totalMinutes = Math.round(ms / 60000);
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    if (hours > 0 && minutes > 0) return `${hours}h ${minutes}m`;
-    if (hours > 0) return `${hours}h`;
-    return `${Math.max(1, minutes)}m`;
+    return calculateVersionDuration(task, ver);
   }
 
   parseBulletPoints(raw: string): string[] {
-    if (!raw) return [];
-    const clean = raw.trim();
-    if (!clean) return [];
-
-    const items = clean
-      .split('\n')
-      .map((l) => l.trim().replace(/^([•*-]|\d+[.)])\s*/, '').trim())
-      .filter(Boolean);
-
-    return items.length > 0 ? items : [clean];
+    return parseBulletPointLines(raw);
   }
 
-  private resolveTransitionRemark(h: any): string {
-    if (h.remark) return h.remark;
-    if (h.newStatus === 'APPROVED') return 'Deliverable approved without further changes.';
-    if (h.newStatus === 'IN_PROGRESS') return 'Designer started working on deliverables.';
-    return 'Status transition executed.';
-  }
-
-  private resolveStageName(status: string): string {
-    switch (status) {
-      case 'IN_PROGRESS': return ' Work Started';
-      case 'SUBMITTED':
-      case 'RESUBMITTED': return 'Task Submitted';
-      case 'REDESIGN_REQUIRED':
-      case 'REVISION_REQUIRED': return 'Redesign';
-      case 'APPROVED':
-      case 'COMPLETED':
-      case 'PUBLISHED': return 'Design Approved';
-      case 'ACCEPTED': return 'Task Accepted by Designer';
-      default: return 'Status Updated';
-    }
-  }
-
-  private buildFallbackJourneySteps(task: Task, designerName: string, creatorName: string, creatorRole: string, initialIdx: number): any[] {
-    const steps: any[] = [];
-    let stepIdx = initialIdx;
-    const status = task.status;
-    if (status === 'ASSIGNED' || status === 'DRAFT') return steps;
-
-    if (['IN_PROGRESS', 'SUBMITTED', 'APPROVED', 'REDESIGN_REQUIRED', 'COMPLETED'].includes(status)) {
-      steps.push({
-        stepNumber: stepIdx++,
-        stage: ' Work Started',
-        fromStatus: 'ASSIGNED',
-        toStatus: 'IN_PROGRESS',
-        actorName: designerName,
-        actorRole: 'DESIGNER',
-        timestamp: task.updatedAt || task.createdAt,
-        remarks: 'Designer accepted assignment and started design draft production.',
-      });
-    }
-    if (['SUBMITTED', 'APPROVED', 'REDESIGN_REQUIRED', 'COMPLETED'].includes(status)) {
-      const ver0 = task.versions?.[0];
-      steps.push({
-        stepNumber: stepIdx++,
-        stage: 'Creative Deliverable Submitted',
-        fromStatus: 'IN_PROGRESS',
-        toStatus: 'SUBMITTED',
-        actorName: designerName,
-        actorRole: 'DESIGNER',
-        timestamp: ver0?.createdAt || task.updatedAt || task.createdAt,
-        remarks: ver0 ? `Version v${ver0.versionNumber}.0 uploaded (${ver0.fileName})` : 'Designer submitted deliverable for review.',
-      });
-    }
-    if (status === 'REDESIGN_REQUIRED') {
-      steps.push({
-        stepNumber: stepIdx++,
-        stage: 'Redesign / Revision Requested',
-        fromStatus: 'SUBMITTED',
-        toStatus: 'REDESIGN_REQUIRED',
-        actorName: creatorName,
-        actorRole: creatorRole,
-        timestamp: task.updatedAt || task.createdAt,
-        remarks: task.reviewerFeedback || 'Changes requested on deliverable.',
-      });
-    }
-    if (status === 'APPROVED' || status === 'COMPLETED') {
-      steps.push({
-        stepNumber: stepIdx++,
-        stage: 'Design Approved & Finalized',
-        fromStatus: 'SUBMITTED',
-        toStatus: 'APPROVED',
-        actorName: creatorName,
-        actorRole: creatorRole,
-        timestamp: task.updatedAt || task.createdAt,
-        remarks: 'Quality verified and design approved for digital deployment.',
-      });
-    }
-    return steps;
-  }
-
-  getLifecycleJourney(task: Task | null): {
-    stepNumber: number;
-    stage: string;
-    fromStatus: string;
-    toStatus: string;
-    actorName: string;
-    actorRole: string;
-    timestamp: string;
-    remarks: string;
-  }[] {
+  getLifecycleJourney(task: Task | null): JourneyStep[] {
     if (!task) return [];
-
-    const creatorName = this.getCreatorName(task);
-    const creatorRole = this.getCreatorRoleLabel(task);
-    const designerName = this.getAssigneeName(task);
-
-    const history = task.statusHistory || [];
-    const steps: any[] = [];
-
-    const initialAssignment = history.find(
-      (h: any) => h.newStatus === 'ASSIGNED' && (!h.previousStatus || h.previousStatus === 'ASSIGNED')
+    return buildTaskLifecycleJourney(
+      task,
+      this.getAssigneeName(task),
+      this.getCreatorName(task),
+      this.getCreatorRoleLabel(task),
+      this.activePackageMeta?.name
     );
-
-    steps.push({
-      stepNumber: 1,
-      stage: 'Task Creation & Assignment',
-      fromStatus: 'CREATED',
-      toStatus: 'ASSIGNED',
-      actorName: initialAssignment?.actorName || creatorName,
-      actorRole: initialAssignment?.actorRole || creatorRole,
-      timestamp: initialAssignment?.createdAt || task.createdAt || new Date().toISOString(),
-      remarks: initialAssignment?.remark || `Task created for package "${task.packageName || this.activePackageMeta?.name || 'Package'}" and assigned to ${designerName}.`,
-    });
-
-    const validHistoryTransitions = history.filter((h: any) => {
-      if (h === initialAssignment) return false;
-      if (h.newStatus === 'ASSIGNED' && (!h.previousStatus || h.previousStatus === 'ASSIGNED')) {
-        return false;
-      }
-      return !h.previousStatus || h.previousStatus !== h.newStatus;
-    });
-
-    validHistoryTransitions.sort((a: any, b: any) => {
-      const timeA = new Date(a.createdAt || 0).getTime();
-      const timeB = new Date(b.createdAt || 0).getTime();
-      return timeA - timeB;
-    });
-
-    let stepIdx = 2;
-    if (validHistoryTransitions.length > 0) {
-      validHistoryTransitions.forEach((h: any) => {
-        const stageName = this.resolveStageName(h.newStatus);
-        const prevStep = steps.at(-1);
-        if (prevStep && prevStep.toStatus === h.newStatus) {
-          return;
-        }
-
-        const transitionRemarks = this.resolveTransitionRemark(h);
-
-        steps.push({
-          stepNumber: stepIdx++,
-          stage: stageName,
-          fromStatus: h.previousStatus || prevStep?.toStatus || 'ASSIGNED',
-          toStatus: h.newStatus,
-          actorName: h.actorName || (h.newStatus === 'IN_PROGRESS' || h.newStatus === 'SUBMITTED' ? designerName : creatorName),
-          actorRole: h.actorRole || (h.newStatus === 'IN_PROGRESS' || h.newStatus === 'SUBMITTED' ? 'DESIGNER' : creatorRole),
-          timestamp: h.createdAt || task.updatedAt || task.createdAt,
-          remarks: transitionRemarks,
-        });
-      });
-    } else {
-      steps.push(...this.buildFallbackJourneySteps(task, designerName, creatorName, creatorRole, stepIdx));
-    }
-
-    return steps;
   }
 }
