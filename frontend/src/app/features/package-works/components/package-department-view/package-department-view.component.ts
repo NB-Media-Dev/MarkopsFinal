@@ -1,8 +1,6 @@
 import {
   TelecallerCampaignReport,
-  formatReportCleanName,
   toLocalDateString,
-  todayLocalDateString,
   formatReportDate,
   getTaskAssignedLocalDate,
   taskMatchesDate,
@@ -23,7 +21,7 @@ import {
 import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RoleOperationTab, FixedPackageMeta, ProductPackage, resolveTaskProductAndPackage, isTaskForPackage } from '../../../../core/models/package.model';
+import { RoleOperationTab, FixedPackageMeta, ProductPackage, isTaskForPackage } from '../../../../core/models/package.model';
 import { UserPerformanceRecord } from '../../../../core/models/user-management.model';
 import { TelecallerTargetService } from '../../../../core/services/telecaller-target.service';
 
@@ -230,26 +228,7 @@ export class PackageDepartmentViewComponent {
 
   
   private toLocalDateString(val: any): string {
-    if (!val) return '';
-    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
-      return val.trim();
-    }
-    const d = new Date(val);
-    if (Number.isNaN(d.getTime())) {
-      const parsed = Date.parse(val);
-      if (!Number.isNaN(parsed)) {
-        const pd = new Date(parsed);
-        const y = pd.getFullYear();
-        const m = String(pd.getMonth() + 1).padStart(2, '0');
-        const day = String(pd.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
-      }
-      return '';
-    }
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+    return toLocalDateString(val);
   }
 
   setModalDateFilter(filter: 'ALL' | 'YESTERDAY' | 'TODAY' | 'WEEK' | 'MONTH' | 'CUSTOM') {
@@ -347,168 +326,31 @@ export class PackageDepartmentViewComponent {
   }
 
   private getReportLeadKey(lead: any): string {
-    const leadId = String(lead.id || lead.leadId || '').trim().toLowerCase();
-    if (leadId) return `id_${leadId}`;
-    const leadPhone = String(lead.phone || lead.leadPhone || '').replace(/\D/g, '');
-    if (leadPhone) return `p_${leadPhone}`;
-    return `ref_${lead.title || lead.name || ''}`;
+    return getReportLeadKey(lead);
   }
 
   private getReportLeadOutcome(hasValidOutcome: boolean, rawOutcome: string, hasValidStatus: boolean, rawStatus: string): string {
-    if (hasValidOutcome) return rawOutcome.toUpperCase();
-    if (hasValidStatus) return rawStatus.toUpperCase();
-    return '';
+    return getReportLeadOutcome(hasValidOutcome, rawOutcome, hasValidStatus, rawStatus);
   }
 
   private isReportLeadCalled(lead: any, hasValidOutcome: boolean, hasValidStatus: boolean): boolean {
-    if (Array.isArray(lead.calls) && lead.calls.length > 0) return true;
-    if (typeof lead.callAttempts === 'number' && lead.callAttempts > 0) return true;
-    if (lead.calledAt || lead.lastCalledAt) return true;
-    return hasValidOutcome || hasValidStatus;
+    return isReportLeadCalled(lead, hasValidOutcome, hasValidStatus);
   }
 
   private isReportLeadPaid(lead: any, outcome: string): boolean {
-    return outcome === 'PAID' || outcome === 'CONVERTED' || Boolean(lead.isPaid) || (Number(lead.paidAmount) > 0);
+    return isReportLeadPaid(lead, outcome);
   }
 
   private aggregateGroupLeadStats(groupLeads: any[]): { totalCalls: number; interested: number; paid: number } {
-    const calledLeadIds = new Set<string>();
-    const interestedLeadIds = new Set<string>();
-    const paidLeadIds = new Set<string>();
-    const uncalledStatuses = new Set(['NEW', 'UNASSIGNED', 'ASSIGNED', '—', '', 'NULL', 'UNDEFINED']);
-
-    for (const lead of groupLeads) {
-      const leadKey = this.getReportLeadKey(lead);
-      const rawOutcome = String(lead.callOutcome || '').toUpperCase().trim();
-      const rawStatus = String(lead.status || '').toUpperCase().trim();
-
-      const hasValidOutcome = Boolean(rawOutcome && !uncalledStatuses.has(rawOutcome));
-      const hasValidStatus = Boolean(rawStatus && !uncalledStatuses.has(rawStatus));
-
-      if (this.isReportLeadCalled(lead, hasValidOutcome, hasValidStatus) && leadKey) {
-        calledLeadIds.add(leadKey);
-      }
-
-      const outcome = this.getReportLeadOutcome(hasValidOutcome, rawOutcome, hasValidStatus, rawStatus);
-      if (this.isReportLeadPaid(lead, outcome)) {
-        if (leadKey) {
-          paidLeadIds.add(leadKey);
-          interestedLeadIds.add(leadKey);
-        }
-      } else if (['INTERESTED', 'QUALIFIED', 'HOT'].includes(outcome)) {
-        if (leadKey) {
-          interestedLeadIds.add(leadKey);
-        }
-      }
-    }
-
-    return {
-      totalCalls: calledLeadIds.size,
-      interested: interestedLeadIds.size,
-      paid: paidLeadIds.size,
-    };
+    return aggregateGroupLeadStats(groupLeads);
   }
 
   private formatReportDate(dateRaw: string): string {
-    if (dateRaw?.includes('-')) {
-      const parts = dateRaw.split('-');
-      if (parts.length === 3) {
-        const dObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-        if (!Number.isNaN(dObj.getTime())) {
-          return dObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-        }
-      }
-    }
-    return dateRaw;
+    return formatReportDate(dateRaw);
   }
 
   private buildReportRow(key: string, groupLeads: any[], sNo: number, baseDailyTarget: number): TelecallerCampaignReport {
-    const [cName, aName, dateRaw] = key.split('___');
-    const totalLeads = groupLeads.length;
-    const { totalCalls, interested, paid } = this.aggregateGroupLeadStats(groupLeads);
-
-    const avgCalls = totalLeads > 0 ? Number((totalCalls / totalLeads).toFixed(1)) : 0;
-    const rowTarget = baseDailyTarget > 0 ? baseDailyTarget : 50;
-    const ratioVal = rowTarget > 0 ? (totalCalls / rowTarget) * 100 : 0;
-    const formattedRatio = ratioVal % 1 === 0 ? `${ratioVal}%` : `${ratioVal.toFixed(1)}%`;
-    const displayDate = this.formatReportDate(dateRaw);
-
-    return {
-      sNo,
-      campaignName: cName,
-      adName: aName,
-      assignedDate: displayDate,
-      assignedDateRaw: dateRaw,
-      totalCountLeads: totalLeads,
-      totalCalls,
-      averageCalls: avgCalls,
-      interested,
-      targets: rowTarget,
-      callerRatio: formattedRatio,
-      paid,
-      leads: groupLeads,
-    };
-  }
-
-  private getMockTelecallerCampaignReports(pkgDisplayName: string): TelecallerCampaignReport[] {
-    const mockRows: TelecallerCampaignReport[] = [
-      {
-        sNo: 1,
-        campaignName: pkgDisplayName || 'current affairs oct',
-        adName: 'spiderman poster',
-        assignedDate: '13 Oct 2026',
-        assignedDateRaw: '2026-10-13',
-        totalCountLeads: 2,
-        totalCalls: 5,
-        averageCalls: 2.5,
-        interested: 1,
-        targets: 200,
-        callerRatio: '2.5%',
-        paid: 7,
-        leads: [],
-      },
-      {
-        sNo: 2,
-        campaignName: pkgDisplayName || 'current affairs oct',
-        adName: 'spiderman poster',
-        assignedDate: '12 Oct 2026',
-        assignedDateRaw: '2026-10-12',
-        totalCountLeads: 6,
-        totalCalls: 2,
-        averageCalls: 0.3,
-        interested: 0,
-        targets: 50,
-        callerRatio: '4%',
-        paid: 6,
-        leads: [],
-      },
-      {
-        sNo: 3,
-        campaignName: pkgDisplayName || 'current affairs oct',
-        adName: 'spiderman poster',
-        assignedDate: '11 Oct 2026',
-        assignedDateRaw: '2026-10-11',
-        totalCountLeads: 1,
-        totalCalls: 1,
-        averageCalls: 1.0,
-        interested: 0,
-        targets: 50,
-        callerRatio: '2%',
-        paid: 0,
-        leads: [],
-      },
-    ];
-
-    if (this.taskSearchQuery.trim()) {
-      const q = this.taskSearchQuery.toLowerCase().trim();
-      return mockRows.filter(
-        (r) =>
-          r.campaignName.toLowerCase().includes(q) ||
-          r.adName.toLowerCase().includes(q) ||
-          r.assignedDate.toLowerCase().includes(q)
-      );
-    }
-    return mockRows;
+    return buildReportRow(key, groupLeads, sNo, baseDailyTarget);
   }
 
   get telecallerCampaignReports(): TelecallerCampaignReport[] {
@@ -522,7 +364,7 @@ export class PackageDepartmentViewComponent {
     const baseDailyTarget = targetInfo?.dailyCallsTarget || 50;
 
     if (tasks.length === 0 && (!this.selectedPerformanceUser.tasks || this.selectedPerformanceUser.tasks.length === 0)) {
-      return this.getMockTelecallerCampaignReports(pkgDisplayName);
+      return [];
     }
 
     const groups = new Map<string, any[]>();
@@ -635,52 +477,16 @@ export class PackageDepartmentViewComponent {
   }
 
   getTaskAssignedLocalDate(task: any): string {
-    if (!task) return '';
-    if (Array.isArray(task.statusHistory) && task.statusHistory.length > 0) {
-      const assignEvent = task.statusHistory.find(
-        (h: any) =>
-          h.newStatus === 'ASSIGNED' ||
-          (h.remark && String(h.remark).toLowerCase().includes('assigned'))
-      );
-      if (assignEvent && (assignEvent.createdAt || assignEvent.created_at)) {
-        const assignStr = this.toLocalDateString(assignEvent.createdAt || assignEvent.created_at);
-        if (assignStr) return assignStr;
-      }
-    }
-    const raw = task.launchDate || task.assignedAt || task.assigned_at || task.assignedDate || task.createdAt || task.created_at;
-    return this.toLocalDateString(raw);
+    return getTaskAssignedLocalDate(task);
   }
 
   taskMatchesDate(task: any, targetDate: string): boolean {
-    if (!targetDate) return true;
-    const assigned = this.getTaskAssignedLocalDate(task);
-    return assigned === targetDate;
+    return taskMatchesDate(task, targetDate);
   }
 
   taskMatchesDateRange(task: any, startDate?: string, endDate?: string): boolean {
-    if (!startDate && !endDate) return true;
-
-    const rawDates = [
-      this.getTaskAssignedLocalDate(task),
-      task.launchDate && this.toLocalDateString(task.launchDate),
-      task.calledAt && this.toLocalDateString(task.calledAt),
-      task.createdAt && this.toLocalDateString(task.createdAt),
-      task.submittedAt && this.toLocalDateString(task.submittedAt),
-      task.updatedAt && this.toLocalDateString(task.updatedAt),
-      task.dueDate && this.toLocalDateString(task.dueDate),
-    ];
-    const dates = rawDates.filter(Boolean) as string[];
-
-    if (dates.length === 0) return true;
-
-    return dates.some((d) => {
-      if (startDate && endDate) return d >= startDate && d <= endDate;
-      if (startDate) return d >= startDate;
-      if (endDate) return d <= endDate;
-      return true;
-    });
+    return taskMatchesDateRange(task, startDate || "", endDate || "");
   }
-
 
   private findVersionHistoryStartTime(task: any, uploadTime: number): number | null {
     if (!task?.statusHistory?.length) return null;
