@@ -147,7 +147,12 @@ export function isCallMadeByUser(call: any, user: any): boolean {
 }
 
 function parseDateParts(d: string): { year: number; month: number; day: number } | null {
-  const delim = d.includes('-') ? '-' : (d.includes('/') ? '/' : null);
+  let delim: string | null = null;
+  if (d.includes('-')) {
+    delim = '-';
+  } else if (d.includes('/')) {
+    delim = '/';
+  }
   if (!delim) {
     const parsed = new Date(d);
     if (Number.isNaN(parsed.getTime())) return null;
