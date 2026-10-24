@@ -224,7 +224,7 @@
           height: 18px;
           border-radius: 50%;
           background: #E2E8F0;
-          color: #64748B;
+          color: #334155;
           font-size: 10px;
           font-weight: 800;
           cursor: pointer;
@@ -235,7 +235,7 @@
 
           &:hover {
             background: #FEE2E2;
-            color: #DC2626;
+            color: #B91C1C;
           }
         }
       }
@@ -435,7 +435,7 @@
         .lead-source-chip {
           font-size: 0.625rem;
           font-weight: 600;
-          color: #64748B;
+          color: #475569;
           background: #F1F5F9;
           padding: 0.08rem 0.4rem;
           border-radius: 4px;
@@ -598,7 +598,7 @@
     .unassigned-pill {
       font-size: 0.6875rem;
       font-weight: 600;
-      color: #64748B;
+      color: #475569;
       background: #F1F5F9;
       padding: 0.2rem 0.5rem;
       border-radius: 999px;
@@ -704,7 +704,7 @@
 
       .btn-action-primary.btn-sm {
         background: #FF9F1C;
-        color: #FFFFFF;
+        color: #0F172A;
         border: none;
         padding: 0.32rem 0.6rem;
         border-radius: 7px;
@@ -777,7 +777,7 @@
         height: 44px;
         border-radius: 50%;
         background: #F1F5F9;
-        color: #94A3B8;
+        color: #475569;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -839,7 +839,7 @@
 
         &:hover {
           background: #FEE2E2;
-          color: #DC2626;
+          color: #B91C1C;
         }
       }
     }
@@ -961,7 +961,7 @@
 
       &.active-page {
         background: #FF9F1C;
-        color: #FFFFFF;
+        color: #0F172A;
         border-color: #FF9F1C;
         box-shadow: 0 2px 6px rgba(255, 159, 28, 0.3);
       }

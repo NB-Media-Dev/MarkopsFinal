@@ -2,6 +2,9 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
+export type TelecallingDateFilter = 'ALL' | 'TODAY' | 'YESTERDAY' | 'CUSTOM';
+export type TelecallingPipelineStatusFilter = 'ALL' | 'NEW' | 'FOLLOW_UP' | 'INTERESTED' | 'QUALIFIED' | 'RETRY';
+
 @Component({
   selector: 'app-telecalling-pipeline-strip',
   standalone: true,
@@ -11,13 +14,13 @@ import { FormsModule } from '@angular/forms';
 })
 export class TelecallingPipelineStripComponent {
   @Input() viewMode: 'ALL' | 'MEMBERS' | 'ASSIGNED' | 'OVERVIEW' = 'ALL';
-  @Input() dateFilter: 'ALL' | 'TODAY' | 'YESTERDAY' | 'CUSTOM' = 'ALL';
+  @Input() dateFilter: TelecallingDateFilter = 'ALL';
   @Input() customDate = '';
   @Input() todayDate = '';
   @Input() selectedCampaign = 'ALL';
   @Input() availableCampaigns: { name: string; count: number; id?: string }[] = [];
   @Input() assignedLeadsCount = 0;
-  @Input() pipelineStatusFilter: 'ALL' | 'NEW' | 'FOLLOW_UP' | 'INTERESTED' | 'QUALIFIED' | 'RETRY' = 'ALL';
+  @Input() pipelineStatusFilter: TelecallingPipelineStatusFilter = 'ALL';
   @Input() pipelineCounts = {
     all: 0,
     new: 0,
@@ -27,11 +30,11 @@ export class TelecallingPipelineStripComponent {
     retry: 0,
   };
 
-  @Output() dateFilterChange = new EventEmitter<'ALL' | 'TODAY' | 'YESTERDAY' | 'CUSTOM'>();
+  @Output() dateFilterChange = new EventEmitter<TelecallingDateFilter>();
   @Output() customDateChange = new EventEmitter<string>();
   @Output() campaignChange = new EventEmitter<string>();
   @Output() resetFilters = new EventEmitter<void>();
-  @Output() pipelineFilterChange = new EventEmitter<'ALL' | 'NEW' | 'FOLLOW_UP' | 'INTERESTED' | 'QUALIFIED' | 'RETRY'>();
+  @Output() pipelineFilterChange = new EventEmitter<TelecallingPipelineStatusFilter>();
 
   setDateFilter(filter: 'ALL' | 'TODAY' | 'YESTERDAY' | 'CUSTOM') {
     this.dateFilterChange.emit(filter);

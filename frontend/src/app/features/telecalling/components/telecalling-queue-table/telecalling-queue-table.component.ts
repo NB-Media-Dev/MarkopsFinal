@@ -3,6 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LeadItem } from '../../../../core/services/lead-telecalling.service';
 
+export type TelecallingQueueFilter = 'MY_LEADS' | 'ALL_LEADS';
+export type TelecallingQueuePipelineFilter = 'ALL' | 'NEW' | 'FOLLOW_UP' | 'INTERESTED' | 'QUALIFIED' | 'RETRY';
+
 @Component({
   selector: 'app-telecalling-queue-table',
   standalone: true,
@@ -12,12 +15,12 @@ import { LeadItem } from '../../../../core/services/lead-telecalling.service';
 })
 export class TelecallingQueueTableComponent {
   @Input() isTelecaller = false;
-  @Input() queueFilter: 'MY_LEADS' | 'ALL_LEADS' = 'ALL_LEADS';
+  @Input() queueFilter: TelecallingQueueFilter = 'ALL_LEADS';
   @Input() totalLeadsCount = 0;
   @Input() myLeadsCount = 0;
   @Input() paginatedLeads: LeadItem[] = [];
   @Input() filteredAssignedLeads: LeadItem[] = [];
-  @Input() pipelineStatusFilter: 'ALL' | 'NEW' | 'FOLLOW_UP' | 'INTERESTED' | 'QUALIFIED' | 'RETRY' = 'ALL';
+  @Input() pipelineStatusFilter: TelecallingQueuePipelineFilter = 'ALL';
   @Input() searchQuery = '';
   @Input() pipelineFilterLabel = 'All Leads';
   @Input() canLogCalls = false;

@@ -2812,7 +2812,7 @@ export class PackageWorksComponent implements OnInit {
         const stageName = this.resolvePackageStageName(h.newStatus);
         const prevStep = steps.at(-1);
 
-        if (prevStep && prevStep.toStatus === h.newStatus) {
+        if (prevStep?.toStatus === h.newStatus) {
           return;
         }
 
@@ -3177,7 +3177,7 @@ export class PackageWorksComponent implements OnInit {
 
   appendUploadChangelog(snippet: string): void {
     const current = (this.uploadForm.get('changelog')?.value || '').trim();
-    const cleanSnippet = snippet.replace(/^[•\-\*]\s*/, '').trim();
+    const cleanSnippet = snippet.replace(/^[•*-]\s*/, '').trim();
     const bulletText = `• ${cleanSnippet}`;
     const newVal = current ? `${current}\n${bulletText}` : bulletText;
     this.uploadForm.patchValue({ changelog: newVal });

@@ -146,65 +146,61 @@ export function isCallMadeByUser(call: any, user: any): boolean {
   return false;
 }
 
+function parseDateParts(d: string): { year: number; month: number; day: number } | null {
+  const delim = d.includes('-') ? '-' : (d.includes('/') ? '/' : null);
+  if (!delim) {
+    const parsed = new Date(d);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return { year: parsed.getFullYear(), month: parsed.getMonth(), day: parsed.getDate() };
+  }
+  const p = d.split(delim);
+  if (p.length < 3) return null;
+  if (p[0].length === 4) {
+    return {
+      year: Number.parseInt(p[0], 10),
+      month: Number.parseInt(p[1], 10) - 1,
+      day: Number.parseInt(p[2], 10),
+    };
+  }
+  return {
+    day: Number.parseInt(p[0], 10),
+    month: Number.parseInt(p[1], 10) - 1,
+    year: Number.parseInt(p[2], 10),
+  };
+}
+
+function parseTimeParts(t: string): { hours: number; minutes: number } {
+  if (!t) return { hours: 0, minutes: 0 };
+  const cleanTime = t.replace(/Z.*/i, '').trim();
+  if (!cleanTime.includes(':')) return { hours: 0, minutes: 0 };
+  const tp = cleanTime.split(':');
+  return {
+    hours: Number.parseInt(tp[0], 10) || 0,
+    minutes: Number.parseInt(tp[1], 10) || 0,
+  };
+}
+
 export function parseFollowUpDateTime(dateStr?: string, timeStr?: string): Date | null {
   if (!dateStr) return null;
   let d = String(dateStr).trim();
   let t = String(timeStr || '').trim();
 
-
   if (d.includes('T')) {
     const parts = d.split('T');
     d = parts[0];
-    if (!t && parts[1]) t = parts[1];
+    t = t || parts[1] || '';
   } else if (d.includes(' ')) {
     const parts = d.split(/\s+/);
     d = parts[0];
-    if (!t && parts[1]) t = parts[1];
+    t = t || parts[1] || '';
   }
 
-  let year = 0, month = 0, day = 0;
-  if (d.includes('-')) {
-    const p = d.split('-');
-    if (p[0].length === 4) {
-      year = Number.parseInt(p[0], 10);
-      month = Number.parseInt(p[1], 10) - 1;
-      day = Number.parseInt(p[2], 10);
-    } else {
-      day = Number.parseInt(p[0], 10);
-      month = Number.parseInt(p[1], 10) - 1;
-      year = Number.parseInt(p[2], 10);
-    }
-  } else if (d.includes('/')) {
-    const p = d.split('/');
-    if (p[0].length === 4) {
-      year = Number.parseInt(p[0], 10);
-      month = Number.parseInt(p[1], 10) - 1;
-      day = Number.parseInt(p[2], 10);
-    } else {
-      day = Number.parseInt(p[0], 10);
-      month = Number.parseInt(p[1], 10) - 1;
-      year = Number.parseInt(p[2], 10);
-    }
-  } else {
-    const parsed = new Date(d);
-    if (!Number.isNaN(parsed.getTime())) return parsed;
-    return null;
-  }
+  const parts = parseDateParts(d);
+  if (!parts) return null;
 
-  let hours = 0;
-  let minutes = 0;
-  if (t) {
-    const cleanTime = t.replace(/Z.*/i, '').trim();
-    if (cleanTime.includes(':')) {
-      const tp = cleanTime.split(':');
-      hours = Number.parseInt(tp[0], 10) || 0;
-      minutes = Number.parseInt(tp[1], 10) || 0;
-    }
-  }
-
-  const dt = new Date(year, month, day, hours, minutes, 0, 0);
-  if (Number.isNaN(dt.getTime())) return null;
-  return dt;
+  const { hours, minutes } = parseTimeParts(t);
+  const dt = new Date(parts.year, parts.month, parts.day, hours, minutes, 0, 0);
+  return Number.isNaN(dt.getTime()) ? null : dt;
 }
 
 @Component({
@@ -224,6 +220,16 @@ export function parseFollowUpDateTime(dateStr?: string, timeStr?: string): Date 
   styleUrl: './telecalling.component.scss',
 })
 export class TelecallingComponent implements OnInit, OnDestroy {
+  private calculateConversionRate(assignedLen: number, calledCount: number, interestedCount: number): number {
+    if (assignedLen > 0) {
+      return Math.round((interestedCount / assignedLen) * 100);
+    }
+    if (calledCount > 0) {
+      return Math.round((interestedCount / calledCount) * 100);
+    }
+    return 0;
+  }
+
   @Input() embedded = false;
   @Input() viewMode: 'ALL' | 'MEMBERS' | 'ASSIGNED' | 'OVERVIEW' = 'ALL';
 
@@ -274,7 +280,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
 
   readonly telecallerPerformanceList = computed(() => {
     const summary = this.leadService.summary();
-    if (summary && summary.telecallerMetrics && summary.telecallerMetrics.length > 0) {
+    if (summary?.telecallerMetrics && summary.telecallerMetrics.length > 0) {
       return summary.telecallerMetrics;
     }
 
@@ -339,7 +345,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
         notInterestedCount: uniqueNotInterestedLeads.size,
         totalDurationSeconds,
         avgDurationSeconds,
-        conversionRate: assigned.length > 0 ? Math.round((uniqueInterestedLeads.size / assigned.length) * 100) : (uniqueLeadsCalled.size > 0 ? Math.round((uniqueInterestedLeads.size / uniqueLeadsCalled.size) * 100) : 0),
+        conversionRate: this.calculateConversionRate(assigned.length, uniqueLeadsCalled.size, uniqueInterestedLeads.size),
       };
     });
   });
@@ -1067,7 +1073,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     const allFollowUps = this.leadService.followUps();
     const pendingFollowUp = allFollowUps.find((f) => this.matchesPendingFollowUp(f, lId, lPhone, lName));
 
-    if (pendingFollowUp && pendingFollowUp.dueDate) {
+    if (pendingFollowUp?.dueDate) {
       const dt = parseFollowUpDateTime(pendingFollowUp.dueDate, pendingFollowUp.dueTime);
       if (dt && nowMs >= dt.getTime()) {
         return true;
@@ -1167,9 +1173,10 @@ export class TelecallingComponent implements OnInit, OnDestroy {
       this.callOutcome !== 'NO_ANSWER' &&
       this.callOutcome !== 'WRONG_NUMBER';
     const effectiveDuration = shouldShowDur ? (Number(this.callDuration) || 0) : 0;
-    const finalFollowUp = (this.enableReminder && this.followUpDate)
-      ? (this.followUpTime ? `${this.followUpDate} ${this.followUpTime}` : this.followUpDate)
-      : '';
+    let finalFollowUp = '';
+    if (this.enableReminder && this.followUpDate) {
+      finalFollowUp = this.followUpTime ? `${this.followUpDate} ${this.followUpTime}` : this.followUpDate;
+    }
     const finalFollowUpTime = this.enableReminder ? this.followUpTime : '';
 
     this.leadService.leads.update((list) =>
@@ -1196,7 +1203,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (res) => {
           this.closeDrawer();
-          if (res && res.lead) {
+          if (res?.lead) {
             this.leadService.leads.update((list) =>
               list.map((l) => {
                 const matches =
@@ -1227,7 +1234,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
               })
             );
           }
-          if (res && res.call) {
+          if (res?.call) {
             this.leadService.calls.update((cList) => [res.call, ...cList.filter((c) => c.id !== res.call.id)]);
           }
           this.leadService.loadLeads().subscribe();
