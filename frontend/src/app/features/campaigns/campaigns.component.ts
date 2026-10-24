@@ -270,7 +270,7 @@ export class CampaignsComponent implements OnInit {
       }
     }
 
-    if (!this.formModel.name || !this.formModel.name.trim()) {
+    if (!this.formModel.name?.trim()) {
       this.errorMessage.set('Campaign name is required.');
       return;
     }
@@ -404,7 +404,7 @@ export class CampaignsComponent implements OnInit {
     if (q) {
       list = list.filter((c) =>
         c.name.toLowerCase().includes(q) ||
-        (c.objective && c.objective.toLowerCase().includes(q))
+        Boolean(c.objective?.toLowerCase().includes(q))
       );
     }
 

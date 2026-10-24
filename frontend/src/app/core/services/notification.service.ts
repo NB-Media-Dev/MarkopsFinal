@@ -42,7 +42,7 @@ export function cleanNotificationText(str: string | undefined | null): string {
   if (!str) return '';
   return str
     .replaceAll('.trim()', '')
-    .replace(/[\u{1F300}-\u{1FAFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B50}\u{FE00}-\u{FE0F}\u{200D}]/gu, '')
+    .replace(/\u{2B50}\u{FE0F}?/gu, '').replace(/[\u{1F300}-\u{1FAFF}\u{200D}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -210,14 +210,14 @@ export class NotificationService {
     let extractedProduct = '';
     let extractedPackage = '';
 
-    const prodMatch = (notif.message && /Product:\s*([^\r\n->]+)/i.exec(notif.message)) ||
-                      (notif.title && /Product:\s*([^\r\n->]+)/i.exec(notif.title));
+    const prodMatch = (notif.message && /Product:\s*([^>\r\n-]+)/i.exec(notif.message)) ||
+                      (notif.title && /Product:\s*([^>\r\n-]+)/i.exec(notif.title));
     if (prodMatch?.[1]) {
       extractedProduct = prodMatch[1].replace(/package:.*$/i, '').replace(/total.*$/i, '').replaceAll('.trim()', '').trim();
     }
 
-    const pkgMatch = (notif.message && /Package:\s*([^\r\n->]+)/i.exec(notif.message)) ||
-                     (notif.title && /Package:\s*([^\r\n->]+)/i.exec(notif.title));
+    const pkgMatch = (notif.message && /Package:\s*([^>\r\n-]+)/i.exec(notif.message)) ||
+                     (notif.title && /Package:\s*([^>\r\n-]+)/i.exec(notif.title));
     if (pkgMatch?.[1]) {
       extractedPackage = pkgMatch[1].replace(/total.*$/i, '').replace(/assigned.*$/i, '').replaceAll('.trim()', '').trim();
     }
@@ -273,6 +273,34 @@ export class NotificationService {
     return '';
   }
 
+  private resolveLeadPackageAndProduct(leadName: string): { pkg: string; prod: string } {
+    const foundLead = this.leadService.leads().find((l) => {
+      const fullName = `${l.firstName || ''} ${l.lastName || ''}`.trim().toLowerCase();
+      return fullName === leadName || fullName.includes(leadName) || leadName.includes(fullName);
+    });
+    if (!foundLead) return { pkg: '', prod: '' };
+    return {
+      pkg: (foundLead as any).packageName || (foundLead as any).package || foundLead.campaignName || '',
+      prod: (foundLead as any).productName || '',
+    };
+  }
+
+  private resolveFallbackProduct(pkg: string, text: string): string {
+    if (pkg) {
+      const foundPkg = this.packageService.packages().find(
+        (p) => String(p.name).toLowerCase().trim() === pkg.toLowerCase().trim() || String(p.id) === pkg
+      );
+      if (foundPkg?.productId) {
+        const prodObj = FIXED_PACKAGES.find((fp) => fp.id.toLowerCase() === foundPkg.productId!.toLowerCase());
+        if (prodObj) return prodObj.name;
+      }
+    }
+    const cleanPkg = (pkg || text).toLowerCase();
+    if (cleanPkg.includes('class')) return 'Classmate';
+    if (cleanPkg.includes('jesus') || cleanPkg.includes('messang') || cleanPkg.includes('messeng')) return 'Jesus the messanger';
+    return 'Careermate';
+  }
+
   private resolveTelecallingRoute(
     notif: NotificationItem,
     text: string,
@@ -285,38 +313,19 @@ export class NotificationService {
 
     const leadName = this.extractLeadName(notif);
     if (leadName && !pkg) {
-      const foundLead = this.leadService.leads().find((l) => {
-        const fullName = `${l.firstName || ''} ${l.lastName || ''}`.trim().toLowerCase();
-        return fullName === leadName || fullName.includes(leadName) || leadName.includes(fullName);
-      });
-      if (foundLead) {
-        pkg = (foundLead as any).packageName || (foundLead as any).package || foundLead.campaignName || '';
-        if (!prod && (foundLead as any).productName) {
-          prod = (foundLead as any).productName;
-        }
-      }
-    }
-
-    if (!prod && pkg) {
-      const foundPkg = this.packageService.packages().find(
-        (p) => String(p.name).toLowerCase().trim() === pkg.toLowerCase().trim() || String(p.id) === pkg
-      );
-      if (foundPkg?.productId) {
-        const prodObj = FIXED_PACKAGES.find((fp) => fp.id.toLowerCase() === foundPkg.productId!.toLowerCase());
-        if (prodObj) prod = prodObj.name;
+      const leadInfo = this.resolveLeadPackageAndProduct(leadName);
+      pkg = leadInfo.pkg;
+      if (!prod && leadInfo.prod) {
+        prod = leadInfo.prod;
       }
     }
 
     if (!prod) {
-      const cleanPkg = (pkg || text).toLowerCase();
-      if (cleanPkg.includes('class')) prod = 'Classmate';
-      else if (cleanPkg.includes('jesus') || cleanPkg.includes('messang') || cleanPkg.includes('messeng')) prod = 'Jesus the messanger';
-      else prod = 'Careermate';
+      prod = this.resolveFallbackProduct(pkg, text);
     }
 
     const finalProd = prod || 'Careermate';
     const finalPkg = pkg || 'CURRENT AFFAIRS AUGUST -2026';
-
     const tab = currentRole === 'TELECALLER' ? 'TELECALLING' : 'TELECALLER_MEMBERS';
     return `/package-works?package=${encodeURIComponent(finalProd)}&workspace=${encodeURIComponent(finalPkg)}&dept=TELECALLING&tab=${tab}`;
   }

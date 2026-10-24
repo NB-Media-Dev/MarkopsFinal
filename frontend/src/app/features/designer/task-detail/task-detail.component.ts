@@ -15,13 +15,61 @@ import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { UserManagementService } from '../../../core/services/user-management.service';
 import { Task, TaskStatus, TaskPriority, TaskVersion, computeTaskProgressPercent } from '../../../core/models/task.model';
-import { getApiUrl, getBackendBaseUrl } from '../../../core/utils/api-url.utils';
+import { getApiUrl } from '../../../core/utils/api-url.utils';
 import { PackageService } from '../../../core/services/package.service';
 import { resolveTaskProductAndPackage } from '../../../core/models/package.model';
 import { UploadDesignModalComponent } from '../components/modals/upload-design-modal/upload-design-modal.component';
 
 type WorkflowStepState = 'completed' | 'current' | 'upcoming';
 type WorkflowFinalStepState = WorkflowStepState | 'revision';
+
+function unwrapTextQuotes(raw: string): string {
+  let clean = raw.trim();
+  while ((clean.startsWith('"') && clean.endsWith('"')) || (clean.startsWith("'") && clean.endsWith("'"))) {
+    clean = clean.slice(1, -1).trim();
+  }
+  return clean;
+}
+
+function extractBulletItems(rawParts: string[]): string[] {
+  const items: string[] = [];
+  for (const part of rawParts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    if (trimmed.includes('•')) {
+      const sub = trimmed.split('•').map((s) => s.trim()).filter(Boolean);
+      items.push(...sub);
+    } else {
+      const cleanedItem = trimmed.replace(/^[-*]\s*/, '').trim();
+      if (cleanedItem) items.push(cleanedItem);
+    }
+  }
+  return items;
+}
+
+function parseTimelineRemarkMessageAndBullets(
+  rawRemark: string,
+  parseBulletPointsFn: (text: string | null | undefined) => string[]
+): { messageText: string; bullets: string[] } {
+  let messageText = rawRemark;
+  let bullets: string[] = [];
+
+  const uploadMatch = rawRemark.match(/^Uploaded version (v\d+\.\d+[^:]*):\s*([\s\S]*)$/i);
+  if (uploadMatch) {
+    messageText = `Uploaded version ${uploadMatch[1]}:`;
+    bullets = parseBulletPointsFn(unwrapTextQuotes(uploadMatch[2]));
+  } else if (rawRemark.includes('•')) {
+    const leadMatch = rawRemark.match(/^([^•:\r\n]+):\s*([\s\S]*)$/);
+    if (leadMatch) {
+      messageText = leadMatch[1] + ':';
+      bullets = parseBulletPointsFn(leadMatch[2]);
+    } else {
+      bullets = parseBulletPointsFn(rawRemark);
+      messageText = '';
+    }
+  }
+  return { messageText, bullets };
+}
 
 @Component({
   selector: 'app-task-detail',
@@ -499,34 +547,14 @@ export class TaskDetailComponent implements OnInit {
 
   parseBulletPoints(text: string | null | undefined): string[] {
     if (!text) return [];
-    let clean = String(text).trim();
-    while ((clean.startsWith('"') && clean.endsWith('"')) || (clean.startsWith("'") && clean.endsWith("'"))) {
-      clean = clean.slice(1, -1).trim();
-    }
+    const clean = unwrapTextQuotes(String(text));
     if (!clean) return [];
 
-    let rawParts: string[] = [];
-    if (clean.includes('\n')) {
-      rawParts = clean.split('\n');
-    } else if (clean.includes('•')) {
-      rawParts = clean.split('•');
-    } else {
-      rawParts = [clean];
-    }
+    const rawParts = clean.includes('\n')
+      ? clean.split('\n')
+      : (clean.includes('•') ? clean.split('•') : [clean]);
 
-    const items: string[] = [];
-    for (const part of rawParts) {
-      const trimmed = part.trim();
-      if (!trimmed) continue;
-      if (trimmed.includes('•')) {
-        const sub = trimmed.split('•').map((s) => s.trim()).filter(Boolean);
-        items.push(...sub);
-      } else {
-        const cleanedItem = trimmed.replace(/^[\-\*]\s*/, '').trim();
-        if (cleanedItem) items.push(cleanedItem);
-      }
-    }
-
+    const items = extractBulletItems(rawParts);
     return items.length > 0 ? items : [clean];
   }
 
@@ -648,6 +676,218 @@ export class TaskDetailComponent implements OnInit {
     ];
   }
 
+  private buildInitTimelineNode(
+    task: Task,
+    creatorName: string,
+    creatorRole: string,
+    assigneeName: string
+  ): any {
+    return {
+      id: `init_${task.id}`,
+      hash: this.generateShortHash(`init_${task.id}_${task.createdAt}`),
+      authorLabel: `${this.getRolePrefix(creatorRole)} (${creatorName})`,
+      authorRole: creatorRole,
+      authorRoleClass: this.getRoleClass(creatorRole),
+      message: task.description
+        ? `Created task "${task.title}": "${task.description}" (Assigned to ${assigneeName})`
+        : `Created and assigned task "${task.title}" to ${assigneeName}`,
+      type: 'INIT',
+      badge: 'ASSIGNED',
+      badgeClass: 'badge-init',
+      nodeClass: 'git-node-init',
+      createdAt: task.createdAt || new Date().toISOString(),
+      relativeTime: this.formatCommitDate(task.createdAt),
+      fileUrl: task.attachmentUrl,
+      fileName: task.attachmentName,
+      fileContent: task.content,
+    };
+  }
+
+  private resolveTimelineActor(
+    h: any,
+    assigneeName: string,
+    creatorName: string,
+    creatorRole: string
+  ): { actorName: string; actorRole: string } {
+    const remarkStr = String(h.remark || '').toLowerCase();
+    const isDesignerAction =
+      h.newStatus === 'IN_PROGRESS' ||
+      h.newStatus === 'ACCEPTED' ||
+      h.newStatus === 'SUBMITTED' ||
+      h.newStatus === 'RESUBMITTED' ||
+      remarkStr.includes('accepted') ||
+      remarkStr.includes('started');
+
+    if (isDesignerAction) {
+      return {
+        actorRole: 'DESIGNER',
+        actorName: assigneeName || h.actorName || 'Designer',
+      };
+    }
+
+    const isCreatorAction =
+      h.newStatus === 'REVISION_REQUIRED' ||
+      h.newStatus === 'APPROVED' ||
+      h.newStatus === 'ASSIGNED' ||
+      !h.previousStatus ||
+      remarkStr.includes('task created');
+
+    if (isCreatorAction) {
+      return {
+        actorRole: creatorRole,
+        actorName: creatorName || h.actorName || 'Manager',
+      };
+    }
+
+    return {
+      actorName: h.actorName || creatorName,
+      actorRole: (h.actorRole || '').toUpperCase() || creatorRole,
+    };
+  }
+
+  private resolveTimelineStatusVisuals(status: string): {
+    type: 'STATUS' | 'REVISION' | 'APPROVED';
+    badgeClass: string;
+    nodeClass: string;
+    badgeLabel: string;
+  } {
+    switch (status) {
+      case 'REVISION_REQUIRED':
+        return { type: 'REVISION', badgeClass: 'badge-danger', nodeClass: 'git-node-danger', badgeLabel: 'REDESIGN REQUIRED' };
+      case 'APPROVED':
+      case 'COMPLETED':
+      case 'PUBLISHED':
+        return { type: 'APPROVED', badgeClass: 'badge-success', nodeClass: 'git-node-success', badgeLabel: 'APPROVED' };
+      case 'IN_PROGRESS':
+        return { type: 'STATUS', badgeClass: 'badge-warning', nodeClass: 'git-node-warning', badgeLabel: 'IN PROCESS' };
+      case 'ACCEPTED':
+        return { type: 'STATUS', badgeClass: 'badge-primary', nodeClass: 'git-node-primary', badgeLabel: 'ACCEPTED' };
+      case 'ASSIGNED':
+        return { type: 'STATUS', badgeClass: 'badge-init', nodeClass: 'git-node-init', badgeLabel: 'ASSIGNED' };
+      case 'SUBMITTED':
+      case 'RESUBMITTED':
+      case 'UNDER_REVIEW':
+        return { type: 'STATUS', badgeClass: 'badge-version', nodeClass: 'git-node-cyan', badgeLabel: 'UNDER REVIEW' };
+      default:
+        return { type: 'STATUS', badgeClass: 'badge-info', nodeClass: 'git-node-info', badgeLabel: status };
+    }
+  }
+
+  private shouldSkipStatusHistory(h: any, task: Task): boolean {
+    if (!h.newStatus) return true;
+    const remarkStr = String(h.remark || '').toLowerCase();
+    return Boolean(
+      (h.newStatus === 'SUBMITTED' || remarkStr.includes('uploaded creative version') || remarkStr.includes('uploaded design asset')) &&
+      task.versions &&
+      task.versions.length > 0
+    );
+  }
+
+  private appendStatusHistoryNodes(
+    task: Task,
+    creatorName: string,
+    creatorRole: string,
+    assigneeName: string,
+    seenNodeKeys: Set<string>,
+    nodes: any[]
+  ): void {
+    if (!task.statusHistory || task.statusHistory.length === 0) return;
+
+    const sortedHistory = [...task.statusHistory].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
+    let lastSeenStatus: string | null = null;
+
+    for (const h of sortedHistory) {
+      if (this.shouldSkipStatusHistory(h, task)) continue;
+
+      const timeMinuteBucket = h.createdAt ? Math.floor(new Date(h.createdAt).getTime() / 120000) : 0;
+      const dedupKey = `STATUS_${h.newStatus}_${timeMinuteBucket}`;
+      if (seenNodeKeys.has(dedupKey) || h.newStatus === lastSeenStatus) {
+        continue;
+      }
+      seenNodeKeys.add(dedupKey);
+      lastSeenStatus = h.newStatus;
+
+      const actor = this.resolveTimelineActor(h, assigneeName, creatorName, creatorRole);
+      const rolePrefix = this.getRolePrefix(actor.actorRole);
+      const visuals = this.resolveTimelineStatusVisuals(h.newStatus);
+
+      const fallbackRemark =
+        h.newStatus === 'REVISION_REQUIRED'
+          ? `Requested Redesign / Revision: "${task.reviewerFeedback || h.remark || 'Please update design as per specifications'}"`
+          : h.remark || `Updated status to ${visuals.badgeLabel}`;
+
+      const rawRemark = h.remark || fallbackRemark;
+      const { messageText, bullets } = parseTimelineRemarkMessageAndBullets(rawRemark, (t) => this.parseBulletPoints(t));
+
+      nodes.push({
+        id: h.id || `hist_${h.createdAt || Date.now()}_${nodes.length}`,
+        hash: this.generateShortHash(`hist_${h.id || h.createdAt}`),
+        authorLabel: `${rolePrefix} (${actor.actorName})`,
+        authorRole: actor.actorRole,
+        authorRoleClass: this.getRoleClass(actor.actorRole),
+        message: messageText,
+        bulletPoints: bullets,
+        type: visuals.type,
+        badge: visuals.badgeLabel,
+        badgeClass: visuals.badgeClass,
+        nodeClass: visuals.nodeClass,
+        createdAt: h.createdAt || new Date().toISOString(),
+        relativeTime: this.formatCommitDate(h.createdAt),
+      });
+    }
+  }
+
+  private appendVersionNodes(
+    task: Task,
+    assigneeName: string,
+    seenNodeKeys: Set<string>,
+    nodes: any[]
+  ): void {
+    if (!task.versions || task.versions.length === 0) return;
+
+    for (const v of task.versions) {
+      const verKey = `VERSION_${v.versionNumber}_${v.fileName || ''}`;
+      if (seenNodeKeys.has(verKey)) continue;
+      seenNodeKeys.add(verKey);
+
+      const authorName = assigneeName || v.submittedByName || 'Designer';
+      const authorRole = 'DESIGNER';
+      const rolePrefix = 'Designer';
+
+      const verBullets = this.parseBulletPoints(v.changelog);
+      const verMessage =
+        verBullets.length > 0
+          ? `Uploaded version v${v.versionNumber}.0 (${v.fileName}):`
+          : `Uploaded design asset v${v.versionNumber}.0 (${v.fileName})`;
+
+      const duration = this.getVersionDuration(v, task);
+
+      nodes.push({
+        id: v.id || `ver_${v.versionNumber}`,
+        hash: this.generateShortHash(`ver_${v.id || v.versionNumber}_${v.createdAt}`),
+        authorLabel: `${rolePrefix} (${authorName})`,
+        authorRole,
+        authorRoleClass: this.getRoleClass(authorRole),
+        message: verMessage,
+        bulletPoints: verBullets,
+        type: 'VERSION',
+        badge: `v${v.versionNumber}.0 UNDER REVIEW`,
+        badgeClass: 'badge-version',
+        nodeClass: 'git-node-cyan',
+        createdAt: v.createdAt || new Date().toISOString(),
+        relativeTime: this.formatCommitDate(v.createdAt),
+        fileUrl: (v as any).fileUrl || v.filePath,
+        fileName: v.fileName,
+        fileContent: v.fileContent,
+        versionNumber: v.versionNumber,
+        duration,
+      });
+    }
+  }
+
   getGitCommitTimeline(task: Task | null): {
     id: string;
     hash: string;
@@ -677,208 +917,19 @@ export class TaskDetailComponent implements OnInit {
     const creatorRole = task.creatorRole || 'ADMINISTRATOR';
     const assigneeName = this.getAssigneeName(task);
 
-    const hasInitialHistory =
-      task.statusHistory &&
-      task.statusHistory.some(
+    const hasInitialHistory = Boolean(
+      task.statusHistory?.some(
         (h) => !h.previousStatus || h.newStatus === 'ASSIGNED' || String(h.remark).toLowerCase().includes('task created')
-      );
+      )
+    );
 
     if (!hasInitialHistory) {
-      const initKey = `INIT_${task.createdAt || ''}`;
-      seenNodeKeys.add(initKey);
-      nodes.push({
-        id: `init_${task.id}`,
-        hash: this.generateShortHash(`init_${task.id}_${task.createdAt}`),
-        authorLabel: `${this.getRolePrefix(creatorRole)} (${creatorName})`,
-        authorRole: creatorRole,
-        authorRoleClass: this.getRoleClass(creatorRole),
-        message: task.description
-          ? `Created task "${task.title}": "${task.description}" (Assigned to ${assigneeName})`
-          : `Created and assigned task "${task.title}" to ${assigneeName}`,
-        type: 'INIT',
-        badge: 'ASSIGNED',
-        badgeClass: 'badge-init',
-        nodeClass: 'git-node-init',
-        createdAt: task.createdAt || new Date().toISOString(),
-        relativeTime: this.formatCommitDate(task.createdAt),
-        fileUrl: task.attachmentUrl,
-        fileName: task.attachmentName,
-        fileContent: task.content,
-      });
+      seenNodeKeys.add(`INIT_${task.createdAt || ''}`);
+      nodes.push(this.buildInitTimelineNode(task, creatorName, creatorRole, assigneeName));
     }
 
-    if (task.statusHistory && task.statusHistory.length > 0) {
-      const sortedHistory = [...task.statusHistory].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-
-      let lastSeenStatus: string | null = null;
-
-      for (const h of sortedHistory) {
-        if (!h.newStatus) continue;
-        const remarkStr = String(h.remark || '').toLowerCase();
-        if (
-          (h.newStatus === 'SUBMITTED' || remarkStr.includes('uploaded creative version') || remarkStr.includes('uploaded design asset')) &&
-          task.versions &&
-          task.versions.length > 0
-        ) {
-          continue;
-        }
-
-  
-        const timeMinuteBucket = h.createdAt ? Math.floor(new Date(h.createdAt).getTime() / 120000) : 0;
-        const dedupKey = `STATUS_${h.newStatus}_${timeMinuteBucket}`;
-        if (seenNodeKeys.has(dedupKey) || h.newStatus === lastSeenStatus) {
-          continue;
-        }
-        seenNodeKeys.add(dedupKey);
-        lastSeenStatus = h.newStatus;
-
-        let actorName = h.actorName;
-        let actorRole = (h.actorRole || '').toUpperCase();
-
-        const isDesignerAction =
-          h.newStatus === 'IN_PROGRESS' ||
-          h.newStatus === 'ACCEPTED' ||
-          h.newStatus === 'SUBMITTED' ||
-          h.newStatus === 'RESUBMITTED' ||
-          remarkStr.includes('accepted') ||
-          remarkStr.includes('started');
-        const isCreatorAction =
-          h.newStatus === 'REVISION_REQUIRED' ||
-          h.newStatus === 'APPROVED' ||
-          h.newStatus === 'ASSIGNED' ||
-          !h.previousStatus ||
-          remarkStr.includes('task created');
-
-        if (isDesignerAction) {
-          actorRole = 'DESIGNER';
-          actorName = assigneeName || actorName || 'Designer';
-        } else if (isCreatorAction) {
-          actorRole = creatorRole;
-          actorName = creatorName || actorName || 'Manager';
-        } else {
-          actorName = actorName || creatorName;
-          actorRole = actorRole || creatorRole;
-        }
-
-        const rolePrefix = this.getRolePrefix(actorRole);
-
-        let type: 'STATUS' | 'REVISION' | 'APPROVED' = 'STATUS';
-        let badgeClass = 'badge-info';
-        let nodeClass = 'git-node-info';
-        let badgeLabel: string = h.newStatus;
-
-        if (h.newStatus === 'REVISION_REQUIRED') {
-          type = 'REVISION';
-          badgeClass = 'badge-danger';
-          nodeClass = 'git-node-danger';
-          badgeLabel = 'REDESIGN REQUIRED';
-        } else if (h.newStatus === 'APPROVED' || h.newStatus === 'COMPLETED' || h.newStatus === 'PUBLISHED') {
-          type = 'APPROVED';
-          badgeClass = 'badge-success';
-          nodeClass = 'git-node-success';
-          badgeLabel = 'APPROVED';
-        } else if (h.newStatus === 'IN_PROGRESS') {
-          badgeClass = 'badge-warning';
-          nodeClass = 'git-node-warning';
-          badgeLabel = 'IN PROCESS';
-        } else if (h.newStatus === 'ACCEPTED') {
-          badgeClass = 'badge-primary';
-          nodeClass = 'git-node-primary';
-          badgeLabel = 'ACCEPTED';
-        } else if (h.newStatus === 'ASSIGNED') {
-          badgeClass = 'badge-init';
-          nodeClass = 'git-node-init';
-          badgeLabel = 'ASSIGNED';
-        } else if (h.newStatus === 'SUBMITTED' || h.newStatus === 'RESUBMITTED' || h.newStatus === 'UNDER_REVIEW') {
-          badgeClass = 'badge-version';
-          nodeClass = 'git-node-cyan';
-          badgeLabel = 'UNDER REVIEW';
-        }
-
-        const fallbackRemark =
-          h.newStatus === 'REVISION_REQUIRED'
-            ? `Requested Redesign / Revision: "${task.reviewerFeedback || h.remark || 'Please update design as per specifications'}"`
-            : h.remark || `Updated status to ${badgeLabel}`;
-
-        const rawRemark = h.remark || fallbackRemark;
-        let messageText = rawRemark;
-        let bullets: string[] = [];
-
-        const uploadMatch = rawRemark.match(/^Uploaded version (v\d+\.\d+[^:]*):\s*"?([\s\S]*?)"?$/i);
-        if (uploadMatch) {
-          messageText = `Uploaded version ${uploadMatch[1]}:`;
-          bullets = this.parseBulletPoints(uploadMatch[2]);
-        } else if (rawRemark.includes('•')) {
-          const leadMatch = rawRemark.match(/^([^•:\r\n]+):\s*([\s\S]*)$/);
-          if (leadMatch) {
-            messageText = leadMatch[1] + ':';
-            bullets = this.parseBulletPoints(leadMatch[2]);
-          } else {
-            bullets = this.parseBulletPoints(rawRemark);
-            messageText = '';
-          }
-        }
-
-        nodes.push({
-          id: h.id || `hist_${h.createdAt || Date.now()}_${nodes.length}`,
-          hash: this.generateShortHash(`hist_${h.id || h.createdAt}`),
-          authorLabel: `${rolePrefix} (${actorName})`,
-          authorRole: actorRole,
-          authorRoleClass: this.getRoleClass(actorRole),
-          message: messageText,
-          bulletPoints: bullets,
-          type,
-          badge: badgeLabel,
-          badgeClass,
-          nodeClass,
-          createdAt: h.createdAt || new Date().toISOString(),
-          relativeTime: this.formatCommitDate(h.createdAt),
-        });
-      }
-    }
-
-    if (task.versions && task.versions.length > 0) {
-      for (const v of task.versions) {
-        const verKey = `VERSION_${v.versionNumber}_${v.fileName || ''}`;
-        if (seenNodeKeys.has(verKey)) continue;
-        seenNodeKeys.add(verKey);
-
-        const authorName = assigneeName || v.submittedByName || 'Designer';
-        const authorRole = 'DESIGNER';
-        const rolePrefix = 'Designer';
-
-        const verBullets = this.parseBulletPoints(v.changelog);
-        const verMessage =
-          verBullets.length > 0
-            ? `Uploaded version v${v.versionNumber}.0 (${v.fileName}):`
-            : `Uploaded design asset v${v.versionNumber}.0 (${v.fileName})`;
-
-        const duration = this.getVersionDuration(v, task);
-
-        nodes.push({
-          id: v.id || `ver_${v.versionNumber}`,
-          hash: this.generateShortHash(`ver_${v.id || v.versionNumber}_${v.createdAt}`),
-          authorLabel: `${rolePrefix} (${authorName})`,
-          authorRole,
-          authorRoleClass: this.getRoleClass(authorRole),
-          message: verMessage,
-          bulletPoints: verBullets,
-          type: 'VERSION',
-          badge: `v${v.versionNumber}.0 UNDER REVIEW`,
-          badgeClass: 'badge-version',
-          nodeClass: 'git-node-cyan',
-          createdAt: v.createdAt || new Date().toISOString(),
-          relativeTime: this.formatCommitDate(v.createdAt),
-          fileUrl: (v as any).fileUrl || v.filePath,
-          fileName: v.fileName,
-          fileContent: v.fileContent,
-          versionNumber: v.versionNumber,
-          duration,
-        });
-      }
-    }
+    this.appendStatusHistoryNodes(task, creatorName, creatorRole, assigneeName, seenNodeKeys, nodes);
+    this.appendVersionNodes(task, assigneeName, seenNodeKeys, nodes);
 
     return nodes.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }

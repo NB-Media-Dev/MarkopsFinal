@@ -290,7 +290,7 @@ export class AdFormModalComponent implements OnInit, OnChanges {
       const matchedCmp = this.campaigns.find(
         (c) =>
           c.name.toLowerCase().includes(pkg) ||
-          ((c as any).packageName && (c as any).packageName.toLowerCase().includes(pkg))
+          Boolean((c as any).packageName?.toLowerCase().includes(pkg))
       );
       if (matchedCmp) {
         this.formModel.campaignId = matchedCmp.id;

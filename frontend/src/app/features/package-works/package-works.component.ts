@@ -1108,304 +1108,270 @@ export class PackageWorksComponent implements OnInit {
       }
     };
 
-    return (rawUsers || []).map((u) => {
-      const roleInfo = getRoleInfo(u.role);
-      const nameLower = (u.fullName || '').toLowerCase().trim();
-      const userIdStr = String(u.id).trim();
-
-      if (u.role === 'TELECALLER') {
-        const userLeads = scopedLeads.filter((l) => {
-          const assignId = String(l.assignedTo || (l as any).assigned_to || '').trim().toLowerCase();
-          const assignName = (l.assigneeName || (l as any).assignee_name || '').toLowerCase().trim();
-          const userEmailLower = (u.email || '').toLowerCase().trim();
-          if (assignId === userIdStr.toLowerCase()) return true;
-          if (assignId && userEmailLower && assignId === userEmailLower) return true;
-          if (assignName && (assignName === nameLower || nameLower.includes(assignName) || assignName.includes(nameLower))) return true;
-          return false;
-        });
-
-        const prodName = ws ? (ws.productId?.includes('jesus') ? 'Jesus the messanger' : (ws.productId?.includes('class') ? 'Classmate' : 'Careermate')) : pkgMeta.name;
-        const pkgDisplayName = ws ? ws.name : pkgMeta.name;
-
-        const userLeadRecords = userLeads.map((l) => {
-          return this.mapLeadToPerformanceItem(l, allCalls, allPkgs, ws, prodName, pkgDisplayName, pkgMeta);
-        });
-
-        const callsMade = userLeadRecords.filter((r) => r.calledAt || r.callAttempts > 0).length;
-        const interestedLeads = userLeadRecords.filter((r) => ['INTERESTED', 'QUALIFIED', 'CONVERTED', 'PAID', 'HOT'].includes(r.callOutcome)).length;
-        const conversionPct = userLeadRecords.length > 0 ? Math.round((callsMade / userLeadRecords.length) * 100) : 0;
-
-        return {
-          user: u,
-          userId: String(u.id),
-          name: u.fullName || u.email?.split('@')[0] || 'Telecaller',
-          email: u.email || '',
-          role: u.role,
-          roleLabel: roleInfo.label,
-          roleBadgeClass: roleInfo.badgeClass,
-          avatarColor: roleInfo.avatarClass,
-          department: u.department || 'Telecalling',
-          isActive: u.isActive !== false,
-          outputMain: `${callsMade} Calls Made`,
-          outputSub: `${userLeadRecords.length} Assigned Leads`,
-          efficiencyMain: userLeadRecords.length > 0 ? `${conversionPct}%` : '—',
-          efficiencySub: 'Called',
-          qualificationPct: conversionPct,
-          ratingScore: '—',
-          ratingBadge: 'Active Staff',
-          ratingBadgeClass: 'badge-target',
-          tasksAssignedCount: userLeadRecords.length,
-          tasksCompletedCount: callsMade,
-          tasksInProgressCount: userLeadRecords.length - callsMade,
-          tasksRevisionCount: 0,
-          taskCompletionPct: conversionPct,
-          tasks: userLeadRecords,
-          roleMetrics: [
-            { label: 'Assigned Leads', value: userLeadRecords.length },
-            { label: 'Calls Made', value: callsMade },
-            { label: 'Interested / Warm', value: interestedLeads },
-          ],
-        };
-      }
-
-      if (u.role === 'DIGITAL_MARKETING') {
-        const prodName = ws ? (ws.productId?.includes('jesus') ? 'Jesus the messanger' : (ws.productId?.includes('class') ? 'Classmate' : 'Careermate')) : pkgMeta.name;
-        const pkgDisplayName = ws ? ws.name : pkgMeta.name;
-        const userEmailLower = (u.email || '').toLowerCase().trim();
-        const matchingAds = (allAds || []).filter((a) => {
-          const adCreatorId = String((a as any).creatorId || (a as any).creator_id || (a as any).userId || (a as any).ownerId || (a as any).createdBy || '').trim().toLowerCase();
-          const adCreatorEmail = String((a as any).creatorEmail || (a as any).ownerEmail || '').trim().toLowerCase();
-          const adCreatorName = String((a as any).creatorName || (a as any).ownerName || '').trim().toLowerCase();
-
-          const matchingCmp = this.filteredCampaigns().find((c) => String(c.id) === String(a.campaignId) || c.name.toLowerCase() === (a.campaignName || '').toLowerCase().trim());
-          const cmpOwnerId = String(matchingCmp?.ownerId || (matchingCmp as any)?.owner_id || (matchingCmp as any)?.createdBy || '').trim().toLowerCase();
-          const cmpOwnerEmail = String((matchingCmp as any)?.ownerEmail || (matchingCmp as any)?.creatorEmail || '').trim().toLowerCase();
-          const cmpOwnerName = String(matchingCmp?.ownerName || '').trim().toLowerCase();
-
-          const belongsToUser =
-            (adCreatorId && (adCreatorId === userIdStr.toLowerCase() || adCreatorId === userEmailLower)) ||
-            (adCreatorEmail && adCreatorEmail === userEmailLower) ||
-            (adCreatorName && (adCreatorName === nameLower || nameLower.includes(adCreatorName) || adCreatorName.includes(nameLower))) ||
-            (cmpOwnerId && (cmpOwnerId === userIdStr.toLowerCase() || cmpOwnerId === userEmailLower)) ||
-            (cmpOwnerEmail && cmpOwnerEmail === userEmailLower) ||
-            (cmpOwnerName && (cmpOwnerName === nameLower || nameLower.includes(cmpOwnerName) || cmpOwnerName.includes(nameLower)));
-
-          if (!belongsToUser) {
-            return false;
-          }
-
-          if (ws) {
-            const wsName = (ws.name || '').toLowerCase().trim();
-            const wsId = String(ws.id || '').toLowerCase().trim();
-            const adPkg = ((a as any).packageName || (a as any).package || '').toLowerCase().trim();
-            const adPkgId = String((a as any).packageId || (a as any).package_id || '').toLowerCase().trim();
-            const adProd = (a.productId || (a as any).product_id || '').toLowerCase().trim();
-            const adCmpName = (a.campaignName || '').toLowerCase().trim();
-            const adName = (a.name || '').toLowerCase().trim();
-
-            if (adPkg && (adPkg === wsName || adPkg === wsId)) return true;
-            if (adPkgId && (adPkgId === wsId || adPkgId === wsName)) return true;
-            if (adProd && expectedProductId && adProd.includes(expectedProductId.toLowerCase())) return true;
-            if (adCmpName && (adCmpName.includes(wsName) || wsName.includes(adCmpName))) return true;
-            if (adName && (adName.includes(wsName) || wsName.includes(adName))) return true;
-
-            if (matchingCmp) return true;
-            return false;
-          }
-
-          const activeProd = this.activePackageName().toLowerCase().trim();
-          const adProd = (a.productId || (a as any).product_id || '').toLowerCase().trim();
-          if (adProd && (adProd.includes(activeProd) || activeProd.includes(adProd))) return true;
-          if (matchingCmp) return true;
-          return false;
-        });
-
-        const userAdRecords = matchingAds.map((ad) => {
-          const adLeads = scopedLeads.filter((l) => {
-            const lAdId = String((l as any).adId || (l as any).ad_id || '').toLowerCase().trim();
-            const lAdName = String((l as any).adName || (l as any).ad_name || '').toLowerCase().trim();
-            const lCmpId = String(l.campaignId || (l as any).campaign_id || '').toLowerCase().trim();
-            const lCmpName = String(l.campaignName || '').toLowerCase().trim();
-
-            if (lAdId && lAdId === String(ad.id).toLowerCase()) return true;
-            if (lAdName && lAdName === ad.name.toLowerCase().trim()) return true;
-            if (lCmpId && lCmpId === String(ad.campaignId).toLowerCase()) return true;
-            if (lCmpName && lCmpName === (ad.campaignName || '').toLowerCase().trim()) return true;
-            return false;
-          });
-
-          const totalLeads = adLeads.length > 0 ? adLeads.length : (ad.leadsCount || 0);
-          const resolved = resolveTaskProductAndPackage({
-            productId: ad.productId,
-            packageName: ad.packageName || ad.campaignName,
-            campaignName: ad.campaignName,
-            title: ad.name,
-          }, allPkgs);
-
-          const fallbackDate = ws?.createdAt ?? new Date().toISOString();
-          const adDate = (ad as any).createdAt || ad.lastSyncedAt || fallbackDate;
-
-          return {
-            id: ad.id,
-            adId: ad.id,
-            title: ad.name,
-            adName: ad.name,
-            campaignName: ad.campaignName || 'General Campaign',
-            campaignId: ad.campaignId,
-            platform: ad.platform || 'Meta Ads',
-            productName: resolved.productName || (ws ? prodName : pkgMeta.name),
-            packageName: resolved.packageName || (ws ? pkgDisplayName : pkgMeta.name),
-            productId: resolved.productId || expectedProductId,
-            packageId: (resolved as any).packageId || (ws ? ws.id : undefined),
-            createdAt: adDate,
-            launchDate: adDate,
-            leadsCount: totalLeads,
-            status: (ad.status || 'ACTIVE').toUpperCase(),
-            isAdRecord: true,
-          };
-        });
-
-        const userTasks = enrichedTasks.filter((t) => {
-          const assignId = String(t.assignedTo || (t as any).assigned_to || '').trim().toLowerCase();
-          const assignName = (t.assigneeName || (t as any).assignee_name || '').toLowerCase().trim();
-          const creatorId = String(t.createdBy || (t as any).created_by || '').trim().toLowerCase();
-          const creatorName = ((t as any).creatorName || (t as any).creator_name || '').toLowerCase().trim();
-          const userEmailLower = (u.email || '').toLowerCase().trim();
-
-          const isAssigned = Boolean(
-            (assignId && assignId !== '0' && assignId !== 'null' && assignId !== 'undefined') ||
-            (assignName && assignName !== 'unassigned')
-          );
-
-          if (isAssigned) {
-            if (assignId === userIdStr.toLowerCase()) return true;
-            if (assignId && userEmailLower && assignId === userEmailLower) return true;
-            if (assignName && (assignName === nameLower || nameLower.includes(assignName) || assignName.includes(nameLower))) return true;
-            return false;
-          }
-
-          if (creatorId === userIdStr.toLowerCase()) return true;
-          if (creatorId && userEmailLower && creatorId === userEmailLower) return true;
-          if (creatorName && (creatorName === nameLower || nameLower.includes(creatorName) || creatorName.includes(nameLower))) return true;
-          return false;
-        });
-
-        const taskRecords = userTasks.filter((t) => !userAdRecords.some((a) => a.id === t.id)).map((t) => ({
-          id: t.id,
-          adId: t.id,
-          title: t.title,
-          adName: t.title,
-          campaignName: t.campaignName || t.packageName || 'Marketing Deliverable',
-          campaignId: t.campaignId || '',
-          platform: (t as any).platform || 'Multi-Channel',
-          productName: t.productName || (ws ? prodName : pkgMeta.name),
-          packageName: t.packageName || (ws ? pkgDisplayName : pkgMeta.name),
-          productId: t.productId || expectedProductId,
-          createdAt: t.createdAt,
-          launchDate: t.createdAt,
-          leadsCount: 0,
-          status: t.status || 'ACTIVE',
-          isAdRecord: false,
-        }));
-
-        const allDmRecords = [...userAdRecords, ...taskRecords];
-        const totalLeadsGen = allDmRecords.reduce((acc, curr) => acc + (Number(curr.leadsCount) || 0), 0);
-        const activeAdsCount = allDmRecords.filter((r) => r.status === 'ACTIVE').length;
-        const pausedAdsCount = allDmRecords.filter((r) => r.status === 'PAUSED').length;
-
-        return {
-          user: u,
-          userId: String(u.id),
-          name: u.fullName || u.email?.split('@')[0] || 'Digital Marketer',
-          email: u.email || '',
-          role: u.role,
-          roleLabel: roleInfo.label,
-          roleBadgeClass: roleInfo.badgeClass,
-          avatarColor: roleInfo.avatarClass,
-          department: u.department || 'Digital Marketing',
-          isActive: u.isActive !== false,
-          outputMain: `${totalLeadsGen} Leads Generated`,
-          outputSub: `${allDmRecords.length} Ads Managed`,
-          efficiencyMain: `${activeAdsCount} Active`,
-          efficiencySub: 'Campaigns',
-          qualificationPct: allDmRecords.length > 0 ? Math.round((activeAdsCount / allDmRecords.length) * 100) : 0,
-          ratingScore: '—',
-          ratingBadge: 'Active Staff',
-          ratingBadgeClass: 'badge-target',
-          tasksAssignedCount: allDmRecords.length,
-          tasksCompletedCount: activeAdsCount,
-          tasksInProgressCount: pausedAdsCount,
-          tasksRevisionCount: 0,
-          taskCompletionPct: allDmRecords.length > 0 ? Math.round((activeAdsCount / allDmRecords.length) * 100) : 0,
-          tasks: allDmRecords,
-          roleMetrics: [
-            { label: 'Ads Managed', value: allDmRecords.length },
-            { label: 'Leads Generated', value: totalLeadsGen },
-            { label: 'Active Ads', value: activeAdsCount },
-          ],
-        };
-      }
-
-      const userTasks = enrichedTasks.filter((t) => {
-        const assignId = String(t.assignedTo || (t as any).assigned_to || '').trim().toLowerCase();
-        const assignName = (t.assigneeName || (t as any).assignee_name || '').toLowerCase().trim();
-        const creatorId = String(t.createdBy || (t as any).created_by || '').trim().toLowerCase();
-        const creatorName = ((t as any).creatorName || (t as any).creator_name || '').toLowerCase().trim();
-        const userEmailLower = (u.email || '').toLowerCase().trim();
-
-        if (assignId === userIdStr.toLowerCase()) return true;
-        if (assignId && userEmailLower && assignId === userEmailLower) return true;
-        if (assignName && (assignName === nameLower || nameLower.includes(assignName) || assignName.includes(nameLower))) return true;
-
-        if (u.role === 'BDM' || u.role === 'DIGITAL_MARKETING') {
-          if (creatorId === userIdStr.toLowerCase()) return true;
-          if (creatorId && userEmailLower && creatorId === userEmailLower) return true;
-          if (creatorName && (creatorName === nameLower || nameLower.includes(creatorName) || creatorName.includes(nameLower))) return true;
-        }
-
-        return false;
-      });
-
-      const tasksCompleted = userTasks.filter((t) => t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED').length;
-      const tasksInProgress = userTasks.filter((t) => t.status !== 'APPROVED' && t.status !== 'COMPLETED' && t.status !== 'PUBLISHED').length;
-      const tasksRevision = userTasks.filter((t) => t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED').length;
-      const completionPct = userTasks.length > 0 ? Math.round((tasksCompleted / userTasks.length) * 100) : 0;
-
-      return {
-        user: u,
-        userId: String(u.id),
-        name: u.fullName || u.email?.split('@')[0] || 'User',
-        email: u.email || '',
-        role: u.role,
-        roleLabel: roleInfo.label,
-        roleBadgeClass: roleInfo.badgeClass,
-        avatarColor: roleInfo.avatarClass,
-        department: u.department || 'Operations',
-        isActive: u.isActive !== false,
-        outputMain: `${tasksCompleted} Done`,
-        outputSub: `${userTasks.length} Assigned`,
-        efficiencyMain: userTasks.length > 0 ? `${completionPct}%` : '—',
-        efficiencySub: 'Completed',
-        qualificationPct: completionPct,
-        ratingScore: '—',
-        ratingBadge: 'Active Staff',
-        ratingBadgeClass: 'badge-target',
-        tasksAssignedCount: userTasks.length,
-        tasksCompletedCount: tasksCompleted,
-        tasksInProgressCount: tasksInProgress,
-        tasksRevisionCount: tasksRevision,
-        taskCompletionPct: completionPct,
-        tasks: userTasks,
-        roleMetrics: [
-          { label: 'Assigned Tasks', value: userTasks.length },
-          { label: 'Completed Deliverables', value: tasksCompleted },
-          { label: 'Active in Queue', value: tasksInProgress },
-        ],
-      };
-    });
+    return this.mapUsersToPerformance(rawUsers, scopedLeads, allCalls, allPkgs, ws, pkgMeta, allAds, enrichedTasks, getRoleInfo);
   });
 
   readonly activeUsersCount = computed<number>(() => this.teamPerformanceList().filter((u) => u.isActive).length);
+
+  private resolveWorkspaceProdName(ws: any, defaultName: string): string {
+    if (!ws) return defaultName;
+    const pId = String(ws.productId || '').toLowerCase();
+    if (pId.includes('jesus')) return 'Jesus the messanger';
+    if (pId.includes('class')) return 'Classmate';
+    return 'Careermate';
+  }
+
+  private isAdOwnerMatch(a: any, userIdStr: string, nameLower: string, userEmailLower: string): boolean {
+    const adCreatorId = String((a as any).creatorId || (a as any).creator_id || (a as any).userId || (a as any).ownerId || (a as any).createdBy || '').trim().toLowerCase();
+    const adCreatorEmail = String((a as any).creatorEmail || (a as any).ownerEmail || '').trim().toLowerCase();
+    const adCreatorName = String((a as any).creatorName || (a as any).ownerName || '').trim().toLowerCase();
+
+    const matchingCmp = this.filteredCampaigns().find((c) => String(c.id) === String(a.campaignId) || c.name.toLowerCase() === (a.campaignName || '').toLowerCase().trim());
+    const cmpOwnerId = String(matchingCmp?.ownerId || (matchingCmp as any)?.owner_id || (matchingCmp as any)?.createdBy || '').trim().toLowerCase();
+    const cmpOwnerEmail = String((matchingCmp as any)?.ownerEmail || (matchingCmp as any)?.creatorEmail || '').trim().toLowerCase();
+    const cmpOwnerName = String(matchingCmp?.ownerName || '').trim().toLowerCase();
+
+    return Boolean(
+      (adCreatorId && (adCreatorId === userIdStr.toLowerCase() || (userEmailLower && adCreatorId === userEmailLower))) ||
+      (adCreatorEmail && userEmailLower && adCreatorEmail === userEmailLower) ||
+      (adCreatorName && (adCreatorName === nameLower || nameLower.includes(adCreatorName) || adCreatorName.includes(nameLower))) ||
+      (cmpOwnerId && (cmpOwnerId === userIdStr.toLowerCase() || (userEmailLower && cmpOwnerId === userEmailLower))) ||
+      (cmpOwnerEmail && userEmailLower && cmpOwnerEmail === userEmailLower) ||
+      (cmpOwnerName && (cmpOwnerName === nameLower || nameLower.includes(cmpOwnerName) || cmpOwnerName.includes(nameLower)))
+    );
+  }
+
+  private isAdWorkspaceMatch(a: any, ws: any, pkgMeta: any, allPkgs: any[]): boolean {
+    if (ws) {
+      const adPkgName = (a.packageName || '').toLowerCase().trim();
+      const adProdName = (a.productName || a.productId || '').toLowerCase().trim();
+      const wsName = (ws.name || '').toLowerCase().trim();
+      const wsProd = (ws.productId || '').toLowerCase().trim();
+      return adPkgName === wsName || adPkgName.includes(wsName) || wsName.includes(adPkgName) ||
+        Boolean(wsProd && (adProdName === wsProd || adProdName.includes(wsProd) || wsProd.includes(adProdName)));
+    }
+    return isItemForPackage(a, pkgMeta.id, pkgMeta.id, allPkgs);
+  }
+
+  private isTaskAssignedOrCreatedByUser(t: any, userIdStr: string, nameLower: string, userEmailLower: string, isDm = false): boolean {
+    const assignId = String(t.assignedTo || (t as any).assigned_to || '').trim().toLowerCase();
+    const assignName = (t.assigneeName || (t as any).assignee_name || '').toLowerCase().trim();
+    const creatorId = String(t.createdBy || (t as any).created_by || '').trim().toLowerCase();
+    const creatorName = ((t as any).creatorName || (t as any).creator_name || '').toLowerCase().trim();
+
+    if (isDm) {
+      const isAssigned = Boolean(
+        (assignId && assignId !== '0' && assignId !== 'null' && assignId !== 'undefined') ||
+        (assignName && assignName !== 'unassigned')
+      );
+      if (isAssigned) {
+        return assignId === userIdStr.toLowerCase() ||
+          Boolean(assignId && userEmailLower && assignId === userEmailLower) ||
+          Boolean(assignName && (assignName === nameLower || nameLower.includes(assignName) || assignName.includes(nameLower)));
+      }
+      return creatorId === userIdStr.toLowerCase() ||
+        Boolean(creatorId && userEmailLower && creatorId === userEmailLower) ||
+        Boolean(creatorName && (creatorName === nameLower || nameLower.includes(creatorName) || creatorName.includes(nameLower)));
+    }
+
+    if (assignId === userIdStr.toLowerCase()) return true;
+    if (assignId && userEmailLower && assignId === userEmailLower) return true;
+    if (assignName && (assignName === nameLower || nameLower.includes(assignName) || assignName.includes(nameLower))) return true;
+
+    return creatorId === userIdStr.toLowerCase() ||
+      Boolean(creatorId && userEmailLower && creatorId === userEmailLower) ||
+      Boolean(creatorName && (creatorName === nameLower || nameLower.includes(creatorName) || creatorName.includes(nameLower)));
+  }
+
+  private buildTelecallerPerformance(u: any, scopedLeads: any[], allCalls: any[], allPkgs: any[], ws: any, pkgMeta: any, roleInfo: any): UserPerformanceRecord {
+    const nameLower = (u.fullName || '').toLowerCase().trim();
+    const userIdStr = String(u.id).trim();
+
+    const userLeads = scopedLeads.filter((l) => {
+      const assignId = String(l.assignedTo || (l as any).assigned_to || '').trim().toLowerCase();
+      const assignName = (l.assigneeName || (l as any).assignee_name || '').toLowerCase().trim();
+      const userEmailLower = (u.email || '').toLowerCase().trim();
+      if (assignId === userIdStr.toLowerCase()) return true;
+      if (assignId && userEmailLower && assignId === userEmailLower) return true;
+      return Boolean(assignName && (assignName === nameLower || nameLower.includes(assignName) || assignName.includes(nameLower)));
+    });
+
+    const prodName = this.resolveWorkspaceProdName(ws, pkgMeta.name);
+    const pkgDisplayName = ws ? ws.name : pkgMeta.name;
+
+    const userLeadRecords = userLeads.map((l) => {
+      return this.mapLeadToPerformanceItem(l, allCalls, allPkgs, ws, prodName, pkgDisplayName, pkgMeta);
+    });
+
+    const callsMade = userLeadRecords.filter((r) => r.calledAt || r.callAttempts > 0).length;
+    const interestedLeads = userLeadRecords.filter((r) => ['INTERESTED', 'QUALIFIED', 'CONVERTED', 'PAID', 'HOT'].includes(r.callOutcome)).length;
+    const conversionPct = userLeadRecords.length > 0 ? Math.round((callsMade / userLeadRecords.length) * 100) : 0;
+
+    return {
+      user: u,
+      userId: String(u.id),
+      name: u.fullName || u.email?.split('@')[0] || 'Telecaller',
+      email: u.email || '',
+      role: u.role,
+      roleLabel: roleInfo.label,
+      roleBadgeClass: roleInfo.badgeClass,
+      avatarColor: roleInfo.avatarClass,
+      department: u.department || 'Telecalling',
+      isActive: u.isActive !== false,
+      outputMain: `${callsMade} Calls Made`,
+      outputSub: `${userLeadRecords.length} Assigned Leads`,
+      efficiencyMain: userLeadRecords.length > 0 ? `${conversionPct}%` : '—',
+      efficiencySub: 'Call Rate',
+      qualificationPct: conversionPct,
+      ratingScore: '—',
+      ratingBadge: 'Active Staff',
+      ratingBadgeClass: 'badge-target',
+      tasksAssignedCount: userLeadRecords.length,
+      tasksCompletedCount: callsMade,
+      tasksInProgressCount: userLeadRecords.length - callsMade,
+      tasksRevisionCount: 0,
+      taskCompletionPct: conversionPct,
+      tasks: userLeadRecords,
+      roleMetrics: [
+        { label: 'Assigned Leads', value: userLeadRecords.length },
+        { label: 'Calls Made', value: callsMade },
+        { label: 'Interested / Warm', value: interestedLeads },
+      ],
+    };
+  }
+
+  private buildDigitalMarketingPerformance(u: any, allAds: any[], enrichedTasks: any[], ws: any, pkgMeta: any, roleInfo: any, allPkgs: any[]): UserPerformanceRecord {
+    const nameLower = (u.fullName || '').toLowerCase().trim();
+    const userIdStr = String(u.id).trim();
+    const prodName = this.resolveWorkspaceProdName(ws, pkgMeta.name);
+    const pkgDisplayName = ws ? ws.name : pkgMeta.name;
+    const userEmailLower = (u.email || '').toLowerCase().trim();
+
+    const matchingAds = (allAds || []).filter((a) => {
+      const belongsToUser = this.isAdOwnerMatch(a, userIdStr, nameLower, userEmailLower);
+      if (!belongsToUser) return false;
+      return this.isAdWorkspaceMatch(a, ws, pkgMeta, allPkgs);
+    });
+
+    const activeAdsCount = matchingAds.filter((a) => (a.status || 'ACTIVE').toUpperCase() === 'ACTIVE').length;
+    const pausedAdsCount = matchingAds.filter((a) => (a.status || '').toUpperCase() === 'PAUSED').length;
+    const totalLeadsGen = matchingAds.reduce((sum, a) => sum + (Number(a.leadsCount) || 0), 0);
+
+    const allDmRecords: any[] = matchingAds.map((ad, idx) => {
+      const adDate = ad.createdAt || ad.lastSyncedAt || new Date().toISOString();
+      const totalLeads = Number(ad.leadsCount) || 0;
+      return {
+        id: ad.id || `dm_${idx}`,
+        title: ad.name || `Ad Campaign #${idx + 1}`,
+        adName: ad.name || 'Ad',
+        campaignName: ad.campaignName || 'Campaign',
+        productName: prodName,
+        packageName: pkgDisplayName,
+        platform: ad.platform || 'Meta Ads',
+        createdAt: adDate,
+        launchDate: adDate,
+        leadsCount: totalLeads,
+        status: (ad.status || 'ACTIVE').toUpperCase(),
+        isAdRecord: true,
+      };
+    });
+
+    const userTasks = enrichedTasks.filter((t) =>
+      this.isTaskAssignedOrCreatedByUser(t, userIdStr, nameLower, userEmailLower, true)
+    );
+
+    return {
+      user: u,
+      userId: String(u.id),
+      name: u.fullName || u.email?.split('@')[0] || 'Digital Marketer',
+      email: u.email || '',
+      role: u.role,
+      roleLabel: roleInfo.label,
+      roleBadgeClass: roleInfo.badgeClass,
+      avatarColor: roleInfo.avatarClass,
+      department: u.department || 'Digital Marketing',
+      isActive: u.isActive !== false,
+      outputMain: `${totalLeadsGen} Leads Generated`,
+      outputSub: `${allDmRecords.length} Ads Managed`,
+      efficiencyMain: `${activeAdsCount} Active`,
+      efficiencySub: 'Campaigns',
+      qualificationPct: allDmRecords.length > 0 ? Math.round((activeAdsCount / allDmRecords.length) * 100) : 0,
+      ratingScore: '—',
+      ratingBadge: 'Active Staff',
+      ratingBadgeClass: 'badge-target',
+      tasksAssignedCount: allDmRecords.length,
+      tasksCompletedCount: activeAdsCount,
+      tasksInProgressCount: pausedAdsCount,
+      tasksRevisionCount: 0,
+      taskCompletionPct: allDmRecords.length > 0 ? Math.round((activeAdsCount / allDmRecords.length) * 100) : 0,
+      tasks: allDmRecords,
+      roleMetrics: [
+        { label: 'Ads Managed', value: allDmRecords.length },
+        { label: 'Leads Generated', value: totalLeadsGen },
+        { label: 'Active Ads', value: activeAdsCount },
+      ],
+    };
+  }
+
+  private buildStaffPerformance(u: any, enrichedTasks: any[], roleInfo: any): UserPerformanceRecord {
+    const nameLower = (u.fullName || '').toLowerCase().trim();
+    const userIdStr = String(u.id).trim();
+    const userEmailLower = (u.email || '').toLowerCase().trim();
+
+    const userTasks = enrichedTasks.filter((t) =>
+      this.isTaskAssignedOrCreatedByUser(t, userIdStr, nameLower, userEmailLower, false)
+    );
+
+    const tasksCompleted = userTasks.filter((t) => t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED').length;
+    const tasksInProgress = userTasks.filter((t) => t.status !== 'APPROVED' && t.status !== 'COMPLETED' && t.status !== 'PUBLISHED').length;
+    const tasksRevision = userTasks.filter((t) => t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED').length;
+    const completionPct = userTasks.length > 0 ? Math.round((tasksCompleted / userTasks.length) * 100) : 0;
+
+    return {
+      user: u,
+      userId: String(u.id),
+      name: u.fullName || u.email?.split('@')[0] || 'User',
+      email: u.email || '',
+      role: u.role,
+      roleLabel: roleInfo.label,
+      roleBadgeClass: roleInfo.badgeClass,
+      avatarColor: roleInfo.avatarClass,
+      department: u.department || 'Operations',
+      isActive: u.isActive !== false,
+      outputMain: `${tasksCompleted} Done`,
+      outputSub: `${userTasks.length} Assigned`,
+      efficiencyMain: userTasks.length > 0 ? `${completionPct}%` : '—',
+      efficiencySub: 'Completed',
+      qualificationPct: completionPct,
+      ratingScore: '—',
+      ratingBadge: 'Active Staff',
+      ratingBadgeClass: 'badge-target',
+      tasksAssignedCount: userTasks.length,
+      tasksCompletedCount: tasksCompleted,
+      tasksInProgressCount: tasksInProgress,
+      tasksRevisionCount: tasksRevision,
+      taskCompletionPct: completionPct,
+      tasks: userTasks,
+      roleMetrics: [
+        { label: 'Assigned Tasks', value: userTasks.length },
+        { label: 'Completed Deliverables', value: tasksCompleted },
+        { label: 'Active in Queue', value: tasksInProgress },
+      ],
+    };
+  }
+
+  private mapUsersToPerformance(rawUsers: any[], scopedLeads: any[], allCalls: any[], allPkgs: any[], ws: any, pkgMeta: any, allAds: any[], enrichedTasks: any[], getRoleInfo: any): UserPerformanceRecord[] {
+    return (rawUsers || []).map((u) => {
+      const roleInfo = getRoleInfo(u.role);
+      if (u.role === 'TELECALLER') {
+        return this.buildTelecallerPerformance(u, scopedLeads, allCalls, allPkgs, ws, pkgMeta, roleInfo);
+      }
+      if (u.role === 'DIGITAL_MARKETING') {
+        return this.buildDigitalMarketingPerformance(u, allAds, enrichedTasks, ws, pkgMeta, roleInfo, allPkgs);
+      }
+      return this.buildStaffPerformance(u, enrichedTasks, roleInfo);
+    });
+  }
 
   private latestQueryParams: any = null;
 

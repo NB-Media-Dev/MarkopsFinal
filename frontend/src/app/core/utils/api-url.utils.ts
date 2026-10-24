@@ -31,8 +31,8 @@ export function getBackendBaseUrl(): string {
     return window.location.origin;
   }
 
-  const port = (typeof process !== 'undefined' && process.env && (process.env['BACKEND_PORT'] || process.env['PORT'])) || '4000';
-  const backendHost = (typeof process !== 'undefined' && process.env && process.env['BACKEND_URL']) || `http://localhost:${port}`;
+  const port = (typeof process !== 'undefined' ? (process.env?.['BACKEND_PORT'] || process.env?.['PORT']) : undefined) || '4000';
+  const backendHost = (typeof process !== 'undefined' ? process.env?.['BACKEND_URL'] : undefined) || `http://localhost:${port}`;
   return backendHost.replace(/\/$/, '');
 }
 
@@ -60,7 +60,7 @@ export function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
   try {
     const localToken = localStorage.getItem('markops_token');
-    if (localToken && localToken.trim()) {
+    if (localToken?.trim()) {
       return localToken.trim();
     }
   } catch (err) { console.log('[Storage Notice]:', err); }
@@ -70,7 +70,7 @@ export function getAuthToken(): string | null {
     const ca = document.cookie.split(';');
     for (let c of ca) {
       c = c.trim();
-      if (c.indexOf(nameEQ) === 0) {
+      if (c.startsWith(nameEQ)) {
         return decodeURIComponent(c.substring(nameEQ.length));
       }
     }
@@ -79,7 +79,7 @@ export function getAuthToken(): string | null {
 }
 
 export async function safeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const urlStr = typeof input === 'string' ? input : input.toString();
+  const urlStr = typeof input === 'string' ? input : (input instanceof URL ? input.toString() : input.url);
   const token = getAuthToken();
 
   const headers = new Headers(init?.headers || {});

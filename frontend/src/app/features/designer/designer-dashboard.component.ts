@@ -9,7 +9,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { UserManagementService } from '../../core/services/user-management.service';
 import { PackageService } from '../../core/services/package.service';
 
-import { Task, TaskStatus, TaskPriority } from '../../core/models/task.model';
+import { Task } from '../../core/models/task.model';
 import { FIXED_PACKAGES, isTaskForPackage } from '../../core/models/package.model';
 
 import { DesignerKpisComponent } from './components/designer-kpis/designer-kpis.component';
@@ -299,7 +299,7 @@ export class DesignerDashboardComponent implements OnInit {
 
       const dbPkgs = this.packageService.packages();
       const match = dbPkgs.find((p) => p.name.toLowerCase().trim() === pkgFilter.toLowerCase());
-      if (match && match.productId) {
+      if (match?.productId) {
         const fixedByProdId = FIXED_PACKAGES.find(
           (fp) => fp.id.toLowerCase() === match.productId.toLowerCase() ||
                   fp.name.toLowerCase().includes(match.productId.toLowerCase().replace('pkg_', ''))
@@ -373,14 +373,11 @@ export class DesignerDashboardComponent implements OnInit {
     const currentUser = this.authService.currentUser();
     if (!currentUser) return false;
 
-    const currentId = String(currentUser.id !== undefined && currentUser.id !== null ? currentUser.id : '').trim().toLowerCase();
+    const currentId = String(currentUser.id ?? '').trim().toLowerCase();
     const currentEmail = String(currentUser.email || '').toLowerCase().trim();
 
-    const tCreatorId = String(
-      task.createdBy !== undefined && task.createdBy !== null
-        ? task.createdBy
-        : ((task as any).created_by !== undefined && (task as any).created_by !== null ? (task as any).created_by : '')
-    ).trim().toLowerCase();
+    const rawCreatorId = task.createdBy ?? (task as any).created_by ?? '';
+    const tCreatorId = String(rawCreatorId).trim().toLowerCase();
     const tCreatorEmail = String(task.creatorEmail || (task as any).creator_email || '').toLowerCase().trim();
 
     return Boolean((currentId && tCreatorId && currentId === tCreatorId) || (currentEmail && tCreatorEmail && currentEmail === tCreatorEmail));
@@ -783,22 +780,22 @@ export class DesignerDashboardComponent implements OnInit {
     }
   }
 
-  getActiveRedesignTask(): Task | null {
+  getActiveModalTask(): Task | null {
     const id = this.activeModalTaskId();
     if (!id) return this.taskService.selectedTask();
     return this.taskService.tasks().find((t) => t.id === id) || this.taskService.selectedTask();
+  }
+
+  getActiveRedesignTask(): Task | null {
+    return this.getActiveModalTask();
   }
 
   getActiveUploadTask(): Task | null {
-    const id = this.activeModalTaskId();
-    if (!id) return this.taskService.selectedTask();
-    return this.taskService.tasks().find((t) => t.id === id) || this.taskService.selectedTask();
+    return this.getActiveModalTask();
   }
 
   getActiveReviewTask(): Task | null {
-    const id = this.activeModalTaskId();
-    if (!id) return this.taskService.selectedTask();
-    return this.taskService.tasks().find((t) => t.id === id) || this.taskService.selectedTask();
+    return this.getActiveModalTask();
   }
 
   openUploadModal(task: Task): void {

@@ -183,7 +183,7 @@ export class DashboardComponent implements OnInit {
       const isCaller = (uId && cId === uId) ||
                        (uEmail && cEmail === uEmail) ||
                        (uName && (cName === uName || cName.includes(uName)));
-      const isToday = c.calledAt && c.calledAt.startsWith(todayStr);
+      const isToday = Boolean(c.calledAt?.startsWith(todayStr));
       return isCaller && isToday;
     });
   });

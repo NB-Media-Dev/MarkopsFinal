@@ -2,7 +2,7 @@ import { Component, inject, OnInit, signal, computed, Input } from '@angular/cor
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { CampaignService, AdItem, CampaignItem } from '../../core/services/campaign.service';
+import { CampaignService, AdItem } from '../../core/services/campaign.service';
 import { TaskManagementService } from '../../core/services/task-management.service';
 import { AuthService } from '../../core/services/auth.service';
 import { isItemForPackage, resolveProductContext } from '../../core/models/package.model';
@@ -167,10 +167,17 @@ export class AdsComponent implements OnInit {
 
     const defaultPrefix = this.packageFilter ? `${this.packageFilter} - ` : '';
 
+    let defaultCampaignName = 'General Digital Funnel';
+    if (defaultCmp) {
+      defaultCampaignName = defaultCmp.name;
+    } else if (this.packageFilter) {
+      defaultCampaignName = `${this.packageFilter} Funnel`;
+    }
+
     this.formModel = {
       name: defaultPrefix,
       campaignId: defaultCmp ? defaultCmp.id : '',
-      campaignName: defaultCmp ? defaultCmp.name : (this.packageFilter ? `${this.packageFilter} Funnel` : 'General Digital Funnel'),
+      campaignName: defaultCampaignName,
       platform: 'Meta',
       status: 'ACTIVE',
       spend: 0,
@@ -246,7 +253,7 @@ export class AdsComponent implements OnInit {
       }
     }
 
-    if (!this.formModel.name || !this.formModel.name.trim()) {
+    if (!this.formModel.name?.trim()) {
       this.errorMessage.set('Ad Name is required.');
       return;
     }
@@ -400,8 +407,8 @@ export class AdsComponent implements OnInit {
     if (q) {
       list = list.filter((a) =>
         a.name.toLowerCase().includes(q) ||
-        (a.campaignName && a.campaignName.toLowerCase().includes(q)) ||
-        (a.platform && a.platform.toLowerCase().includes(q))
+        Boolean(a.campaignName?.toLowerCase().includes(q)) ||
+        Boolean(a.platform?.toLowerCase().includes(q))
       );
     }
 

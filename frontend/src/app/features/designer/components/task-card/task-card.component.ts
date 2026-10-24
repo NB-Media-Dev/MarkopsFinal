@@ -34,14 +34,11 @@ export class TaskCardComponent {
 
   isTaskCreator(): boolean {
     if (!this.task || !this.currentUser) return false;
-    const currentId = String(this.currentUser.id !== undefined && this.currentUser.id !== null ? this.currentUser.id : '').trim().toLowerCase();
+    const currentId = String(this.currentUser.id ?? '').trim().toLowerCase();
     const currentEmail = String(this.currentUser.email || '').toLowerCase().trim();
 
-    const tCreatorId = String(
-      this.task.createdBy !== undefined && this.task.createdBy !== null
-        ? this.task.createdBy
-        : ((this.task as any).created_by !== undefined && (this.task as any).created_by !== null ? (this.task as any).created_by : '')
-    ).trim().toLowerCase();
+    const rawCreatorId = this.task.createdBy ?? (this.task as any).created_by ?? '';
+    const tCreatorId = String(rawCreatorId).trim().toLowerCase();
     const tCreatorEmail = String(this.task.creatorEmail || (this.task as any).creator_email || '').toLowerCase().trim();
 
     return Boolean((currentId && tCreatorId && currentId === tCreatorId) || (currentEmail && tCreatorEmail && currentEmail === tCreatorEmail));

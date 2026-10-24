@@ -32,7 +32,7 @@ export class RedesignModalComponent implements OnChanges {
 
   appendRedesignFeedback(snippet: string): void {
     const current = this.redesignReason().trim();
-    const cleanSnippet = snippet.replace(/^[•\-\*]\s*/, '').trim();
+    const cleanSnippet = snippet.replace(/^[•*-]\s*/, '').trim();
     const bulletText = `• ${cleanSnippet}`;
     const newVal = current ? `${current}\n${bulletText}` : bulletText;
     this.redesignReason.set(newVal);

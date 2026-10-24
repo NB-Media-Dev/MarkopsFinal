@@ -5,7 +5,7 @@ const { emitUserRealtimeEvent } = require('../events');
 function stripEmojis(str) {
   if (!str) return '';
   return String(str)
-    .replace(/[\u{1F300}-\u{1FAFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B50}\u{FE00}-\u{FE0F}\u{200D}]/gu, '')
+    .replace(/\u{2B50}\u{FE0F}?/gu, '').replace(/[\u{1F300}-\u{1FAFF}\u{200D}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}]/gu, '')
     .replace(/\s+/g, ' ')
     .trim();
 }

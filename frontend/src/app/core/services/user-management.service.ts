@@ -21,7 +21,7 @@ function generateSafeId(prefix = 'usr'): string {
   if (typeof crypto !== 'undefined') {
     if (typeof crypto.randomUUID === 'function') {
       try {
-        return `${prefix}_${crypto.randomUUID().replace(/-/g, '').substring(0, 9)}`;
+        return `${prefix}_${crypto.randomUUID().replaceAll('-', '').substring(0, 9)}`;
       } catch {
         // fallback
       }

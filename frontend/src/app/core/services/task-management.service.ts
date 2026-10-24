@@ -546,7 +546,7 @@ export class TaskManagementService {
   }
 
   private updateTaskInSignal(updatedTask: Task): void {
-    if (!updatedTask || !updatedTask.id) return;
+    if (!updatedTask?.id) return;
     const normalized: Task = {
       ...updatedTask,
       progressPercent: computeTaskProgressPercent(updatedTask.status, updatedTask.progressPercent),

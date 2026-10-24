@@ -102,11 +102,11 @@ export class UploadDesignModalComponent implements OnChanges {
         file.name.endsWith('.csv') ||
         file.name.endsWith('.html')
       ) {
-        const textReader = new FileReader();
-        textReader.onload = (e: ProgressEvent<FileReader>) => {
-          this.selectedFileContent.set((e.target?.result as string) || '');
-        };
-        textReader.readAsText(file);
+        file.text().then((text) => {
+          this.selectedFileContent.set(text || '');
+        }).catch(() => {
+          this.selectedFileContent.set('');
+        });
       } else {
         this.selectedFileContent.set(`Design File: ${file.name}\nFile Size: ${(file.size / 1024).toFixed(1)} KB\nFile Type: ${file.type || 'Binary asset'}`);
       }
@@ -115,7 +115,7 @@ export class UploadDesignModalComponent implements OnChanges {
 
   appendChangelog(snippet: string): void {
     const current = (this.uploadForm.get('changelog')?.value || '').trim();
-    const cleanSnippet = snippet.replace(/^[•\-\*]\s*/, '').trim();
+    const cleanSnippet = snippet.replace(/^[•*-]\s*/, '').trim();
     const bulletText = `• ${cleanSnippet}`;
     const newVal = current ? `${current}\n${bulletText}` : bulletText;
     this.uploadForm.patchValue({ changelog: newVal });

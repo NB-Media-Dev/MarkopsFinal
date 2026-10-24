@@ -1879,29 +1879,60 @@ async function insertBatchLeadToConnection(importConnection, l) {
   }
 }
 
+function handleBatchDbFallbackOrDuplicate(createdLeads, metaWebhook) {
+  if (metaWebhook) {
+    const duplicate = dbLeadsStore.some((lead) => lead.metaLeadId === createdLeads[0]?.metaLeadId);
+    if (duplicate) {
+      dbLeadsStore.splice(dbLeadsStore.indexOf(createdLeads[0]), 1);
+      return { duplicate: true };
+    }
+  }
+  return null;
+}
+
+async function resolveMetaAdIdIfPresent(createdLeads) {
+  if (createdLeads[0]?.metaAdId) {
+    const [adRows] = await dbPool.queryStrict(
+      `SELECT id FROM ads WHERE platform_ad_id = ? LIMIT 1`,
+      [createdLeads[0].metaAdId]
+    );
+    createdLeads[0]._mysqlAdId = adRows[0]?.id || null;
+  }
+}
+
+async function handleBatchImportError(e, createdLeads, importConnection, metaWebhook) {
+  if (importConnection) {
+    try {
+      await importConnection.rollback();
+    } catch (rollbackError) {
+      console.error('[MySQL DB Error] Failed to roll back lead batch import:', rollbackError?.message || rollbackError);
+    }
+  }
+  if (metaWebhook) {
+    const storedIndex = dbLeadsStore.indexOf(createdLeads[0]);
+    if (storedIndex !== -1) dbLeadsStore.splice(storedIndex, 1);
+    if (e.code === 'ER_DUP_ENTRY' || e.errno === 1062) {
+      return { duplicate: true };
+    }
+    return { error: e };
+  }
+  createdLeads.forEach((lead) => {
+    const storedIndex = dbLeadsStore.indexOf(lead);
+    if (storedIndex !== -1) dbLeadsStore.splice(storedIndex, 1);
+  });
+  return { error: e };
+}
+
 async function persistBatchLeadsToDb(createdLeads, metaWebhook) {
   if (!dbPool || (!metaWebhook && !dbPool.isConnected())) {
-    if (metaWebhook) {
-      const duplicate = dbLeadsStore.some((lead) => lead.metaLeadId === createdLeads[0]?.metaLeadId);
-      if (duplicate) {
-        dbLeadsStore.splice(dbLeadsStore.indexOf(createdLeads[0]), 1);
-        return { duplicate: true };
-      }
-    }
-    return null;
+    return handleBatchDbFallbackOrDuplicate(createdLeads, metaWebhook);
   }
 
   let importConnection = null;
   try {
-    if (metaWebhook && createdLeads[0]?.metaAdId) {
-      const [adRows] = await dbPool.queryStrict(
-        `SELECT id FROM ads WHERE platform_ad_id = ? LIMIT 1`,
-        [createdLeads[0].metaAdId]
-      );
-      createdLeads[0]._mysqlAdId = adRows[0]?.id || null;
-    }
-
-    if (!metaWebhook) {
+    if (metaWebhook) {
+      await resolveMetaAdIdIfPresent(createdLeads);
+    } else {
       importConnection = await dbPool.getConnection();
       await importConnection.beginTransaction();
     }
@@ -1919,26 +1950,7 @@ async function persistBatchLeadsToDb(createdLeads, metaWebhook) {
     }
     return null;
   } catch (e) {
-    if (importConnection) {
-      try {
-        await importConnection.rollback();
-      } catch (rollbackError) {
-        console.error('[MySQL DB Error] Failed to roll back lead batch import:', rollbackError?.message || rollbackError);
-      }
-    }
-    if (metaWebhook) {
-      const storedIndex = dbLeadsStore.indexOf(createdLeads[0]);
-      if (storedIndex !== -1) dbLeadsStore.splice(storedIndex, 1);
-      if (e.code === 'ER_DUP_ENTRY' || e.errno === 1062) {
-        return { duplicate: true };
-      }
-      return { error: e };
-    }
-    createdLeads.forEach((lead) => {
-      const storedIndex = dbLeadsStore.indexOf(lead);
-      if (storedIndex !== -1) dbLeadsStore.splice(storedIndex, 1);
-    });
-    return { error: e };
+    return await handleBatchImportError(e, createdLeads, importConnection, metaWebhook);
   } finally {
     if (importConnection) importConnection.release();
   }

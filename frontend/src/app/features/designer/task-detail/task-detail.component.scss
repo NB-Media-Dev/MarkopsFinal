@@ -122,7 +122,7 @@
       }
 
       &.btn-start-work {
-        background: linear-gradient(135deg, #10B981, #059669);
+        background: linear-gradient(135deg, #059669, #047857);
         color: #FFFFFF;
 
         &:hover {
@@ -132,7 +132,7 @@
       }
 
       &.btn-start-redesign {
-        background: linear-gradient(135deg, #F59E0B, #D97706);
+        background: linear-gradient(135deg, #B45309, #92400E);
         color: #FFFFFF;
 
         &:hover {
@@ -152,7 +152,7 @@
       }
 
       &.btn-approve {
-        background: linear-gradient(135deg, #059669, #047857);
+        background: linear-gradient(135deg, #047857, #065F46);
         color: #FFFFFF;
 
         &:hover {
@@ -163,18 +163,18 @@
 
       &.btn-redesign {
         background: #FEE2E2;
-        color: #DC2626;
+        color: #B91C1C;
         border: 1px solid #FECACA;
 
         &:hover {
           background: #FCA5A5;
-          color: #991B1B;
+          color: #7F1D1D;
         }
       }
 
       &.btn-delete {
         background: #FFFFFF;
-        color: #EF4444;
+        color: #DC2626;
         border: 1px solid #FCA5A5;
         padding: 0.55rem;
 
@@ -571,7 +571,7 @@
     height: 44px;
     border-radius: 12px;
     background: #FFE4E6;
-    color: #E11D48;
+    color: #BE123C;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1309,7 +1309,7 @@
 
             .file-size {
               font-size: 0.75rem;
-              color: #64748B;
+              color: #475569;
               background: #F1F5F9;
               padding: 0.15rem 0.45rem;
               border-radius: 4px;
@@ -1397,7 +1397,7 @@
     height: 60px;
     border-radius: 50%;
     background: #F1F5F9;
-    color: #94A3B8;
+    color: #475569;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1751,7 +1751,7 @@
 
         &.box-danger {
           background: #FEE2E2;
-          color: #DC2626;
+          color: #B91C1C;
         }
 
         span {
@@ -2073,7 +2073,7 @@
 
     &.btn-snippet-danger:hover {
       background: #FEE2E2;
-      color: #DC2626;
+      color: #B91C1C;
       border-color: #FECACA;
     }
   }
@@ -2105,7 +2105,7 @@
         gap: 0.5rem;
 
         .btn-lh {
-          background: rgba(255, 255, 255, 0.15);
+          background: #1E293B;
           border: none;
           color: #FFFFFF;
           width: 36px;

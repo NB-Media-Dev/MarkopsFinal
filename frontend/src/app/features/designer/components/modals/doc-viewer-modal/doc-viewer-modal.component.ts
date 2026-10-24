@@ -5,7 +5,7 @@ function isSafeDocUrl(url: string | null | undefined): boolean {
   return trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('/');
 }
 
-import { Component, Input, Output, EventEmitter, inject, computed } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { getBackendBaseUrl } from '../../../../../core/utils/api-url.utils';
