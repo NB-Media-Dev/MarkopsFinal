@@ -1,3 +1,25 @@
+import {
+  TelecallerCampaignReport,
+  formatReportCleanName,
+  toLocalDateString,
+  todayLocalDateString,
+  formatReportDate,
+  getTaskAssignedLocalDate,
+  taskMatchesDate,
+  taskMatchesDateRange,
+  getReportLeadKey,
+  getReportLeadOutcome,
+  isReportLeadCalled,
+  isReportLeadPaid,
+  aggregateGroupLeadStats,
+  buildReportRow,
+  getReportTaskStatusBadgeClass,
+  getReportLeadStatusBadgeClass,
+  getReportPlatformBadgeClass,
+  getReportAdStatusBadgeClass,
+  formatReportProductName,
+  formatReportPackageName,
+} from '../../utils/package-report.utils';
 import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -5,21 +27,6 @@ import { RoleOperationTab, FixedPackageMeta, ProductPackage, resolveTaskProductA
 import { UserPerformanceRecord } from '../../../../core/models/user-management.model';
 import { TelecallerTargetService } from '../../../../core/services/telecaller-target.service';
 
-export interface TelecallerCampaignReport {
-  sNo: number;
-  campaignName: string;
-  adName: string;
-  assignedDate: string;
-  assignedDateRaw: string;
-  totalCountLeads: number;
-  totalCalls: number;
-  averageCalls: number;
-  interested: number;
-  targets: number;
-  callerRatio: string;
-  paid: number;
-  leads: any[];
-}
 
 import { DesignerDashboardComponent } from '../../../designer/designer-dashboard.component';
 import { TelecallingComponent } from '../../../telecalling/telecalling.component';
@@ -954,100 +961,27 @@ export class PackageDepartmentViewComponent {
   }
 
   getTaskStatusBadgeClass(status: string): string {
-    switch (status) {
-      case 'APPROVED':
-      case 'COMPLETED':
-      case 'PUBLISHED':
-        return 'badge-green';
-      case 'IN_PROGRESS':
-        return 'badge-amber';
-      case 'SUBMITTED':
-      case 'UNDER_REVIEW':
-        return 'badge-purple';
-      case 'REVISION_REQUIRED':
-      case 'REDESIGN_REQUIRED':
-        return 'badge-danger';
-      default:
-        return 'badge-blue';
-    }
+    return getReportTaskStatusBadgeClass(status);
   }
 
   getLeadStatusBadgeClass(status?: string): string {
-    const s = (status || '').toUpperCase().trim();
-    switch (s) {
-      case 'QUALIFIED':
-      case 'CONVERTED':
-      case 'PAID':
-      case 'INTERESTED':
-      case 'CONNECTED':
-        return 'badge-green';
-      case 'FOLLOW_UP':
-      case 'IN_PROGRESS':
-        return 'badge-amber';
-      case 'BUSY':
-      case 'LINE_BUSY':
-      case 'NO_ANSWER':
-      case 'RETRY':
-        return 'badge-purple';
-      case 'NOT_INTERESTED':
-      case 'LOST':
-      case 'WRONG_NUMBER':
-        return 'badge-danger';
-      default:
-        return 'badge-blue';
-    }
+    return getReportLeadStatusBadgeClass(status);
   }
 
   getPlatformBadgeClass(platform?: string): string {
-    const p = (platform || '').toLowerCase();
-    if (p.includes('meta') || p.includes('facebook')) return 'badge-platform-meta';
-    if (p.includes('google')) return 'badge-platform-google';
-    if (p.includes('insta')) return 'badge-platform-instagram';
-    if (p.includes('link')) return 'badge-platform-linkedin';
-    if (p.includes('youtube')) return 'badge-platform-youtube';
-    return 'badge-platform-default';
+    return getReportPlatformBadgeClass(platform);
   }
 
   getAdStatusBadgeClass(status?: string): string {
-    const s = (status || '').toUpperCase();
-    if (s === 'ACTIVE') return 'badge-green';
-    if (s === 'PAUSED') return 'badge-amber';
-    if (s === 'COMPLETED') return 'badge-blue';
-    return 'badge-slate';
+    return getReportAdStatusBadgeClass(status);
   }
 
   formatProductName(rawName?: string, task?: any): string {
-    if (task) {
-      if (task.productName && !task.productName.toLowerCase().includes('careermate') && !task.productName.toLowerCase().includes('package')) {
-        return String(task.productName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
-      }
-      const resolved = resolveTaskProductAndPackage(task, this.productPackages);
-      if (resolved?.productName) {
-        return String(resolved.productName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
-      }
-    }
-    if (rawName?.trim() && !rawName.toLowerCase().includes('careermate')) {
-      return String(rawName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
-    }
-    const raw = this.activePackageMeta?.name || this.activePackageName || 'Product';
-    return String(raw).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+    return formatReportProductName(rawName, task, this.productPackages, this.activePackageMeta?.name);
   }
 
   formatPackageName(rawName?: string, task?: any): string {
-    if (task) {
-      if (task.packageName?.trim()) {
-        return String(task.packageName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
-      }
-      const resolved = resolveTaskProductAndPackage(task, this.productPackages);
-      if (resolved?.packageName) {
-        return String(resolved.packageName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
-      }
-    }
-    if (rawName?.trim()) {
-      return String(rawName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
-    }
-    const raw = this.activePackageDisplayName() || this.activePackageMeta?.name || 'Package';
-    return String(raw).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+    return formatReportPackageName(rawName, task, this.productPackages, this.activePackageDisplayName());
   }
 
   private buildDesignerCsvLines(user: UserPerformanceRecord, tasks: any[], escapeCsv: (val: any) => string): string[] {
