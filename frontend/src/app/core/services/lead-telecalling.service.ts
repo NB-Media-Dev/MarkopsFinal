@@ -18,7 +18,7 @@ export interface LeadItem {
   adName?: string;
   remarks?: string;
   notes?: string;
-  status: 'NEW' | 'ASSIGNED' | 'CONTACTED' | 'FOLLOW_UP' | 'INTERESTED' | 'NOT_INTERESTED' | 'QUALIFIED' | 'CONVERTED' | 'LOST' | 'WRONG_NUMBER' | 'BUSY' | 'NO_ANSWER' | 'LINE_BUSY' | string;
+  status: 'NEW' | 'ASSIGNED' | 'CONTACTED' | 'FOLLOW_UP' | 'INTERESTED' | 'NOT_INTERESTED' | 'QUALIFIED' | 'CONVERTED' | 'LOST' | 'WRONG_NUMBER' | 'BUSY' | 'NO_ANSWER' | 'LINE_BUSY' | (string & {});
   assignedTo?: string | null;
   assigneeName?: string;
   creatorId?: string;
@@ -43,7 +43,7 @@ export interface CallActivityItem {
   telecallerId: string;
   telecallerName: string;
   telecallerEmail?: string;
-  outcome: 'CONNECTED' | 'NO_ANSWER' | 'BUSY' | 'WRONG_NUMBER' | 'FOLLOW_UP' | 'INTERESTED' | 'NOT_INTERESTED' | 'QUALIFIED' | 'CONVERTED' | 'PAID' | 'LINE_BUSY' | string;
+  outcome: 'CONNECTED' | 'NO_ANSWER' | 'BUSY' | 'WRONG_NUMBER' | 'FOLLOW_UP' | 'INTERESTED' | 'NOT_INTERESTED' | 'QUALIFIED' | 'CONVERTED' | 'PAID' | 'LINE_BUSY' | (string & {});
   durationSeconds: number;
   remarks?: string;
   nextAction?: string;
@@ -158,7 +158,7 @@ export class LeadTelecallingService {
   private readonly http = inject(HttpClient);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
-  private socket: Socket | null = null;
+  private readonly socket: Socket | null = null;
 
   readonly leads = signal<LeadItem[]>([]);
   readonly calls = signal<CallActivityItem[]>([]);
@@ -195,7 +195,7 @@ export class LeadTelecallingService {
         });
 
         this.socket.on('lead:status_changed', (data: { leadId: string; status: string }) => {
-          if (!data || !data.leadId) return;
+          if (!data?.leadId) return;
           const status = data.status === 'QUALIFIED' ? 'PAID' : data.status;
           this.leads.update((list) =>
             list.map((l) => (String(l.id).trim() === String(data.leadId).trim() ? { ...l, status: status as any } : l))
@@ -203,7 +203,7 @@ export class LeadTelecallingService {
         });
 
         this.socket.on('lead:updated', (lead: LeadItem) => {
-          if (!lead || !lead.id) return;
+          if (!lead?.id) return;
           const status = lead.status === 'QUALIFIED' ? 'PAID' : lead.status;
           this.leads.update((list) =>
             list.map((l) => {
@@ -229,14 +229,14 @@ export class LeadTelecallingService {
         });
 
         this.socket.on('lead:deleted', (data: { leadId: string }) => {
-          if (!data || !data.leadId) return;
+          if (!data?.leadId) return;
           this.leads.update((list) =>
             list.filter((l) => String(l.id).trim() !== String(data.leadId).trim())
           );
         });
 
         this.socket.on('call:completed', (call: CallActivityItem) => {
-          if (!call || !call.id) return;
+          if (!call?.id) return;
           const normalizedOutcome = (call.outcome === 'QUALIFIED' || call.outcome === 'PAID') ? 'PAID' : call.outcome;
           const normalizedCall: CallActivityItem = { ...call, outcome: normalizedOutcome };
           this.calls.update((list) => {
@@ -400,7 +400,7 @@ export class LeadTelecallingService {
               if (matches) {
                 const updatedLead: LeadItem = {
                   ...item,
-                  ...(res.lead || {}),
+                  ...res.lead,
                   campaignName: (res.lead?.campaignName && res.lead.campaignName !== 'Digital Ad Campaign')
                     ? res.lead.campaignName
                     : (item.campaignName || res.lead?.campaignName || ''),

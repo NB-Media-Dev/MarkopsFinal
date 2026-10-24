@@ -18,14 +18,25 @@ function buildCreateUserPayload(req: CreateUserRequest) {
 }
 
 function generateSafeId(prefix = 'usr'): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    try {
-      return `${prefix}_${crypto.randomUUID().replaceAll('-', '').substring(0, 9)}`;
-    } catch {
-      // fallback
+  if (typeof crypto !== 'undefined') {
+    if (typeof crypto.randomUUID === 'function') {
+      try {
+        return `${prefix}_${crypto.randomUUID().replace(/-/g, '').substring(0, 9)}`;
+      } catch {
+        // fallback
+      }
+    }
+    if (typeof crypto.getRandomValues === 'function') {
+      try {
+        const arr = new Uint32Array(2);
+        crypto.getRandomValues(arr);
+        return `${prefix}_${Date.now().toString(36)}_${arr[0].toString(36)}${arr[1].toString(36).substring(0, 4)}`;
+      } catch {
+        // fallback
+      }
     }
   }
-  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
+  return `${prefix}_${Date.now().toString(36)}_${Date.now().toString(16)}`;
 }
 
 function createLocalFallbackUser(payload: ReturnType<typeof buildCreateUserPayload>): ManagedUser {

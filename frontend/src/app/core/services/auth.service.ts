@@ -92,6 +92,27 @@ export class AuthService {
     return cachedUser;
   }
 
+  private buildLiveUser(dataUser: any, cachedUser: User | null): User {
+    return {
+      id: String(dataUser.id ?? cachedUser?.id ?? '1'),
+      email: dataUser.email ?? cachedUser?.email ?? 'admin@markops.io',
+      fullName: dataUser.fullName ?? cachedUser?.fullName ?? 'System Administrator',
+      role: dataUser.role ?? cachedUser?.role ?? 'ADMINISTRATOR',
+      department: dataUser.department ?? cachedUser?.department ?? 'Operations',
+      isActive: dataUser.isActive !== false,
+      avatarUrl: dataUser.avatarUrl ?? cachedUser?.avatarUrl,
+    };
+  }
+
+  private applyVerifiedUser(liveUser: User, token: string): void {
+    this._currentUser.set(liveUser);
+    this._accessToken.set(token);
+    localStorage.setItem('markops_token', token);
+    localStorage.setItem('markops_user', JSON.stringify(liveUser));
+    this.setCookie('markops_token', token, 7);
+    this._isInitialized.set(true);
+  }
+
   private async verifyRemoteSession(token: string, cachedUser: User | null): Promise<boolean | null> {
     try {
       const res = await safeFetch('/api/auth/me', {
@@ -104,22 +125,8 @@ export class AuthService {
       if (res.ok) {
         const data = await res.json();
         if (data.user) {
-          const liveUser: User = {
-            id: String(data.user.id || (cachedUser ? cachedUser.id : '1')),
-            email: data.user.email || (cachedUser ? cachedUser.email : 'admin@markops.io'),
-            fullName: data.user.fullName || (cachedUser ? cachedUser.fullName : 'System Administrator'),
-            role: data.user.role || (cachedUser ? cachedUser.role : 'ADMINISTRATOR'),
-            department: data.user.department || (cachedUser ? cachedUser.department : 'Operations'),
-            isActive: data.user.isActive !== false,
-            avatarUrl: data.user.avatarUrl || cachedUser?.avatarUrl,
-          };
-
-          this._currentUser.set(liveUser);
-          this._accessToken.set(token);
-          localStorage.setItem('markops_token', token);
-          localStorage.setItem('markops_user', JSON.stringify(liveUser));
-          this.setCookie('markops_token', token, 7);
-          this._isInitialized.set(true);
+          const liveUser = this.buildLiveUser(data.user, cachedUser);
+          this.applyVerifiedUser(liveUser, token);
           return true;
         }
       } else if (res.status === 401 || res.status === 403) {

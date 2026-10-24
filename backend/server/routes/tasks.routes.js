@@ -75,7 +75,7 @@ function saveBase64Attachment(dataUrl, fileName, subFolder = 'briefs') {
     return dataUrl || null;
   }
   try {
-    const matches = /^data:([A-Za-z0-9-+/.+]+);base64,(.+)$/.exec(dataUrl);
+    const matches = /^data:([a-zA-Z0-9.+/-]+);base64,(.+)$/.exec(dataUrl);
     if (matches?.length !== 3) {
       return dataUrl;
     }
@@ -135,6 +135,116 @@ function computeTaskProgress(status, dbProgress) {
   }
 }
 
+async function fetchDbTaskHistory(taskId) {
+  try {
+    const [histRows] = await dbPool.query(`
+      SELECT h.*, u.full_name as actor_name
+      FROM task_status_history h
+      LEFT JOIN users u ON h.actor_id = u.id
+      WHERE h.task_id = ?
+      ORDER BY h.created_at DESC
+    `, [taskId]);
+    if (Array.isArray(histRows)) {
+      return histRows.map((h) => ({
+        id: h.id,
+        taskId: h.task_id,
+        actorId: h.actor_id,
+        actorName: h.actor_name || 'User',
+        previousStatus: h.previous_status,
+        newStatus: h.new_status,
+        remark: h.remark,
+        createdAt: h.created_at ? new Date(h.created_at).toISOString() : new Date().toISOString(),
+      }));
+    }
+  } catch (error_) { console.log('[MySQL Notice] Task history query skipped:', error_?.message || error_); }
+  return [];
+}
+
+async function fetchDbTaskVersions(taskId) {
+  try {
+    const [verRows] = await dbPool.query(`
+      SELECT v.*, u.full_name as author_name
+      FROM task_versions v
+      LEFT JOIN users u ON v.submitted_by = u.id
+      WHERE v.task_id = ?
+      ORDER BY v.version_number DESC
+    `, [taskId]);
+    if (Array.isArray(verRows)) {
+      return verRows.map((v) => ({
+        id: v.id,
+        taskId: v.task_id,
+        versionNumber: v.version_number,
+        submittedBy: v.submitted_by,
+        submittedByName: v.author_name || 'Designer',
+        fileName: v.file_name,
+        filePath: v.file_path,
+        fileSize: v.file_size,
+        mimeType: v.mime_type,
+        changelog: v.changelog,
+        createdAt: v.created_at ? new Date(v.created_at).toISOString() : new Date().toISOString(),
+      }));
+    }
+  } catch (error_) { console.log('[MySQL Notice] Task versions query skipped:', error_?.message || error_); }
+  return [];
+}
+
+async function fetchDbTaskComments(taskId) {
+  try {
+    const [commRows] = await dbPool.query(`
+      SELECT c.*, u.full_name as user_name, r.code as user_role
+      FROM task_comments c
+      LEFT JOIN users u ON c.user_id = u.id
+      LEFT JOIN roles r ON u.role_id = r.id
+      WHERE c.task_id = ?
+      ORDER BY c.created_at ASC
+    `, [taskId]);
+    if (Array.isArray(commRows)) {
+      return commRows.map((c) => ({
+        id: c.id,
+        taskId: c.task_id,
+        userId: c.user_id,
+        userName: c.user_name || 'User',
+        userRole: c.user_role || 'ADMINISTRATOR',
+        comment: c.comment,
+        createdAt: c.created_at ? new Date(c.created_at).toISOString() : new Date().toISOString(),
+      }));
+    }
+  } catch (error_) { console.log('[MySQL Notice] Task comments query skipped:', error_?.message || error_); }
+  return [];
+}
+
+function mapFullTaskDetails(row, versions, statusHistory, comments) {
+  const safeDueDate = formatDueDate(row.due_date);
+  const detectedRole = row.creator_role || (row.creator_full_name?.toLowerCase().includes('bdm') ? 'BDM' : 'ADMINISTRATOR');
+
+  return {
+    id: row.id,
+    title: row.title || 'Untitled Task',
+    taskType: row.task_type || 'BANNER_DESIGN',
+    packageName: row.package_name || '',
+    description: row.description || '',
+    content: row.content || '',
+    attachmentUrl: row.attachment_url || '',
+    attachmentName: row.attachment_name || '',
+    reviewerFeedback: row.reviewer_feedback || '',
+    status: row.status || 'ASSIGNED',
+    priority: row.priority || 'MEDIUM',
+    createdBy: row.created_by || 1,
+    creatorName: row.creator_full_name || 'Manager',
+    creatorEmail: row.creator_email || '',
+    creatorRole: detectedRole,
+    assignedTo: row.assigned_to || '',
+    assigneeName: row.assignee_full_name || 'Designer',
+    dueDate: safeDueDate,
+    progressPercent: computeTaskProgress(row.status, row.progress_percent),
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
+    versions,
+    statusHistory,
+    comments,
+  };
+}
+
 async function findTask(taskId) {
   if (taskId === undefined || taskId === null) return null;
 
@@ -152,107 +262,12 @@ async function findTask(taskId) {
 
       if (Array.isArray(rows) && rows.length > 0) {
         const row = rows[0];
-        const safeDueDate = formatDueDate(row.due_date);
-        const detectedRole = row.creator_role || (row.creator_full_name && row.creator_full_name.toLowerCase().includes('bdm') ? 'BDM' : 'ADMINISTRATOR');
-
-        let statusHistory = [];
-        try {
-          const [histRows] = await dbPool.query(`
-            SELECT h.*, u.full_name as actor_name
-            FROM task_status_history h
-            LEFT JOIN users u ON h.actor_id = u.id
-            WHERE h.task_id = ?
-            ORDER BY h.created_at DESC
-          `, [taskId]);
-          if (Array.isArray(histRows)) {
-            statusHistory = histRows.map((h) => ({
-              id: h.id,
-              taskId: h.task_id,
-              actorId: h.actor_id,
-              actorName: h.actor_name || 'User',
-              previousStatus: h.previous_status,
-              newStatus: h.new_status,
-              remark: h.remark,
-              createdAt: h.created_at ? new Date(h.created_at).toISOString() : new Date().toISOString(),
-            }));
-          }
-        } catch (error_) { console.log('[MySQL Notice] Task history query skipped:', error_?.message || error_); }
-
-        let versions = [];
-        try {
-          const [verRows] = await dbPool.query(`
-            SELECT v.*, u.full_name as author_name
-            FROM task_versions v
-            LEFT JOIN users u ON v.submitted_by = u.id
-            WHERE v.task_id = ?
-            ORDER BY v.version_number DESC
-          `, [taskId]);
-          if (Array.isArray(verRows)) {
-            versions = verRows.map((v) => ({
-              id: v.id,
-              taskId: v.task_id,
-              versionNumber: v.version_number,
-              submittedBy: v.submitted_by,
-              submittedByName: v.author_name || 'Designer',
-              fileName: v.file_name,
-              filePath: v.file_path,
-              fileSize: v.file_size,
-              mimeType: v.mime_type,
-              changelog: v.changelog,
-              createdAt: v.created_at ? new Date(v.created_at).toISOString() : new Date().toISOString(),
-            }));
-          }
-        } catch (error_) { console.log('[MySQL Notice] Task versions query skipped:', error_?.message || error_); }
-
-        let comments = [];
-        try {
-          const [commRows] = await dbPool.query(`
-            SELECT c.*, u.full_name as user_name, r.code as user_role
-            FROM task_comments c
-            LEFT JOIN users u ON c.user_id = u.id
-            LEFT JOIN roles r ON u.role_id = r.id
-            WHERE c.task_id = ?
-            ORDER BY c.created_at ASC
-          `, [taskId]);
-          if (Array.isArray(commRows)) {
-            comments = commRows.map((c) => ({
-              id: c.id,
-              taskId: c.task_id,
-              userId: c.user_id,
-              userName: c.user_name || 'User',
-              userRole: c.user_role || 'ADMINISTRATOR',
-              comment: c.comment,
-              createdAt: c.created_at ? new Date(c.created_at).toISOString() : new Date().toISOString(),
-            }));
-          }
-        } catch (error_) { console.log('[MySQL Notice] Task comments query skipped:', error_?.message || error_); }
-
-        return {
-          id: row.id,
-          title: row.title || 'Untitled Task',
-          taskType: row.task_type || 'BANNER_DESIGN',
-          packageName: row.package_name || '',
-          description: row.description || '',
-          content: row.content || '',
-          attachmentUrl: row.attachment_url || '',
-          attachmentName: row.attachment_name || '',
-          reviewerFeedback: row.reviewer_feedback || '',
-          status: row.status || 'ASSIGNED',
-          priority: row.priority || 'MEDIUM',
-          createdBy: row.created_by || 1,
-          creatorName: row.creator_full_name || 'Manager',
-          creatorEmail: row.creator_email || '',
-          creatorRole: detectedRole,
-          assignedTo: row.assigned_to || '',
-          assigneeName: row.assignee_full_name || 'Designer',
-          dueDate: safeDueDate,
-          progressPercent: computeTaskProgress(row.status, row.progress_percent),
-          createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
-          updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
-          versions,
-          statusHistory,
-          comments,
-        };
+        const [statusHistory, versions, comments] = await Promise.all([
+          fetchDbTaskHistory(taskId),
+          fetchDbTaskVersions(taskId),
+          fetchDbTaskComments(taskId),
+        ]);
+        return mapFullTaskDetails(row, versions, statusHistory, comments);
       }
     } catch (e) {
       console.error('[MySQL DB Error] findTask failed:', e?.message || e);
@@ -408,39 +423,57 @@ function resolveTaskFilterTargets(query, user) {
   };
 }
 
+function buildTasksFilterQuery(status, targetAssignedTo, targetCreatedBy) {
+  let query = `
+    SELECT t.*, u.full_name as assignee_full_name, c.full_name as creator_full_name, c.email as creator_email, COALESCE(cr.code, 'ADMINISTRATOR') as creator_role
+    FROM tasks t
+    LEFT JOIN users u ON t.assigned_to = u.id
+    LEFT JOIN users c ON t.created_by = c.id
+    LEFT JOIN roles cr ON c.role_id = cr.id
+  `;
+  const conditions = [];
+  const params = [];
+
+  if (status && status !== 'ALL') {
+    conditions.push('t.status = ?');
+    params.push(status);
+  }
+  if (targetAssignedTo) {
+    conditions.push('t.assigned_to = ?');
+    params.push(targetAssignedTo);
+  }
+  if (targetCreatedBy) {
+    conditions.push('t.created_by = ?');
+    params.push(targetCreatedBy);
+  }
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ');
+  }
+  query += ' ORDER BY t.created_at DESC';
+  return { query, params };
+}
+
+function filterTasksMemoryStore(status, targetAssignedTo, targetCreatedBy) {
+  let filtered = [...dbTasksStore];
+  if (status && status !== 'ALL') {
+    filtered = filtered.filter((t) => t.status === status);
+  }
+  if (targetAssignedTo) {
+    filtered = filtered.filter((t) => String(t.assignedTo) === String(targetAssignedTo));
+  }
+  if (targetCreatedBy) {
+    filtered = filtered.filter((t) => String(t.createdBy || t.created_by) === String(targetCreatedBy));
+  }
+  return filtered;
+}
+
 router.get('/tasks', async (req, res) => {
   const { status } = req.query;
   const { targetCreatedBy, targetAssignedTo } = resolveTaskFilterTargets(req.query, req.user);
 
   if (dbPool) {
     try {
-      let query = `
-        SELECT t.*, u.full_name as assignee_full_name, c.full_name as creator_full_name, c.email as creator_email, COALESCE(cr.code, 'ADMINISTRATOR') as creator_role
-        FROM tasks t
-        LEFT JOIN users u ON t.assigned_to = u.id
-        LEFT JOIN users c ON t.created_by = c.id
-        LEFT JOIN roles cr ON c.role_id = cr.id
-      `;
-      const conditions = [];
-      const params = [];
-
-      if (status && status !== 'ALL') {
-        conditions.push('t.status = ?');
-        params.push(status);
-      }
-      if (targetAssignedTo) {
-        conditions.push('t.assigned_to = ?');
-        params.push(targetAssignedTo);
-      }
-      if (targetCreatedBy) {
-        conditions.push('t.created_by = ?');
-        params.push(targetCreatedBy);
-      }
-      if (conditions.length > 0) {
-        query += ' WHERE ' + conditions.join(' AND ');
-      }
-      query += ' ORDER BY t.created_at DESC';
-
+      const { query, params } = buildTasksFilterQuery(status, targetAssignedTo, targetCreatedBy);
       const [rows] = await dbPool.query(query, params);
       if (Array.isArray(rows)) {
         const tasks = rows.map((row) => mapTaskDbRow(row));
@@ -452,18 +485,7 @@ router.get('/tasks', async (req, res) => {
     }
   }
 
-  let filtered = [...dbTasksStore];
-  if (status && status !== 'ALL') {
-    filtered = filtered.filter((t) => t.status === status);
-  }
-  if (targetAssignedTo) {
-    filtered = filtered.filter((t) => String(t.assignedTo) === String(targetAssignedTo));
-  }
-  if (targetCreatedBy) {
-    filtered = filtered.filter((t) => String(t.createdBy || t.created_by) === String(targetCreatedBy));
-  }
-
-  return res.json(filtered);
+  return res.json(filterTasksMemoryStore(status, targetAssignedTo, targetCreatedBy));
 });
 
 
@@ -506,6 +528,53 @@ function matchManagerStoreTask(t, currentUserId, currentUserEmail, currentUserRo
   );
 }
 
+function buildMyTasksFilterQuery(whereClause, status, assignedTo, createdBy, isDesigner) {
+  let query = `
+    SELECT t.*, u.full_name as assignee_full_name, u.email as assignee_email, c.full_name as creator_full_name, c.email as creator_email, COALESCE(cr.code, 'ADMINISTRATOR') as creator_role
+    FROM tasks t
+    LEFT JOIN users u ON t.assigned_to = u.id
+    LEFT JOIN users c ON t.created_by = c.id
+    LEFT JOIN roles cr ON c.role_id = cr.id
+    WHERE ${whereClause}
+  `;
+
+  const conditions = [];
+  const extraParams = [];
+  if (status && status !== 'ALL') {
+    conditions.push('t.status = ?');
+    extraParams.push(status);
+  }
+  if (assignedTo && !isDesigner) {
+    conditions.push('t.assigned_to = ?');
+    extraParams.push(assignedTo);
+  }
+  if (createdBy && isDesigner) {
+    conditions.push('t.created_by = ?');
+    extraParams.push(createdBy);
+  }
+  if (conditions.length > 0) {
+    query += ' AND ' + conditions.join(' AND ');
+  }
+  query += ' ORDER BY t.created_at DESC';
+  return { query, extraParams };
+}
+
+function filterMyTasksMemory(isDesigner, currentUserId, currentUserEmail, currentUserName, currentUserRole, status, assignedTo) {
+  let filtered = dbTasksStore.filter((t) =>
+    isDesigner
+      ? matchDesignerStoreTask(t, currentUserId, currentUserEmail, currentUserName)
+      : matchManagerStoreTask(t, currentUserId, currentUserEmail, currentUserRole)
+  );
+
+  if (status && status !== 'ALL') {
+    filtered = filtered.filter((t) => t.status === status);
+  }
+  if (assignedTo && !isDesigner) {
+    filtered = filtered.filter((t) => String(t.assignedTo) === String(assignedTo));
+  }
+  return filtered;
+}
+
 router.get('/tasks/my', async (req, res) => {
   const currentUserId = req.user?.id;
   if (!currentUserId) {
@@ -524,35 +593,9 @@ router.get('/tasks/my', async (req, res) => {
       const { whereClause, params } = buildMyTasksDbWhere(
         isDesigner, currentUserRole, numericUserId, currentUserEmail, currentUserName
       );
+      const { query, extraParams } = buildMyTasksFilterQuery(whereClause, status, assignedTo, createdBy, isDesigner);
 
-      let query = `
-        SELECT t.*, u.full_name as assignee_full_name, u.email as assignee_email, c.full_name as creator_full_name, c.email as creator_email, COALESCE(cr.code, 'ADMINISTRATOR') as creator_role
-        FROM tasks t
-        LEFT JOIN users u ON t.assigned_to = u.id
-        LEFT JOIN users c ON t.created_by = c.id
-        LEFT JOIN roles cr ON c.role_id = cr.id
-        WHERE ${whereClause}
-      `;
-
-      const conditions = [];
-      if (status && status !== 'ALL') {
-        conditions.push('t.status = ?');
-        params.push(status);
-      }
-      if (assignedTo && !isDesigner) {
-        conditions.push('t.assigned_to = ?');
-        params.push(assignedTo);
-      }
-      if (createdBy && isDesigner) {
-        conditions.push('t.created_by = ?');
-        params.push(createdBy);
-      }
-      if (conditions.length > 0) {
-        query += ' AND ' + conditions.join(' AND ');
-      }
-      query += ' ORDER BY t.created_at DESC';
-
-      const [rows] = await dbPool.query(query, params);
+      const [rows] = await dbPool.query(query, [...params, ...extraParams]);
       if (Array.isArray(rows)) {
         const tasks = rows.map((row) => mapTaskDbRow(row));
         await populateTaskRelations(tasks);
@@ -563,21 +606,50 @@ router.get('/tasks/my', async (req, res) => {
     }
   }
 
-  let filtered = dbTasksStore.filter((t) =>
-    isDesigner
-      ? matchDesignerStoreTask(t, currentUserId, currentUserEmail, currentUserName)
-      : matchManagerStoreTask(t, currentUserId, currentUserEmail, currentUserRole)
-  );
-
-  if (status && status !== 'ALL') {
-    filtered = filtered.filter((t) => t.status === status);
-  }
-  if (assignedTo && !isDesigner) {
-    filtered = filtered.filter((t) => String(t.assignedTo) === String(assignedTo));
-  }
-  return res.json(filtered);
+  return res.json(filterMyTasksMemory(isDesigner, currentUserId, currentUserEmail, currentUserName, currentUserRole, status, assignedTo));
 });
 
+async function findTaskRecordForDeletion(taskId) {
+  if (dbPool) {
+    try {
+      const [rows] = await dbPool.query(
+        'SELECT id, title, created_by FROM tasks WHERE id = ? LIMIT 1',
+        [taskId]
+      );
+      if (Array.isArray(rows) && rows.length > 0) {
+        return rows[0];
+      }
+    } catch (e) {
+      console.error('[MySQL DB Error] Failed to fetch task for deletion check:', e?.message || e);
+    }
+  }
+  const memTask = dbTasksStore.find((t) => String(t.id).trim() === String(taskId).trim());
+  if (memTask) {
+    return {
+      id: memTask.id,
+      title: memTask.title,
+      created_by: memTask.createdBy || memTask.created_by,
+    };
+  }
+  return null;
+}
+
+async function removeTaskFromDb(taskId) {
+  if (!dbPool) return true;
+  try {
+    await dbPool.query('DELETE FROM task_status_history WHERE task_id = ?', [taskId]);
+    await dbPool.query('DELETE FROM task_versions WHERE task_id = ?', [taskId]);
+    await dbPool.query('DELETE FROM task_comments WHERE task_id = ?', [taskId]);
+    await dbPool.query('DELETE FROM task_assignments WHERE task_id = ?', [taskId]);
+    await dbPool.query('DELETE FROM task_attachments WHERE task_id = ?', [taskId]);
+    await dbPool.query('DELETE FROM task_progress_history WHERE task_id = ?', [taskId]);
+    await dbPool.query('DELETE FROM tasks WHERE id = ?', [taskId]);
+    return true;
+  } catch (e) {
+    console.error('[MySQL DB Error] Failed to delete task:', e?.message || e);
+    return false;
+  }
+}
 
 router.delete('/tasks/:id', async (req, res) => {
   const currentUserId = req.user?.id;
@@ -590,61 +662,23 @@ router.delete('/tasks/:id', async (req, res) => {
     return res.status(400).json({ error: 'Task ID parameter is required.' });
   }
 
-  let task = null;
-  if (dbPool) {
-    try {
-      const [rows] = await dbPool.query(
-        'SELECT id, title, created_by FROM tasks WHERE id = ? LIMIT 1',
-        [taskId]
-      );
-      if (Array.isArray(rows) && rows.length > 0) {
-        task = rows[0];
-      }
-    } catch (e) {
-      console.error('[MySQL DB Error] Failed to fetch task for deletion check:', e?.message || e);
-    }
-  }
-
-  if (!task) {
-    const memTask = dbTasksStore.find((t) => String(t.id).trim() === String(taskId).trim());
-    if (memTask) {
-      task = {
-        id: memTask.id,
-        title: memTask.title,
-        created_by: memTask.createdBy || memTask.created_by,
-      };
-    }
-  }
-
+  const task = await findTaskRecordForDeletion(taskId);
   if (!task) {
     return res.status(404).json({ error: 'Task record not found.' });
   }
 
-
   const taskCreatorId = String(task.created_by !== undefined ? task.created_by : task.createdBy).trim();
   const authUserId = String(currentUserId).trim();
 
- 
   if (taskCreatorId !== authUserId) {
     return res.status(403).json({
       message: 'You can only delete tasks created by you.',
     });
   }
 
- 
-  if (dbPool) {
-    try {
-      await dbPool.query('DELETE FROM task_status_history WHERE task_id = ?', [taskId]);
-      await dbPool.query('DELETE FROM task_versions WHERE task_id = ?', [taskId]);
-      await dbPool.query('DELETE FROM task_comments WHERE task_id = ?', [taskId]);
-      await dbPool.query('DELETE FROM task_assignments WHERE task_id = ?', [taskId]);
-      await dbPool.query('DELETE FROM task_attachments WHERE task_id = ?', [taskId]);
-      await dbPool.query('DELETE FROM task_progress_history WHERE task_id = ?', [taskId]);
-      await dbPool.query('DELETE FROM tasks WHERE id = ?', [taskId]);
-    } catch (e) {
-      console.error('[MySQL DB Error] Failed to delete task:', e?.message || e);
-      return res.status(500).json({ error: 'Failed to delete task from database.' });
-    }
+  const dbSuccess = await removeTaskFromDb(taskId);
+  if (!dbSuccess) {
+    return res.status(500).json({ error: 'Failed to delete task from database.' });
   }
 
   const memIdx = dbTasksStore.findIndex((t) => String(t.id).trim() === String(taskId).trim());
@@ -662,10 +696,8 @@ router.delete('/tasks/:id', async (req, res) => {
   });
 
   emitRealtimeEvent('task:deleted', { taskId });
-
   return res.json({ success: true, message: 'Task deleted successfully.' });
 });
-
 
 router.get('/tasks/:id', async (req, res) => {
   const task = await findTask(req.params.id);
@@ -1496,6 +1528,51 @@ router.patch('/tasks/:id/status', handleStatusTransition);
 router.post('/tasks/:id/versions', handleVersionSubmission);
 
 
+async function saveCommentToDb(taskId, newComment) {
+  if (!dbPool) return;
+  try {
+    const numericTaskId = typeof taskId === 'number' ? taskId : (Number.parseInt(taskId, 10) || null);
+    const numericUserId = typeof newComment.userId === 'number' ? newComment.userId : (Number.parseInt(newComment.userId, 10) || 1);
+    if (numericTaskId) {
+      const [result] = await dbPool.query(
+        `INSERT INTO task_comments (task_id, user_id, comment, created_at)
+         VALUES (?, ?, ?, NOW())`,
+        [numericTaskId, numericUserId, newComment.comment]
+      );
+      if (result?.insertId) {
+        newComment.id = result.insertId;
+      }
+    }
+  } catch (e) {
+    console.error('[MySQL DB Error] Comment INSERT failed:', e?.message || e);
+  }
+}
+
+function notifyTaskCommentParties(task, newComment, detectedUserName, commenterId) {
+  const taskCreatorId = task.createdBy || task.created_by;
+  const taskAssigneeId = task.assignedTo || task.assigned_to;
+
+  if (taskAssigneeId && String(taskAssigneeId) !== commenterId) {
+    dispatchNotification({
+      userIds: [taskAssigneeId],
+      title: `Task Comment: ${task.title}`,
+      message: `${detectedUserName}: "${newComment.comment}"`,
+      type: 'INFO',
+      targetRoute: '/designer-tasks',
+    }).catch(() => {});
+  }
+
+  if (taskCreatorId && String(taskCreatorId) !== commenterId) {
+    dispatchNotification({
+      userIds: [taskCreatorId],
+      title: `Task Comment: ${task.title}`,
+      message: `${detectedUserName}: "${newComment.comment}"`,
+      type: 'INFO',
+      targetRoute: `/tasks?view=my&taskId=${task.id}`,
+    }).catch(() => {});
+  }
+}
+
 router.post('/tasks/:id/comments', async (req, res) => {
   const { comment, userId, userName, userRole } = req.body;
   const taskId = req.params.id;
@@ -1527,55 +1604,14 @@ router.post('/tasks/:id/comments', async (req, res) => {
   task.comments.push(newComment);
   emitRealtimeEvent('task:comment', { taskId, comment: newComment });
 
-  if (dbPool) {
-    try {
-      const numericTaskId = typeof taskId === 'number' ? taskId : (Number.parseInt(taskId, 10) || null);
-      const numericUserId = typeof newComment.userId === 'number' ? newComment.userId : (Number.parseInt(newComment.userId, 10) || 1);
-      if (numericTaskId) {
-        const [result] = await dbPool.query(
-          `INSERT INTO task_comments (task_id, user_id, comment, created_at)
-           VALUES (?, ?, ?, NOW())`,
-          [numericTaskId, numericUserId, newComment.comment]
-        );
-        if (result?.insertId) {
-          newComment.id = result.insertId;
-        }
-      }
-    } catch (e) {
-      console.error('[MySQL DB Error] Comment INSERT failed:', e?.message || e);
-    }
-  }
-
+  await saveCommentToDb(taskId, newComment);
 
   const memIndex = dbTasksStore.findIndex((t) => String(t.id) === String(taskId));
   if (memIndex !== -1) {
     dbTasksStore[memIndex] = { ...dbTasksStore[memIndex], ...task };
   }
 
- 
-  const taskCreatorId = task.createdBy || task.created_by;
-  const taskAssigneeId = task.assignedTo || task.assigned_to;
-  const commenterId = String(detectedUserId);
-
-  if (taskAssigneeId && String(taskAssigneeId) !== commenterId) {
-    dispatchNotification({
-      userIds: [taskAssigneeId],
-      title: `Task Comment: ${task.title}`,
-      message: `${detectedUserName}: "${newComment.comment}"`,
-      type: 'INFO',
-      targetRoute: '/designer-tasks',
-    }).catch(() => {});
-  }
-
-  if (taskCreatorId && String(taskCreatorId) !== commenterId) {
-    dispatchNotification({
-      userIds: [taskCreatorId],
-      title: `Task Comment: ${task.title}`,
-      message: `${detectedUserName}: "${newComment.comment}"`,
-      type: 'INFO',
-      targetRoute: `/tasks?view=my&taskId=${task.id}`,
-    }).catch(() => {});
-  }
+  notifyTaskCommentParties(task, newComment, detectedUserName, String(detectedUserId));
 
   return res.status(201).json(newComment);
 });
@@ -1670,7 +1706,7 @@ router.get('/designer/dashboard-metrics', async (req, res) => {
       if (Array.isArray(rows) && rows.length > 0) {
         designerTasks = await Promise.all(rows.map(async (row) => {
           const safeDueDate = formatDueDate(row.due_date);
-          const detectedRole = row.creator_role || (row.creator_full_name && row.creator_full_name.toLowerCase().includes('bdm') ? 'BDM' : 'ADMINISTRATOR');
+          const detectedRole = row.creator_role || (row.creator_full_name?.toLowerCase().includes('bdm') ? 'BDM' : 'ADMINISTRATOR');
 
           let versions = [];
           try {
@@ -1752,7 +1788,7 @@ router.get('/designer/dashboard-metrics', async (req, res) => {
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const assignedToday = designerTasks.filter((t) => (t.createdAt && t.createdAt.startsWith(todayStr)) || t.status === 'ASSIGNED');
+  const assignedToday = designerTasks.filter((t) => t.createdAt?.startsWith(todayStr) || t.status === 'ASSIGNED');
   const inProgress = designerTasks.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ACCEPTED');
   const dueToday = designerTasks.filter((t) => t.dueDate === todayStr);
   const overdue = designerTasks.filter((t) => t.dueDate && t.dueDate < todayStr && t.status !== 'COMPLETED' && t.status !== 'APPROVED');

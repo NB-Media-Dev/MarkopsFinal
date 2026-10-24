@@ -34,10 +34,10 @@ export interface AdItem {
   createdBy?: string | null;
   campaignName: string;
   name: string;
-  platform: 'Meta' | 'Google Ads' | 'Instagram' | 'LinkedIn' | 'YouTube' | string;
+  platform: 'Meta' | 'Google Ads' | 'Instagram' | 'LinkedIn' | 'YouTube' | (string & {});
   productId?: string;
   packageName?: string;
-  status: 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'DRAFT' | string;
+  status: 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'DRAFT' | (string & {});
   spend: number;
   impressions: number;
   reach: number;

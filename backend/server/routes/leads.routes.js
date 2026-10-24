@@ -1734,7 +1734,7 @@ function resolveUploaderInfo(req) {
 
   if ((!uploaderNameResolved || uploaderNameResolved === 'System Administrator') && uploaderUid) {
     const foundUser = dbUsersStore.find(
-      (u) => String(u.id).toLowerCase() === String(uploaderUid).toLowerCase() || (u.email && u.email.toLowerCase() === String(uploaderUid).toLowerCase())
+      (u) => String(u.id).toLowerCase() === String(uploaderUid).toLowerCase() || u.email?.toLowerCase() === String(uploaderUid).toLowerCase()
     );
     if (foundUser) {
       uploaderNameResolved = foundUser.fullName;
@@ -1764,62 +1764,67 @@ function parseLeadRawContact(raw) {
   return { phone, emailAddress: email || contactEmail };
 }
 
-function buildImportedLeads(leads, telecallers, context) {
+function buildSingleImportedLead(raw, i, assignedTelecaller, context, uploaderInfo, cleanCreatorId) {
   const { req, campaignId, targetCampName, source, mysqlCampaignId, metaWebhook } = context;
+  const { uploaderUid, uploaderNameResolved, uploaderEmailResolved } = uploaderInfo;
+  const { firstName, lastName } = parseLeadRawNames(raw, i);
+  const { phone, emailAddress } = parseLeadRawContact(raw);
+
+  const cleanAssignedToId = assignedTelecaller ? (Number.parseInt(String(assignedTelecaller.id).replace(/\D/g, ''), 10) || null) : null;
+  const targetPkgName = req.body.packageName || raw.packageName || raw.package || targetCampName || 'Careermate';
+  const targetProdName = req.body.productName || raw.productName || raw.product || '';
+  const targetProdId = req.body.productId || raw.productId || raw.product_id || '';
+  const rowCampaignId = raw.campaignId || campaignId || 'cmp_default';
+
+  return {
+    id: `lead_${crypto.randomBytes(4).toString('hex')}`,
+    firstName,
+    lastName,
+    email: emailAddress,
+    phone,
+    source: String(raw.source || raw['Source'] || raw['source'] || raw['Lead Source'] || source || (metaWebhook ? 'META_ADS' : 'Excel Import')).trim(),
+    campaignId: metaWebhook && mysqlCampaignId != null ? String(mysqlCampaignId) : (campaignId || raw.campaignId || 'cmp_default'),
+    campaignName: targetCampName,
+    packageName: targetPkgName,
+    package: targetPkgName,
+    productName: targetProdName,
+    productId: targetProdId,
+    adId: raw.adId || '',
+    metaLeadId: metaWebhook ? String(raw.metaLeadId) : undefined,
+    metaCampaignId: metaWebhook ? String(raw.metaCampaignId || '') : undefined,
+    metaAdId: metaWebhook ? String(raw.metaAdId || '') : undefined,
+    status: assignedTelecaller ? 'ASSIGNED' : 'NEW',
+    assignmentStatus: assignedTelecaller ? 'ASSIGNED' : 'UNASSIGNED',
+    callDisposition: null,
+    assignedTo: assignedTelecaller ? assignedTelecaller.id : null,
+    assignedTelecallerId: assignedTelecaller ? assignedTelecaller.id : null,
+    assigneeName: assignedTelecaller ? assignedTelecaller.fullName : 'Unassigned',
+    creatorId: uploaderUid || '1',
+    creatorEmail: uploaderEmailResolved || req.body.creatorEmail || 'admin@markops.io',
+    creatorName: req.body.creatorName || uploaderNameResolved || 'System Administrator',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    _mysqlCampaignId: metaWebhook ? mysqlCampaignId : (Number.parseInt(String(rowCampaignId), 10) || mysqlCampaignId),
+    _mysqlAdId: null,
+    _mysqlAssignedTo: cleanAssignedToId,
+    _mysqlCreatorId: cleanCreatorId
+  };
+}
+
+function buildImportedLeads(leads, telecallers, context) {
   const createdLeads = [];
   const allocationSummary = {};
   telecallers.forEach((tc) => {
     allocationSummary[tc.id] = { id: tc.id, fullName: tc.fullName, email: tc.email, count: 0 };
   });
 
-  const { uploaderUid, uploaderNameResolved, uploaderEmailResolved } = resolveUploaderInfo(req);
-  const cleanCreatorId = Number.parseInt(String(uploaderUid || '1').replace(/\D/g, ''), 10) || 1;
+  const uploaderInfo = resolveUploaderInfo(context.req);
+  const cleanCreatorId = Number.parseInt(String(uploaderInfo.uploaderUid || '1').replace(/\D/g, ''), 10) || 1;
 
   for (let i = 0; i < leads.length; i++) {
     const raw = leads[i];
     const assignedTelecaller = telecallers.length > 0 ? telecallers[i % telecallers.length] : null;
-    const { firstName, lastName } = parseLeadRawNames(raw, i);
-    const { phone, emailAddress } = parseLeadRawContact(raw);
-
-    const cleanAssignedToId = assignedTelecaller ? (Number.parseInt(String(assignedTelecaller.id).replace(/\D/g, ''), 10) || null) : null;
-    const targetPkgName = req.body.packageName || raw.packageName || raw.package || targetCampName || 'Careermate';
-    const targetProdName = req.body.productName || raw.productName || raw.product || '';
-    const targetProdId = req.body.productId || raw.productId || raw.product_id || '';
-    const rowCampaignId = raw.campaignId || campaignId || 'cmp_default';
-
-    const newLead = {
-      id: `lead_${crypto.randomBytes(4).toString('hex')}`,
-      firstName,
-      lastName,
-      email: emailAddress,
-      phone,
-      source: String(raw.source || raw['Source'] || raw['source'] || raw['Lead Source'] || source || (metaWebhook ? 'META_ADS' : 'Excel Import')).trim(),
-      campaignId: metaWebhook && mysqlCampaignId != null ? String(mysqlCampaignId) : (campaignId || raw.campaignId || 'cmp_default'),
-      campaignName: targetCampName,
-      packageName: targetPkgName,
-      package: targetPkgName,
-      productName: targetProdName,
-      productId: targetProdId,
-      adId: raw.adId || '',
-      metaLeadId: metaWebhook ? String(raw.metaLeadId) : undefined,
-      metaCampaignId: metaWebhook ? String(raw.metaCampaignId || '') : undefined,
-      metaAdId: metaWebhook ? String(raw.metaAdId || '') : undefined,
-      status: assignedTelecaller ? 'ASSIGNED' : 'NEW',
-      assignmentStatus: assignedTelecaller ? 'ASSIGNED' : 'UNASSIGNED',
-      callDisposition: null,
-      assignedTo: assignedTelecaller ? assignedTelecaller.id : null,
-      assignedTelecallerId: assignedTelecaller ? assignedTelecaller.id : null,
-      assigneeName: assignedTelecaller ? assignedTelecaller.fullName : 'Unassigned',
-      creatorId: uploaderUid || '1',
-      creatorEmail: uploaderEmailResolved || req.body.creatorEmail || 'admin@markops.io',
-      creatorName: req.body.creatorName || uploaderNameResolved || 'System Administrator',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      _mysqlCampaignId: metaWebhook ? mysqlCampaignId : (Number.parseInt(String(rowCampaignId), 10) || mysqlCampaignId),
-      _mysqlAdId: null,
-      _mysqlAssignedTo: cleanAssignedToId,
-      _mysqlCreatorId: cleanCreatorId
-    };
+    const newLead = buildSingleImportedLead(raw, i, assignedTelecaller, context, uploaderInfo, cleanCreatorId);
 
     if (assignedTelecaller) {
       allocationSummary[assignedTelecaller.id].count++;
@@ -1829,6 +1834,49 @@ function buildImportedLeads(leads, telecallers, context) {
     createdLeads.push(newLead);
   }
   return { createdLeads, allocationSummary };
+}
+
+async function insertMetaLeadToDb(l) {
+  await dbPool.queryStrict(
+    `INSERT INTO leads
+     (first_name, last_name, email, phone, source, status, assigned_to, assigned_telecaller_id, creator_id, creator_name, creator_email,
+      campaign_id, ad_id, campaign_name, meta_lead_id, meta_campaign_id, meta_ad_id, assignment_status, call_disposition,
+      created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+    [
+      l.firstName, l.lastName || null, l.email || null, l.phone, l.source, l.status, l._mysqlAssignedTo,
+      l._mysqlAssignedTo, l._mysqlCreatorId, l.creatorName, l.creatorEmail, l._mysqlCampaignId, l._mysqlAdId, l.campaignName,
+      l.metaLeadId, l.metaCampaignId || null, l.metaAdId || null, l.assignmentStatus, l.callDisposition,
+    ]
+  );
+}
+
+async function insertBatchLeadToConnection(importConnection, l) {
+  try {
+    await importConnection.query(
+      `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, assigned_telecaller_id, assignment_status, creator_id, creator_name, creator_email, campaign_id, campaign_name, package_name, product_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      [
+        l.firstName, l.lastName, l.email, l.phone, l.source, l.status, l._mysqlAssignedTo, l._mysqlAssignedTo,
+        l.assignmentStatus, l._mysqlCreatorId, l.creatorName, l.creatorEmail, l._mysqlCampaignId, l.campaignName,
+        l.packageName || null, l.productId || null
+      ]
+    );
+  } catch (colErr) {
+    console.log('[MySQL Notice] Batch insert with full columns failed, falling back to minimal columns:', colErr?.message || colErr);
+    try {
+      await importConnection.query(
+        `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, creator_id, creator_name, creator_email, campaign_id, campaign_name, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        [
+          l.firstName, l.lastName, l.email, l.phone, l.source, l.status, l._mysqlAssignedTo,
+          l._mysqlCreatorId, l.creatorName, l.creatorEmail, l._mysqlCampaignId, l.campaignName
+        ]
+      );
+    } catch (coreErr) {
+      console.error('[MySQL Error] Bulk insert core fallback:', coreErr.message);
+    }
+  }
 }
 
 async function persistBatchLeadsToDb(createdLeads, metaWebhook) {
@@ -1860,44 +1908,9 @@ async function persistBatchLeadsToDb(createdLeads, metaWebhook) {
 
     for (const l of createdLeads) {
       if (metaWebhook) {
-        await dbPool.queryStrict(
-          `INSERT INTO leads
-           (first_name, last_name, email, phone, source, status, assigned_to, assigned_telecaller_id, creator_id, creator_name, creator_email,
-            campaign_id, ad_id, campaign_name, meta_lead_id, meta_campaign_id, meta_ad_id, assignment_status, call_disposition,
-            created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-          [
-            l.firstName, l.lastName || null, l.email || null, l.phone, l.source, l.status, l._mysqlAssignedTo,
-            l._mysqlAssignedTo, l._mysqlCreatorId, l.creatorName, l.creatorEmail, l._mysqlCampaignId, l._mysqlAdId, l.campaignName,
-            l.metaLeadId, l.metaCampaignId || null, l.metaAdId || null, l.assignmentStatus, l.callDisposition,
-          ]
-        );
+        await insertMetaLeadToDb(l);
       } else {
-        try {
-          await importConnection.query(
-            `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, assigned_telecaller_id, assignment_status, creator_id, creator_name, creator_email, campaign_id, campaign_name, package_name, product_id, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-            [
-              l.firstName, l.lastName, l.email, l.phone, l.source, l.status, l._mysqlAssignedTo, l._mysqlAssignedTo,
-              l.assignmentStatus, l._mysqlCreatorId, l.creatorName, l.creatorEmail, l._mysqlCampaignId, l.campaignName,
-              l.packageName || null, l.productId || null
-            ]
-          );
-        } catch (colErr) {
-          console.log('[MySQL Notice] Batch insert with full columns failed, falling back to minimal columns:', colErr?.message || colErr);
-          try {
-            await importConnection.query(
-              `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, creator_id, creator_name, creator_email, campaign_id, campaign_name, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-              [
-                l.firstName, l.lastName, l.email, l.phone, l.source, l.status, l._mysqlAssignedTo,
-                l._mysqlCreatorId, l.creatorName, l.creatorEmail, l._mysqlCampaignId, l.campaignName
-              ]
-            );
-          } catch (coreErr) {
-            console.error('[MySQL Error] Bulk insert core fallback:', coreErr.message);
-          }
-        }
+        await insertBatchLeadToConnection(importConnection, l);
       }
     }
 

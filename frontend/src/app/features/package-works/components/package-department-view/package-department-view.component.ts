@@ -821,22 +821,25 @@ export class PackageDepartmentViewComponent {
     const pVal = typeof t.progressPercent === 'number' ? t.progressPercent : null;
     const status = t.status;
 
-    if (status === 'APPROVED' || status === 'COMPLETED' || status === 'PUBLISHED') {
-      return '100% Completed';
+    switch (status) {
+      case 'APPROVED':
+      case 'COMPLETED':
+      case 'PUBLISHED':
+        return '100% Completed';
+      case 'SUBMITTED':
+      case 'UNDER_REVIEW':
+        return pVal !== null ? `${pVal}% (Under Review)` : 'Under Review';
+      case 'REVISION_REQUIRED':
+      case 'REDESIGN_REQUIRED':
+        return pVal !== null ? `${pVal}% (Changes Req)` : 'Revision Requested';
+      case 'RESUBMITTED':
+        return pVal !== null ? `${pVal}% (Resubmitted)` : 'Resubmitted';
+      case 'IN_PROGRESS':
+      case 'ACCEPTED':
+        return pVal !== null && pVal > 0 ? `${pVal}% (In Progress)` : 'In Progress';
+      default:
+        return pVal !== null && pVal > 0 ? `${pVal}%` : (status || 'Assigned');
     }
-    if (status === 'SUBMITTED' || status === 'UNDER_REVIEW') {
-      return pVal !== null ? `${pVal}% (Under Review)` : 'Under Review';
-    }
-    if (status === 'REVISION_REQUIRED' || status === 'REDESIGN_REQUIRED') {
-      return pVal !== null ? `${pVal}% (Changes Req)` : 'Revision Requested';
-    }
-    if (status === 'RESUBMITTED') {
-      return pVal !== null ? `${pVal}% (Resubmitted)` : 'Resubmitted';
-    }
-    if (status === 'IN_PROGRESS' || status === 'ACCEPTED') {
-      return pVal !== null && pVal > 0 ? `${pVal}% (In Progress)` : 'In Progress';
-    }
-    return pVal !== null && pVal > 0 ? `${pVal}%` : (status || 'Assigned');
   }
 
   getTaskRevisionCount(t: any): number {
@@ -1047,6 +1050,168 @@ export class PackageDepartmentViewComponent {
     return String(raw).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
   }
 
+  private buildDesignerCsvLines(user: UserPerformanceRecord, tasks: any[], escapeCsv: (val: any) => string): string[] {
+    const lines: string[] = [];
+    const designerHeaders = [
+      'S.No', 'Designer Name', 'Product', 'Package', 'Task Title', 'Assigned By (Role)',
+      'Priority', 'Assigned Date', 'Due Date', 'Submission Date', 'Status',
+      'Work Progress Status', 'Time Duration', 'Revisions (Changes)',
+      'Admin Feedback / Notes', 'Design File ',
+    ];
+    lines.push(designerHeaders.map(escapeCsv).join(','));
+
+    tasks.forEach((t: any, index: number) => {
+      const fileAsset = t.attachmentName || t.attachmentUrl || (Array.isArray(t.versions) && t.versions.length > 0 ? (t.versions[t.versions.length - 1].fileName || t.versions[t.versions.length - 1].previewUrl) : '') || '—';
+      const row = [
+        index + 1,
+        user.name || 'Designer',
+        this.formatProductName(t.productName || t.productId, t),
+        this.formatPackageName(t.packageName || t.packageId, t),
+        t.title || 'Design Task',
+        t.creatorRole || 'Administrator',
+        t.priority || 'MEDIUM',
+        t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—',
+        t.dueDate || 'Ongoing',
+        this.getSubmissionDateText(t),
+        t.status || 'ASSIGNED',
+        this.getProgressStatusText(t),
+        this.getTaskDuration(t),
+        this.getTaskRevisionCount(t),
+        t.reviewerFeedback || t.feedback || t.remark || '—',
+        fileAsset,
+      ];
+      lines.push(row.map(escapeCsv).join(','));
+    });
+    return lines;
+  }
+
+  private buildTelecallerCsvLines(user: UserPerformanceRecord, tasks: any[], escapeCsv: (val: any) => string): string[] {
+    const lines: string[] = [];
+    const summaryHeaders = [
+      'S.No', 'Campaigns', 'Ad Name', 'Assigned Date', 'Total Count Leads',
+      'Total Calls', 'Average Calls', 'Interested', 'Targets', 'Caller Ratio', 'Paid',
+    ];
+    lines.push('--- CAMPAIGN SUMMARY BREAKDOWN ---', summaryHeaders.map(escapeCsv).join(','));
+    this.telecallerCampaignReports.forEach((r) => {
+      lines.push(
+        [r.sNo, r.campaignName, r.adName, r.assignedDate, r.totalCountLeads, r.totalCalls, r.averageCalls, r.interested, r.targets, r.callerRatio, r.paid]
+          .map(escapeCsv).join(',')
+      );
+    });
+    lines.push('', '--- DETAILED LEAD RECORDS ---');
+
+    const telecallerHeaders = [
+      'S.No', 'Telecaller Name', 'Product', 'Package', 'Lead Name', 'Campaign',
+      'Phone Number', 'Ad Name', 'Lead Source', 'Assigned Date', 'Call Date & Time',
+      'Call Duration', 'Call Status', 'Total Call Attempts', 'Follow-up Date', 'Telecaller Notes',
+    ];
+    lines.push(telecallerHeaders.map(escapeCsv).join(','));
+
+    tasks.forEach((t: any, index: number) => {
+      const phone = (t.leadPhone && t.leadPhone !== '—' && !t.leadPhone.includes('@')) ? t.leadPhone : '—';
+      const attempts = t.callAttemptsText || (t.callAttempts ? `${t.callAttempts} Calls` : '0 Attempts');
+      let remarks = '—';
+      if (t.remarks && t.remarks !== '—') {
+        remarks = t.remarks;
+      } else if (t.notes && t.notes !== '—') {
+        remarks = t.notes;
+      }
+
+      const row = [
+        index + 1,
+        user.name || 'Telecaller',
+        this.formatProductName(t.productName, t),
+        this.formatPackageName(t.packageName, t),
+        t.leadName || t.title || '—',
+        t.campaignName || '—',
+        phone,
+        t.adName || '—',
+        t.source || '—',
+        t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—',
+        t.calledAt ? new Date(t.calledAt).toLocaleString() : '—',
+        t.callDurationText && t.callDurationText !== '—' ? t.callDurationText : '—',
+        t.callOutcome || t.status || '—',
+        attempts,
+        t.followUpDate ? new Date(t.followUpDate).toLocaleDateString() : '—',
+        remarks,
+      ];
+      lines.push(row.map(escapeCsv).join(','));
+    });
+    return lines;
+  }
+
+  private buildDigitalMarketingCsvLines(user: UserPerformanceRecord, tasks: any[], escapeCsv: (val: any) => string): string[] {
+    const lines: string[] = [];
+    const dmHeaders = [
+      'S.No', 'Digital Marketer Name', 'Ad Name', 'Campaign Name', 'Product',
+      'Package', 'Platform', 'Date', 'Leads Generated', 'Status',
+    ];
+    lines.push(dmHeaders.map(escapeCsv).join(','));
+
+    tasks.forEach((t: any, index: number) => {
+      const rawDate = t.launchDate || t.createdAt;
+      const row = [
+        index + 1,
+        user.name || 'Digital Marketer',
+        t.adName || t.title || '—',
+        t.campaignName || '—',
+        this.formatProductName(t.productName, t),
+        this.formatPackageName(t.packageName, t),
+        t.platform || 'Meta Ads',
+        rawDate ? new Date(rawDate).toLocaleDateString() : '—',
+        t.leadsCount !== undefined ? t.leadsCount : 0,
+        t.status || 'ACTIVE',
+      ];
+      lines.push(row.map(escapeCsv).join(','));
+    });
+    return lines;
+  }
+
+  private buildGeneralStaffCsvLines(user: UserPerformanceRecord, tasks: any[], escapeCsv: (val: any) => string): string[] {
+    const lines: string[] = [];
+    const generalHeaders = [
+      'S.No', 'Staff Name', 'Role', 'Product', 'Package', 'Task Title',
+      'Assigned By (Role)', 'Status', 'Priority', 'Due Date', 'Time Duration',
+      'Asset / Deliverable', 'Notes',
+    ];
+    lines.push(generalHeaders.map(escapeCsv).join(','));
+
+    tasks.forEach((t: any, idx: number) => {
+      const row = [
+        idx + 1,
+        user.name,
+        user.roleLabel,
+        this.formatProductName(t.productName || t.productId, t),
+        this.formatPackageName(t.packageName || t.packageId, t),
+        t.title || 'Untitled Task',
+        t.creatorRole || 'Administrator',
+        t.status || 'PENDING',
+        t.priority || 'MEDIUM',
+        t.dueDate || 'Ongoing',
+        this.getTaskDuration(t),
+        t.attachmentName || t.attachmentUrl || 'None',
+        t.reviewerFeedback || '—',
+      ];
+      lines.push(row.map(escapeCsv).join(','));
+    });
+    return lines;
+  }
+
+  private resolveExportTasks(user: UserPerformanceRecord): any[] {
+    if (this.selectedPerformanceUser?.userId === user.userId) {
+      return this.filteredModalTasks;
+    }
+    return (user.tasks || []).filter((t: any) => {
+      if (this.filterStartDate || this.filterEndDate) {
+        if (!this.taskMatchesDateRange(t, this.filterStartDate, this.filterEndDate)) return false;
+      }
+      if (this.currentFilterTarget && this.currentFilterTarget !== 'ALL') {
+        return isTaskForPackage(t, this.currentFilterTarget, this.productPackages, this.activePackageMeta?.id);
+      }
+      return true;
+    });
+  }
+
   downloadUserReport(user: UserPerformanceRecord): void {
     if (!user) return;
 
@@ -1056,290 +1221,22 @@ export class PackageDepartmentViewComponent {
       return `"${str}"`;
     };
 
-    const lines: string[] = [];
+    const tasks = this.resolveExportTasks(user);
+    let lines: string[] = [];
 
-  
-    const tasks = (this.selectedPerformanceUser?.userId === user.userId)
-      ? this.filteredModalTasks
-      : (user.tasks || []).filter((t: any) => {
-          if (this.filterStartDate || this.filterEndDate) {
-            if (!this.taskMatchesDateRange(t, this.filterStartDate, this.filterEndDate)) return false;
-          }
-          if (this.currentFilterTarget && this.currentFilterTarget !== 'ALL') {
-            return isTaskForPackage(t, this.currentFilterTarget, this.productPackages, this.activePackageMeta?.id);
-          }
-          return true;
-        });
-
-    if (user.role === 'DESIGNER') {
- 
-      const designerHeaders = [
-        'S.No',
-        'Designer Name',
-        'Product',
-        'Package',
-        'Task Title',
-        'Assigned By (Role)',
-        'Priority',
-        'Assigned Date',
-        'Due Date',
-        'Submission Date',
-        'Status',
-        'Work Progress Status',
-        'Time Duration',
-        'Revisions (Changes)',
-        'Admin Feedback / Notes',
-        'Design File ',
-      ];
-      lines.push(designerHeaders.map(escapeCsv).join(','));
-
-      if (tasks.length > 0) {
-        tasks.forEach((t: any, index: number) => {
-          const sNo = index + 1;
-          const designerName = user.name || 'Designer';
-          const product = this.formatProductName(t.productName || t.productId, t);
-          const pkg = this.formatPackageName(t.packageName || t.packageId, t);
-          const taskTitle = t.title || 'Design Task';
-
-        
-          const assignedByRole = t.creatorRole || 'Administrator';
-
-       
-          const priority = t.priority || 'MEDIUM';
-
-      
-          const assignedDate = t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—';
-
-         
-          const dueDate = t.dueDate || 'Ongoing';
-
-        
-          const submissionDate = this.getSubmissionDateText(t);
-
-       
-          const status = t.status || 'ASSIGNED';
-
-        
-          const progressStatus = this.getProgressStatusText(t);
-
-    
-          const duration = this.getTaskDuration(t);
-
- 
-          const revCount = this.getTaskRevisionCount(t);
-
- 
-          const feedback = t.reviewerFeedback || t.feedback || t.remark || '—';
-
-     
-          const fileAsset = t.attachmentName || t.attachmentUrl || (Array.isArray(t.versions) && t.versions.length > 0 ? (t.versions[t.versions.length - 1].fileName || t.versions[t.versions.length - 1].previewUrl) : '') || '—';
-
-          const row = [
-            sNo,
-            designerName,
-            product,
-            pkg,
-            taskTitle,
-            assignedByRole,
-            priority,
-            assignedDate,
-            dueDate,
-            submissionDate,
-            status,
-            progressStatus,
-            duration,
-            revCount,
-            feedback,
-            fileAsset,
-          ];
-          lines.push(row.map(escapeCsv).join(','));
-        });
-      }
-    } else if (user.role === 'TELECALLER') {
-      const summaryHeaders = [
-        'S.No',
-        'Campaigns',
-        'Ad Name',
-        'Assigned Date',
-        'Total Count Leads',
-        'Total Calls',
-        'Average Calls',
-        'Interested',
-        'Targets',
-        'Caller Ratio',
-        'Paid',
-      ];
-      lines.push('--- CAMPAIGN SUMMARY BREAKDOWN ---', summaryHeaders.map(escapeCsv).join(','));
-      this.telecallerCampaignReports.forEach((r) => {
-        lines.push(
-          [
-            r.sNo,
-            r.campaignName,
-            r.adName,
-            r.assignedDate,
-            r.totalCountLeads,
-            r.totalCalls,
-            r.averageCalls,
-            r.interested,
-            r.targets,
-            r.callerRatio,
-            r.paid,
-          ]
-            .map(escapeCsv)
-            .join(',')
-        );
-      });
-      lines.push('', '--- DETAILED LEAD RECORDS ---');
-
-      const telecallerHeaders = [
-        'S.No',
-        'Telecaller Name',
-        'Product',
-        'Package',
-        'Lead Name',
-        'Campaign',
-        'Phone Number',
-        'Ad Name',
-        'Lead Source',
-        'Assigned Date',
-        'Call Date & Time',
-        'Call Duration',
-        'Call Status',
-        'Total Call Attempts',
-        'Follow-up Date',
-        'Telecaller Notes',
-      ];
-      lines.push(telecallerHeaders.map(escapeCsv).join(','));
-
-      if (tasks.length > 0) {
-        tasks.forEach((t: any, index: number) => {
-          const sNo = index + 1;
-          const telecallerName = user.name || 'Telecaller';
-          const product = this.formatProductName(t.productName, t);
-          const pkg = this.formatPackageName(t.packageName, t);
-          const leadName = t.leadName || t.title || '—';
-          const campaign = t.campaignName || '—';
-          const phone = (t.leadPhone && t.leadPhone !== '—' && !t.leadPhone.includes('@')) ? t.leadPhone : '—';
-          const adName = t.adName || '—';
-          const source = t.source || '—';
-          const assignedDate = t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—';
-          const callDateTime = t.calledAt ? new Date(t.calledAt).toLocaleString() : '—';
-          const duration = t.callDurationText && t.callDurationText !== '—' ? t.callDurationText : '—';
-          const status = t.callOutcome || t.status || '—';
-          const attempts = t.callAttemptsText || (t.callAttempts ? `${t.callAttempts} Calls` : '0 Attempts');
-          const followUp = t.followUpDate ? new Date(t.followUpDate).toLocaleDateString() : '—';
-          let remarks = '—';
-          if (t.remarks && t.remarks !== '—') {
-            remarks = t.remarks;
-          } else if (t.notes && t.notes !== '—') {
-            remarks = t.notes;
-          }
-
-          const row = [
-            sNo,
-            telecallerName,
-            product,
-            pkg,
-            leadName,
-            campaign,
-            phone,
-            adName,
-            source,
-            assignedDate,
-            callDateTime,
-            duration,
-            status,
-            attempts,
-            followUp,
-            remarks,
-          ];
-          lines.push(row.map(escapeCsv).join(','));
-        });
-      }
-    } else if (user.role === 'DIGITAL_MARKETING') {
-    
-      const dmHeaders = [
-        'S.No',
-        'Digital Marketer Name',
-        'Ad Name',
-        'Campaign Name',
-        'Product',
-        'Package',
-        'Platform',
-        'Date',
-        'Leads Generated',
-        'Status',
-      ];
-      lines.push(dmHeaders.map(escapeCsv).join(','));
-
-      if (tasks.length > 0) {
-        tasks.forEach((t: any, index: number) => {
-          const sNo = index + 1;
-          const dmName = user.name || 'Digital Marketer';
-          const adName = t.adName || t.title || '—';
-          const campaign = t.campaignName || '—';
-          const product = this.formatProductName(t.productName, t);
-          const pkg = this.formatPackageName(t.packageName, t);
-          const platform = t.platform || 'Meta Ads';
-          const rawDate = t.launchDate || t.createdAt;
-          const date = rawDate ? new Date(rawDate).toLocaleDateString() : '—';
-          const leads = t.leadsCount !== undefined ? t.leadsCount : 0;
-          const status = t.status || 'ACTIVE';
-
-          const row = [
-            sNo,
-            dmName,
-            adName,
-            campaign,
-            product,
-            pkg,
-            platform,
-            date,
-            leads,
-            status,
-          ];
-          lines.push(row.map(escapeCsv).join(','));
-        });
-      }
-    } else {
-     
-      const generalHeaders = [
-        'S.No',
-        'Staff Name',
-        'Role',
-        'Product',
-        'Package',
-        'Task Title',
-        'Assigned By (Role)',
-        'Status',
-        'Priority',
-        'Due Date',
-        'Time Duration',
-        'Asset / Deliverable',
-        'Notes',
-      ];
-      lines.push(generalHeaders.map(escapeCsv).join(','));
-
-      if (tasks.length > 0) {
-        tasks.forEach((t: any, idx: number) => {
-          const row = [
-            idx + 1,
-            user.name,
-            user.roleLabel,
-            this.formatProductName(t.productName || t.productId, t),
-            this.formatPackageName(t.packageName || t.packageId, t),
-            t.title || 'Untitled Task',
-            t.creatorRole || 'Administrator',
-            t.status || 'PENDING',
-            t.priority || 'MEDIUM',
-            t.dueDate || 'Ongoing',
-            this.getTaskDuration(t),
-            t.attachmentName || t.attachmentUrl || 'None',
-            t.reviewerFeedback || '—',
-          ];
-          lines.push(row.map(escapeCsv).join(','));
-        });
-      }
+    switch (user.role) {
+      case 'DESIGNER':
+        lines = this.buildDesignerCsvLines(user, tasks, escapeCsv);
+        break;
+      case 'TELECALLER':
+        lines = this.buildTelecallerCsvLines(user, tasks, escapeCsv);
+        break;
+      case 'DIGITAL_MARKETING':
+        lines = this.buildDigitalMarketingCsvLines(user, tasks, escapeCsv);
+        break;
+      default:
+        lines = this.buildGeneralStaffCsvLines(user, tasks, escapeCsv);
+        break;
     }
 
     const csvContent = lines.join('\r\n');
