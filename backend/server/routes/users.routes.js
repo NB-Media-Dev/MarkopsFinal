@@ -56,20 +56,21 @@ router.get('/users', async (_req, res) => {
   }
   try {
     const [rows] = await dbPool.query(
-      `SELECT u.id, u.email, u.full_name, u.role_id, u.is_active, u.avatar_url, u.created_at,
+      `SELECT u.id, u.email, u.full_name, u.role_id, u.is_active, u.avatar_url, u.created_at, u.department,
               r.name as role_name, r.code as role_code
        FROM users u
        LEFT JOIN roles r ON u.role_id = r.id
        ORDER BY u.id ASC`
     );
     const users = rows.map((r) => {
-      const roleName = r.role_name || (r.role_code ? r.role_code.replaceAll('_', ' ') : 'Designer');
+      const roleCode = r.role_code || 'ADMINISTRATOR';
       return {
         id: String(r.id),
         email: r.email,
         fullName: r.full_name,
-        role: roleName,
-        department: r.role_code ? r.role_code.replaceAll('_', ' ') : 'Operations',
+        role: roleCode,
+        roleName: r.role_name || roleCode,
+        department: r.department || (r.role_code ? r.role_code.replaceAll('_', ' ') : 'General Operations'),
         isActive: Boolean(r.is_active),
         avatarUrl: r.avatar_url || undefined,
         lastLoginAt: 'Recently',
@@ -123,9 +124,9 @@ async function checkUserConflict(normalizedEmail) {
 async function insertUserToDb(userData) {
   if (!dbPool) return null;
   const [insertRes] = await dbPool.query(
-    `INSERT INTO users (email, password_hash, full_name, role_id, is_active, avatar_url)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [userData.normalizedEmail, userData.hashedPassword, userData.fullName, userData.targetRoleId, userData.userActive ? 1 : 0, userData.savedAvatar]
+    `INSERT INTO users (email, password_hash, full_name, role_id, is_active, avatar_url, department)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [userData.normalizedEmail, userData.hashedPassword, userData.fullName, userData.targetRoleId, userData.userActive ? 1 : 0, userData.savedAvatar, userData.userDept || 'General Operations']
   );
   if (!insertRes?.insertId) return null;
 
@@ -175,7 +176,8 @@ router.post('/users', async (req, res) => {
       targetRoleId,
       userActive,
       savedAvatar,
-      role: String(role)
+      role: String(role),
+      userDept
     });
   } catch (e) {
     console.error('[MySQL DB Error] INSERT user query failed:', e?.message || e);
@@ -254,7 +256,7 @@ router.delete('/users/:id', async (req, res) => {
   return res.json({ id: userId, message: 'User deleted successfully' });
 });
 
-router.patch('/users/:id/toggle-status', async (req, res) => {
+router.patch(['/users/:id/toggle-status', '/users/:id/status'], async (req, res) => {
   const userId = req.params.id;
 
   if (userId === 'usr_admin_01' || userId === '1') {

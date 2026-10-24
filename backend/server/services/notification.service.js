@@ -11,53 +11,51 @@ function stripEmojis(str) {
 }
 
 
-function resolveUserAliases(userIdentifier, role = '', email = '', name = '') {
+const KNOWN_USER_ALIASES = {
+  '1': 'usr_admin_01',
+  'usr_admin_01': '1',
+  '2': 'usr_bdm_01',
+  'usr_bdm_01': '2',
+  '3': 'usr_mktg_01',
+  'usr_mktg_01': '3',
+  '4': 'usr_digital_01',
+  'usr_digital_01': '4',
+  '5': 'usr_designer_01',
+  'usr_designer_01': '5',
+  '6': 'usr_telecaller_01',
+  'usr_telecaller_01': '6',
+};
+
+function addMatchingUserStoreAliases(aliases, strId, strEmail) {
+  if (!Array.isArray(dbUsersStore)) return;
+  const userMatch = dbUsersStore.find(
+    (u) =>
+      (strId && (String(u.id).toLowerCase() === strId || String(u.id) === strId)) ||
+      (strEmail && u.email?.toLowerCase() === strEmail)
+  );
+  if (userMatch) {
+    if (userMatch.id) aliases.add(String(userMatch.id).toLowerCase());
+    if (userMatch.email) aliases.add(userMatch.email.toLowerCase());
+    if (userMatch.fullName) aliases.add(userMatch.fullName.toLowerCase());
+  }
+}
+
+function resolveUserAliases(userIdentifier, _role = '', email = '', name = '') {
   const aliases = new Set();
   const strId = String(userIdentifier || '').toLowerCase().trim();
-  const strRole = String(role || '').toUpperCase().trim();
   const strEmail = String(email || '').toLowerCase().trim();
   const strName = String(name || '').toLowerCase().trim();
 
   if (strId) {
     aliases.add(strId);
-
-    if (strId === '1' || strId === 'usr_admin_01') {
-      aliases.add('1');
-      aliases.add('usr_admin_01');
-    } else if (strId === '2' || strId === 'usr_bdm_01') {
-      aliases.add('2');
-      aliases.add('usr_bdm_01');
-    } else if (strId === '3' || strId === 'usr_mktg_01') {
-      aliases.add('3');
-      aliases.add('usr_mktg_01');
-    } else if (strId === '4' || strId === 'usr_digital_01') {
-      aliases.add('4');
-      aliases.add('usr_digital_01');
-    } else if (strId === '5' || strId === 'usr_designer_01') {
-      aliases.add('5');
-      aliases.add('usr_designer_01');
-    } else if (strId === '6' || strId === 'usr_telecaller_01') {
-      aliases.add('6');
-      aliases.add('usr_telecaller_01');
-    }
+    const mappedAlias = KNOWN_USER_ALIASES[strId];
+    if (mappedAlias) aliases.add(mappedAlias);
   }
 
   if (strEmail) aliases.add(strEmail);
   if (strName) aliases.add(strName);
 
-
-  if (Array.isArray(dbUsersStore)) {
-    const userMatch = dbUsersStore.find(
-      (u) =>
-        (strId && (String(u.id).toLowerCase() === strId || String(u.id) === strId)) ||
-        (strEmail && u.email && u.email.toLowerCase() === strEmail)
-    );
-    if (userMatch) {
-      if (userMatch.id) aliases.add(String(userMatch.id).toLowerCase());
-      if (userMatch.email) aliases.add(userMatch.email.toLowerCase());
-      if (userMatch.fullName) aliases.add(userMatch.fullName.toLowerCase());
-    }
-  }
+  addMatchingUserStoreAliases(aliases, strId, strEmail);
 
   return aliases;
 }

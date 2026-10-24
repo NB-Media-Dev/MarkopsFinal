@@ -1,8 +1,17 @@
 const LEAD_PUNCT_CHARS = new Set(['<', '(', '[', '{', '"', "'", '>', ']', '}', ')', '.', ',', ';', ':']);
 function stringifyCellValue(value: unknown): string {
   if (value === null || value === undefined) return '';
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value).trim();
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return `${value}`;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return '';
+    }
+  }
+  return '';
 }
 
 
@@ -335,6 +344,74 @@ export class LeadsComponent implements OnInit {
     this.packageService.loadPackages().subscribe();
   }
 
+  private parseSingleLeadRow(row: Record<string, unknown>, index: number): Partial<LeadItem> {
+  const fields = new Map<string, string>(
+    Object.entries(row).map(([header, value]) => [
+      header.trim().toLowerCase().replace(/[\s_-]+/g, ''),
+      stringifyCellValue(value),
+    ])
+  );
+  const get = (...names: string[]): string => {
+    for (const name of names) {
+      const value = fields.get(name);
+      if (value) return value;
+    }
+    return '';
+  };
+  const fullName = get('leadname', 'fullname', 'name');
+  const splitName = fullName.split(/\s+/).filter(Boolean);
+  const firstName = get('firstname') || splitName.shift() || '';
+  const lastName = get('lastname') || splitName.join(' ');
+  const contactInfo = get('contactinfo', 'contact');
+  const contactEmail = extractLeadEmail(contactInfo);
+  const contactPhone = contactInfo
+    .replace(contactEmail, '')
+    .replace(/(?:phone|mobile|tel)\s*[:=-]?\s*/i, '')
+    .trim();
+  const phone = get('phone', 'phonenumber', 'mobile', 'mobilenumber', 'contactnumber') || contactPhone;
+  const email = get('email', 'emailaddress') || contactEmail;
+
+  if (!firstName || !phone) {
+    throw new Error(`Row ${index + 2}: name and phone number are required.`);
+  }
+
+  return {
+    firstName,
+    lastName,
+    email,
+    phone,
+    source: get('source', 'leadsource') || 'Excel Upload',
+    campaignName: get('campaign', 'campaignname') || undefined,
+  };
+}
+
+private parseWorkbookRowsToLeads(rows: Record<string, unknown>[]): Partial<LeadItem>[] {
+  const validRows = rows.filter((row) =>
+    Object.values(row).some((value) => stringifyCellValue(value) !== '')
+  );
+  return validRows.map((row, index) => this.parseSingleLeadRow(row, index));
+}
+
+private assignCampaignsToImportedLeads(
+  leads: Partial<LeadItem>[],
+  campaigns: any[],
+  defaultCampaignName: string,
+  defaultCampaignId: string
+): void {
+  for (const lead of leads) {
+    const rowCampaignName = lead.campaignName?.trim();
+    if (rowCampaignName) {
+      const matched = campaigns.find(
+        (available) => available.name.toLowerCase() === rowCampaignName.toLowerCase()
+      );
+      if (matched) lead.campaignId = matched.id;
+    } else {
+      lead.campaignName = defaultCampaignName;
+      lead.campaignId = defaultCampaignId;
+    }
+  }
+}
+
   async onLeadsFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -364,74 +441,26 @@ export class LeadsComponent implements OnInit {
         defval: '',
         raw: false,
       });
-      const leads: Partial<LeadItem>[] = (rows as Record<string, unknown>[])
-        .filter((row: Record<string, unknown>) => Object.values(row).some((value) => stringifyCellValue(value) !== ''))
-        .map((row: Record<string, unknown>, index: number) => {
-          const fields = new Map<string, string>(
-            Object.entries(row).map(([header, value]) => [
-              header.trim().toLowerCase().replace(/[\s_-]+/g, ''),
-              stringifyCellValue(value),
-            ])
-          );
-          const get = (...names: string[]): string => {
-            for (const name of names) {
-              const value = fields.get(name);
-              if (value) return value;
-            }
-            return '';
-          };
-          const fullName = get('leadname', 'fullname', 'name');
-          const splitName = fullName.split(/\s+/).filter(Boolean);
-          const firstName = get('firstname') || splitName.shift() || '';
-          const lastName = get('lastname') || splitName.join(' ');
-          const contactInfo = get('contactinfo', 'contact');
-          const contactEmail = extractLeadEmail(contactInfo);
-          const contactPhone = contactInfo
-            .replace(contactEmail, '')
-            .replace(/(?:phone|mobile|tel)\s*[:=-]?\s*/i, '')
-            .trim();
-          const phone = get('phone', 'phonenumber', 'mobile', 'mobilenumber', 'contactnumber') || contactPhone;
-          const email = get('email', 'emailaddress') || contactEmail;
 
-          if (!firstName || !phone) {
-            throw new Error(`Row ${index + 2}: name and phone number are required.`);
-          }
-
-          return {
-            firstName,
-            lastName,
-            email,
-            phone,
-            source: get('source', 'leadsource') || 'Excel Upload',
-            campaignName: get('campaign', 'campaignname') || undefined,
-          };
-        });
-
+      const leads = this.parseWorkbookRowsToLeads(rows);
       if (leads.length === 0) {
         throw new Error('The spreadsheet contains no lead rows. Include a name and phone number for each lead.');
       }
 
       const user = this.authService.currentUser();
       if (!user) throw new Error('Your user session could not be verified. Please sign in again.');
+
       const campaigns = this.availableCampaigns();
       const campaign = campaigns[0];
-      const campaignName = this.packageFilterSignal()?.trim() || campaign?.name || 'Excel Lead Upload';
-      for (const lead of leads) {
-        const rowCampaignName = lead.campaignName?.trim();
-        if (rowCampaignName) {
-          const matchedCampaign = campaigns.find(
-            (available) => available.name.toLowerCase() === rowCampaignName.toLowerCase()
-          );
-          if (matchedCampaign) lead.campaignId = matchedCampaign.id;
-        } else {
-          lead.campaignName = campaignName;
-          lead.campaignId = campaign?.id || 'cmp_default';
-        }
-      }
+      const defaultCampaignId = campaign?.id || 'cmp_default';
+      const defaultCampaignName = this.packageFilterSignal()?.trim() || campaign?.name || 'Excel Lead Upload';
+
+      this.assignCampaignsToImportedLeads(leads, campaigns, defaultCampaignName, defaultCampaignId);
+
       const response = await firstValueFrom(this.leadService.importLeadBatch({
         leads,
-        campaignId: campaign?.id || 'cmp_default',
-        campaignName,
+        campaignId: defaultCampaignId,
+        campaignName: defaultCampaignName,
         source: 'Excel Upload',
         creatorId: user.id,
         creatorEmail: user.email,
@@ -444,14 +473,12 @@ export class LeadsComponent implements OnInit {
         .filter((item) => item.count > 0)
         .map((item) => `${item.fullName}: ${item.count}`)
         .join(', ');
+      const distSuffix = distribution ? ` (${distribution})` : '';
       this.leadUploadStatus.set(
-        `Uploaded ${response.totalUploaded} leads and assigned them across ${response.telecallersCount} active telecallers${distribution ? ` (${distribution})` : ''}.`
+        `Uploaded ${response.totalUploaded} leads and assigned them across ${response.telecallersCount} active telecallers${distSuffix}.`
       );
     } catch (error) {
-      const message = error instanceof HttpErrorResponse
-        ? error.error?.error || error.message
-        : error instanceof Error ? error.message : 'Unable to upload leads.';
-      this.leadUploadError.set(message);
+      this.leadUploadError.set(resolveUploadErrorMessage(error));
     } finally {
       this.isUploadingLeads.set(false);
     }

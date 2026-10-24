@@ -1107,35 +1107,52 @@ export class PackageReportsComponent implements OnInit, OnChanges {
     return formatDurationDiff(Math.max(0, uploadTime - startTime));
   }
 
-  getTaskDuration(task: any): string {
-    if (!task) return '—';
-    if (task.timeDuration) return task.timeDuration;
-    if (task.duration) return task.duration;
-    if (task.workCycle?.durationText) return task.workCycle.durationText;
+  private resolveFinishedTaskDuration(task: any): string | null {
+    if (!['APPROVED', 'COMPLETED', 'PUBLISHED', 'SUBMITTED', 'UNDER_REVIEW'].includes(task?.status)) {
+      return null;
+    }
+    if (!task.createdAt || !task.updatedAt) return null;
+    const start = new Date(task.createdAt).getTime();
+    const end = new Date(task.updatedAt).getTime();
+    if (!Number.isNaN(start) && !Number.isNaN(end) && end >= start) {
+      return formatDurationDiff(end - start);
+    }
+    return null;
+  }
 
-    if (Array.isArray(task.versions) && task.versions.length > 0) {
+  private resolveActiveTaskDuration(task: any): string | null {
+    if (task?.status !== 'IN_PROGRESS' && task?.status !== 'ACCEPTED') {
+      return null;
+    }
+    if (task.createdAt) {
+      const start = new Date(task.createdAt).getTime();
+      return formatActiveDuration(start);
+    }
+    return 'In Progress';
+  }
+
+  private resolveVersionDurationFallback(task: any): string | null {
+    if (Array.isArray(task?.versions) && task.versions.length > 0) {
       const latestVer = task.versions[task.versions.length - 1];
       const dur = this.getVersionDuration(latestVer, task);
       if (dur && dur !== '—') return dur;
     }
+    return null;
+  }
 
-    if (['APPROVED', 'COMPLETED', 'PUBLISHED', 'SUBMITTED', 'UNDER_REVIEW'].includes(task.status)) {
-      if (task.createdAt && task.updatedAt) {
-        const start = new Date(task.createdAt).getTime();
-        const end = new Date(task.updatedAt).getTime();
-        if (!Number.isNaN(start) && !Number.isNaN(end) && end >= start) {
-          return formatDurationDiff(end - start);
-        }
-      }
-    }
+  getTaskDuration(task: any): string {
+    if (!task) return '—';
+    const explicitDur = task.timeDuration || task.duration || task.workCycle?.durationText;
+    if (explicitDur) return explicitDur;
 
-    if (task.status === 'IN_PROGRESS' || task.status === 'ACCEPTED') {
-      if (task.createdAt) {
-        const start = new Date(task.createdAt).getTime();
-        return formatActiveDuration(start);
-      }
-      return 'In Progress';
-    }
+    const verDur = this.resolveVersionDurationFallback(task);
+    if (verDur) return verDur;
+
+    const finishedDur = this.resolveFinishedTaskDuration(task);
+    if (finishedDur) return finishedDur;
+
+    const activeDur = this.resolveActiveTaskDuration(task);
+    if (activeDur) return activeDur;
 
     return '—';
   }

@@ -1518,6 +1518,12 @@ export class PackageWorksComponent implements OnInit {
     return '—';
   }
 
+  private formatCallAttemptsSummary(attempts: number): string {
+    if (attempts === 0) return '0 Attempts';
+    if (attempts === 1) return '1st Call';
+    return `${attempts} Calls`;
+  }
+
   private mapLeadToPerformanceItem(
     l: any,
     allCalls: any[],
@@ -1540,7 +1546,7 @@ export class PackageWorksComponent implements OnInit {
     const durationText = this.formatLatestCallDuration(latestCall);
     const cleanPhone = this.resolvePerformancePhone(l);
     const callAttempts = sortedCalls.length;
-    const callAttemptsText = callAttempts === 0 ? '0 Attempts' : (callAttempts === 1 ? '1st Call' : `${callAttempts} Calls`);
+    const callAttemptsText = this.formatCallAttemptsSummary(callAttempts);
     const leadFullName = this.resolveLeadDisplayName(l, cleanPhone);
 
     const resolvedLead = resolveTaskProductAndPackage({
@@ -1626,7 +1632,7 @@ export class PackageWorksComponent implements OnInit {
         id: 4,
         name: String(requestedWorkspace),
         productId: prodMeta?.id || 'pkg_careermate',
-        status: 'ACTIVE',
+        status: 'ACTIVE' as const,
       } as ProductPackage;
     }
 
@@ -2202,7 +2208,7 @@ export class PackageWorksComponent implements OnInit {
           console.error('Failed to update product hero banner:', err);
           this.heroBannerError.set(
             err.error?.error ||
-              `Failed to save the banner${err.status ? ` (HTTP ${err.status})` : ''}. Please try again.`
+              `Failed to save the banner${err.status ? ' (HTTP ' + err.status + ')' : ''}. Please try again.`
           );
           this.isSavingHeroBanner.set(false);
         },

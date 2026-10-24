@@ -17,9 +17,20 @@ function buildCreateUserPayload(req: CreateUserRequest) {
   };
 }
 
+function generateSafeId(prefix = 'usr'): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    try {
+      return `${prefix}_${crypto.randomUUID().replaceAll('-', '').substring(0, 9)}`;
+    } catch {
+      // fallback
+    }
+  }
+  return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
+}
+
 function createLocalFallbackUser(payload: ReturnType<typeof buildCreateUserPayload>): ManagedUser {
   return {
-    id: `usr_${crypto.randomUUID().replaceAll('-', '').substring(0, 9)}`,
+    id: generateSafeId('usr'),
     email: payload.email,
     fullName: payload.fullName,
     role: payload.role,
@@ -40,11 +51,13 @@ function parseResponseData(text: string): any {
 }
 
 async function postUserToBackend(payload: ReturnType<typeof buildCreateUserPayload>, fallbackUser: ManagedUser): Promise<ManagedUser> {
+  console.log('[UserManagement] Sending POST /api/users payload:', payload);
   const res = await safeFetch('/api/users', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
+  console.log('[UserManagement] POST /api/users response status:', res.status);
 
   const text = await res.text();
   const data = parseResponseData(text);
@@ -131,6 +144,7 @@ export class UserManagementService {
     if (this.isBrowser) {
       try {
         createdUser = await postUserToBackend(payload, createdUser);
+        this._users.update((list) => [createdUser, ...list.filter((u) => u.id !== createdUser.id)]);
       } catch (err) {
         console.error('Failed to sync newly created user to backend database:', err);
         throw err;

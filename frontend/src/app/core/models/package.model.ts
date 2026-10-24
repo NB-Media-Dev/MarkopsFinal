@@ -5,7 +5,7 @@ export interface ProductPackage {
   imageUrl?: string | null;
   price?: number | null;
   description?: string | null;
-  status?: 'ACTIVE' | 'INACTIVE' | 'DRAFT' | string;
+  status?: 'ACTIVE' | 'INACTIVE' | 'DRAFT' | (string & {});
   createdBy?: number | string;
   createdAt?: string;
   updatedAt?: string;
@@ -232,7 +232,7 @@ function matchesTargetTokens(
   if (normTaskPkg && normTaskPkg !== 'package' && (normTaskPkg === normTarget || normTaskPkg.includes(normTarget) || normTarget.includes(normTaskPkg))) return true;
   if (campNameNorm && (campNameNorm === normTarget || campNameNorm.includes(normTarget) || normTarget.includes(campNameNorm))) return true;
 
-  if (t.title && t.title.trim()) {
+  if (t.title?.trim()) {
     const normTitle = normalizePkgString(t.title);
     if (normTitle && (normTitle === normTarget || normTitle.includes(normTarget) || normTarget.includes(normTitle))) return true;
   }

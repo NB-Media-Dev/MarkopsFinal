@@ -39,6 +39,7 @@ export class UsersRolesComponent {
   readonly showCreatePassword = signal<boolean>(false);
   readonly userSuccessMsg = signal<string | null>(null);
   readonly userErrorMsg = signal<string | null>(null);
+  readonly isSubmitting = signal<boolean>(false);
 
   readonly createUserForm: FormGroup = this.fb.group({
     fullName: ['', [Validators.required, Validators.minLength(2)]],
@@ -106,14 +107,37 @@ export class UsersRolesComponent {
     this.showCreatePassword.update((v) => !v);
   }
 
-  async onSubmitCreateUser(): Promise<void> {
+  async onSubmitCreateUser(event?: Event): Promise<void> {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    console.log('[UsersRoles] Create Account button clicked! Form valid:', this.createUserForm.valid, 'Values:', this.createUserForm.value);
     this.createFormSubmitted.set(true);
     this.userErrorMsg.set(null);
 
     if (this.createUserForm.invalid) {
       this.createUserForm.markAllAsTouched();
+      const fnErrors = this.createUserForm.get('fullName')?.errors;
+      const emailErrors = this.createUserForm.get('email')?.errors;
+      const pwErrors = this.createUserForm.get('password')?.errors;
+      const roleErrors = this.createUserForm.get('role')?.errors;
+
+      if (fnErrors) {
+        this.userErrorMsg.set('Please enter a full name (minimum 2 characters).');
+      } else if (emailErrors) {
+        this.userErrorMsg.set('Please enter a valid email address (e.g. user@markops.io).');
+      } else if (pwErrors) {
+        this.userErrorMsg.set('Password is required (minimum 6 characters).');
+      } else if (roleErrors) {
+        this.userErrorMsg.set('Please select a system role.');
+      } else {
+        this.userErrorMsg.set('Please check your inputs and complete all required fields.');
+      }
       return;
     }
+
+    this.isSubmitting.set(true);
 
     try {
       const formValue = this.createUserForm.value;
@@ -133,6 +157,8 @@ export class UsersRolesComponent {
       setTimeout(() => {
         this.userErrorMsg.set(null);
       }, 6000);
+    } finally {
+      this.isSubmitting.set(false);
     }
   }
 

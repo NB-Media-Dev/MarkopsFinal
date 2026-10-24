@@ -635,53 +635,55 @@ router.post('/leads', async (req, res) => {
 });
 
 
+const LEAD_DETAIL_QUERY = `
+  SELECT l.*, 
+         c.full_name as creator_full_name, 
+         c.email as creator_user_email,
+         u.full_name as assignee_full_name,
+         u.email as assignee_user_email
+  FROM leads l
+  LEFT JOIN users c ON l.creator_id = c.id
+  LEFT JOIN users u ON l.assigned_to = u.id
+  WHERE l.id = ?
+`;
+
+function formatLeadRow(row) {
+  if (!row) return null;
+  const now = new Date().toISOString();
+  return {
+    id: row.id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    email: row.email,
+    phone: row.phone,
+    source: row.source,
+    status: row.status,
+    assignedTo: row.assigned_to,
+    assigned_to: row.assigned_to,
+    assigneeName: row.assignee_full_name || (row.assigned_to ? 'Telecaller' : 'Unassigned'),
+    creatorId: row.creator_id,
+    creator_id: row.creator_id,
+    creatorName: row.creator_full_name || row.creator_name || 'System Administrator',
+    creatorEmail: row.creator_user_email || row.creator_email || 'admin@markops.io',
+    campaignId: row.campaign_id,
+    campaignName: row.campaign_name || '',
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : now,
+    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : now,
+  };
+}
+
 async function findLeadById(leadId) {
-  let lead = null;
   if (dbPool) {
     try {
-      const [rows] = await dbPool.query(
-        `SELECT l.*, 
-                c.full_name as creator_full_name, 
-                c.email as creator_user_email,
-                u.full_name as assignee_full_name,
-                u.email as assignee_user_email
-         FROM leads l
-         LEFT JOIN users c ON l.creator_id = c.id
-         LEFT JOIN users u ON l.assigned_to = u.id
-         WHERE l.id = ?`,
-        [leadId]
-      );
-      if (rows && rows.length > 0) {
-        const row = rows[0];
-        lead = {
-          id: row.id,
-          firstName: row.first_name,
-          lastName: row.last_name,
-          email: row.email,
-          phone: row.phone,
-          source: row.source,
-          status: row.status,
-          assignedTo: row.assigned_to,
-          assigned_to: row.assigned_to,
-          assigneeName: row.assignee_full_name || (row.assigned_to ? 'Telecaller' : 'Unassigned'),
-          creatorId: row.creator_id,
-          creator_id: row.creator_id,
-          creatorName: row.creator_full_name || row.creator_name || 'System Administrator',
-          creatorEmail: row.creator_user_email || row.creator_email || 'admin@markops.io',
-          campaignId: row.campaign_id,
-          campaignName: row.campaign_name || '',
-          createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
-          updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
-        };
+      const [rows] = await dbPool.query(LEAD_DETAIL_QUERY, [leadId]);
+      if (rows?.[0]) {
+        return formatLeadRow(rows[0]);
       }
     } catch (e) {
       console.error('[MySQL Error] Fetch lead by ID failed:', e.message);
     }
   }
-  if (!lead) {
-    lead = dbLeadsStore.find((l) => String(l.id).trim() === String(leadId).trim());
-  }
-  return lead;
+  return dbLeadsStore.find((l) => String(l.id).trim() === String(leadId).trim()) || null;
 }
 
 function verifyLeadCreatorAccess(req, lead) {
@@ -702,170 +704,125 @@ function verifyLeadCreatorAccess(req, lead) {
   );
 }
 
+async function resolveAssigneeTarget(assignedTo, assigneeName) {
+  if (!assignedTo) return { cleanAssignedTo: null, effectiveName: assigneeName };
+  const targetUserIdStr = String(assignedTo).trim();
+  if (dbPool) {
+    try {
+      const [userRows] = await dbPool.query(
+        `SELECT id, full_name, email FROM users WHERE id = ? OR email = ? LIMIT 1`,
+        [targetUserIdStr, targetUserIdStr]
+      );
+      if (userRows?.[0]) {
+        return { cleanAssignedTo: userRows[0].id, effectiveName: userRows[0].full_name };
+      }
+    } catch (err) {
+      console.error('[MySQL Error] Fetch user for assign failed:', err.message);
+    }
+  }
+
+  const user = dbUsersStore.find(
+    (u) => String(u.id).trim() === targetUserIdStr || u.email === targetUserIdStr
+  );
+  if (user) {
+    const parsed = Number.parseInt(String(user.id).replace(/\D/g, ''), 10);
+    return {
+      cleanAssignedTo: !Number.isNaN(parsed) && parsed > 0 ? parsed : user.id,
+      effectiveName: user.fullName
+    };
+  }
+  const parsed = Number.parseInt(targetUserIdStr.replace(/\D/g, ''), 10);
+  return {
+    cleanAssignedTo: !Number.isNaN(parsed) && parsed > 0 ? parsed : targetUserIdStr,
+    effectiveName: assigneeName
+  };
+}
+
+async function updateLeadAssignmentDb(leadId, cleanAssignedTo, finalStatus) {
+  if (!dbPool) return;
+  try {
+    const numLeadId = Number.parseInt(leadId, 10);
+    if (Number.isNaN(numLeadId)) return;
+    const numericTargetId = cleanAssignedTo ? (Number.parseInt(String(cleanAssignedTo).replace(/\D/g, ''), 10) || cleanAssignedTo) : null;
+    const assignmentStatus = cleanAssignedTo ? 'ASSIGNED' : 'UNASSIGNED';
+    try {
+      await dbPool.query(
+        `UPDATE leads
+         SET assigned_to = ?, assigned_telecaller_id = ?, assignment_status = ?, status = ?, updated_at = NOW()
+         WHERE id = ?`,
+        [numericTargetId, numericTargetId, assignmentStatus, finalStatus, numLeadId]
+      );
+    } catch (colErr) {
+      console.log('[MySQL Notice] Fallback to basic lead update columns:', colErr?.message || colErr);
+      await dbPool.query(
+        `UPDATE leads SET assigned_to = ?, status = ?, updated_at = NOW() WHERE id = ?`,
+        [numericTargetId, finalStatus, numLeadId]
+      );
+    }
+  } catch (e) {
+    console.error('[MySQL Error] Update lead assignment failed:', e.message);
+  }
+}
+
+function updateLeadStoreAssignment(leadId, cleanAssignedTo, finalAssigneeName, finalStatus) {
+  const storeIdx = dbLeadsStore.findIndex((l) => String(l.id).trim() === leadId);
+  const targetIdStr = cleanAssignedTo ? String(cleanAssignedTo) : null;
+  const assignmentStatus = cleanAssignedTo ? 'ASSIGNED' : 'UNASSIGNED';
+  const now = new Date().toISOString();
+  if (storeIdx !== -1) {
+    dbLeadsStore[storeIdx].assignedTo = targetIdStr;
+    dbLeadsStore[storeIdx].assigned_to = targetIdStr;
+    dbLeadsStore[storeIdx].assignedTelecallerId = targetIdStr;
+    dbLeadsStore[storeIdx].assigneeName = finalAssigneeName;
+    dbLeadsStore[storeIdx].status = finalStatus;
+    dbLeadsStore[storeIdx].assignmentStatus = assignmentStatus;
+    dbLeadsStore[storeIdx].updatedAt = now;
+  }
+}
+
+function notifyLeadAssigned(lead, req, options) {
+  if (!lead.assignedTo) return;
+  const { creatorName, actorEmail, productName, packageName, actorId } = options;
+  const creator = creatorName || actorEmail || lead.creatorName || 'System Administrator';
+  const prod = productName || 'Careermate';
+  const pkg = packageName || lead.campaignName || 'CURRENT AFFAIRS AUGUST -2026';
+  const msg = `Assigned by: ${creator} -> Product: ${prod} -> Package: ${pkg} -> Total Leads: 1`;
+  const targetRoute = `/package-works?package=${encodeURIComponent(prod)}&workspace=${encodeURIComponent(pkg)}&dept=TELECALLING&tab=TELECALLING`;
+  createNotificationForTelecaller(lead.assignedTo, 'New Lead Assigned', msg, targetRoute);
+
+  const reassignerId = actorId || req.headers['x-user-id'] || lead.creatorId;
+  if (reassignerId && String(reassignerId) !== String(lead.assignedTo)) {
+    dispatchNotification({
+      userIds: [reassignerId],
+      title: 'Lead Assigned Successfully',
+      message: `Lead "${lead.firstName} ${lead.lastName || ''}" has been assigned to ${lead.assigneeName}.`,
+      type: 'INFO',
+      targetRoute: '/leads',
+    }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
+  }
+}
+
 router.post('/leads/:id/assign', async (req, res) => {
   const { assignedTo, assigneeName, actorId, actorEmail, creatorName, productName, packageName } = req.body;
   const leadId = String(req.params.id).trim();
 
-  let lead = null;
-  if (dbPool) {
-    try {
-      const [rows] = await dbPool.query(
-        `SELECT l.*, 
-                c.full_name as creator_full_name, 
-                c.email as creator_user_email,
-                u.full_name as assignee_full_name,
-                u.email as assignee_user_email
-         FROM leads l
-         LEFT JOIN users c ON l.creator_id = c.id
-         LEFT JOIN users u ON l.assigned_to = u.id
-         WHERE l.id = ?`,
-        [leadId]
-      );
-      if (rows && rows.length > 0) {
-        const row = rows[0];
-        lead = {
-          id: row.id,
-          firstName: row.first_name,
-          lastName: row.last_name,
-          email: row.email,
-          phone: row.phone,
-          source: row.source,
-          status: row.status,
-          assignedTo: row.assigned_to,
-          assigned_to: row.assigned_to,
-          assigneeName: row.assignee_full_name || (row.assigned_to ? 'Telecaller' : 'Unassigned'),
-          creatorId: row.creator_id,
-          creator_id: row.creator_id,
-          creatorName: row.creator_full_name || row.creator_name || 'System Administrator',
-          creatorEmail: row.creator_user_email || row.creator_email || 'admin@markops.io',
-          campaignId: row.campaign_id,
-          campaignName: row.campaign_name || '',
-          createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
-          updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
-        };
-      }
-    } catch (e) {
-      console.error('[MySQL Error] Fetch lead for assign failed:', e.message);
-    }
-  }
-
-  if (!lead) {
-    lead = dbLeadsStore.find((l) => String(l.id).trim() === leadId);
-  }
-
+  const lead = await findLeadById(leadId);
   if (!lead) return res.status(404).json({ error: `Lead #${leadId} not found.` });
 
-
-  const currentRole = String(req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
-  const currentUserId = resolveCurrentUserId(req);
-  const currentUserEmail = (req.user?.email || req.headers['x-user-email'] || '').toLowerCase().trim();
-  const currentUserName = (req.user?.fullName || req.headers['x-user-name'] || '').toLowerCase().trim();
-
-  const leadCreatorId = resolveLeadCreatorId(lead);
-  const leadCreatorEmail = (lead.creator_user_email || lead.creator_email || lead.creatorEmail || '').toLowerCase().trim();
-  const leadCreatorName = (lead.creator_full_name || lead.creator_name || lead.creatorName || '').toLowerCase().trim();
-
-  const isCreator = Boolean(
-    (currentUserId && leadCreatorId && String(currentUserId) === String(leadCreatorId)) ||
-    (currentUserEmail && leadCreatorEmail && currentUserEmail === leadCreatorEmail) ||
-    (currentUserName && leadCreatorName && currentUserName === leadCreatorName) ||
-    (currentRole === 'ADMINISTRATOR')
-  );
-
-  if (!isCreator) {
+  if (!verifyLeadCreatorAccess(req, lead)) {
     return res.status(403).json({ error: 'Access Denied: Only the creator who created this lead can reassign it.' });
   }
 
-  let cleanAssignedTo = null;
-  let effectiveName = assigneeName;
-
-  if (assignedTo) {
-    const targetUserIdStr = String(assignedTo).trim();
-    if (dbPool) {
-      try {
-        const [userRows] = await dbPool.query(
-          `SELECT id, full_name, email FROM users WHERE id = ? OR email = ? LIMIT 1`,
-          [targetUserIdStr, targetUserIdStr]
-        );
-        if (userRows && userRows.length > 0) {
-          cleanAssignedTo = userRows[0].id;
-          effectiveName = userRows[0].full_name;
-        }
-      } catch (err) {
-        console.error('[MySQL Error] Fetch user for assign failed:', err.message);
-      }
-    }
-
-    if (!cleanAssignedTo) {
-      const user = dbUsersStore.find(
-        (u) => String(u.id).trim() === targetUserIdStr || u.email === targetUserIdStr
-      );
-      if (user) {
-        const parsed = Number.parseInt(String(user.id).replace(/\D/g, ''), 10);
-        cleanAssignedTo = !Number.isNaN(parsed) && parsed > 0 ? parsed : user.id;
-        effectiveName = user.fullName;
-      } else {
-        const parsed = Number.parseInt(targetUserIdStr.replace(/\D/g, ''), 10);
-        cleanAssignedTo = !Number.isNaN(parsed) && parsed > 0 ? parsed : targetUserIdStr;
-      }
-    }
-  }
-
+  const { cleanAssignedTo, effectiveName } = await resolveAssigneeTarget(assignedTo, assigneeName);
   const finalStatus = cleanAssignedTo ? 'ASSIGNED' : 'NEW';
   const finalAssigneeName = cleanAssignedTo ? (effectiveName || 'Assigned Telecaller') : 'Unassigned';
 
-
-  if (dbPool) {
-    try {
-      const numLeadId = Number.parseInt(leadId, 10);
-      if (!Number.isNaN(numLeadId)) {
-        try {
-          await dbPool.query(
-            `UPDATE leads
-             SET assigned_to = ?, assigned_telecaller_id = ?, assignment_status = ?, status = ?, updated_at = NOW()
-             WHERE id = ?`,
-            [
-              cleanAssignedTo ? (Number.parseInt(String(cleanAssignedTo).replace(/\D/g, ''), 10) || cleanAssignedTo) : null,
-              cleanAssignedTo ? (Number.parseInt(String(cleanAssignedTo).replace(/\D/g, ''), 10) || cleanAssignedTo) : null,
-              cleanAssignedTo ? 'ASSIGNED' : 'UNASSIGNED',
-              finalStatus,
-              numLeadId,
-            ]
-          );
-        } catch (colErr) {
-          console.log('[MySQL Notice] Fallback to basic lead update columns:', colErr?.message || colErr);
-          await dbPool.query(
-            `UPDATE leads
-             SET assigned_to = ?, status = ?, updated_at = NOW()
-             WHERE id = ?`,
-            [
-              cleanAssignedTo ? (Number.parseInt(String(cleanAssignedTo).replace(/\D/g, ''), 10) || cleanAssignedTo) : null,
-              finalStatus,
-              numLeadId,
-            ]
-          );
-        }
-      }
-    } catch (e) {
-      console.error('[MySQL Error] Update lead assignment failed:', e.message);
-    }
-  }
-
-
-  const storeIdx = dbLeadsStore.findIndex((l) => String(l.id).trim() === leadId);
-  if (storeIdx !== -1) {
-    dbLeadsStore[storeIdx].assignedTo = cleanAssignedTo ? String(cleanAssignedTo) : null;
-    dbLeadsStore[storeIdx].assigned_to = cleanAssignedTo ? String(cleanAssignedTo) : null;
-    dbLeadsStore[storeIdx].assignedTelecallerId = cleanAssignedTo ? String(cleanAssignedTo) : null;
-    dbLeadsStore[storeIdx].assigneeName = finalAssigneeName;
-    dbLeadsStore[storeIdx].status = finalStatus;
-    dbLeadsStore[storeIdx].assignmentStatus = cleanAssignedTo ? 'ASSIGNED' : 'UNASSIGNED';
-    dbLeadsStore[storeIdx].updatedAt = new Date().toISOString();
-  }
+  await updateLeadAssignmentDb(leadId, cleanAssignedTo, finalStatus);
+  updateLeadStoreAssignment(leadId, cleanAssignedTo, finalAssigneeName, finalStatus);
 
   lead.assignedTo = cleanAssignedTo ? String(cleanAssignedTo) : null;
-  lead.assigned_to = cleanAssignedTo ? String(cleanAssignedTo) : null;
-  lead.assignedTelecallerId = cleanAssignedTo ? String(cleanAssignedTo) : null;
+  lead.assigned_to = lead.assignedTo;
+  lead.assignedTelecallerId = lead.assignedTo;
   lead.assigneeName = finalAssigneeName;
   lead.status = finalStatus;
   lead.assignmentStatus = cleanAssignedTo ? 'ASSIGNED' : 'UNASSIGNED';
@@ -874,25 +831,7 @@ router.post('/leads/:id/assign', async (req, res) => {
   emitRealtimeEvent('lead:assigned', lead);
   emitRealtimeEvent('lead:updated', lead);
 
-  if (lead.assignedTo) {
-    const creator = creatorName || actorEmail || lead.creatorName || 'System Administrator';
-    const prod = productName || 'Careermate';
-    const pkg = packageName || lead.campaignName || 'CURRENT AFFAIRS AUGUST -2026';
-    const msg = `Assigned by: ${creator} -> Product: ${prod} -> Package: ${pkg} -> Total Leads: 1`;
-    const targetRoute = `/package-works?package=${encodeURIComponent(prod)}&workspace=${encodeURIComponent(pkg)}&dept=TELECALLING&tab=TELECALLING`;
-    createNotificationForTelecaller(lead.assignedTo, 'New Lead Assigned', msg, targetRoute);
-
-    const reassignerId = actorId || req.headers['x-user-id'] || lead.creatorId;
-    if (reassignerId && String(reassignerId) !== String(lead.assignedTo)) {
-      dispatchNotification({
-        userIds: [reassignerId],
-        title: 'Lead Assigned Successfully',
-        message: `Lead "${lead.firstName} ${lead.lastName || ''}" has been assigned to ${lead.assigneeName}.`,
-        type: 'INFO',
-        targetRoute: '/leads',
-      }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
-    }
-  }
+  notifyLeadAssigned(lead, req, { creatorName, actorEmail, productName, packageName, actorId });
 
   await recordAuditLog(dbPool, {
     actorId: actorId || req.headers['x-user-id'] || 'usr_admin_01',
@@ -908,56 +847,8 @@ router.post('/leads/:id/assign', async (req, res) => {
 });
 
 
-router.put('/leads/:id', async (req, res) => {
-  const leadId = req.params.id;
-  const currentRole = String(req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
-  const currentUserId = resolveCurrentUserId(req);
-  const currentUserEmail = (req.user?.email || req.headers['x-user-email'] || '').toLowerCase().trim();
-  const currentUserName = (req.user?.fullName || req.headers['x-user-name'] || '').toLowerCase().trim();
-
-  let lead = null;
-  if (dbPool) {
-    try {
-      const [rows] = await dbPool.query(
-        `SELECT l.*, c.full_name as creator_full_name, c.email as creator_user_email, u.full_name as assignee_full_name
-         FROM leads l
-         LEFT JOIN users c ON l.creator_id = c.id
-         LEFT JOIN users u ON l.assigned_to = u.id
-         WHERE l.id = ?`,
-        [leadId]
-      );
-      if (rows && rows.length > 0) {
-        lead = rows[0];
-      }
-    } catch (e) {
-      console.error('[MySQL Error] Fetch lead for edit failed:', e.message);
-    }
-  }
-  if (!lead) {
-    lead = dbLeadsStore.find((l) => String(l.id) === String(leadId));
-  }
-
-  if (!lead) {
-    return res.status(404).json({ error: 'Lead not found.' });
-  }
-
-
-  const leadCreatorId = resolveLeadCreatorId(lead);
-  const leadCreatorEmail = (lead.creator_user_email || lead.creator_email || lead.creatorEmail || '').toLowerCase().trim();
-  const leadCreatorName = (lead.creator_full_name || lead.creator_name || lead.creatorName || '').toLowerCase().trim();
-
-  const isCreator = Boolean(
-    (currentUserId && leadCreatorId && String(currentUserId) === String(leadCreatorId)) ||
-    (currentUserEmail && leadCreatorEmail && currentUserEmail === leadCreatorEmail) ||
-    (currentUserName && leadCreatorName && currentUserName === leadCreatorName) ||
-    (currentRole === 'ADMINISTRATOR')
-  );
-
-  if (!isCreator) {
-    return res.status(403).json({ error: 'Access Denied: Only the creator who created this lead can edit it.' });
-  }
-
-  const { firstName, lastName, email, phone, source, status, campaignName, assignedTo, assigneeName } = req.body;
+function buildLeadUpdateFields(body, lead) {
+  const { firstName, lastName, email, phone, source, status, campaignName, assignedTo, assigneeName } = body;
   const updatedFirstName = firstName !== undefined ? String(firstName).trim() : (lead.first_name || lead.firstName);
   const updatedLastName = lastName !== undefined ? String(lastName).trim() : (lead.last_name || lead.lastName || '');
   const updatedEmail = email !== undefined ? String(email).trim() : (lead.email || '');
@@ -972,38 +863,67 @@ router.put('/leads/:id', async (req, res) => {
   let updatedAssigneeName = assigneeName !== undefined ? String(assigneeName).trim() : (lead.assignee_full_name || lead.assigneeName || 'Unassigned');
   if (!updatedAssignedTo) updatedAssigneeName = 'Unassigned';
 
-  if (dbPool) {
-    try {
-      await dbPool.query(
-        `UPDATE leads
-         SET first_name = ?, last_name = ?, email = ?, phone = ?, source = ?, status = ?, campaign_name = ?,
-             assigned_to = ?, assigned_telecaller_id = ?, assignment_status = ?, updated_at = NOW()
-         WHERE id = ?`,
-        [
-          updatedFirstName, updatedLastName, updatedEmail, updatedPhone, updatedSource, updatedStatus,
-          updatedCampName, updatedAssignedTo, updatedAssignedTo, updatedAssignedTo ? 'ASSIGNED' : 'UNASSIGNED', leadId,
-        ]
-      );
-    } catch (dbErr) {
-      console.error('[MySQL Error] Update lead failed:', dbErr.message);
-    }
+  return {
+    updatedFirstName,
+    updatedLastName,
+    updatedEmail,
+    updatedPhone,
+    updatedSource,
+    updatedStatus,
+    updatedCampName,
+    updatedAssignedTo,
+    updatedAssigneeName
+  };
+}
+
+async function persistLeadUpdateDb(leadId, fields) {
+  if (!dbPool) return;
+  try {
+    await dbPool.query(
+      `UPDATE leads
+       SET first_name = ?, last_name = ?, email = ?, phone = ?, source = ?, status = ?, campaign_name = ?,
+           assigned_to = ?, assigned_telecaller_id = ?, assignment_status = ?, updated_at = NOW()
+       WHERE id = ?`,
+      [
+        fields.updatedFirstName, fields.updatedLastName, fields.updatedEmail, fields.updatedPhone,
+        fields.updatedSource, fields.updatedStatus, fields.updatedCampName, fields.updatedAssignedTo,
+        fields.updatedAssignedTo, fields.updatedAssignedTo ? 'ASSIGNED' : 'UNASSIGNED', leadId,
+      ]
+    );
+  } catch (dbErr) {
+    console.error('[MySQL Error] Update lead failed:', dbErr.message);
   }
+}
+
+router.put('/leads/:id', async (req, res) => {
+  const leadId = req.params.id;
+  const lead = await findLeadById(leadId);
+  if (!lead) {
+    return res.status(404).json({ error: 'Lead not found.' });
+  }
+
+  if (!verifyLeadCreatorAccess(req, lead)) {
+    return res.status(403).json({ error: 'Access Denied: Only the creator who created this lead can edit it.' });
+  }
+
+  const fields = buildLeadUpdateFields(req.body, lead);
+  await persistLeadUpdateDb(leadId, fields);
 
   const updatedObj = {
     id: leadId,
-    firstName: updatedFirstName,
-    lastName: updatedLastName,
-    email: updatedEmail,
-    phone: updatedPhone,
-    source: updatedSource,
-    status: updatedStatus,
-    assignedTelecallerId: updatedAssignedTo ? String(updatedAssignedTo) : null,
-    assignmentStatus: updatedAssignedTo ? 'ASSIGNED' : 'UNASSIGNED',
+    firstName: fields.updatedFirstName,
+    lastName: fields.updatedLastName,
+    email: fields.updatedEmail,
+    phone: fields.updatedPhone,
+    source: fields.updatedSource,
+    status: fields.updatedStatus,
+    assignedTelecallerId: fields.updatedAssignedTo ? String(fields.updatedAssignedTo) : null,
+    assignmentStatus: fields.updatedAssignedTo ? 'ASSIGNED' : 'UNASSIGNED',
     campaignId: lead.campaign_id || lead.campaignId || 'cmp_default',
-    campaignName: updatedCampName,
-    assignedTo: updatedAssignedTo,
-    assigneeName: updatedAssigneeName,
-    creatorId: leadCreatorId,
+    campaignName: fields.updatedCampName,
+    assignedTo: fields.updatedAssignedTo,
+    assigneeName: fields.updatedAssigneeName,
+    creatorId: resolveLeadCreatorId(lead),
     creatorName: lead.creator_full_name || lead.creator_name || lead.creatorName,
     creatorEmail: lead.creator_user_email || lead.creator_email || lead.creatorEmail,
     updatedAt: new Date().toISOString(),
@@ -1016,8 +936,8 @@ router.put('/leads/:id', async (req, res) => {
 
   emitRealtimeEvent('lead:updated', updatedObj);
   await recordAuditLog(dbPool, {
-    actorId: currentUserId || 'usr_unknown',
-    actorEmail: currentUserEmail || 'unknown@markops.io',
+    actorId: resolveCurrentUserId(req) || 'usr_unknown',
+    actorEmail: req.user?.email || req.headers['x-user-email'] || 'unknown@markops.io',
     action: 'LEAD_UPDATED',
     entityType: 'Lead',
     entityId: String(leadId),
@@ -1028,64 +948,29 @@ router.put('/leads/:id', async (req, res) => {
   return res.json({ success: true, lead: updatedObj });
 });
 
+async function deleteLeadFromDb(leadId) {
+  if (!dbPool) return;
+  try {
+    await dbPool.query(`DELETE FROM follow_ups WHERE lead_id = ?`, [leadId]).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
+    await dbPool.query(`DELETE FROM call_activities WHERE lead_id = ?`, [leadId]).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
+    await dbPool.query(`DELETE FROM leads WHERE id = ?`, [leadId]);
+  } catch (dbErr) {
+    console.error('[MySQL Error] Delete lead failed:', dbErr.message);
+  }
+}
 
 router.delete('/leads/:id', async (req, res) => {
   const leadId = req.params.id;
-  const currentRole = String(req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
-  const currentUserId = resolveCurrentUserId(req);
-  const currentUserEmail = (req.user?.email || req.headers['x-user-email'] || '').toLowerCase().trim();
-  const currentUserName = (req.user?.fullName || req.headers['x-user-name'] || '').toLowerCase().trim();
-
-  let lead = null;
-  if (dbPool) {
-    try {
-      const [rows] = await dbPool.query(
-        `SELECT l.*, c.full_name as creator_full_name, c.email as creator_user_email
-         FROM leads l
-         LEFT JOIN users c ON l.creator_id = c.id
-         WHERE l.id = ?`,
-        [leadId]
-      );
-      if (rows && rows.length > 0) {
-        lead = rows[0];
-      }
-    } catch (e) {
-      console.error('[MySQL Error] Fetch lead for delete failed:', e.message);
-    }
-  }
-  if (!lead) {
-    lead = dbLeadsStore.find((l) => String(l.id) === String(leadId));
-  }
-
+  const lead = await findLeadById(leadId);
   if (!lead) {
     return res.status(404).json({ error: 'Lead not found.' });
   }
 
-
-  const leadCreatorId = resolveLeadCreatorId(lead);
-  const leadCreatorEmail = (lead.creator_user_email || lead.creator_email || lead.creatorEmail || '').toLowerCase().trim();
-  const leadCreatorName = (lead.creator_full_name || lead.creator_name || lead.creatorName || '').toLowerCase().trim();
-
-  const isCreator = Boolean(
-    (currentUserId && leadCreatorId && String(currentUserId) === String(leadCreatorId)) ||
-    (currentUserEmail && leadCreatorEmail && currentUserEmail === leadCreatorEmail) ||
-    (currentUserName && leadCreatorName && currentUserName === leadCreatorName) ||
-    (currentRole === 'ADMINISTRATOR')
-  );
-
-  if (!isCreator) {
+  if (!verifyLeadCreatorAccess(req, lead)) {
     return res.status(403).json({ error: 'Access Denied: Only the creator who created this lead can delete it.' });
   }
 
-  if (dbPool) {
-    try {
-      await dbPool.query(`DELETE FROM follow_ups WHERE lead_id = ?`, [leadId]).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
-      await dbPool.query(`DELETE FROM call_activities WHERE lead_id = ?`, [leadId]).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
-      await dbPool.query(`DELETE FROM leads WHERE id = ?`, [leadId]);
-    } catch (dbErr) {
-      console.error('[MySQL Error] Delete lead failed:', dbErr.message);
-    }
-  }
+  await deleteLeadFromDb(leadId);
 
   const storeIdx = dbLeadsStore.findIndex((l) => String(l.id) === String(leadId));
   if (storeIdx !== -1) {
@@ -1094,8 +979,8 @@ router.delete('/leads/:id', async (req, res) => {
 
   emitRealtimeEvent('lead:deleted', { leadId: String(leadId) });
   await recordAuditLog(dbPool, {
-    actorId: currentUserId || 'usr_unknown',
-    actorEmail: currentUserEmail || 'unknown@markops.io',
+    actorId: resolveCurrentUserId(req) || 'usr_unknown',
+    actorEmail: req.user?.email || req.headers['x-user-email'] || 'unknown@markops.io',
     action: 'LEAD_DELETED',
     entityType: 'Lead',
     entityId: String(leadId),
@@ -1604,88 +1489,13 @@ router.post('/calls', async (req, res) => {
   return res.status(201).json({ call: newCall, lead: finalLead });
 });
 
-router.patch('/leads/:id/status', async (req, res) => {
-  const { status, actorId, actorName } = req.body;
-  const leadId = String(req.params.id).trim();
-
-  let lead = null;
-  if (dbPool) {
-    try {
-      const [rows] = await dbPool.query(
-        `SELECT l.*, 
-                c.full_name as creator_full_name, 
-                c.email as creator_user_email,
-                u.full_name as assignee_full_name,
-                u.email as assignee_user_email
-         FROM leads l
-         LEFT JOIN users c ON l.creator_id = c.id
-         LEFT JOIN users u ON l.assigned_to = u.id
-         WHERE l.id = ?`,
-        [leadId]
-      );
-      if (rows && rows.length > 0) {
-        const row = rows[0];
-        lead = {
-          id: row.id,
-          firstName: row.first_name,
-          lastName: row.last_name,
-          email: row.email,
-          phone: row.phone,
-          source: row.source,
-          status: row.status,
-          assignedTo: row.assigned_to,
-          assigned_to: row.assigned_to,
-          assigneeName: row.assignee_full_name || (row.assigned_to ? 'Telecaller' : 'Unassigned'),
-          creatorId: row.creator_id,
-          creator_id: row.creator_id,
-          creatorName: row.creator_full_name || row.creator_name || 'System Administrator',
-          creatorEmail: row.creator_user_email || row.creator_email || 'admin@markops.io',
-          campaignId: row.campaign_id,
-          campaignName: row.campaign_name || '',
-          createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
-          updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
-        };
-      }
-    } catch (e) {
-      console.error('[MySQL Error] Fetch lead for status update failed:', e.message);
-    }
-  }
-
-  if (!lead) {
-    lead = dbLeadsStore.find((l) => String(l.id).trim() === leadId);
-  }
-
-  if (!lead) return res.status(404).json({ error: `Lead #${leadId} not found.` });
-
-  const previousStatus = lead.status;
-  const newStatus = String(status || '').toUpperCase().trim();
-  lead.status = newStatus;
-  lead.updatedAt = new Date().toISOString();
-
-  if (dbPool) {
-    try {
-      const numId = Number.parseInt(leadId, 10);
-      if (!Number.isNaN(numId)) {
-        await dbPool.query('UPDATE leads SET status = ?, updated_at = NOW() WHERE id = ?', [newStatus, numId]);
-      }
-    } catch (e) {
-      console.error('[MySQL Error] Failed to update lead status:', e?.message || e);
-    }
-  }
-
-  emitRealtimeEvent('lead:status_changed', { leadId: lead.id, status: newStatus });
-  emitRealtimeEvent('lead:updated', lead);
-
-  const effectiveActorName = actorName || req.headers['x-user-name'] || lead.assigneeName || 'Telecaller';
-  const effectiveActorId = actorId || req.headers['x-user-id'] || lead.assignedTo || '6';
-
-
+function notifyLeadStatusTransition(lead, newStatus, effectiveActorName) {
   const leadPkg = lead.packageName || lead.package || lead.campaignName || 'CURRENT AFFAIRS AUGUST -2026';
   const leadProd = resolvePackageProductName(leadPkg, lead.productName);
   const telecallerTargetRoute = `/package-works?package=${encodeURIComponent(leadProd)}&workspace=${encodeURIComponent(leadPkg)}&dept=TELECALLING&tab=TELECALLING`;
+  const creatorTarget = lead.creatorId || '4';
 
   if (newStatus === 'INTERESTED') {
-    const creatorTarget = lead.creatorId || '4';
     dispatchNotification({
       userIds: [creatorTarget, '4'],
       title: `Lead Interested: ${lead.firstName} ${lead.lastName || ''}`.trim(),
@@ -1704,7 +1514,6 @@ router.patch('/leads/:id/status', async (req, res) => {
       }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
     }
   } else if (newStatus === 'QUALIFIED') {
-    const creatorTarget = lead.creatorId || '4';
     dispatchNotification({
       userIds: [creatorTarget, '4'],
       title: `Lead Qualified: ${lead.firstName} ${lead.lastName || ''}`.trim(),
@@ -1731,6 +1540,35 @@ router.patch('/leads/:id/status', async (req, res) => {
       }).catch((err) => console.log('[Notice] Non-critical notification failed:', err?.message || err));
     }
   }
+}
+
+router.patch('/leads/:id/status', async (req, res) => {
+  const { status, actorName } = req.body;
+  const leadId = String(req.params.id).trim();
+
+  const lead = await findLeadById(leadId);
+  if (!lead) return res.status(404).json({ error: `Lead #${leadId} not found.` });
+
+  const newStatus = String(status || '').toUpperCase().trim();
+  lead.status = newStatus;
+  lead.updatedAt = new Date().toISOString();
+
+  if (dbPool) {
+    try {
+      const numId = Number.parseInt(leadId, 10);
+      if (!Number.isNaN(numId)) {
+        await dbPool.query('UPDATE leads SET status = ?, updated_at = NOW() WHERE id = ?', [newStatus, numId]);
+      }
+    } catch (e) {
+      console.error('[MySQL Error] Failed to update lead status:', e?.message || e);
+    }
+  }
+
+  emitRealtimeEvent('lead:status_changed', { leadId: lead.id, status: newStatus });
+  emitRealtimeEvent('lead:updated', lead);
+
+  const effectiveActorName = actorName || req.headers['x-user-name'] || lead.assigneeName || 'Telecaller';
+  notifyLeadStatusTransition(lead, newStatus, effectiveActorName);
 
   return res.json(lead);
 });
@@ -1782,21 +1620,16 @@ router.get('/followups', async (req, res) => {
 });
 
 
-async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
-  const { leads, selectedTelecallerIds, campaignId, campaignName, source, uploaderId, uploaderEmail, uploaderRole } = req.body;
-  const effectiveRole = String(req.user?.role || req.headers['x-user-role'] || uploaderRole || '').toUpperCase();
+function validateBatchImportPayload(req, leads, metaWebhook) {
+  const effectiveRole = String(req.user?.role || req.headers['x-user-role'] || req.body.uploaderRole || '').toUpperCase();
   const uploadRoles = ['ADMINISTRATOR', 'MARKETING_MANAGER', 'DIGITAL_MARKETING'];
 
   if (!metaWebhook && !uploadRoles.includes(effectiveRole)) {
-    return res.status(403).json({
-      error: 'Access Denied: Lead file uploads are restricted to Digital Marketing, Marketing Manager, and Administrator roles.',
-    });
+    return { status: 403, error: 'Access Denied: Lead file uploads are restricted to Digital Marketing, Marketing Manager, and Administrator roles.' };
   }
-
   if (!Array.isArray(leads) || leads.length === 0) {
-    return res.status(400).json({ error: 'No lead array provided in request payload.' });
+    return { status: 400, error: 'No lead array provided in request payload.' };
   }
-
 
   for (let i = 0; i < leads.length; i++) {
     const raw = leads[i];
@@ -1811,14 +1644,14 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
     const ph = String(raw.phone || raw['Phone'] || raw['Phone Number'] || raw['Mobile'] || raw['Mobile Number'] || raw['Contact Number'] || raw['Contact'] || contactPhone).trim();
 
     if (!fName || !ph) {
-      return res.status(400).json({
-        error: `Validation Error on row #${i + 1}: A lead name and phone number are required.`,
-      });
+      return { status: 400, error: `Validation Error on row #${i + 1}: A lead name and phone number are required.` };
     }
   }
+  return null;
+}
 
+async function fetchTelecallersForImport(metaWebhook, selectedTelecallerIds, telecallersList) {
   let telecallers = [];
-
   if (metaWebhook && dbPool) {
     const [telecallerRows] = await dbPool.queryStrict(
       `SELECT u.id, u.full_name AS fullName, u.email, COUNT(l.id) AS assignedCount
@@ -1829,12 +1662,7 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
        GROUP BY u.id, u.full_name, u.email
        ORDER BY assignedCount ASC, u.id ASC`
     );
-    telecallers = telecallerRows.map((user) => ({
-      ...user,
-      id: String(user.id),
-      role: 'TELECALLER',
-      isActive: true,
-    }));
+    telecallers = telecallerRows.map((user) => ({ ...user, id: String(user.id), role: 'TELECALLER', isActive: true }));
   } else if (!metaWebhook && dbPool?.isConnected()) {
     const [telecallerRows] = await dbPool.queryStrict(
       `SELECT u.id, u.full_name AS fullName, u.email
@@ -1843,21 +1671,15 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
        WHERE r.code = 'TELECALLER' AND u.is_active = 1
        ORDER BY u.id ASC`
     );
-    telecallers = telecallerRows.map((user) => ({
-      ...user,
-      id: String(user.id),
-      role: 'TELECALLER',
-      isActive: true,
-    }));
+    telecallers = telecallerRows.map((user) => ({ ...user, id: String(user.id), role: 'TELECALLER', isActive: true }));
   } else if (!metaWebhook) {
     telecallers = dbUsersStore.filter(
       (user) => String(user.role).toUpperCase() === 'TELECALLER' && user.isActive !== false
     );
   }
 
-
-  if (metaWebhook && Array.isArray(req.body.telecallersList) && req.body.telecallersList.length > 0) {
-    req.body.telecallersList.forEach((reqTc) => {
+  if (metaWebhook && Array.isArray(telecallersList)) {
+    telecallersList.forEach((reqTc) => {
       if (!telecallers.some((t) => t.id === reqTc.id)) {
         const syncedTc = {
           id: reqTc.id,
@@ -1883,79 +1705,87 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
   }
 
   if (!metaWebhook && telecallers.length === 0) {
-    return res.status(409).json({
-      error: 'No active telecallers are available. Activate at least one telecaller before uploading leads.',
-    });
+    return { status: 409, error: 'No active telecallers are available. Activate at least one telecaller before uploading leads.' };
   }
+  return { telecallers };
+}
 
+async function resolveImportCampaignId(metaWebhook, leads, targetCampName) {
+  if (!dbPool) return null;
+  try {
+    const metaCampaignId = metaWebhook ? leads[0]?.metaCampaignId : null;
+    const [campaignRows] = metaWebhook && metaCampaignId
+      ? await dbPool.queryStrict(`SELECT id FROM campaigns WHERE meta_campaign_id = ? LIMIT 1`, [metaCampaignId])
+      : await dbPool.query(`SELECT id FROM campaigns WHERE name = ? LIMIT 1`, [targetCampName]);
+    if (campaignRows?.[0]) return campaignRows[0].id;
+    const [firstCmp] = await dbPool.query(`SELECT id FROM campaigns LIMIT 1`);
+    return firstCmp?.[0]?.id || null;
+  } catch (dbErr) {
+    if (metaWebhook) throw dbErr;
+    console.log('[MySQL LookUp Notice] Failed to find campaign reference during lead processing:', dbErr.message);
+    return null;
+  }
+}
 
-  let mysqlCampaignId = null;
-  const targetCampName = campaignName || 'Digital Ad Campaign';
-  if (dbPool) {
-    try {
-      const metaCampaignId = metaWebhook ? leads[0].metaCampaignId : null;
-      const [campaignRows] = metaWebhook && metaCampaignId
-        ? await dbPool.queryStrict(`SELECT id FROM campaigns WHERE meta_campaign_id = ? LIMIT 1`, [metaCampaignId])
-        : await dbPool.query(`SELECT id FROM campaigns WHERE name = ? LIMIT 1`, [targetCampName]);
-      if (campaignRows && campaignRows.length > 0) {
-        mysqlCampaignId = campaignRows[0].id;
-      } else {
-        const [firstCmp] = await dbPool.query(`SELECT id FROM campaigns LIMIT 1`);
-        mysqlCampaignId = firstCmp?.[0]?.id || null;
-      }
-    } catch (dbErr) {
-      if (metaWebhook) throw dbErr;
-      console.log('[MySQL LookUp Notice] Failed to find campaign reference during lead processing:', dbErr.message);
+function resolveUploaderInfo(req) {
+  const uploaderUid = req.body.creatorId || req.body.uploaderId || req.headers['x-user-id'];
+  let uploaderNameResolved = req.body.creatorName || req.headers['x-user-name'];
+  let uploaderEmailResolved = req.body.creatorEmail || req.body.uploaderEmail || req.headers['x-user-email'];
+
+  if ((!uploaderNameResolved || uploaderNameResolved === 'System Administrator') && uploaderUid) {
+    const foundUser = dbUsersStore.find(
+      (u) => String(u.id).toLowerCase() === String(uploaderUid).toLowerCase() || (u.email && u.email.toLowerCase() === String(uploaderUid).toLowerCase())
+    );
+    if (foundUser) {
+      uploaderNameResolved = foundUser.fullName;
+      uploaderEmailResolved = foundUser.email;
     }
   }
+  return { uploaderUid, uploaderNameResolved, uploaderEmailResolved };
+}
 
+function parseLeadRawNames(raw, i) {
+  const fullName = String(raw.fullName || raw.leadName || raw['Full Name'] || raw['Lead Name'] || raw['Name'] || '').trim();
+  const fullNameParts = fullName.split(/\s+/).filter(Boolean);
+  const firstName = String(raw.firstName || raw['First Name'] || raw['first_name'] || fullNameParts.shift() || `Lead ${i + 1}`).trim();
+  const lastName = String(raw.lastName || raw['Last Name'] || raw['last_name'] || fullNameParts.join(' ')).trim();
+  return { firstName, lastName };
+}
+
+function parseLeadRawContact(raw) {
+  const email = String(raw.email || raw['Email'] || raw['email_address'] || '').trim();
+  const contactInfo = String(raw.contactInfo || raw['Contact Info'] || '').trim();
+  const contactEmail = extractFirstEmail(contactInfo);
+  const contactPhone = contactInfo
+    .replace(contactEmail, '')
+    .replace(/(?:phone|mobile|tel)\s*[:=-]?\s*/i, '')
+    .trim();
+  const phone = String(raw.phone || raw['Phone'] || raw['Phone Number'] || raw['Mobile'] || raw['Mobile Number'] || raw['Contact Number'] || raw['Contact'] || contactPhone).trim();
+  return { phone, emailAddress: email || contactEmail };
+}
+
+function buildImportedLeads(leads, telecallers, context) {
+  const { req, campaignId, targetCampName, source, mysqlCampaignId, metaWebhook } = context;
   const createdLeads = [];
   const allocationSummary = {};
   telecallers.forEach((tc) => {
     allocationSummary[tc.id] = { id: tc.id, fullName: tc.fullName, email: tc.email, count: 0 };
   });
 
- 
+  const { uploaderUid, uploaderNameResolved, uploaderEmailResolved } = resolveUploaderInfo(req);
+  const cleanCreatorId = Number.parseInt(String(uploaderUid || '1').replace(/\D/g, ''), 10) || 1;
+
   for (let i = 0; i < leads.length; i++) {
     const raw = leads[i];
     const assignedTelecaller = telecallers.length > 0 ? telecallers[i % telecallers.length] : null;
-
-    const fullName = String(raw.fullName || raw.leadName || raw['Full Name'] || raw['Lead Name'] || raw['Name'] || '').trim();
-    const fullNameParts = fullName.split(/\s+/).filter(Boolean);
-    const firstName = String(raw.firstName || raw['First Name'] || raw['first_name'] || fullNameParts.shift() || `Lead ${i + 1}`).trim();
-    const lastName = String(raw.lastName || raw['Last Name'] || raw['last_name'] || fullNameParts.join(' ')).trim();
-    const email = String(raw.email || raw['Email'] || raw['email_address'] || '').trim();
-    const contactInfo = String(raw.contactInfo || raw['Contact Info'] || '').trim();
-    const contactEmail = extractFirstEmail(contactInfo);
-    const contactPhone = contactInfo
-      .replace(contactEmail, '')
-      .replace(/(?:phone|mobile|tel)\s*[:=-]?\s*/i, '')
-      .trim();
-    const phone = String(raw.phone || raw['Phone'] || raw['Phone Number'] || raw['Mobile'] || raw['Mobile Number'] || raw['Contact Number'] || raw['Contact'] || contactPhone).trim();
-    const emailAddress = email || contactEmail;
-        const rowCampaignId = raw.campaignId || campaignId || 'cmp_default';
-
-    const uploaderUid = req.body.creatorId || req.body.uploaderId || req.headers['x-user-id'];
-    let uploaderNameResolved = req.body.creatorName || req.headers['x-user-name'];
-    let uploaderEmailResolved = req.body.creatorEmail || req.body.uploaderEmail || req.headers['x-user-email'];
-
-    if ((!uploaderNameResolved || uploaderNameResolved === 'System Administrator') && uploaderUid) {
-      const foundUser = dbUsersStore.find(
-        (u) => String(u.id).toLowerCase() === String(uploaderUid).toLowerCase() || (u.email && u.email.toLowerCase() === String(uploaderUid).toLowerCase())
-      );
-      if (foundUser) {
-        uploaderNameResolved = foundUser.fullName;
-        uploaderEmailResolved = foundUser.email;
-      }
-    }
-
+    const { firstName, lastName } = parseLeadRawNames(raw, i);
+    const { phone, emailAddress } = parseLeadRawContact(raw);
 
     const cleanAssignedToId = assignedTelecaller ? (Number.parseInt(String(assignedTelecaller.id).replace(/\D/g, ''), 10) || null) : null;
-    const cleanCreatorId = Number.parseInt(String(uploaderUid || '1').replace(/\D/g, ''), 10) || 1;
-
     const targetPkgName = req.body.packageName || raw.packageName || raw.package || targetCampName || 'Careermate';
     const targetProdName = req.body.productName || raw.productName || raw.product || '';
     const targetProdId = req.body.productId || raw.productId || raw.product_id || '';
+    const rowCampaignId = raw.campaignId || campaignId || 'cmp_default';
 
     const newLead = {
       id: `lead_${crypto.randomBytes(4).toString('hex')}`,
@@ -1985,10 +1815,7 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
       creatorName: req.body.creatorName || uploaderNameResolved || 'System Administrator',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-  
-      _mysqlCampaignId: metaWebhook
-        ? mysqlCampaignId
-        : (Number.parseInt(String(rowCampaignId), 10) || mysqlCampaignId),
+      _mysqlCampaignId: metaWebhook ? mysqlCampaignId : (Number.parseInt(String(rowCampaignId), 10) || mysqlCampaignId),
       _mysqlAdId: null,
       _mysqlAssignedTo: cleanAssignedToId,
       _mysqlCreatorId: cleanCreatorId
@@ -2001,110 +1828,118 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
     dbLeadsStore.unshift(newLead);
     createdLeads.push(newLead);
   }
+  return { createdLeads, allocationSummary };
+}
 
-  if (dbPool && (metaWebhook || dbPool.isConnected())) {
-    let importConnection = null;
-    try {
-      if (metaWebhook && createdLeads[0].metaAdId) {
-        const [adRows] = await dbPool.queryStrict(
-          `SELECT id FROM ads WHERE platform_ad_id = ? LIMIT 1`,
-          [createdLeads[0].metaAdId]
+async function persistBatchLeadsToDb(createdLeads, metaWebhook) {
+  if (!dbPool || (!metaWebhook && !dbPool.isConnected())) {
+    if (metaWebhook) {
+      const duplicate = dbLeadsStore.some((lead) => lead.metaLeadId === createdLeads[0]?.metaLeadId);
+      if (duplicate) {
+        dbLeadsStore.splice(dbLeadsStore.indexOf(createdLeads[0]), 1);
+        return { duplicate: true };
+      }
+    }
+    return null;
+  }
+
+  let importConnection = null;
+  try {
+    if (metaWebhook && createdLeads[0]?.metaAdId) {
+      const [adRows] = await dbPool.queryStrict(
+        `SELECT id FROM ads WHERE platform_ad_id = ? LIMIT 1`,
+        [createdLeads[0].metaAdId]
+      );
+      createdLeads[0]._mysqlAdId = adRows[0]?.id || null;
+    }
+
+    if (!metaWebhook) {
+      importConnection = await dbPool.getConnection();
+      await importConnection.beginTransaction();
+    }
+
+    for (const l of createdLeads) {
+      if (metaWebhook) {
+        await dbPool.queryStrict(
+          `INSERT INTO leads
+           (first_name, last_name, email, phone, source, status, assigned_to, assigned_telecaller_id, creator_id, creator_name, creator_email,
+            campaign_id, ad_id, campaign_name, meta_lead_id, meta_campaign_id, meta_ad_id, assignment_status, call_disposition,
+            created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+          [
+            l.firstName, l.lastName || null, l.email || null, l.phone, l.source, l.status, l._mysqlAssignedTo,
+            l._mysqlAssignedTo, l._mysqlCreatorId, l.creatorName, l.creatorEmail, l._mysqlCampaignId, l._mysqlAdId, l.campaignName,
+            l.metaLeadId, l.metaCampaignId || null, l.metaAdId || null, l.assignmentStatus, l.callDisposition,
+          ]
         );
-        createdLeads[0]._mysqlAdId = adRows[0]?.id || null;
-      }
-
-      if (!metaWebhook) {
-        importConnection = await dbPool.getConnection();
-        await importConnection.beginTransaction();
-      }
-
-      for (const l of createdLeads) {
-        if (metaWebhook) {
-          const [result] = await dbPool.queryStrict(
-            `INSERT INTO leads
-             (first_name, last_name, email, phone, source, status, assigned_to, assigned_telecaller_id, creator_id, creator_name, creator_email,
-              campaign_id, ad_id, campaign_name, meta_lead_id, meta_campaign_id, meta_ad_id, assignment_status, call_disposition,
-              created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      } else {
+        try {
+          await importConnection.query(
+            `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, assigned_telecaller_id, assignment_status, creator_id, creator_name, creator_email, campaign_id, campaign_name, package_name, product_id, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
             [
-              l.firstName, l.lastName || null, l.email || null, l.phone, l.source, l.status, l._mysqlAssignedTo,
-              l._mysqlAssignedTo, l._mysqlCreatorId, l.creatorName, l.creatorEmail, l._mysqlCampaignId, l._mysqlAdId, l.campaignName,
-              l.metaLeadId, l.metaCampaignId || null, l.metaAdId || null, l.assignmentStatus, l.callDisposition,
+              l.firstName, l.lastName, l.email, l.phone, l.source, l.status, l._mysqlAssignedTo, l._mysqlAssignedTo,
+              l.assignmentStatus, l._mysqlCreatorId, l.creatorName, l.creatorEmail, l._mysqlCampaignId, l.campaignName,
+              l.packageName || null, l.productId || null
             ]
           );
-        } else {
+        } catch (colErr) {
+          console.log('[MySQL Notice] Batch insert with full columns failed, falling back to minimal columns:', colErr?.message || colErr);
           try {
             await importConnection.query(
-              `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, assigned_telecaller_id, assignment_status, creator_id, creator_name, creator_email, campaign_id, campaign_name, package_name, product_id, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+              `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, creator_id, creator_name, creator_email, campaign_id, campaign_name, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
               [
-                l.firstName, l.lastName, l.email, l.phone, l.source, l.status, l._mysqlAssignedTo, l._mysqlAssignedTo,
-                l.assignmentStatus, l._mysqlCreatorId, l.creatorName, l.creatorEmail, l._mysqlCampaignId, l.campaignName,
-                l.packageName || null, l.productId || null
+                l.firstName, l.lastName, l.email, l.phone, l.source, l.status, l._mysqlAssignedTo,
+                l._mysqlCreatorId, l.creatorName, l.creatorEmail, l._mysqlCampaignId, l.campaignName
               ]
             );
-          } catch (colErr) {
-            console.log('[MySQL Notice] Batch insert with full columns failed, falling back to minimal columns:', colErr?.message || colErr);
-            try {
-              await importConnection.query(
-                `INSERT INTO leads (first_name, last_name, email, phone, source, status, assigned_to, creator_id, creator_name, creator_email, campaign_id, campaign_name, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-                [
-                  l.firstName, l.lastName, l.email, l.phone, l.source, l.status, l._mysqlAssignedTo,
-                  l._mysqlCreatorId, l.creatorName, l.creatorEmail, l._mysqlCampaignId, l.campaignName
-                ]
-              );
-            } catch (coreErr) {
-              console.error('[MySQL Error] Bulk insert core fallback:', coreErr.message);
-            }
+          } catch (coreErr) {
+            console.error('[MySQL Error] Bulk insert core fallback:', coreErr.message);
           }
         }
       }
+    }
 
-      if (importConnection) {
-        await importConnection.commit();
-      }
-    } catch (e) {
-      if (importConnection) {
-        try {
-          await importConnection.rollback();
-        } catch (rollbackError) {
-          console.error('[MySQL DB Error] Failed to roll back lead batch import:', rollbackError?.message || rollbackError);
-        }
-      }
-      if (metaWebhook) {
-        const storedIndex = dbLeadsStore.indexOf(createdLeads[0]);
-        if (storedIndex !== -1) dbLeadsStore.splice(storedIndex, 1);
-        if (e.code === 'ER_DUP_ENTRY' || e.errno === 1062) {
-          return res.status(200).json({ success: true, duplicate: true });
-        }
-        throw e;
-      }
-      createdLeads.forEach((lead) => {
-        const storedIndex = dbLeadsStore.indexOf(lead);
-        if (storedIndex !== -1) dbLeadsStore.splice(storedIndex, 1);
-      });
-      throw e;
-    } finally {
-      if (importConnection) importConnection.release();
+    if (importConnection) {
+      await importConnection.commit();
     }
-  } else if (metaWebhook) {
-    const duplicate = dbLeadsStore.some((lead) => lead.metaLeadId === createdLeads[0].metaLeadId);
-    if (duplicate) {
-      dbLeadsStore.splice(dbLeadsStore.indexOf(createdLeads[0]), 1);
-      return res.status(200).json({ success: true, duplicate: true });
+    return null;
+  } catch (e) {
+    if (importConnection) {
+      try {
+        await importConnection.rollback();
+      } catch (rollbackError) {
+        console.error('[MySQL DB Error] Failed to roll back lead batch import:', rollbackError?.message || rollbackError);
+      }
     }
+    if (metaWebhook) {
+      const storedIndex = dbLeadsStore.indexOf(createdLeads[0]);
+      if (storedIndex !== -1) dbLeadsStore.splice(storedIndex, 1);
+      if (e.code === 'ER_DUP_ENTRY' || e.errno === 1062) {
+        return { duplicate: true };
+      }
+      return { error: e };
+    }
+    createdLeads.forEach((lead) => {
+      const storedIndex = dbLeadsStore.indexOf(lead);
+      if (storedIndex !== -1) dbLeadsStore.splice(storedIndex, 1);
+    });
+    return { error: e };
+  } finally {
+    if (importConnection) importConnection.release();
   }
+}
 
-
+function notifyAndAuditBatchImport(createdLeads, allocationSummary, telecallers, req, metaWebhook) {
   emitRealtimeEvent('leads:batch_imported', { total: createdLeads.length, allocationSummary });
 
   const creator = req.body.creatorName || req.body.uploaderEmail || 'System Administrator';
-  const pkg = req.body.packageName || campaignName || 'CURRENT AFFAIRS AUGUST -2026';
+  const pkg = req.body.packageName || req.body.campaignName || 'CURRENT AFFAIRS AUGUST -2026';
   const prod = resolvePackageProductName(pkg, req.body.productName);
 
   Object.values(allocationSummary).forEach((summary) => {
-    if (summary && summary.id && summary.count > 0) {
+    if (summary?.id && summary.count > 0) {
       const msg = `Assigned by: ${creator} -> Product: ${prod} -> Package: ${pkg} -> Total Leads: ${summary.count}`;
       const targetRoute = `/package-works?package=${encodeURIComponent(prod)}&workspace=${encodeURIComponent(pkg)}&dept=TELECALLING&tab=TELECALLING`;
       createNotificationForTelecaller(
@@ -2116,16 +1951,47 @@ async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
     }
   });
 
-  await recordAuditLog(dbPool, {
-    actorId: uploaderId || req.headers['x-user-id'] || 'usr_digital_01',
-    actorEmail: uploaderEmail || 'digital@markops.io',
+  recordAuditLog(dbPool, {
+    actorId: req.body.uploaderId || req.headers['x-user-id'] || 'usr_digital_01',
+    actorEmail: req.body.uploaderEmail || 'digital@markops.io',
     action: metaWebhook ? 'META_LEAD_RECEIVED' : 'LEADS_EXCEL_BATCH_UPLOAD',
     entityType: 'LeadBatch',
     entityId: `batch_${Date.now()}`,
     newState: { totalUploaded: createdLeads.length, telecallersCount: telecallers.length, allocationSummary },
     ipAddress: req.ip || req.socket.remoteAddress,
     userAgent: req.headers['user-agent'],
+  }).catch((err) => console.log('Audit notice:', err?.message || err));
+}
+
+async function handleBatchImport(req, res, { metaWebhook = false } = {}) {
+  const { leads, selectedTelecallerIds, campaignId, campaignName, source } = req.body;
+  const validationError = validateBatchImportPayload(req, leads, metaWebhook);
+  if (validationError) {
+    return res.status(validationError.status).json({ error: validationError.error });
+  }
+
+  const telecallerRes = await fetchTelecallersForImport(metaWebhook, selectedTelecallerIds, req.body.telecallersList);
+  if (telecallerRes.error) {
+    return res.status(telecallerRes.status).json({ error: telecallerRes.error });
+  }
+  const telecallers = telecallerRes.telecallers;
+
+  const targetCampName = campaignName || 'Digital Ad Campaign';
+  const mysqlCampaignId = await resolveImportCampaignId(metaWebhook, leads, targetCampName);
+
+  const { createdLeads, allocationSummary } = buildImportedLeads(leads, telecallers, {
+    req, campaignId, targetCampName, source, mysqlCampaignId, metaWebhook
   });
+
+  const dbResult = await persistBatchLeadsToDb(createdLeads, metaWebhook);
+  if (dbResult?.duplicate) {
+    return res.status(200).json({ success: true, duplicate: true });
+  }
+  if (dbResult?.error) {
+    throw dbResult.error;
+  }
+
+  notifyAndAuditBatchImport(createdLeads, allocationSummary, telecallers, req, metaWebhook);
 
   return res.status(201).json({
     success: true,
@@ -2146,57 +2012,109 @@ router.post('/leads/batch-import', async (req, res) => {
   return handleBatchImport(req, res);
 });
 
+function calculateSingleTelecallerMetrics(tc, allLeads, allCalls) {
+  const assigned = allLeads.filter((l) => String(l.assignedTo || l.assigned_to) === String(tc.id));
+  const calls = allCalls.filter((c) => String(c.telecallerId) === String(tc.id));
+
+  const attendedCalls = calls.filter((c) => {
+    const out = String(c.outcome || '').toUpperCase();
+    return out === 'CONNECTED' || out === 'INTERESTED' || out === 'NOT_INTERESTED' || out === 'QUALIFIED';
+  });
+  const notAttendedCalls = calls.filter((c) => {
+    const out = String(c.outcome || '').toUpperCase();
+    return out === 'NO_ANSWER' || out === 'BUSY' || out === 'WRONG_NUMBER' || out === 'LINE_BUSY';
+  });
+  const interestedCalls = calls.filter((c) => String(c.outcome || '').toUpperCase() === 'INTERESTED');
+  const notInterestedCalls = calls.filter((c) => String(c.outcome || '').toUpperCase() === 'NOT_INTERESTED');
+
+  const getLeadKey = (c) => String(c.leadId || c.leadPhone || c.leadName || '').trim().toLowerCase();
+
+  const uniqueLeadsCalled = new Set(calls.map(getLeadKey).filter(Boolean));
+  const uniqueAttendedLeads = new Set(attendedCalls.map(getLeadKey).filter(Boolean));
+  const uniqueNotAttendedLeads = new Set(notAttendedCalls.map(getLeadKey).filter(Boolean));
+  const uniqueInterestedLeads = new Set(interestedCalls.map(getLeadKey).filter(Boolean));
+  const uniqueNotInterestedLeads = new Set(notInterestedCalls.map(getLeadKey).filter(Boolean));
+
+  const totalDurationSeconds = calls.reduce((acc, c) => acc + (Number(c.durationSeconds) || 0), 0);
+  const avgDurationSeconds = calls.length > 0 ? Math.round(totalDurationSeconds / calls.length) : 0;
+
+  return {
+    id: tc.id,
+    fullName: tc.fullName,
+    email: tc.email,
+    department: tc.department || 'Telecalling Sales',
+    assignedLeadsCount: assigned.length,
+    callsLoggedCount: uniqueLeadsCalled.size,
+    attendedCount: uniqueAttendedLeads.size,
+    notAttendedCount: uniqueNotAttendedLeads.size,
+    interestedCount: uniqueInterestedLeads.size,
+    notInterestedCount: uniqueNotInterestedLeads.size,
+    totalDurationSeconds,
+    avgDurationSeconds,
+    conversionRate: assigned.length > 0 ? Math.round((uniqueInterestedLeads.size / assigned.length) * 100) : 0,
+  };
+}
+
+async function fetchDbTelecallingData() {
+  let allLeads = [];
+  let allUsers = [];
+  let allCalls = [...dbCallActivitiesStore];
+
+  if (!dbPool) return { allLeads, allUsers, allCalls };
+
+  try {
+    const [leadsRows] = await dbPool.query(`
+      SELECT l.*, u.full_name as assignee_full_name, u.email as assignee_user_email
+      FROM leads l
+      LEFT JOIN users u ON l.assigned_to = u.id
+    `);
+    if (Array.isArray(leadsRows)) {
+      allLeads = leadsRows.map((r) => ({
+        id: r.id,
+        status: r.status,
+        assignedTo: r.assigned_to,
+        assigneeName: r.assignee_full_name,
+        assigneeEmail: r.assignee_user_email,
+      }));
+    }
+    const [userRows] = await dbPool.query(`
+      SELECT u.id, u.full_name as fullName, u.email, u.department, COALESCE(r.code, 'ADMINISTRATOR') as role, u.is_active as isActive
+      FROM users u
+      LEFT JOIN roles r ON u.role_id = r.id
+    `);
+    if (Array.isArray(userRows)) {
+      allUsers = userRows.map((u) => ({
+        id: u.id,
+        fullName: u.fullName,
+        email: u.email,
+        department: u.department,
+        role: u.role,
+        isActive: Boolean(u.isActive),
+      }));
+    }
+    const [callRows] = await dbPool.query(`
+      SELECT id, lead_id as leadId, telecaller_id as telecallerId, outcome, duration_seconds as durationSeconds, remarks, called_at as calledAt
+      FROM call_activities
+    `);
+    if (callRows?.length > 0) {
+      allCalls = callRows;
+    }
+  } catch (e) {
+    console.log('[telecalling-summary MySQL Error]:', e?.message || e);
+  }
+
+  return { allLeads, allUsers, allCalls };
+}
+
 router.get('/leads/telecalling-summary', async (req, res) => {
   const currentRole = String(req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
   const currentUserId = resolveCurrentUserId(req);
   const isTelecallerRole = currentRole === 'TELECALLER';
 
-  let allLeads = [];
-  let allUsers = [];
+  let { allLeads, allUsers, allCalls } = await fetchDbTelecallingData();
 
-  if (dbPool) {
-    try {
-      const [leadsRows] = await dbPool.query(`
-        SELECT l.*, u.full_name as assignee_full_name, u.email as assignee_user_email
-        FROM leads l
-        LEFT JOIN users u ON l.assigned_to = u.id
-      `);
-      if (Array.isArray(leadsRows)) {
-        allLeads = leadsRows.map((r) => ({
-          id: r.id,
-          status: r.status,
-          assignedTo: r.assigned_to,
-          assigneeName: r.assignee_full_name,
-          assigneeEmail: r.assignee_user_email,
-        }));
-      }
-      const [userRows] = await dbPool.query(`
-        SELECT u.id, u.full_name as fullName, u.email, u.department, COALESCE(r.code, 'ADMINISTRATOR') as role, u.is_active as isActive
-        FROM users u
-        LEFT JOIN roles r ON u.role_id = r.id
-      `);
-      if (Array.isArray(userRows)) {
-        allUsers = userRows.map((u) => ({
-          id: u.id,
-          fullName: u.fullName,
-          email: u.email,
-          department: u.department,
-          role: u.role,
-          isActive: Boolean(u.isActive),
-        }));
-      }
-    } catch (e) {
-      console.log('[telecalling-summary MySQL Error]:', e?.message || e);
-    }
-  }
-
-  if (allLeads.length === 0) {
-    allLeads = dbLeadsStore;
-  }
-  if (allUsers.length === 0) {
-    allUsers = dbUsersStore;
-  }
-
+  if (allLeads.length === 0) allLeads = dbLeadsStore;
+  if (allUsers.length === 0) allUsers = dbUsersStore;
 
   const telecallerLeads = isTelecallerRole && currentUserId
     ? allLeads.filter((l) => String(l.assignedTo || l.assigned_to) === currentUserId)
@@ -2223,83 +2141,8 @@ router.get('/leads/telecalling-summary', async (req, res) => {
     }
   });
 
-  let allCalls = [...dbCallActivitiesStore];
-  if (dbPool) {
-    try {
-      const [callRows] = await dbPool.query(`
-        SELECT id, lead_id as leadId, telecaller_id as telecallerId, outcome, duration_seconds as durationSeconds, remarks, called_at as calledAt
-        FROM call_activities
-      `);
-      if (Array.isArray(callRows) && callRows.length > 0) {
-        allCalls = callRows;
-      }
-    } catch (error_) { console.log('[MySQL Notice] Telecalling summary check skipped:', error_?.message || error_); }
-  }
-
- 
   const telecallers = allUsers.filter((u) => u.role === 'TELECALLER' && u.isActive !== false);
-
-  const telecallerMetrics = telecallers.map((tc) => {
-    const assigned = allLeads.filter((l) => String(l.assignedTo || l.assigned_to) === String(tc.id));
-    const calls = allCalls.filter((c) => String(c.telecallerId) === String(tc.id));
-
-    const attendedCalls = calls.filter((c) => {
-      const out = String(c.outcome || '').toUpperCase();
-      return out === 'CONNECTED' || out === 'INTERESTED' || out === 'NOT_INTERESTED' || out === 'QUALIFIED';
-    });
-    const notAttendedCalls = calls.filter((c) => {
-      const out = String(c.outcome || '').toUpperCase();
-      return out === 'NO_ANSWER' || out === 'BUSY' || out === 'WRONG_NUMBER' || out === 'LINE_BUSY';
-    });
-    const interestedCalls = calls.filter((c) => String(c.outcome || '').toUpperCase() === 'INTERESTED');
-    const notInterestedCalls = calls.filter((c) => String(c.outcome || '').toUpperCase() === 'NOT_INTERESTED');
-
-  
-    const uniqueLeadsCalled = new Set(
-      calls
-        .map((c) => String(c.leadId || c.leadPhone || c.leadName || '').trim().toLowerCase())
-        .filter((k) => !!k)
-    );
-    const uniqueAttendedLeads = new Set(
-      attendedCalls
-        .map((c) => String(c.leadId || c.leadPhone || c.leadName || '').trim().toLowerCase())
-        .filter((k) => !!k)
-    );
-    const uniqueNotAttendedLeads = new Set(
-      notAttendedCalls
-        .map((c) => String(c.leadId || c.leadPhone || c.leadName || '').trim().toLowerCase())
-        .filter((k) => !!k)
-    );
-    const uniqueInterestedLeads = new Set(
-      interestedCalls
-        .map((c) => String(c.leadId || c.leadPhone || c.leadName || '').trim().toLowerCase())
-        .filter((k) => !!k)
-    );
-    const uniqueNotInterestedLeads = new Set(
-      notInterestedCalls
-        .map((c) => String(c.leadId || c.leadPhone || c.leadName || '').trim().toLowerCase())
-        .filter((k) => !!k)
-    );
-
-    const totalDurationSeconds = calls.reduce((acc, c) => acc + (Number(c.durationSeconds) || 0), 0);
-    const avgDurationSeconds = calls.length > 0 ? Math.round(totalDurationSeconds / calls.length) : 0;
-
-    return {
-      id: tc.id,
-      fullName: tc.fullName,
-      email: tc.email,
-      department: tc.department || 'Telecalling Sales',
-      assignedLeadsCount: assigned.length,
-      callsLoggedCount: uniqueLeadsCalled.size,
-      attendedCount: uniqueAttendedLeads.size,
-      notAttendedCount: uniqueNotAttendedLeads.size,
-      interestedCount: uniqueInterestedLeads.size,
-      notInterestedCount: uniqueNotInterestedLeads.size,
-      totalDurationSeconds,
-      avgDurationSeconds,
-      conversionRate: assigned.length > 0 ? Math.round((uniqueInterestedLeads.size / assigned.length) * 100) : 0,
-    };
-  });
+  const telecallerMetrics = telecallers.map((tc) => calculateSingleTelecallerMetrics(tc, allLeads, allCalls));
 
   return res.json({
     totalLeads,

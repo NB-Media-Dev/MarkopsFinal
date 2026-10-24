@@ -653,108 +653,73 @@ export class PackageDepartmentViewComponent {
   taskMatchesDateRange(task: any, startDate?: string, endDate?: string): boolean {
     if (!startDate && !endDate) return true;
 
-    const dates: string[] = [];
-    const assigned = this.getTaskAssignedLocalDate(task);
-    if (assigned) dates.push(assigned);
-
-    if (task.launchDate) {
-      const lDate = this.toLocalDateString(task.launchDate);
-      if (lDate) dates.push(lDate);
-    }
-    if (task.calledAt) {
-      const cDate = this.toLocalDateString(task.calledAt);
-      if (cDate) dates.push(cDate);
-    }
-    if (task.createdAt) {
-      const crDate = this.toLocalDateString(task.createdAt);
-      if (crDate) dates.push(crDate);
-    }
-    if (task.submittedAt) {
-      const sDate = this.toLocalDateString(task.submittedAt);
-      if (sDate) dates.push(sDate);
-    }
-    if (task.updatedAt) {
-      const uDate = this.toLocalDateString(task.updatedAt);
-      if (uDate) dates.push(uDate);
-    }
-    if (task.dueDate) {
-      const dDate = this.toLocalDateString(task.dueDate);
-      if (dDate) dates.push(dDate);
-    }
+    const rawDates = [
+      this.getTaskAssignedLocalDate(task),
+      task.launchDate && this.toLocalDateString(task.launchDate),
+      task.calledAt && this.toLocalDateString(task.calledAt),
+      task.createdAt && this.toLocalDateString(task.createdAt),
+      task.submittedAt && this.toLocalDateString(task.submittedAt),
+      task.updatedAt && this.toLocalDateString(task.updatedAt),
+      task.dueDate && this.toLocalDateString(task.dueDate),
+    ];
+    const dates = rawDates.filter(Boolean) as string[];
 
     if (dates.length === 0) return true;
 
     return dates.some((d) => {
-      if (startDate && endDate) {
-        return d >= startDate && d <= endDate;
-      }
-      if (startDate) {
-        return d >= startDate;
-      }
-      if (endDate) {
-        return d <= endDate;
-      }
+      if (startDate && endDate) return d >= startDate && d <= endDate;
+      if (startDate) return d >= startDate;
+      if (endDate) return d <= endDate;
       return true;
     });
   }
 
 
-  getVersionDuration(ver: any, task?: any): string {
-    if (!ver || !ver.createdAt) return '';
-    const uploadTime = new Date(ver.createdAt).getTime();
-    if (Number.isNaN(uploadTime)) return '';
+  private findVersionHistoryStartTime(task: any, uploadTime: number): number | null {
+    if (!task?.statusHistory?.length) return null;
+    const sorted = [...task.statusHistory].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
 
-    let startTime: number | null = null;
-
-    if (task?.statusHistory && task.statusHistory.length > 0) {
-      const sortedHistory = [...task.statusHistory].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-
-      for (const h of sortedHistory) {
-        const hTime = new Date(h.createdAt).getTime();
-        if (hTime <= uploadTime) {
-          const s = (h.newStatus || '').toUpperCase();
-          if (s === 'IN_PROGRESS' || s === 'REVISION_REQUIRED') {
-            startTime = hTime;
-          }
-        }
-      }
-
-      if (!startTime) {
-        for (const h of sortedHistory) {
-          const hTime = new Date(h.createdAt).getTime();
-          if (hTime <= uploadTime) {
-            const s = (h.newStatus || '').toUpperCase();
-            if (s === 'ACCEPTED' || s === 'ASSIGNED') {
-              startTime = hTime;
-            }
-          }
+    let foundTime: number | null = null;
+    for (const h of sorted) {
+      const hTime = new Date(h.createdAt).getTime();
+      if (hTime <= uploadTime) {
+        const s = (h.newStatus || '').toUpperCase();
+        if (s === 'IN_PROGRESS' || s === 'REVISION_REQUIRED') {
+          foundTime = hTime;
         }
       }
     }
+    if (foundTime) return foundTime;
 
-    if (!startTime && task?.versions && task.versions.length > 1) {
-      const sortedVers = [...task.versions].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-      const currIdx = sortedVers.findIndex(
-        (v: any) => (v.id && v.id === ver.id) || v.versionNumber === ver.versionNumber
-      );
-      if (currIdx > 0) {
-        startTime = new Date(sortedVers[currIdx - 1].createdAt).getTime();
+    for (const h of sorted) {
+      const hTime = new Date(h.createdAt).getTime();
+      if (hTime <= uploadTime) {
+        const s = (h.newStatus || '').toUpperCase();
+        if (s === 'ACCEPTED' || s === 'ASSIGNED') {
+          foundTime = hTime;
+        }
       }
     }
+    return foundTime;
+  }
 
-    if (!startTime && task?.createdAt) {
-      startTime = new Date(task.createdAt).getTime();
+  private findPreviousVersionStartTime(ver: any, task: any): number | null {
+    if (!task?.versions || task.versions.length <= 1) return null;
+    const sorted = [...task.versions].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    const currIdx = sorted.findIndex(
+      (v: any) => (v.id && v.id === ver.id) || v.versionNumber === ver.versionNumber
+    );
+    if (currIdx > 0) {
+      return new Date(sorted[currIdx - 1].createdAt).getTime();
     }
+    return null;
+  }
 
-    if (!startTime || Number.isNaN(startTime) || uploadTime < startTime) {
-      return '—';
-    }
-
-    const diffMs = Math.max(0, uploadTime - startTime);
+  private formatDurationMs(diffMs: number): string {
     const diffSec = Math.floor(diffMs / 1000);
     const diffMinutes = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMinutes / 60);
@@ -768,77 +733,71 @@ export class PackageDepartmentViewComponent {
       const remMins = diffMinutes % 60;
       return remMins > 0 ? `${diffHours}h ${remMins}m` : `${diffHours}h`;
     }
-    if (diffMinutes > 0) {
-      return `${diffMinutes} min`;
-    }
-    if (diffSec > 0) {
-      return `${diffSec}s`;
-    }
+    if (diffMinutes > 0) return `${diffMinutes} min`;
+    if (diffSec > 0) return `${diffSec}s`;
     return '—';
   }
 
-  
-  getTaskDuration(task: any): string {
-    if (!task) return '—';
+  getVersionDuration(ver: any, task?: any): string {
+    if (!ver?.createdAt) return '';
+    const uploadTime = new Date(ver.createdAt).getTime();
+    if (Number.isNaN(uploadTime)) return '';
 
-
-    if (task.workCycle?.durationText) {
-      return task.workCycle.durationText;
+    let startTime = this.findVersionHistoryStartTime(task, uploadTime);
+    if (!startTime) {
+      startTime = this.findPreviousVersionStartTime(ver, task);
+    }
+    if (!startTime && task?.createdAt) {
+      startTime = new Date(task.createdAt).getTime();
     }
 
-   
+    if (!startTime || Number.isNaN(startTime) || uploadTime < startTime) {
+      return '—';
+    }
+
+    return this.formatDurationMs(Math.max(0, uploadTime - startTime));
+  }
+
+  private resolveFinishedTaskDuration(task: any): string {
+    if (!task.createdAt || !task.updatedAt) return '—';
+    const start = new Date(task.createdAt).getTime();
+    const end = new Date(task.updatedAt).getTime();
+    if (Number.isNaN(start) || Number.isNaN(end) || end < start) return '—';
+    return this.formatDurationMs(end - start);
+  }
+
+  private resolveActiveTaskDuration(task: any): string {
+    if (!task.createdAt) return 'In Progress';
+    const start = new Date(task.createdAt).getTime();
+    const now = Date.now();
+    if (Number.isNaN(start) || now <= start) return 'In Progress';
+
+    const diffMs = now - start;
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays > 0) return `${diffDays}d active`;
+    if (diffHours > 0) return `${diffHours}h active`;
+    const diffMins = Math.floor(diffMs / 60000);
+    return diffMins > 0 ? `${diffMins}m active` : 'Active';
+  }
+
+  getTaskDuration(task: any): string {
+    if (!task) return '—';
+    if (task.workCycle?.durationText) return task.workCycle.durationText;
+
     if (Array.isArray(task.versions) && task.versions.length > 0) {
       const latestVer = task.versions[task.versions.length - 1];
       const dur = this.getVersionDuration(latestVer, task);
       if (dur && dur !== '—') return dur;
     }
 
-    if (
-      task.status === 'APPROVED' ||
-      task.status === 'COMPLETED' ||
-      task.status === 'PUBLISHED' ||
-      task.status === 'SUBMITTED' ||
-      task.status === 'UNDER_REVIEW'
-    ) {
-      if (task.createdAt && task.updatedAt) {
-        const start = new Date(task.createdAt).getTime();
-        const end = new Date(task.updatedAt).getTime();
-        if (!Number.isNaN(start) && !Number.isNaN(end) && end >= start) {
-          const diffMs = end - start;
-          const diffMinutes = Math.floor(diffMs / 60000);
-          const diffHours = Math.floor(diffMinutes / 60);
-          const diffDays = Math.floor(diffHours / 24);
-          if (diffDays > 0) {
-            const remHours = diffHours % 24;
-            return remHours > 0 ? `${diffDays}d ${remHours}h` : `${diffDays}d`;
-          }
-          if (diffHours > 0) {
-            const remMins = diffMinutes % 60;
-            return remMins > 0 ? `${diffHours}h ${remMins}m` : `${diffHours}h`;
-          }
-          if (diffMinutes > 0) return `${diffMinutes} min`;
-          const diffSec = Math.floor(diffMs / 1000);
-          return diffSec > 0 ? `${diffSec}s` : '—';
-        }
-      }
+    const finishedStatuses = ['APPROVED', 'COMPLETED', 'PUBLISHED', 'SUBMITTED', 'UNDER_REVIEW'];
+    if (finishedStatuses.includes(task.status)) {
+      return this.resolveFinishedTaskDuration(task);
     }
 
-    
     if (task.status === 'IN_PROGRESS' || task.status === 'ACCEPTED') {
-      if (task.createdAt) {
-        const start = new Date(task.createdAt).getTime();
-        const now = Date.now();
-        if (!Number.isNaN(start) && now > start) {
-          const diffMs = now - start;
-          const diffHours = Math.floor(diffMs / 3600000);
-          const diffDays = Math.floor(diffHours / 24);
-          if (diffDays > 0) return `${diffDays}d active`;
-          if (diffHours > 0) return `${diffHours}h active`;
-          const diffMins = Math.floor(diffMs / 60000);
-          return diffMins > 0 ? `${diffMins}m active` : 'Active';
-        }
-      }
-      return 'In Progress';
+      return this.resolveActiveTaskDuration(task);
     }
 
     return '—';
@@ -860,18 +819,24 @@ export class PackageDepartmentViewComponent {
   getProgressStatusText(t: any): string {
     if (!t) return '—';
     const pVal = typeof t.progressPercent === 'number' ? t.progressPercent : null;
-    if (t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED') {
+    const status = t.status;
+
+    if (status === 'APPROVED' || status === 'COMPLETED' || status === 'PUBLISHED') {
       return '100% Completed';
-    } else if (t.status === 'SUBMITTED' || t.status === 'UNDER_REVIEW') {
+    }
+    if (status === 'SUBMITTED' || status === 'UNDER_REVIEW') {
       return pVal !== null ? `${pVal}% (Under Review)` : 'Under Review';
-    } else if (t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED') {
+    }
+    if (status === 'REVISION_REQUIRED' || status === 'REDESIGN_REQUIRED') {
       return pVal !== null ? `${pVal}% (Changes Req)` : 'Revision Requested';
-    } else if (t.status === 'RESUBMITTED') {
+    }
+    if (status === 'RESUBMITTED') {
       return pVal !== null ? `${pVal}% (Resubmitted)` : 'Resubmitted';
-    } else if (t.status === 'IN_PROGRESS' || t.status === 'ACCEPTED') {
+    }
+    if (status === 'IN_PROGRESS' || status === 'ACCEPTED') {
       return pVal !== null && pVal > 0 ? `${pVal}% (In Progress)` : 'In Progress';
     }
-    return pVal !== null && pVal > 0 ? `${pVal}%` : (t.status || 'Assigned');
+    return pVal !== null && pVal > 0 ? `${pVal}%` : (status || 'Assigned');
   }
 
   getTaskRevisionCount(t: any): number {
@@ -897,70 +862,50 @@ export class PackageDepartmentViewComponent {
     return tasks;
   }
 
+  private filterTasksByDateSelection(tasks: any[]): any[] {
+    if (this.filterStartDate || this.filterEndDate) {
+      return tasks.filter((t) => this.taskMatchesDateRange(t, this.filterStartDate, this.filterEndDate));
+    }
+    if (this.modalDateFilter === 'ALL') return tasks;
+
+    let targetDate = '';
+    if (this.modalDateFilter === 'TODAY') {
+      targetDate = this.toLocalDateString(new Date());
+    } else if (this.modalDateFilter === 'YESTERDAY') {
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      targetDate = this.toLocalDateString(y);
+    } else if (this.modalDateFilter === 'CUSTOM') {
+      targetDate = this.customFilterDate;
+    }
+
+    return targetDate ? tasks.filter((t) => this.taskMatchesDate(t, targetDate)) : tasks;
+  }
+
+  private filterTasksByStatusSelection(tasks: any[]): any[] {
+    if (this.taskStatusSubFilter === 'ALL') return tasks;
+    const isTelecaller = this.selectedPerformanceUser?.role === 'TELECALLER';
+
+    if (this.taskStatusSubFilter === 'COMPLETED') {
+      return isTelecaller
+        ? tasks.filter((t) => t.calledAt || t.callAttempts > 0 || ['CONNECTED', 'QUALIFIED', 'CONVERTED', 'PAID', 'INTERESTED'].includes(t.status))
+        : tasks.filter((t) => t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED');
+    }
+    if (this.taskStatusSubFilter === 'IN_QUEUE') {
+      return isTelecaller
+        ? tasks.filter((t) => !t.calledAt && t.callAttempts === 0 && !['CONNECTED', 'QUALIFIED', 'CONVERTED', 'PAID', 'INTERESTED', 'LOST'].includes(t.status))
+        : tasks.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ACCEPTED' || t.status === 'SUBMITTED' || t.status === 'UNDER_REVIEW' || t.status === 'RESUBMITTED');
+    }
+    if (this.taskStatusSubFilter === 'REVISIONS') {
+      return tasks.filter((t) => t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED');
+    }
+    return tasks;
+  }
+
   get filteredModalTasks(): any[] {
     if (!this.selectedPerformanceUser) return [];
-    let tasks = this.packageScopedTasks;
-
-   
-    if (this.filterStartDate || this.filterEndDate) {
-      tasks = tasks.filter((t) => this.taskMatchesDateRange(t, this.filterStartDate, this.filterEndDate));
-    } else if (this.modalDateFilter !== 'ALL') {
-      let targetDate = '';
-      if (this.modalDateFilter === 'TODAY') {
-        targetDate = this.toLocalDateString(new Date());
-      } else if (this.modalDateFilter === 'YESTERDAY') {
-        const y = new Date();
-        y.setDate(y.getDate() - 1);
-        targetDate = this.toLocalDateString(y);
-      } else if (this.modalDateFilter === 'CUSTOM') {
-        targetDate = this.customFilterDate;
-      }
-      if (targetDate) {
-        tasks = tasks.filter((t) => this.taskMatchesDate(t, targetDate));
-      }
-    }
-
-    
-    const isTelecaller = this.selectedPerformanceUser?.role === 'TELECALLER';
-    if (this.taskStatusSubFilter === 'COMPLETED') {
-      if (isTelecaller) {
-        tasks = tasks.filter((t) => t.calledAt || t.callAttempts > 0 || ['CONNECTED', 'QUALIFIED', 'CONVERTED', 'PAID', 'INTERESTED'].includes(t.status));
-      } else {
-        tasks = tasks.filter((t) => t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED');
-      }
-    } else if (this.taskStatusSubFilter === 'IN_QUEUE') {
-      if (isTelecaller) {
-        tasks = tasks.filter((t) => !t.calledAt && t.callAttempts === 0 && !['CONNECTED', 'QUALIFIED', 'CONVERTED', 'PAID'].includes(t.status));
-      } else {
-        tasks = tasks.filter((t) => t.status !== 'APPROVED' && t.status !== 'COMPLETED' && t.status !== 'PUBLISHED');
-      }
-    } else if (this.taskStatusSubFilter === 'REVISIONS') {
-      if (isTelecaller) {
-        tasks = tasks.filter((t) => t.status === 'FOLLOW_UP' || t.status === 'LINE_BUSY' || t.status === 'NO_ANSWER' || t.status === 'BUSY');
-      } else {
-        tasks = tasks.filter((t) => t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED');
-      }
-    }
-
-  
-    if (this.taskSearchQuery.trim()) {
-      const q = this.taskSearchQuery.toLowerCase().trim();
-      tasks = tasks.filter((t) => {
-        const titleMatch = (t.title || '').toLowerCase().includes(q);
-        const leadNameMatch = (t.leadName || '').toLowerCase().includes(q);
-        const phoneMatch = (t.leadPhone || '').toLowerCase().includes(q);
-        const campMatch = (t.campaignName || '').toLowerCase().includes(q);
-        const adMatch = (t.adName || '').toLowerCase().includes(q);
-        const srcMatch = (t.source || t.campaignName || '').toLowerCase().includes(q);
-        const prodMatch = (t.productName || t.productId || '').toLowerCase().includes(q);
-        const pkgMatch = (t.packageName || t.packageId || '').toLowerCase().includes(q);
-        const statusMatch = (t.status || t.callOutcome || '').toLowerCase().includes(q);
-        const notesMatch = (t.remarks || '').toLowerCase().includes(q);
-        return titleMatch || leadNameMatch || phoneMatch || campMatch || adMatch || srcMatch || prodMatch || pkgMatch || statusMatch || notesMatch;
-      });
-    }
-
-    return tasks;
+    const dateFiltered = this.filterTasksByDateSelection(this.packageScopedTasks);
+    return this.filterTasksByStatusSelection(dateFiltered);
   }
 
   get modalTasksCompletedCount(): number {
@@ -1078,7 +1023,7 @@ export class PackageDepartmentViewComponent {
         return String(resolved.productName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
       }
     }
-    if (rawName && rawName.trim() && !rawName.toLowerCase().includes('careermate')) {
+    if (rawName?.trim() && !rawName.toLowerCase().includes('careermate')) {
       return String(rawName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
     }
     const raw = this.activePackageMeta?.name || this.activePackageName || 'Product';
@@ -1087,7 +1032,7 @@ export class PackageDepartmentViewComponent {
 
   formatPackageName(rawName?: string, task?: any): string {
     if (task) {
-      if (task.packageName && task.packageName.trim()) {
+      if (task.packageName?.trim()) {
         return String(task.packageName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
       }
       const resolved = resolveTaskProductAndPackage(task, this.productPackages);
@@ -1095,7 +1040,7 @@ export class PackageDepartmentViewComponent {
         return String(resolved.packageName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
       }
     }
-    if (rawName && rawName.trim()) {
+    if (rawName?.trim()) {
       return String(rawName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
     }
     const raw = this.activePackageDisplayName() || this.activePackageMeta?.name || 'Package';
@@ -1114,7 +1059,7 @@ export class PackageDepartmentViewComponent {
     const lines: string[] = [];
 
   
-    const tasks = (this.selectedPerformanceUser && this.selectedPerformanceUser.userId === user.userId)
+    const tasks = (this.selectedPerformanceUser?.userId === user.userId)
       ? this.filteredModalTasks
       : (user.tasks || []).filter((t: any) => {
           if (this.filterStartDate || this.filterEndDate) {

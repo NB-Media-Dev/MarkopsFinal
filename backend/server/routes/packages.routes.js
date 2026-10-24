@@ -1,6 +1,6 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { dbPool, dbPackagesStore } = require('../db');
 const { emitRealtimeEvent } = require('../events');
 
@@ -22,8 +22,8 @@ function saveBase64PackageImage(dataUrl, fileName = 'package_banner.png') {
     return dataUrl || null;
   }
   try {
-    const matches = dataUrl.match(/^data:([A-Za-z0-9-+\/.]+);base64,(.+)$/);
-    if (!matches || matches.length !== 3) {
+    const matches = dataUrl.match(/^data:([A-Za-z0-9-+/.+]+);base64,(.+)$/);
+    if (matches?.length !== 3) {
       return dataUrl;
     }
     const buffer = Buffer.from(matches[2], 'base64');
@@ -83,7 +83,7 @@ router.get('/packages', async (req, res) => {
     if (normalizedKey) {
       list = list.filter((p) => {
         const pNorm = normalizeProductId(p.productId);
-        return pNorm === normalizedKey || (p.productId && p.productId.toLowerCase().includes(normalizedKey.replace('pkg_', '')));
+        return pNorm === normalizedKey || Boolean(p.productId?.toLowerCase().includes(normalizedKey.replace('pkg_', '')));
       });
     }
     list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
@@ -135,6 +135,7 @@ router.get('/packages/summary', async (req, res) => {
     });
     return res.json(summary);
   } catch (err) {
+    console.error('[Packages summary Error]:', err?.message || err);
     return res.status(500).json({ error: 'Failed to fetch package summary.' });
   }
 });
@@ -172,6 +173,7 @@ router.get('/packages/:id', async (req, res) => {
     }
     return res.json(item);
   } catch (err) {
+    console.error('[Packages fetch by ID Error]:', err?.message || err);
     return res.status(500).json({ error: 'Failed to fetch package.' });
   }
 });
@@ -185,7 +187,7 @@ router.post('/packages', async (req, res) => {
 
   const { name, productId, product, imageUrl, image, price, description, status, fileName } = req.body;
 
-  if (!name || !name.trim()) {
+  if (!name?.trim()) {
     return res.status(400).json({ error: 'Package name is required.' });
   }
 
@@ -217,7 +219,7 @@ router.post('/packages', async (req, res) => {
            VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
           [targetProductId, newPackage.name, newPackage.imageUrl, newPackage.price, newPackage.description, newPackage.status, userId]
         );
-        if (insertRes && insertRes.insertId) {
+        if (insertRes?.insertId) {
           newPackage.id = insertRes.insertId;
         }
       } catch (dbErr) {
@@ -355,8 +357,7 @@ router.delete('/packages/:id', async (req, res) => {
       }
     }
 
-    const initialLen = dbPackagesStore.length;
-    const filtered = dbPackagesStore.filter((p) => String(p.id) !== String(id));
+        const filtered = dbPackagesStore.filter((p) => String(p.id) !== String(id));
     dbPackagesStore.length = 0;
     dbPackagesStore.push(...filtered);
 

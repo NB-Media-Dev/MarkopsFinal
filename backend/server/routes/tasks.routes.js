@@ -62,7 +62,7 @@ async function notifyTaskAssignment(taskId, title, priority, dueDate, assigneeId
 const crypto = require('node:crypto');
 const express = require('express');
 const fs = require('node:fs');
-const path = require('path');
+const path = require('node:path');
 const { dbPool, dbTasksStore, dbUsersStore, dbNotificationsStore } = require('../db');
 const { recordAuditLog } = require('../services/audit.service');
 const { emitRealtimeEvent } = require('../events');
@@ -75,8 +75,8 @@ function saveBase64Attachment(dataUrl, fileName, subFolder = 'briefs') {
     return dataUrl || null;
   }
   try {
-    const matches = /^data:([A-Za-z0-9-+\/.]+);base64,(.+)$/.exec(dataUrl);
-    if (!matches || matches.length !== 3) {
+    const matches = /^data:([A-Za-z0-9-+/.+]+);base64,(.+)$/.exec(dataUrl);
+    if (matches?.length !== 3) {
       return dataUrl;
     }
     const buffer = Buffer.from(matches[2], 'base64');
@@ -100,7 +100,7 @@ function formatDueDate(val) {
     const d = new Date(val);
     if (Number.isNaN(d.getTime())) return '';
     return d.toISOString().split('T')[0];
-  } catch (e) {
+  } catch {
     return '';
   }
 }
@@ -391,28 +391,26 @@ async function populateTaskRelations(tasksList) {
   await populateTaskPackages(dbPool, tasksList);
 }
 
-router.get('/tasks', async (req, res) => {
-  const { status, assignedTo, createdBy, view } = req.query;
-  const currentUserId = req.user?.id ? String(req.user.id) : null;
-  const currentUserRole = req.user?.role;
-
-  let targetCreatedBy = createdBy || null;
-  let targetAssignedTo = assignedTo || null;
+function resolveTaskFilterTargets(query, user) {
+  const { assignedTo, createdBy, view } = query;
+  const currentUserId = user?.id ? String(user.id) : null;
+  const currentUserRole = user?.role;
 
   if (view === 'my') {
-    if (currentUserRole === 'DESIGNER') {
-      targetAssignedTo = assignedTo || currentUserId;
-    } else {
-      targetCreatedBy = createdBy || currentUserId;
-    }
-  } else if (view === 'all') {
-    targetCreatedBy = createdBy || null;
-    targetAssignedTo = assignedTo || null;
-  } else if (assignedTo) {
-    targetAssignedTo = assignedTo;
-  } else if (createdBy) {
-    targetCreatedBy = createdBy;
+    return {
+      targetAssignedTo: currentUserRole === 'DESIGNER' ? (assignedTo || currentUserId) : null,
+      targetCreatedBy: currentUserRole === 'DESIGNER' ? null : (createdBy || currentUserId),
+    };
   }
+  return {
+    targetAssignedTo: assignedTo || null,
+    targetCreatedBy: createdBy || null,
+  };
+}
+
+router.get('/tasks', async (req, res) => {
+  const { status } = req.query;
+  const { targetCreatedBy, targetAssignedTo } = resolveTaskFilterTargets(req.query, req.user);
 
   if (dbPool) {
     try {
@@ -445,38 +443,7 @@ router.get('/tasks', async (req, res) => {
 
       const [rows] = await dbPool.query(query, params);
       if (Array.isArray(rows)) {
-        const tasks = rows.map((row) => {
-          const safeDueDate = formatDueDate(row.due_date);
-          const detectedRole = row.creator_role || (row.creator_full_name && row.creator_full_name.toLowerCase().includes('bdm') ? 'BDM' : 'ADMINISTRATOR');
-          return {
-            id: row.id,
-            title: row.title,
-            taskType: row.task_type || 'BANNER_DESIGN',
-            packageName: row.package_name || '',
-            description: row.description || '',
-            content: row.content || '',
-            attachmentUrl: row.attachment_url || '',
-            attachmentName: row.attachment_name || '',
-            reviewerFeedback: row.reviewer_feedback || '',
-            status: row.status,
-            priority: row.priority,
-            createdBy: row.created_by,
-            created_by: row.created_by,
-            creatorName: row.creator_full_name || 'Manager',
-            creatorEmail: row.creator_email || '',
-            creatorRole: detectedRole,
-            assignedTo: row.assigned_to || '',
-            assigned_to: row.assigned_to || '',
-            assigneeName: row.assignee_full_name || 'Designer',
-            dueDate: safeDueDate,
-            progressPercent: computeTaskProgress(row.status, row.progress_percent),
-            createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
-            updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
-            versions: [],
-            statusHistory: [],
-            comments: [],
-          };
-        });
+        const tasks = rows.map((row) => mapTaskDbRow(row));
         await populateTaskRelations(tasks);
         return res.json(tasks);
       }
@@ -485,7 +452,6 @@ router.get('/tasks', async (req, res) => {
     }
   }
 
- 
   let filtered = [...dbTasksStore];
   if (status && status !== 'ALL') {
     filtered = filtered.filter((t) => t.status === status);
@@ -500,6 +466,45 @@ router.get('/tasks', async (req, res) => {
   return res.json(filtered);
 });
 
+
+function buildMyTasksDbWhere(isDesigner, currentUserRole, numericUserId, currentUserEmail, currentUserName) {
+  let whereClause = '';
+  const params = [];
+
+  if (isDesigner) {
+    whereClause = '(t.assigned_to = ? OR LOWER(u.email) = ? OR LOWER(u.full_name) = ?)';
+    params.push(numericUserId, currentUserEmail || '___none___', currentUserName || '___none___');
+  } else if (currentUserRole === 'ADMINISTRATOR') {
+    whereClause = '(t.created_by = ? OR LOWER(c.email) = ? OR t.created_by = 1 OR LOWER(c.full_name) LIKE ?)';
+    params.push(numericUserId, currentUserEmail || '___none___', '%admin%');
+  } else {
+    whereClause = '(t.created_by = ? OR LOWER(c.email) = ? OR LOWER(c.full_name) = ?)';
+    params.push(numericUserId, currentUserEmail || '___none___', currentUserName || '___none___');
+  }
+  return { whereClause, params };
+}
+
+function matchDesignerStoreTask(t, currentUserId, currentUserEmail, currentUserName) {
+  const aId = String(t.assignedTo || t.assigned_to || '').toLowerCase().trim();
+  const aEmail = String(t.assigneeEmail || '').toLowerCase().trim();
+  const aName = String(t.assigneeName || '').toLowerCase().trim();
+  return (
+    aId === String(currentUserId).toLowerCase().trim() ||
+    Boolean(currentUserEmail && aEmail === currentUserEmail) ||
+    Boolean(currentUserName && aName === currentUserName)
+  );
+}
+
+function matchManagerStoreTask(t, currentUserId, currentUserEmail, currentUserRole) {
+  const cId = String(t.createdBy !== undefined ? t.createdBy : (t.created_by || '')).toLowerCase().trim();
+  const cEmail = String(t.creatorEmail || '').toLowerCase().trim();
+  const cName = String(t.creatorName || '').toLowerCase().trim();
+  return (
+    cId === String(currentUserId).toLowerCase().trim() ||
+    Boolean(currentUserEmail && cEmail === currentUserEmail) ||
+    Boolean(currentUserRole === 'ADMINISTRATOR' && (cId === '1' || cId === 'usr_admin_01' || cName.includes('admin')))
+  );
+}
 
 router.get('/tasks/my', async (req, res) => {
   const currentUserId = req.user?.id;
@@ -516,19 +521,9 @@ router.get('/tasks/my', async (req, res) => {
 
   if (dbPool) {
     try {
-      let whereClause = '';
-      const params = [];
-
-      if (isDesigner) {
-        whereClause = '(t.assigned_to = ? OR LOWER(u.email) = ? OR LOWER(u.full_name) = ?)';
-        params.push(numericUserId, currentUserEmail || '___none___', currentUserName || '___none___');
-      } else if (currentUserRole === 'ADMINISTRATOR') {
-        whereClause = '(t.created_by = ? OR LOWER(c.email) = ? OR t.created_by = 1 OR LOWER(c.full_name) LIKE ?)';
-        params.push(numericUserId, currentUserEmail || '___none___', '%admin%');
-      } else {
-        whereClause = '(t.created_by = ? OR LOWER(c.email) = ? OR LOWER(c.full_name) = ?)';
-        params.push(numericUserId, currentUserEmail || '___none___', currentUserName || '___none___');
-      }
+      const { whereClause, params } = buildMyTasksDbWhere(
+        isDesigner, currentUserRole, numericUserId, currentUserEmail, currentUserName
+      );
 
       let query = `
         SELECT t.*, u.full_name as assignee_full_name, u.email as assignee_email, c.full_name as creator_full_name, c.email as creator_email, COALESCE(cr.code, 'ADMINISTRATOR') as creator_role
@@ -559,37 +554,7 @@ router.get('/tasks/my', async (req, res) => {
 
       const [rows] = await dbPool.query(query, params);
       if (Array.isArray(rows)) {
-        const tasks = rows.map((row) => {
-          const safeDueDate = formatDueDate(row.due_date);
-          const detectedRole = row.creator_role || (row.creator_full_name && row.creator_full_name.toLowerCase().includes('bdm') ? 'BDM' : 'ADMINISTRATOR');
-          return {
-            id: row.id,
-            title: row.title,
-            packageName: row.package_name || '',
-            description: row.description || '',
-            content: row.content || '',
-            attachmentUrl: row.attachment_url || '',
-            attachmentName: row.attachment_name || '',
-            reviewerFeedback: row.reviewer_feedback || '',
-            status: row.status,
-            priority: row.priority,
-            createdBy: row.created_by,
-            created_by: row.created_by,
-            creatorName: row.creator_full_name || 'Manager',
-            creatorEmail: row.creator_email || '',
-            creatorRole: detectedRole,
-            assignedTo: row.assigned_to || '',
-            assigned_to: row.assigned_to || '',
-            assigneeName: row.assignee_full_name || 'Designer',
-            dueDate: safeDueDate,
-            progressPercent: computeTaskProgress(row.status, row.progress_percent),
-            createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
-            updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
-            versions: [],
-            statusHistory: [],
-            comments: [],
-          };
-        });
+        const tasks = rows.map((row) => mapTaskDbRow(row));
         await populateTaskRelations(tasks);
         return res.json(tasks);
       }
@@ -598,24 +563,12 @@ router.get('/tasks/my', async (req, res) => {
     }
   }
 
+  let filtered = dbTasksStore.filter((t) =>
+    isDesigner
+      ? matchDesignerStoreTask(t, currentUserId, currentUserEmail, currentUserName)
+      : matchManagerStoreTask(t, currentUserId, currentUserEmail, currentUserRole)
+  );
 
-  let filtered = dbTasksStore.filter((t) => {
-    if (isDesigner) {
-      const aId = String(t.assignedTo || t.assigned_to || '').toLowerCase().trim();
-      const aEmail = String(t.assigneeEmail || '').toLowerCase().trim();
-      const aName = String(t.assigneeName || '').toLowerCase().trim();
-      return aId === String(currentUserId).toLowerCase().trim() ||
-             (currentUserEmail && aEmail === currentUserEmail) ||
-             (currentUserName && aName === currentUserName);
-    } else {
-      const cId = String(t.createdBy !== undefined ? t.createdBy : (t.created_by || '')).toLowerCase().trim();
-      const cEmail = String(t.creatorEmail || '').toLowerCase().trim();
-      const cName = String(t.creatorName || '').toLowerCase().trim();
-      return cId === String(currentUserId).toLowerCase().trim() ||
-             (currentUserEmail && cEmail === currentUserEmail) ||
-             (currentUserRole === 'ADMINISTRATOR' && (cId === '1' || cId === 'usr_admin_01' || cName.includes('admin')));
-    }
-  });
   if (status && status !== 'ALL') {
     filtered = filtered.filter((t) => t.status === status);
   }
@@ -966,11 +919,17 @@ function validateTransitionAllowed(previousStatus, newStatus) {
   return null;
 }
 
+function resolveRequestUserId(req) {
+  if (req.user?.id) return String(req.user.id).trim();
+  if (req.headers['x-user-id']) return String(req.headers['x-user-id']).trim();
+  return null;
+}
+
 function validateTransitionPermission(task, newStatus, req) {
   if (newStatus !== 'APPROVED' && newStatus !== 'REDESIGN_REQUIRED' && newStatus !== 'REVISION_REQUIRED') {
     return null;
   }
-  const userId = req.user?.id ? String(req.user.id).trim() : (req.headers['x-user-id'] ? String(req.headers['x-user-id']).trim() : null);
+  const userId = resolveRequestUserId(req);
   const userEmail = req.user?.email ? String(req.user.email).toLowerCase().trim() : null;
   const taskCreatorId = String(task.createdBy || task.created_by || '').trim();
   const taskCreatorEmail = String(task.creatorEmail || task.creator_email || '').toLowerCase().trim();
@@ -984,113 +943,122 @@ function validateTransitionPermission(task, newStatus, req) {
   return null;
 }
 
+async function notifyInProgressTransition(task, previousStatus, effectiveActorName, creatorId, assignedId) {
+  const isRedesign = previousStatus === 'REDESIGN_REQUIRED' || previousStatus === 'REVISION_REQUIRED';
+  if (creatorId) {
+    await dispatchNotification({
+      userIds: [creatorId],
+      title: isRedesign ? `Redesign Started: ${task.title}` : `Work Started: ${task.title}`,
+      message: isRedesign
+        ? `${effectiveActorName} has started working on the requested redesign for "${task.title}".`
+        : `${effectiveActorName} has started working on task "${task.title}". Status is now IN PROGRESS.`,
+      type: 'INFO',
+      targetRoute: `/tasks?view=my&taskId=${task.id}`,
+    });
+  }
+  if (assignedId) {
+    await dispatchNotification({
+      userIds: [assignedId],
+      title: isRedesign ? `Redesign In Progress: ${task.title}` : `Work Started: ${task.title}`,
+      message: `You started work on "${task.title}". Status updated to IN PROGRESS.`,
+      type: 'INFO',
+      targetRoute: '/designer-tasks',
+    });
+  }
+}
+
+async function notifyRedesignTransition(task, effectiveActorId, remark, creatorId, assignedId) {
+  if (assignedId) {
+    await dispatchNotification({
+      userIds: [assignedId],
+      title: `Redesign Requested: ${task.title}`,
+      message: `Redesign requested on "${task.title}". Feedback: "${remark || 'Please review feedback remarks and upload revision'}".`,
+      type: 'WARNING',
+      targetRoute: '/revisions',
+    });
+  }
+  if (creatorId && String(creatorId) === String(effectiveActorId)) {
+    await dispatchNotification({
+      userIds: [creatorId],
+      title: 'Redesign Feedback Submitted',
+      message: `Redesign request sent for "${task.title}". Designer has been notified.`,
+      type: 'INFO',
+      targetRoute: `/tasks?view=my&taskId=${task.id}`,
+    });
+  }
+}
+
+async function notifyApprovedTransition(task, effectiveActorName, creatorId, assignedId) {
+  if (assignedId) {
+    await dispatchNotification({
+      userIds: [assignedId],
+      title: 'Creative Design Approved!',
+      message: `Congratulations! Your creative design for "${task.title}" has been approved by ${effectiveActorName}.`,
+      type: 'SUCCESS',
+      targetRoute: '/submissions',
+    });
+  }
+  if (creatorId) {
+    await dispatchNotification({
+      userIds: [creatorId],
+      title: `Task Approved: ${task.title}`,
+      message: `Task "${task.title}" has been approved and marked as completed (100%).`,
+      type: 'SUCCESS',
+      targetRoute: `/tasks?view=my&taskId=${task.id}`,
+    });
+  }
+}
+
+async function notifySubmittedTransition(task, effectiveActorName, creatorId, assignedId) {
+  if (creatorId) {
+    await dispatchNotification({
+      userIds: [creatorId],
+      title: `Design Uploaded for Review: ${task.title}`,
+      message: `${effectiveActorName} submitted creative design for task "${task.title}". Ready for your review.`,
+      type: 'INFO',
+      targetRoute: `/tasks?view=my&taskId=${task.id}`,
+    });
+  }
+  if (assignedId) {
+    await dispatchNotification({
+      userIds: [assignedId],
+      title: `Design Submitted: ${task.title}`,
+      message: `Creative design for "${task.title}" has been submitted for review.`,
+      type: 'SUCCESS',
+      targetRoute: '/submissions',
+    });
+  }
+}
+
 async function notifyStatusTransition(task, previousStatus, newStatus, effectiveActorName, effectiveActorId, remark) {
   const creatorId = task.createdBy || task.created_by;
   const assignedId = task.assignedTo || task.assigned_to;
 
   if (newStatus === 'IN_PROGRESS') {
-    const isRedesign = previousStatus === 'REDESIGN_REQUIRED' || previousStatus === 'REVISION_REQUIRED';
-    if (creatorId) {
-      await dispatchNotification({
-        userIds: [creatorId],
-        title: isRedesign ? `Redesign Started: ${task.title}` : `Work Started: ${task.title}`,
-        message: isRedesign
-          ? `${effectiveActorName} has started working on the requested redesign for "${task.title}".`
-          : `${effectiveActorName} has started working on task "${task.title}". Status is now IN PROGRESS.`,
-        type: 'INFO',
-        targetRoute: `/tasks?view=my&taskId=${task.id}`,
-      });
-    }
-    if (assignedId) {
-      await dispatchNotification({
-        userIds: [assignedId],
-        title: isRedesign ? `Redesign In Progress: ${task.title}` : `Work Started: ${task.title}`,
-        message: `You started work on "${task.title}". Status updated to IN PROGRESS.`,
-        type: 'INFO',
-        targetRoute: '/designer-tasks',
-      });
-    }
-    return;
+    return notifyInProgressTransition(task, previousStatus, effectiveActorName, creatorId, assignedId);
   }
-
   if (newStatus === 'REDESIGN_REQUIRED' || newStatus === 'REVISION_REQUIRED') {
-    if (assignedId) {
-      await dispatchNotification({
-        userIds: [assignedId],
-        title: `Redesign Requested: ${task.title}`,
-        message: `Redesign requested on "${task.title}". Feedback: "${remark || 'Please review feedback remarks and upload revision'}".`,
-        type: 'WARNING',
-        targetRoute: '/revisions',
-      });
-    }
-    if (creatorId && String(creatorId) === String(effectiveActorId)) {
-      await dispatchNotification({
-        userIds: [creatorId],
-        title: 'Redesign Feedback Submitted',
-        message: `Redesign request sent for "${task.title}". Designer has been notified.`,
-        type: 'INFO',
-        targetRoute: `/tasks?view=my&taskId=${task.id}`,
-      });
-    }
-    return;
+    return notifyRedesignTransition(task, effectiveActorId, remark, creatorId, assignedId);
   }
-
   if (newStatus === 'APPROVED') {
-    if (assignedId) {
-      await dispatchNotification({
-        userIds: [assignedId],
-        title: 'Creative Design Approved!',
-        message: `Congratulations! Your creative design for "${task.title}" has been approved by ${effectiveActorName}.`,
-        type: 'SUCCESS',
-        targetRoute: '/submissions',
-      });
-    }
-    if (creatorId) {
-      await dispatchNotification({
-        userIds: [creatorId],
-        title: `Task Approved: ${task.title}`,
-        message: `Task "${task.title}" has been approved and marked as completed (100%).`,
-        type: 'SUCCESS',
-        targetRoute: `/tasks?view=my&taskId=${task.id}`,
-      });
-    }
-    return;
+    return notifyApprovedTransition(task, effectiveActorName, creatorId, assignedId);
   }
-
   if (newStatus === 'ASSIGNED' && assignedId) {
-    await dispatchNotification({
+    return dispatchNotification({
       userIds: [assignedId],
       title: `Task Assigned: ${task.title}`,
       message: `You have been assigned to task "${task.title}". Priority: ${task.priority || 'MEDIUM'}.`,
       type: 'INFO',
       targetRoute: '/designer-tasks',
     });
-    return;
   }
-
   if (['SUBMITTED', 'RESUBMITTED', 'UNDER_REVIEW'].includes(newStatus)) {
-    if (creatorId) {
-      await dispatchNotification({
-        userIds: [creatorId],
-        title: `Design Uploaded for Review: ${task.title}`,
-        message: `${effectiveActorName} submitted creative design for task "${task.title}". Ready for your review.`,
-        type: 'INFO',
-        targetRoute: `/tasks?view=my&taskId=${task.id}`,
-      });
-    }
-    if (assignedId) {
-      await dispatchNotification({
-        userIds: [assignedId],
-        title: `Design Submitted: ${task.title}`,
-        message: `Creative design for "${task.title}" has been submitted for review.`,
-        type: 'SUCCESS',
-        targetRoute: '/submissions',
-      });
-    }
+    return notifySubmittedTransition(task, effectiveActorName, creatorId, assignedId);
   }
 }
 
-async function persistDbStatusTransition(pool, taskId, newStatus, remark, effectiveActorId, previousStatus, computedProgress, isDuplicateHistory) {
+async function persistDbStatusTransition(pool, taskId, newStatus, options = {}) {
+  const { remark, effectiveActorId, previousStatus, computedProgress, isDuplicateHistory } = options;
   if (!pool) return;
   try {
     const numericTaskId = typeof taskId === 'number' ? taskId : (Number.parseInt(taskId, 10) || null);
@@ -1168,10 +1136,9 @@ async function handleStatusTransition(req, res) {
     createdAt: now,
   };
 
-  const lastHistory = task.statusHistory && task.statusHistory.length > 0 ? task.statusHistory[0] : null;
+  const lastHistory = task.statusHistory?.[0] || null;
   const isDuplicateHistory = Boolean(
-    lastHistory &&
-    lastHistory.newStatus === newStatus &&
+    lastHistory?.newStatus === newStatus &&
     (new Date(now).getTime() - new Date(lastHistory.createdAt).getTime() < 15000)
   );
 
@@ -1186,7 +1153,7 @@ async function handleStatusTransition(req, res) {
   emitRealtimeEvent('task:progress_updated', { taskId, progressPercent: task.progressPercent });
 
   await notifyStatusTransition(task, previousStatus, newStatus, effectiveActorName, effectiveActorId, remark);
-  await persistDbStatusTransition(dbPool, taskId, newStatus, remark, effectiveActorId, previousStatus, computedProgress, isDuplicateHistory);
+  await persistDbStatusTransition(dbPool, taskId, newStatus, { remark, effectiveActorId, previousStatus, computedProgress, isDuplicateHistory });
 
   const memIndex = dbTasksStore.findIndex((t) => String(t.id) === String(taskId));
   if (memIndex !== -1) {
@@ -1216,7 +1183,9 @@ function resolveSavedVersionFilePath(filePath, fileContent, fileName, newVersion
     savedFilePath = saveBase64Attachment(fileContent, fileName, 'creatives');
   }
   if (!savedFilePath || (typeof savedFilePath === 'string' && savedFilePath.startsWith('data:'))) {
-    savedFilePath = `/uploads/creatives/${fileName || `version_${newVersionNumber}.png`}`;
+    const fallbackFileName = 'version_' + newVersionNumber + '.png';
+    const effectiveFileName = fileName || fallbackFileName;
+    savedFilePath = `/uploads/creatives/${effectiveFileName}`;
   }
   return savedFilePath;
 }
@@ -1568,7 +1537,7 @@ router.post('/tasks/:id/comments', async (req, res) => {
            VALUES (?, ?, ?, NOW())`,
           [numericTaskId, numericUserId, newComment.comment]
         );
-        if (result && result.insertId) {
+        if (result?.insertId) {
           newComment.id = result.insertId;
         }
       }
@@ -1793,7 +1762,7 @@ router.get('/designer/dashboard-metrics', async (req, res) => {
 
   let totalRevisions = 0;
   designerTasks.forEach((t) => {
-    if (t.versions && t.versions.length > 1) {
+    if (t.versions?.length > 1) {
       totalRevisions += t.versions.length - 1;
     }
   });
@@ -1803,9 +1772,9 @@ router.get('/designer/dashboard-metrics', async (req, res) => {
 
   const recentSubmissions = [];
   designerTasks.forEach((t) => {
-    if (t.versions && t.versions.length > 0) {
+    if (t.versions?.length > 0) {
       const latestVer = t.versions[0];
-      const lastHistory = t.statusHistory && t.statusHistory.length > 0 ? t.statusHistory[0] : null;
+      const lastHistory = t.statusHistory?.[0] || null;
       recentSubmissions.push({
         id: latestVer.id,
         taskTitle: t.title,
@@ -1824,7 +1793,7 @@ router.get('/designer/dashboard-metrics', async (req, res) => {
       t.statusHistory.forEach((h) => {
         activityTimeline.push({
           id: h.id,
-          action: `${h.previousStatus ? `${h.previousStatus} ➔ ` : ''}${h.newStatus}`,
+          action: `${h.previousStatus ? h.previousStatus + ' ➔ ' : ''}${h.newStatus}`,
           taskTitle: t.title,
           actorName: h.actorName || 'User',
           timestamp: h.createdAt,

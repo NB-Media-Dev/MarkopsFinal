@@ -361,9 +361,14 @@
         </div>
         <div class="modal-footer">
 
-          <button type="submit" class="btn-action-primary">
-            <span class="material-symbols-outlined icon-glow">check</span>
-            <span>Create Account</span>
+          <button
+            type="button"
+            (click)="onSubmitCreateUser($event)"
+            class="btn-action-primary"
+            [disabled]="isSubmitting()"
+          >
+            <span class="material-symbols-outlined icon-glow">{{ isSubmitting() ? 'hourglass_top' : 'check' }}</span>
+            <span>{{ isSubmitting() ? 'Creating Account...' : 'Create Account' }}</span>
           </button>
         </div>
       </form>

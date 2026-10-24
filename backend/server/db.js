@@ -127,7 +127,7 @@ async function initFollowUpsTable(pool) {
 
 const SCHEMA_MIGRATIONS = [
   'ALTER TABLE notifications ADD COLUMN target_route VARCHAR(255) DEFAULT NULL',
-  "DELETE FROM users WHERE LOWER(email) = 'bdm@markops.io'",
+  'ALTER TABLE users ADD COLUMN department VARCHAR(100) DEFAULT "General Operations"',
   'ALTER TABLE leads ADD COLUMN package_name VARCHAR(255) DEFAULT NULL',
   'ALTER TABLE leads ADD COLUMN product_id VARCHAR(100) DEFAULT NULL',
   'ALTER TABLE leads ADD COLUMN product_name VARCHAR(255) DEFAULT NULL',
