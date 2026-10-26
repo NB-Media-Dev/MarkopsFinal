@@ -23,17 +23,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # --------------------------------------------------
       # 1. Checkout source code
-      # --------------------------------------------------
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # --------------------------------------------------
       # 2. Run SonarQube analysis
-      # --------------------------------------------------
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
         env:
@@ -45,11 +41,8 @@ jobs:
             -Dsonar.projectName=MarkopsFinal
             -Dsonar.sources=.
             -Dsonar.scm.exclusions.disabled=false
-            -Dsonar.cpd.exclusions=backend/*.js,**/*.spec.ts,**/*.test.js
 
-      # --------------------------------------------------
       # 3. Check Quality Gate
-      # --------------------------------------------------
       - name: SonarQube Quality Gate check
         id: sonarqube-quality-gate-check
         uses: SonarSource/sonarqube-quality-gate-action@v1
@@ -58,10 +51,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
-      # --------------------------------------------------
-      # 4. Publish issue report
-      # Bugs, vulnerabilities, code smells
-      # --------------------------------------------------
+      # 4. Publish unresolved issues and security hotspots
       - name: Publish SonarQube Issue Report
         if: always()
         env:
@@ -93,120 +83,114 @@ jobs:
           }
 
           async function sonar(path, params = {}) {
+            if (!base || !token) {
+              throw new Error("SonarQube URL or token is missing.");
+            }
+
             const url = new URL(base + path);
 
             for (const [key, value] of Object.entries(params)) {
               url.searchParams.set(key, String(value));
             }
 
-           
-const response = await fetch(url, {
-  headers: {
-    Authorization: `Bearer ${token}`,
-    "User-Agent": "GitHub-Actions-SonarQube-Report"
-  },
-  signal: AbortSignal.timeout(60000)
-});
+            const response = await fetch(url, {
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "User-Agent": "GitHub-Actions-SonarQube-Report"
+              },
+              signal: AbortSignal.timeout(60000)
+            });
 
-if (!response.ok) {
-  throw new Error(
-    `${path} returned HTTP ${response.status}: ` +
-    (await response.text()).slice(0, 300)
-  );
-}
+            if (!response.ok) {
+              throw new Error(
+                `${path} returned HTTP ${response.status}: ` +
+                (await response.text()).slice(0, 300)
+              );
+            }
 
-return response.json();
-
+            return response.json();
           }
 
           async function main() {
             append("## SonarQube Unresolved Issues Report\n\n");
 
-            const issues = [];
-            let page = 1;
-            let total = 0;
+            try {
+              const issues = [];
+              let page = 1;
+              let total = 0;
 
-            while (true) {
-              const result = await sonar("/api/issues/search", {
-                componentKeys: project,
-                resolved: "false",
-                types: "BUG,VULNERABILITY,CODE_SMELL",
-                ps: 100,
-                p: page
-              });
+              while (true) {
+                const result = await sonar("/api/issues/search", {
+                  componentKeys: project,
+                  resolved: "false",
+                  types: "BUG,VULNERABILITY,CODE_SMELL",
+                  ps: 100,
+                  p: page
+                });
 
-              const batch = result.issues || [];
-              issues.push(...batch);
-              total = result.total ?? issues.length;
+                const batch = result.issues || [];
+                issues.push(...batch);
+                total = result.total ?? issues.length;
 
-              if (
-                issues.length >= total ||
-                batch.length === 0
-              ) {
-                break;
+                if (issues.length >= total || batch.length === 0) {
+                  break;
+                }
+
+                page++;
               }
 
-              page++;
-            }
+              append(`**Total unresolved issues: ${total}**\n\n`);
+              append("| Type | Severity | File | Line | Description |\n");
+              append("|---|---|---|---:|---|\n");
 
-            append(`**Total unresolved issues: ${total}**\n\n`);
-            append("| Type | Severity | File | Line | Description |\n");
-            append("|---|---|---|---:|---|\n");
-
-            if (issues.length === 0) {
-              append("| - | - | - | - | No unresolved issues returned |\n");
-            } else {
-              for (const issue of issues) {
-                const file = issue.component || "-";
-                const line = issue.line ?? "-";
-
-                append(
-                  `| ${md(issue.type)} | ${md(issue.severity)} ` +
-                  `| ${md(file)} | ${line} | ${md(issue.message)} |\n`
-                );
+              if (issues.length === 0) {
+                append("| - | - | - | - | No unresolved issues returned |\n");
+              } else {
+                for (const issue of issues) {
+                  append(
+                    `| ${md(issue.type)} | ${md(issue.severity)} ` +
+                    `| ${md(issue.component)} | ${issue.line ?? "-"} ` +
+                    `| ${md(issue.message)} |\n`
+                  );
+                }
               }
+
+              append(
+                `\n[Open SonarQube dashboard](${base}/dashboard?id=${encodeURIComponent(project)})\n\n`
+              );
+            } catch (error) {
+              append(
+                `**Issue report unavailable:** ${md(error.message)}\n\n`
+              );
             }
 
-            append(
-              `\n[Open SonarQube dashboard](${base}/dashboard?id=${encodeURIComponent(project)})\n\n`
-            );
-
-            append(
-              "_Issue report includes bugs, vulnerabilities and code smells. " +
-              "Security hotspots are reported separately below._\n\n"
-            );
-
-            // Security hotspots are not ordinary issues.
             append("## SonarQube Security Hotspots\n\n");
 
             try {
               const hotspots = [];
-              let hotspotPage = 1;
-              let hotspotTotal = 0;
+              let page = 1;
+              let total = 0;
 
               while (true) {
                 const result = await sonar("/api/hotspots/search", {
                   projectKey: project,
                   status: "TO_REVIEW",
                   ps: 100,
-                  p: hotspotPage
+                  p: page
                 });
 
                 const batch = result.hotspots || [];
                 hotspots.push(...batch);
-                hotspotTotal = result.paging?.total ?? hotspots.length;
+                total = result.paging?.total ?? hotspots.length;
 
-                if (
-                  hotspots.length >= hotspotTotal ||
-                  batch.length === 0
-                ) {
+                if (hotspots.length >= total || batch.length === 0) {
                   break;
                 }
 
-                hotspotPage++;
+                page++;
               }
 
-              append(`**Security hotspots requiring review: ${hotspotTotal}**\n\n`);
+              append(`**Security hotspots requiring review: ${total}**\n\n`);
               append("| Security category | File | Line | Message |\n");
               append("|---|---|---:|---|\n");
 
@@ -224,7 +208,7 @@ return response.json();
               }
             } catch (error) {
               append(
-                `Security hotspot report unavailable: ${md(error.message)}\n`
+                `**Security hotspot report unavailable:** ${md(error.message)}\n`
               );
             }
 
@@ -233,19 +217,11 @@ return response.json();
 
           main().catch(error => {
             console.error(error);
-
-            append(
-              "\n⚠️ Issue report could not be generated: " +
-              md(error.message) +
-              "\n"
-            );
+            append(`\n**Issue report failed:** ${md(error.message)}\n`);
           });
           NODE
 
-      # --------------------------------------------------
       # 5. Publish code duplication report
-      # Duplicated lines, density, blocks and line ranges
-      # --------------------------------------------------
       - name: Publish SonarQube Code Duplication Report
         if: always()
         env:
@@ -277,17 +253,19 @@ return response.json();
           }
 
           async function sonar(path, params = {}) {
+            if (!base || !token) {
+              throw new Error("SonarQube URL or token is missing.");
+            }
+
             const url = new URL(base + path);
 
             for (const [key, value] of Object.entries(params)) {
               url.searchParams.set(key, String(value));
             }
 
-             response = await fetch(url, {
-              hconsteaders: {
-                Authorization:
-                  "Basic " +
-                  Buffer.from(token + ":").toString("base64"),
+            const response = await fetch(url, {
+              headers: {
+                Authorization: `Bearer ${token}`,
                 "User-Agent": "GitHub-Actions-SonarQube-Report"
               },
               signal: AbortSignal.timeout(60000)
@@ -327,7 +305,6 @@ return response.json();
           async function main() {
             append("## SonarQube Code Duplication Report\n\n");
 
-            // Project-level duplication metrics.
             const projectResult = await sonar(
               "/api/measures/component",
               {
@@ -355,7 +332,6 @@ return response.json();
               `- **Duplicated blocks:** ${md(getMetric(projectComponent, "duplicated_blocks"))}\n\n`
             );
 
-            // Retrieve all files with duplication metrics.
             const files = [];
             let page = 1;
             let total = 0;
@@ -377,10 +353,7 @@ return response.json();
               files.push(...batch);
               total = result.paging?.total ?? files.length;
 
-              if (
-                files.length >= total ||
-                batch.length === 0
-              ) {
+              if (files.length >= total || batch.length === 0) {
                 break;
               }
 
@@ -417,17 +390,12 @@ return response.json();
             }
 
             append("\n### Duplicate Code Locations\n\n");
-
-            append(
-              "| File | Line range | Matching file | Matching line range |\n"
-            );
-
+            append("| File | Line range | Matching file | Matching line range |\n");
             append("|---|---:|---|---:|\n");
 
             let detailRows = 0;
             const detailErrors = [];
 
-            // Query duplication details separately for each affected file.
             for (const file of duplicatedFiles) {
               try {
                 const details = await sonar(
@@ -436,7 +404,6 @@ return response.json();
                 );
 
                 const fileReferences = details.files || {};
-
                 const nameByRef = {};
 
                 for (const [ref, info] of Object.entries(fileReferences)) {
@@ -447,24 +414,16 @@ return response.json();
                 for (const duplication of details.duplications || []) {
                   const blocks = duplication.blocks || [];
 
-                  // A duplication group contains locations that match
-                  // one another. Show the file and every other location.
                   for (const block of blocks) {
                     const matchingBlocks = blocks.filter(
                       other => other._ref !== block._ref
                     );
 
                     for (const other of matchingBlocks) {
-                      const blockFile =
-                        nameByRef[block._ref] || file.key;
-
-                      const otherFile =
-                        nameByRef[other._ref] || "-";
-
                       append(
-                        `| ${md(blockFile)} ` +
+                        `| ${md(nameByRef[block._ref] || file.path || file.key)} ` +
                         `| ${md(lineRange(block))} ` +
-                        `| ${md(otherFile)} ` +
+                        `| ${md(nameByRef[other._ref] || "-")} ` +
                         `| ${md(lineRange(other))} |\n`
                       );
 
@@ -480,15 +439,11 @@ return response.json();
             }
 
             if (detailRows === 0) {
-              append(
-                "| No individual duplication locations returned | - | - | - |\n"
-              );
+              append("| No individual duplication locations returned | - | - | - |\n");
             }
 
             if (detailErrors.length > 0) {
-              append(
-                "\n**Some duplication details could not be retrieved:**\n\n"
-              );
+              append("\n**Some duplication details could not be retrieved:**\n\n");
 
               for (const error of detailErrors) {
                 append(`- ${md(error)}\n`);
@@ -498,21 +453,13 @@ return response.json();
             append(
               `\n[Open full SonarQube report](${base}/dashboard?id=${encodeURIComponent(project)})\n\n`
             );
-
-            append(
-              "_File metrics are retrieved from the measures API. " +
-              "Matching locations are retrieved from the duplication API; " +
-              "some locations may be unavailable depending on the server response._\n"
-            );
           }
 
           main().catch(error => {
             console.error(error);
 
             append(
-              "\n⚠️ Duplication report could not be generated: " +
-              md(error.message) +
-              "\n"
+              `\n**Duplication report unavailable:** ${md(error.message)}\n`
             );
 
             process.exitCode = 1;
