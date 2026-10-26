@@ -1,3 +1,22 @@
+import {
+  TelecallerCampaignReport,
+  
+  formatReportDate,
+
+
+  getReportLeadKey,
+  getReportLeadOutcome,
+  isReportLeadCalled,
+  isReportLeadPaid,
+  aggregateGroupLeadStats,
+  buildReportRow,
+  getReportTaskStatusBadgeClass,
+  getReportLeadStatusBadgeClass,
+  getReportPlatformBadgeClass,
+  getReportAdStatusBadgeClass,
+  formatReportProductName,
+  formatReportPackageName,
+} from '../../utils/package-report.utils';
 import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges, inject, HostListener } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -6,28 +25,12 @@ import { UserPerformanceRecord } from '../../../../core/models/user-management.m
 import {
   ProductPackage,
   FixedPackageMeta,
-  resolveTaskProductAndPackage,
   isTaskForPackage,
 } from '../../../../core/models/package.model';
 import { TelecallerTargetService } from '../../../../core/services/telecaller-target.service';
 import { TaskManagementService } from '../../../../core/services/task-management.service';
 import { getApiUrl } from '../../../../core/utils/api-url.utils';
 
-export interface TelecallerCampaignReport {
-  sNo: number;
-  campaignName: string;
-  adName: string;
-  assignedDate: string;
-  assignedDateRaw: string;
-  totalCountLeads: number;
-  totalCalls: number;
-  averageCalls: number;
-  interested: number;
-  targets: number;
-  callerRatio: string;
-  paid: number;
-  leads: any[];
-}
 
 export interface TeamAvatarItem {
   name: string;
@@ -48,10 +51,6 @@ export interface RoleTeamCard {
   overflowCount: number;
 }
 
-function formatReportCleanName(raw?: string): string {
-  if (!raw) return '';
-  return String(raw).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
-}
 
 function collectTaskReportDates(task: any, toLocalDateString: (val: any) => string, assignedDate?: string): string[] {
   const dates: string[] = [];
@@ -483,107 +482,31 @@ export class PackageReportsComponent implements OnInit, OnChanges {
   }
 
   private getReportLeadKey(lead: any): string {
-    const leadId = String(lead.id || lead.leadId || '').trim().toLowerCase();
-    if (leadId) return `id_${leadId}`;
-    const leadPhone = String(lead.phone || lead.leadPhone || '').replace(/\D/g, '');
-    if (leadPhone) return `p_${leadPhone}`;
-    return `ref_${lead.title || lead.name || ''}`;
+    return getReportLeadKey(lead);
   }
 
   private getReportLeadOutcome(hasValidOutcome: boolean, rawOutcome: string, hasValidStatus: boolean, rawStatus: string): string {
-    if (hasValidOutcome) return rawOutcome.toUpperCase();
-    if (hasValidStatus) return rawStatus.toUpperCase();
-    return '';
+    return getReportLeadOutcome(hasValidOutcome, rawOutcome, hasValidStatus, rawStatus);
   }
 
   private isReportLeadCalled(lead: any, hasValidOutcome: boolean, hasValidStatus: boolean): boolean {
-    if (Array.isArray(lead.calls) && lead.calls.length > 0) return true;
-    if (typeof lead.callAttempts === 'number' && lead.callAttempts > 0) return true;
-    if (lead.calledAt || lead.lastCalledAt) return true;
-    return hasValidOutcome || hasValidStatus;
+    return isReportLeadCalled(lead, hasValidOutcome, hasValidStatus);
   }
 
   private isReportLeadPaid(lead: any, outcome: string): boolean {
-    return outcome === 'PAID' || outcome === 'CONVERTED' || Boolean(lead.isPaid) || (Number(lead.paidAmount) > 0);
+    return isReportLeadPaid(lead, outcome);
   }
 
   private aggregateGroupLeadStats(groupLeads: any[]): { totalCalls: number; interested: number; paid: number } {
-    const calledLeadIds = new Set<string>();
-    const interestedLeadIds = new Set<string>();
-    const paidLeadIds = new Set<string>();
-    const uncalledStatuses = new Set(['NEW', 'UNASSIGNED', 'ASSIGNED', '—', '', 'NULL', 'UNDEFINED']);
-
-    for (const lead of groupLeads) {
-      const leadKey = this.getReportLeadKey(lead);
-      const rawOutcome = String(lead.callOutcome || '').toUpperCase().trim();
-      const rawStatus = String(lead.status || '').toUpperCase().trim();
-
-      const hasValidOutcome = Boolean(rawOutcome && !uncalledStatuses.has(rawOutcome));
-      const hasValidStatus = Boolean(rawStatus && !uncalledStatuses.has(rawStatus));
-
-      if (this.isReportLeadCalled(lead, hasValidOutcome, hasValidStatus) && leadKey) {
-        calledLeadIds.add(leadKey);
-      }
-
-      const outcome = this.getReportLeadOutcome(hasValidOutcome, rawOutcome, hasValidStatus, rawStatus);
-      if (this.isReportLeadPaid(lead, outcome)) {
-        if (leadKey) {
-          paidLeadIds.add(leadKey);
-          interestedLeadIds.add(leadKey);
-        }
-      } else if (['INTERESTED', 'QUALIFIED', 'HOT'].includes(outcome)) {
-        if (leadKey) {
-          interestedLeadIds.add(leadKey);
-        }
-      }
-    }
-
-    return {
-      totalCalls: calledLeadIds.size,
-      interested: interestedLeadIds.size,
-      paid: paidLeadIds.size,
-    };
+    return aggregateGroupLeadStats(groupLeads);
   }
 
   private formatReportDate(dateRaw: string): string {
-    if (dateRaw?.includes('-')) {
-      const parts = dateRaw.split('-');
-      if (parts.length === 3) {
-        const dObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-        if (!Number.isNaN(dObj.getTime())) {
-          return dObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-        }
-      }
-    }
-    return dateRaw;
+    return formatReportDate(dateRaw);
   }
 
   private buildReportRow(key: string, groupLeads: any[], sNo: number, baseDailyTarget: number): TelecallerCampaignReport {
-    const [cName, aName, dateRaw] = key.split('___');
-    const totalLeads = groupLeads.length;
-    const { totalCalls, interested, paid } = this.aggregateGroupLeadStats(groupLeads);
-
-    const avgCalls = totalLeads > 0 ? Number((totalCalls / totalLeads).toFixed(1)) : 0;
-    const rowTarget = baseDailyTarget > 0 ? baseDailyTarget : 50;
-    const ratioVal = rowTarget > 0 ? (totalCalls / rowTarget) * 100 : 0;
-    const formattedRatio = ratioVal % 1 === 0 ? `${ratioVal}%` : `${ratioVal.toFixed(1)}%`;
-    const displayDate = this.formatReportDate(dateRaw);
-
-    return {
-      sNo,
-      campaignName: cName,
-      adName: aName,
-      assignedDate: displayDate,
-      assignedDateRaw: dateRaw,
-      totalCountLeads: totalLeads,
-      totalCalls,
-      averageCalls: avgCalls,
-      interested,
-      targets: rowTarget,
-      callerRatio: formattedRatio,
-      paid,
-      leads: groupLeads,
-    };
+    return buildReportRow(key, groupLeads, sNo, baseDailyTarget);
   }
 
   private buildTelecallerCampaignReportsFromTasks(tasks: any[], pkgDisplayName: string, baseDailyTarget: number): TelecallerCampaignReport[] {
@@ -1293,99 +1216,27 @@ export class PackageReportsComponent implements OnInit, OnChanges {
   }
 
   getTaskStatusBadgeClass(status: string): string {
-    switch (status) {
-      case 'APPROVED':
-      case 'COMPLETED':
-      case 'PUBLISHED':
-        return 'badge-green';
-      case 'IN_PROGRESS':
-        return 'badge-amber';
-      case 'SUBMITTED':
-      case 'UNDER_REVIEW':
-        return 'badge-purple';
-      case 'REVISION_REQUIRED':
-      case 'REDESIGN_REQUIRED':
-        return 'badge-danger';
-      default:
-        return 'badge-blue';
-    }
+    return getReportTaskStatusBadgeClass(status);
   }
 
   getLeadStatusBadgeClass(status?: string): string {
-    const s = (status || '').toUpperCase().trim();
-    switch (s) {
-      case 'QUALIFIED':
-      case 'CONVERTED':
-      case 'PAID':
-      case 'INTERESTED':
-      case 'CONNECTED':
-        return 'badge-green';
-      case 'FOLLOW_UP':
-      case 'IN_PROGRESS':
-        return 'badge-amber';
-      case 'BUSY':
-      case 'LINE_BUSY':
-      case 'NO_ANSWER':
-      case 'RETRY':
-        return 'badge-purple';
-      case 'NOT_INTERESTED':
-      case 'LOST':
-      case 'WRONG_NUMBER':
-        return 'badge-danger';
-      default:
-        return 'badge-blue';
-    }
+    return getReportLeadStatusBadgeClass(status);
   }
 
   getPlatformBadgeClass(platform?: string): string {
-    const p = (platform || '').toLowerCase();
-    if (p.includes('meta') || p.includes('facebook')) return 'badge-platform-meta';
-    if (p.includes('google')) return 'badge-platform-google';
-    if (p.includes('insta')) return 'badge-platform-instagram';
-    if (p.includes('link')) return 'badge-platform-linkedin';
-    if (p.includes('youtube')) return 'badge-platform-youtube';
-    return 'badge-platform-default';
+    return getReportPlatformBadgeClass(platform);
   }
 
   getAdStatusBadgeClass(status?: string): string {
-    const s = (status || '').toUpperCase();
-    if (s === 'ACTIVE') return 'badge-green';
-    if (s === 'PAUSED') return 'badge-amber';
-    if (s === 'COMPLETED') return 'badge-blue';
-    return 'badge-slate';
+    return getReportAdStatusBadgeClass(status);
   }
 
   formatProductName(rawName?: string, task?: any): string {
-    if (task) {
-      if (task.productName && !task.productName.toLowerCase().includes('careermate') && !task.productName.toLowerCase().includes('package')) {
-        return formatReportCleanName(task.productName);
-      }
-      const resolved = resolveTaskProductAndPackage(task, this.productPackages);
-      if (resolved?.productName) {
-        return formatReportCleanName(resolved.productName);
-      }
-    }
-    if (rawName?.trim() && !rawName.toLowerCase().includes('careermate')) {
-      return formatReportCleanName(rawName);
-    }
-    return formatReportCleanName(this.activePackageMeta?.name || 'Product');
+    return formatReportProductName(rawName, task, this.productPackages, this.activePackageMeta?.name);
   }
 
   formatPackageName(rawName?: string, task?: any): string {
-    if (task) {
-      if (task.packageName?.trim()) {
-        return formatReportCleanName(task.packageName);
-      }
-      const resolved = resolveTaskProductAndPackage(task, this.productPackages);
-      if (resolved?.packageName) {
-        return formatReportCleanName(resolved.packageName);
-      }
-    }
-    if (rawName?.trim()) {
-      return formatReportCleanName(rawName);
-    }
-    const raw = this.activePackageDisplayName() || this.activePackageMeta?.name || 'Package';
-    return formatReportCleanName(raw);
+    return formatReportPackageName(rawName, task, this.productPackages, this.activePackageDisplayName());
   }
 
   private filterTasksForUserExport(user: UserPerformanceRecord): any[] {

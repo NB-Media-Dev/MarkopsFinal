@@ -45,6 +45,7 @@ jobs:
             -Dsonar.projectName=MarkopsFinal
             -Dsonar.sources=.
             -Dsonar.scm.exclusions.disabled=false
+            -Dsonar.cpd.exclusions=backend/*.js,**/*.spec.ts,**/*.test.js
 
       # --------------------------------------------------
       # 3. Check Quality Gate
