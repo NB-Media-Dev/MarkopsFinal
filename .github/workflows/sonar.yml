@@ -98,23 +98,24 @@ jobs:
               url.searchParams.set(key, String(value));
             }
 
-            const response = await fetch(url, {
-              headers: {
-                Authorization:
-                  "Basic " +
-                  Buffer.from(token + ":").toString("base64"),
-                "User-Agent": "GitHub-Actions-SonarQube-Report"
-              },
-              signal: AbortSignal.timeout(60000)
-            });
+           
+const response = await fetch(url, {
+  headers: {
+    Authorization: `Bearer ${token}`,
+    "User-Agent": "GitHub-Actions-SonarQube-Report"
+  },
+  signal: AbortSignal.timeout(60000)
+});
 
-            if (!response.ok) {
-              throw new Error(
-                `${path} returned HTTP ${response.status}`
-              );
-            }
+if (!response.ok) {
+  throw new Error(
+    `${path} returned HTTP ${response.status}: ` +
+    (await response.text()).slice(0, 300)
+  );
+}
 
-            return response.json();
+return response.json();
+
           }
 
           async function main() {
@@ -281,8 +282,8 @@ jobs:
               url.searchParams.set(key, String(value));
             }
 
-            const response = await fetch(url, {
-              headers: {
+             response = await fetch(url, {
+              hconsteaders: {
                 Authorization:
                   "Basic " +
                   Buffer.from(token + ":").toString("base64"),
