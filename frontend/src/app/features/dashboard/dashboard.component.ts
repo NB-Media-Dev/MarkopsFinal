@@ -351,9 +351,9 @@ export class DashboardComponent implements OnInit {
   });
 
   readonly fixedPackages = computed(() => {
-    const tasks = this.taskService.tasks();
-    const campaigns = this.campaignService.campaigns();
-    const leads = this.leadService.leads();
+  const tasks = this.taskService.tasks();
+  const campaigns = this.campaignService.campaigns();
+  const leads = this.leadService.leads();
     const allPkgs = this.packageService.packages();
 
     const packages = [
@@ -414,9 +414,9 @@ export class DashboardComponent implements OnInit {
         return false;
       });
 
-      const pkgCmps = campaigns.filter((c) => {
-        const cName = (c.name || '').toLowerCase();
-        const cPkg = ((c as any).packageName || '').toLowerCase();
+    const pkgCmps = campaigns.filter((c) => {
+      const cName = (c.name || '').toLowerCase();
+      const cPkg = ((c as any).packageName || '').toLowerCase();
         return (
           cName.includes(key) ||
           cPkg.includes(key) ||
@@ -425,12 +425,12 @@ export class DashboardComponent implements OnInit {
           ((key.includes('jesus') || key.includes('messang') || key.includes('messeng')) &&
             (cName.includes('jesus') || cName.includes('messang') || cName.includes('messeng') || cName.includes('outreach')))
         );
-      });
+    });
 
-      const pkgLeads = leads.filter((l) => {
-        const lCmp = (l.campaignName || '').toLowerCase();
-        const lSrc = (l.source || '').toLowerCase();
-        const lPkg = ((l as any).packageName || '').toLowerCase();
+    const pkgLeads = leads.filter((l) => {
+      const lCmp = (l.campaignName || '').toLowerCase();
+      const lSrc = (l.source || '').toLowerCase();
+      const lPkg = ((l as any).packageName || '').toLowerCase();
         return (
           lCmp.includes(key) ||
           lSrc.includes(key) ||
@@ -440,21 +440,21 @@ export class DashboardComponent implements OnInit {
           ((key.includes('jesus') || key.includes('messang') || key.includes('messeng')) &&
             (lCmp.includes('jesus') || lSrc.includes('jesus') || lCmp.includes('messang') || lSrc.includes('messang')))
         );
-      });
+    });
 
-      const summary = this.packageService.summary();
+    const summary = this.packageService.summary();
       const countFromSummary = summary ? (summary[pkg.id] ?? 0) : 0;
       const finalPkgCount = Math.max(pkgCreated.length, countFromSummary);
 
-      return {
-        ...pkg,
+    return {
+      ...pkg,
         packageCount: finalPkgCount,
-        taskCount: pkgTasks.length,
-        campaignCount: pkgCmps.length,
-        leadCount: pkgLeads.length,
-      };
-    });
+      taskCount: pkgTasks.length,
+      campaignCount: pkgCmps.length,
+      leadCount: pkgLeads.length,
+    };
   });
+});
 
   setCampaignTab(tab: 'ALL' | 'ACTIVE' | 'PLANNING'): void {
     this.activeCampaignTab.set(tab);

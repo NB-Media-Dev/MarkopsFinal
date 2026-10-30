@@ -70,54 +70,75 @@ router.get('/product-banners/:productId', async (req, res) => {
   }
 });
 
-router.put('/product-banners/:productId', async (req, res) => {
-  const role = String(req.user?.role || '').toUpperCase();
-  if (role !== 'ADMINISTRATOR' && role !== 'ADMIN') {
-    return res.status(403).json({ error: 'Access denied. Only administrators can update product banners.' });
-  }
-
-  const productId = getProductId(req.params.productId);
-  if (typeof req.body?.image !== 'string') {
-    return res.status(400).json({ error: 'A banner image is required.' });
-  }
-
-  if (!dbPool.isConnected()) {
-    return res.status(503).json({ error: 'Product catalog database is unavailable.' });
-  }
-
-  try {
-    const [products] = await dbPool.queryStrict(
-      'SELECT id FROM product_catalog WHERE id = ?',
-      [productId]
-    );
-    if (products.length === 0) {
-      return res.status(404).json({ error: 'Product not found.' });
+router.get("/ourproduct",async(req,res)=>{
+  try{
+     if (!dbPool.isConnected()) {
+      return res.status(503).json({ error: 'Product catalog database is unavailable.' });
     }
-  } catch (error) {
-    console.error('[Product Hero Banner Product Lookup Error]:', error);
-    return res.status(500).json({ error: 'Failed to verify product before saving banner.' });
-  }
 
-  let imageUrl;
-  try {
-    imageUrl = saveBannerImage(req.body.image, req.body.fileName);
-  } catch (error) {
-    return res.status(400).json({ error: error.message });
-  }
+    const Ourproduct=await dbPool.query('SELECT * FROM product_catalog')
 
-  try {
-    const [result] = await dbPool.queryStrict(
-      'UPDATE product_catalog SET hero_image_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [imageUrl, productId]
-    );
-    if (result.affectedRows !== 1) {
-      return res.status(404).json({ error: 'Product not found or banner was not updated.' });
+    if(!Ourproduct){
+      return res.status(404).json({msg:"ourproduct are notfound"})
     }
-    return res.json({ productId, imageUrl });
-  } catch (error) {
-    console.error('[Product Hero Banner PUT Error]:', error);
-    return res.status(500).json({ error: 'Failed to save product hero banner.' });
+
+    return res.status(200).json(Ourproduct)
+
+  }catch(error){
+     console.error('[Our Product GET Error]:', error);
+    return res.status(500).json({ error: 'Failed to load ourproduct .' });
   }
-});
+})
+
+//update a produuct banner
+// router.put('/product-banners/:productId', async (req, res) => {
+//   const role = String(req.user?.role || '').toUpperCase();
+//   if (role !== 'ADMINISTRATOR' && role !== 'ADMIN') {
+//     return res.status(403).json({ error: 'Access denied. Only administrators can update product banners.' });
+//   }
+
+//   const productId = getProductId(req.params.productId);
+//   if (typeof req.body?.image !== 'string') {
+//     return res.status(400).json({ error: 'A banner image is required.' });
+//   }
+
+//   if (!dbPool.isConnected()) {
+//     return res.status(503).json({ error: 'Product catalog database is unavailable.' });
+//   }
+
+//   try {
+//     const [products] = await dbPool.queryStrict(
+//       'SELECT id FROM product_catalog WHERE id = ?',
+//       [productId]
+//     );
+//     if (products.length === 0) {
+//       return res.status(404).json({ error: 'Product not found.' });
+//     }
+//   } catch (error) {
+//     console.error('[Product Hero Banner Product Lookup Error]:', error);
+//     return res.status(500).json({ error: 'Failed to verify product before saving banner.' });
+//   }
+
+//   let imageUrl;
+//   try {
+//     imageUrl = saveBannerImage(req.body.image, req.body.fileName);
+//   } catch (error) {
+//     return res.status(400).json({ error: error.message });
+//   }
+
+//   try {
+//     const [result] = await dbPool.queryStrict(
+//       'UPDATE product_catalog SET hero_image_url = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+//       [imageUrl, productId]
+//     );
+//     if (result.affectedRows !== 1) {
+//       return res.status(404).json({ error: 'Product not found or banner was not updated.' });
+//     }
+//     return res.json({ productId, imageUrl });
+//   } catch (error) {
+//     console.error('[Product Hero Banner PUT Error]:', error);
+//     return res.status(500).json({ error: 'Failed to save product hero banner.' });
+//   }
+// });
 
 module.exports = router;
