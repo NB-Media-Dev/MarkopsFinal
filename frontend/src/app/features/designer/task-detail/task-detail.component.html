@@ -384,11 +384,14 @@
                             controls
                             preload="metadata"
                             [attr.aria-label]="'Video deliverable: ' + ver.fileName"
-                          ></video>
+                          ><track kind="captions" label="Captions" default></video>
                         } @else if (isImage(versionAssetUrl) || isImage(ver.fileName)) {
                           <div
                             class="asset-img-container"
                             (click)="openImageViewer(versionAssetUrl, ver.fileName)"
+                            (keydown.enter)="openImageViewer(versionAssetUrl, ver.fileName)"
+                            (keydown.space)="openImageViewer(versionAssetUrl, ver.fileName)"
+                            aria-label="View fullsize asset"
                           >
                             <img [src]="versionAssetUrl" [alt]="ver.fileName" />
                             <div class="asset-hover-overlay">
@@ -533,6 +536,9 @@
                       <div
                         class="tl-file-chip"
                         (click)="openImageViewer(node.fileUrl || node.fileContent, node.fileName)"
+                        (keydown.enter)="openImageViewer(node.fileUrl || node.fileContent, node.fileName)"
+                        (keydown.space)="openImageViewer(node.fileUrl || node.fileContent, node.fileName)"
+                        aria-label="View file attachment"
                       >
                         <span class="material-symbols-outlined">attachment</span>
                         <span>{{ node.fileName }}</span>
@@ -558,8 +564,8 @@
 ></app-upload-design-modal>
 
 @if (isRedesignModalOpen()) {
-  <div class="modal-backdrop" (click)="closeRedesignModal()">
-    <div class="modal-window redesign-modal-window" (click)="$event.stopPropagation()">
+  <div class="modal-backdrop" (click)="closeRedesignModal()" (keydown.enter)="closeRedesignModal()" (keydown.space)="closeRedesignModal()" (keydown.escape)="closeRedesignModal()" aria-label="Close redesign modal">
+    <div class="modal-window redesign-modal-window" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" aria-label="Redesign dialog">
       <div class="modal-header header-redesign">
         <div class="header-icon-box box-danger">
           <span class="material-symbols-outlined">rate_review</span>
@@ -618,8 +624,8 @@
 }
 
 @if (isImageViewerOpen()) {
-  <div class="modal-backdrop lightbox-backdrop" (click)="closeImageViewer()">
-    <div class="lightbox-container" (click)="$event.stopPropagation()">
+  <div class="modal-backdrop lightbox-backdrop" (click)="closeImageViewer()" (keydown.enter)="closeImageViewer()" (keydown.space)="closeImageViewer()" (keydown.escape)="closeImageViewer()" aria-label="Close image viewer">
+    <div class="lightbox-container" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" aria-label="Deliverable preview">
       <div class="lightbox-header">
         <div class="lh-title">{{ imageViewerTitle() }}</div>
         <div class="lh-actions">
@@ -638,9 +644,9 @@
       </div>
       <div class="lightbox-image-box">
         @if (isVideo(imageViewerUrl()) || isVideo(imageViewerTitle())) {
-          <video [src]="imageViewerUrl()" controls autoplay aria-label="Video deliverable preview"></video>
+          <video [src]="imageViewerUrl()" controls autoplay aria-label="Video deliverable preview"><track kind="captions" label="Captions" default></video>
         } @else {
-          <img [src]="imageViewerUrl()" [alt]="imageViewerTitle()" />
+          <img [src]="imageViewerUrl()" [alt]="deliverableAltText()" />
         }
       </div>
     </div>
@@ -648,8 +654,8 @@
 }
 
 @if (isDocViewerOpen()) {
-  <div class="modal-backdrop" (click)="closeDocViewer()">
-    <div class="modal-window doc-modal-window" (click)="$event.stopPropagation()">
+  <div class="modal-backdrop" (click)="closeDocViewer()" (keydown.enter)="closeDocViewer()" (keydown.space)="closeDocViewer()" (keydown.escape)="closeDocViewer()" aria-label="Close document viewer">
+    <div class="modal-window doc-modal-window" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" aria-label="Document viewer">
       <div class="modal-header">
         <div class="header-icon-box">
           <span class="material-symbols-outlined">description</span>

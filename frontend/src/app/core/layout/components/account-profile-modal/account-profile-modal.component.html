@@ -1,5 +1,5 @@
-<div class="mo-modal-backdrop" (click)="onBackdropClick($event)">
-  <div class="account-profile-modal" role="dialog" aria-modal="true" aria-labelledby="modal-profile-title">
+<div class="mo-modal-backdrop" (click)="onBackdropClick($event)" (keydown.enter)="onCloseModal()" (keydown.space)="onCloseModal()" (keydown.escape)="onCloseModal()" aria-label="Close modal">
+  <div class="account-profile-modal" aria-labelledby="modal-profile-title">
 
     <!-- Modal Header -->
     <div class="modal-header-row">
@@ -93,6 +93,8 @@
     @if (activeTab() === 'PICTURE') {
       <div class="tab-content-panel profile-picture-panel">
         <input
+          id="profileFileInput"
+          aria-label="Upload profile picture file"
           type="file"
           #fileInput
           (change)="onFileSelected($event)"
@@ -104,11 +106,11 @@
           class="upload-dropzone"
           [class.drag-over]="isDragging()"
           (click)="triggerFileInput()"
+          (keydown.enter)="triggerFileInput()"
+          (keydown.space)="triggerFileInput()"
           (dragover)="onDragOver($event)"
           (dragleave)="onDragLeave($event)"
           (drop)="onDrop($event)"
-          tabindex="0"
-          role="button"
           aria-label="Upload profile picture"
         >
           @if (isUploading()) {

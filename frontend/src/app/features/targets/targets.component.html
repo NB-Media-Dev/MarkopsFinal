@@ -188,7 +188,7 @@
         <span class="material-symbols-outlined search-icon">search</span>
         <input
           type="text"
-          placeholder="Search telecallers by name, email, or department..."
+          id="targetsSearchInput" aria-label="Search telecallers by name, email, or department" placeholder="Search telecallers by name, email, or department..."
           [value]="searchQuery()"
           (input)="onSearch($event)"
         />
@@ -353,8 +353,8 @@
   </div>
 
   @if (isEditModalOpen()) {
-    <div class="modal-backdrop" (click)="closeEditModal()">
-      <div class="modal-card modal-md" (click)="$event.stopPropagation()">
+    <div class="modal-backdrop" (click)="closeEditModal()" (keydown.enter)="closeEditModal()" (keydown.space)="closeEditModal()" (keydown.escape)="closeEditModal()" aria-label="Close edit target modal">
+      <div class="modal-card modal-md" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" aria-label="Edit target dialog">
         <div class="modal-header">
           <div class="modal-title-wrap">
             <div class="modal-squircle-icon">
@@ -389,27 +389,25 @@
             <div class="target-error-message" role="alert">{{ error }}</div>
           }
           <div class="form-group">
-            <label class="form-label">Daily Calls Target <span class="required">*</span></label>
+            <label class="form-label" for="targetInputCalls">Daily Calls Target <span class="required">*</span></label>
             <input
               type="number"
               min="1"
               max="300"
               required
-              [(ngModel)]="targetInputCalls"
+              id="targetInputCalls" [(ngModel)]="targetInputCalls"
               placeholder="e.g. 30"
               class="form-input"
             />
           </div>
           <div class="form-group">
-            <label class="form-label"
-              >Daily Interested Leads Target <span class="required">*</span></label
-            >
+            <label class="form-label" for="targetInputInterested">Daily Interested Leads Target <span class="required">*</span></label>
             <input
               type="number"
               min="0"
               max="50"
               required
-              [(ngModel)]="targetInputInterested"
+              id="targetInputInterested" [(ngModel)]="targetInputInterested"
               placeholder="e.g. 5"
               class="form-input"
             />

@@ -18,7 +18,7 @@ export interface LeadItem {
   adName?: string;
   remarks?: string;
   notes?: string;
-  status: 'NEW' | 'ASSIGNED' | 'CONTACTED' | 'FOLLOW_UP' | 'INTERESTED' | 'NOT_INTERESTED' | 'QUALIFIED' | 'CONVERTED' | 'LOST' | 'WRONG_NUMBER' | 'BUSY' | 'NO_ANSWER' | 'LINE_BUSY' | string;
+  status: 'NEW' | 'ASSIGNED' | 'CONTACTED' | 'FOLLOW_UP' | 'INTERESTED' | 'NOT_INTERESTED' | 'QUALIFIED' | 'CONVERTED' | 'LOST' | 'WRONG_NUMBER' | 'BUSY' | 'NO_ANSWER' | 'LINE_BUSY' | (string & {});
   assignedTo?: string | null;
   assigneeName?: string;
   creatorId?: string;
@@ -43,7 +43,7 @@ export interface CallActivityItem {
   telecallerId: string;
   telecallerName: string;
   telecallerEmail?: string;
-  outcome: 'CONNECTED' | 'NO_ANSWER' | 'BUSY' | 'WRONG_NUMBER' | 'FOLLOW_UP' | 'INTERESTED' | 'NOT_INTERESTED' | 'QUALIFIED' | 'CONVERTED' | 'PAID' | 'LINE_BUSY' | string;
+  outcome: 'CONNECTED' | 'NO_ANSWER' | 'BUSY' | 'WRONG_NUMBER' | 'FOLLOW_UP' | 'INTERESTED' | 'NOT_INTERESTED' | 'QUALIFIED' | 'CONVERTED' | 'PAID' | 'LINE_BUSY' | (string & {});
   durationSeconds: number;
   remarks?: string;
   nextAction?: string;
@@ -101,50 +101,54 @@ export interface LeadBatchImportResponse {
   leads: LeadItem[];
 }
 
-export function isClientDuplicateCall(c1: CallActivityItem, c2: CallActivityItem): boolean {
-  if (!c1 || !c2) return false;
-  if (c1.id && c2.id && String(c1.id).trim() === String(c2.id).trim()) {
+function isSameNumericCallId(id1?: string, id2?: string): boolean {
+  if (id1 && id2 && String(id1).trim() === String(id2).trim()) {
     return true;
   }
-
-  // If both have direct numeric database IDs, compare them
-  const isPureDbId1 = /^call_\d+$/.test(String(c1.id || '').trim()) || /^\d+$/.test(String(c1.id || '').trim());
-  const isPureDbId2 = /^call_\d+$/.test(String(c2.id || '').trim()) || /^\d+$/.test(String(c2.id || '').trim());
+  const isPureDbId1 = /^call_\d+$/.test(String(id1 || '').trim()) || /^\d+$/.test(String(id1 || '').trim());
+  const isPureDbId2 = /^call_\d+$/.test(String(id2 || '').trim()) || /^\d+$/.test(String(id2 || '').trim());
   if (isPureDbId1 && isPureDbId2) {
-    const num1 = String(c1.id).replace(/\D/g, '');
-    const num2 = String(c2.id).replace(/\D/g, '');
-    if (num1 && num2 && num1 === num2) {
-      return true;
-    }
+    const num1 = String(id1).replace(/\D/g, '');
+    const num2 = String(id2).replace(/\D/g, '');
+    return Boolean(num1 && num2 && num1 === num2);
   }
+  return false;
+}
 
+function isSameLead(c1: CallActivityItem, c2: CallActivityItem): boolean {
   const lead1 = String(c1.leadId || '').replace(/\D/g, '') || String(c1.leadId || '').trim();
   const lead2 = String(c2.leadId || '').replace(/\D/g, '') || String(c2.leadId || '').trim();
+  if (lead1 && lead2 && lead1 === lead2) return true;
   const phone1 = String(c1.leadPhone || c1.phone || '').replace(/\D/g, '');
   const phone2 = String(c2.leadPhone || c2.phone || '').replace(/\D/g, '');
-  const sameLead = (lead1 && lead2 && lead1 === lead2) || (phone1 && phone2 && (phone1 === phone2 || (phone1.length >= 7 && phone2.length >= 7 && (phone1.endsWith(phone2) || phone2.endsWith(phone1)))));
-  if (!sameLead) return false;
+  return Boolean(phone1 && phone2 && (phone1 === phone2 || (phone1.length >= 7 && phone2.length >= 7 && (phone1.endsWith(phone2) || phone2.endsWith(phone1)))));
+}
 
-  const out1 = String(c1.outcome || '').toUpperCase().replace(/\s+/g, '_');
-  const out2 = String(c2.outcome || '').toUpperCase().replace(/\s+/g, '_');
-  const sameOutcome = out1 === out2 ||
-    (out1 === 'FOLLOW_UP' && out2 === 'CONNECTED') || (out1 === 'CONNECTED' && out2 === 'FOLLOW_UP') ||
-    (out1 === 'LINE_BUSY' && out2 === 'BUSY') || (out1 === 'BUSY' && out2 === 'LINE_BUSY') ||
-    ((out1 === 'QUALIFIED' || out1 === 'PAID') && (out2 === 'QUALIFIED' || out2 === 'PAID'));
-  if (!sameOutcome) return false;
+function isMatchingOutcome(outcome1?: string, outcome2?: string): boolean {
+  const out1 = String(outcome1 || '').toUpperCase().replace(/\s+/g, '_');
+  const out2 = String(outcome2 || '').toUpperCase().replace(/\s+/g, '_');
+  if (out1 === out2) return true;
+  if ((out1 === 'FOLLOW_UP' && out2 === 'CONNECTED') || (out1 === 'CONNECTED' && out2 === 'FOLLOW_UP')) return true;
+  if ((out1 === 'LINE_BUSY' && out2 === 'BUSY') || (out1 === 'BUSY' && out2 === 'LINE_BUSY')) return true;
+  return (out1 === 'QUALIFIED' || out1 === 'PAID') && (out2 === 'QUALIFIED' || out2 === 'PAID');
+}
 
-  if (c1.calledAt && c2.calledAt) {
-    const t1 = new Date(c1.calledAt).getTime();
-    const t2 = new Date(c2.calledAt).getTime();
-    if (!isNaN(t1) && !isNaN(t2)) {
-      const diff = Math.abs(t1 - t2);
-      const isFivePointFiveHours = Math.abs(diff - (5.5 * 3600 * 1000)) <= 60000;
-      if (diff <= 60000 || isFivePointFiveHours) return true;
-      return false;
-    }
-  }
+function isMatchingCallTimestamp(time1?: string | Date, time2?: string | Date): boolean {
+  if (!time1 || !time2) return true;
+  const t1 = new Date(time1).getTime();
+  const t2 = new Date(time2).getTime();
+  if (Number.isNaN(t1) || Number.isNaN(t2)) return true;
+  const diff = Math.abs(t1 - t2);
+  const isFivePointFiveHours = Math.abs(diff - (5.5 * 3600 * 1000)) <= 60000;
+  return diff <= 60000 || isFivePointFiveHours;
+}
 
-  return true;
+export function isClientDuplicateCall(c1: CallActivityItem, c2: CallActivityItem): boolean {
+  if (!c1 || !c2) return false;
+  if (isSameNumericCallId(c1.id, c2.id)) return true;
+  if (!isSameLead(c1, c2)) return false;
+  if (!isMatchingOutcome(c1.outcome, c2.outcome)) return false;
+  return isMatchingCallTimestamp(c1.calledAt, c2.calledAt);
 }
 
 @Injectable({
@@ -154,7 +158,7 @@ export class LeadTelecallingService {
   private readonly http = inject(HttpClient);
   private readonly platformId = inject(PLATFORM_ID);
   private readonly isBrowser = isPlatformBrowser(this.platformId);
-  private socket: Socket | null = null;
+  private readonly socket: Socket | null = null;
 
   readonly leads = signal<LeadItem[]>([]);
   readonly calls = signal<CallActivityItem[]>([]);
@@ -172,7 +176,7 @@ export class LeadTelecallingService {
         try {
           const userStr = localStorage.getItem('markops_user');
           if (userStr) cachedUser = JSON.parse(userStr);
-        } catch {}
+        } catch (error_) { console.log('[Storage Notice] Skipped:', error_); }
 
         this.socket = io(backendUrl, {
           auth: {
@@ -191,7 +195,7 @@ export class LeadTelecallingService {
         });
 
         this.socket.on('lead:status_changed', (data: { leadId: string; status: string }) => {
-          if (!data || !data.leadId) return;
+          if (!data?.leadId) return;
           const status = data.status === 'QUALIFIED' ? 'PAID' : data.status;
           this.leads.update((list) =>
             list.map((l) => (String(l.id).trim() === String(data.leadId).trim() ? { ...l, status: status as any } : l))
@@ -199,7 +203,7 @@ export class LeadTelecallingService {
         });
 
         this.socket.on('lead:updated', (lead: LeadItem) => {
-          if (!lead || !lead.id) return;
+          if (!lead?.id) return;
           const status = lead.status === 'QUALIFIED' ? 'PAID' : lead.status;
           this.leads.update((list) =>
             list.map((l) => {
@@ -225,14 +229,14 @@ export class LeadTelecallingService {
         });
 
         this.socket.on('lead:deleted', (data: { leadId: string }) => {
-          if (!data || !data.leadId) return;
+          if (!data?.leadId) return;
           this.leads.update((list) =>
             list.filter((l) => String(l.id).trim() !== String(data.leadId).trim())
           );
         });
 
         this.socket.on('call:completed', (call: CallActivityItem) => {
-          if (!call || !call.id) return;
+          if (!call?.id) return;
           const normalizedOutcome = (call.outcome === 'QUALIFIED' || call.outcome === 'PAID') ? 'PAID' : call.outcome;
           const normalizedCall: CallActivityItem = { ...call, outcome: normalizedOutcome };
           this.calls.update((list) => {
@@ -396,7 +400,7 @@ export class LeadTelecallingService {
               if (matches) {
                 const updatedLead: LeadItem = {
                   ...item,
-                  ...(res.lead || {}),
+                  ...res.lead,
                   campaignName: (res.lead?.campaignName && res.lead.campaignName !== 'Digital Ad Campaign')
                     ? res.lead.campaignName
                     : (item.campaignName || res.lead?.campaignName || ''),

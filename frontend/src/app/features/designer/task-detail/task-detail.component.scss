@@ -122,7 +122,7 @@
       }
 
       &.btn-start-work {
-        background: linear-gradient(135deg, #10B981, #059669);
+        background: linear-gradient(135deg, #047857, #065F46);
         color: #FFFFFF;
 
         &:hover {
@@ -132,7 +132,7 @@
       }
 
       &.btn-start-redesign {
-        background: linear-gradient(135deg, #F59E0B, #D97706);
+        background: linear-gradient(135deg, #B45309, #92400E);
         color: #FFFFFF;
 
         &:hover {
@@ -152,7 +152,7 @@
       }
 
       &.btn-approve {
-        background: linear-gradient(135deg, #059669, #047857);
+        background: linear-gradient(135deg, #047857, #065F46);
         color: #FFFFFF;
 
         &:hover {
@@ -163,18 +163,18 @@
 
       &.btn-redesign {
         background: #FEE2E2;
-        color: #DC2626;
+        color: #B91C1C;
         border: 1px solid #FECACA;
 
         &:hover {
           background: #FCA5A5;
-          color: #991B1B;
+          color: #7F1D1D;
         }
       }
 
       &.btn-delete {
         background: #FFFFFF;
-        color: #EF4444;
+        color: #DC2626;
         border: 1px solid #FCA5A5;
         padding: 0.55rem;
 
@@ -287,7 +287,6 @@
   gap: 0.85rem;
   padding: 1.10rem 1.25rem;
   background: #FFFFFF;
-  border-radius: 20px;
   border: 1.5px dashed #CBD5E1;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.30);
   transition: all 0.25s ease;
@@ -300,7 +299,7 @@
     align-items: center;
     justify-content: center;
     background: #F8FAFC;
-    color: #94A3B8;
+    color: #64748B;
     border: 1.5px solid #E2E8F0;
     flex-shrink: 0;
 
@@ -339,7 +338,7 @@
 
     .step-icon-circle {
       background: #DCFCE7;
-      color: #16A34A;
+      color: #15803D;
       border-color: #86EFAC;
     }
 
@@ -367,7 +366,7 @@
 
     .step-icon-circle {
       background: #FEE2E2;
-      color: #DC2626;
+      color: #B91C1C;
       border-color: #F87171;
     }
 
@@ -521,7 +520,7 @@
         align-items: center;
         justify-content: center;
         background: #EEF2FF;
-        color: #6366F1;
+        color: #4338CA;
         flex-shrink: 0;
 
         span {
@@ -531,7 +530,7 @@
 
       .date-icon-box {
         background: #FEF3C7;
-        color: #D97706;
+        color: #92400E;
       }
 
       .assignee-meta, .date-meta {
@@ -572,7 +571,7 @@
     height: 44px;
     border-radius: 12px;
     background: #FFE4E6;
-    color: #E11D48;
+    color: #BE123C;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -678,7 +677,7 @@
 
       .tab-badge {
         background: #FFF7ED;
-        color: #EA580C;
+        color: #C2410C;
       }
     }
   }
@@ -839,7 +838,7 @@
       border-radius: 10px;
       background: #FFFFFF;
       border: 1px solid #FED7AA;
-      color: #EA580C;
+      color: #C2410C;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -906,7 +905,7 @@
 
       &.btn-preview {
         background: #DCFCE7;
-        color: #059669;
+        color: #047857;
         border-color: #BBF7D0;
 
         &:hover {
@@ -1310,7 +1309,7 @@
 
             .file-size {
               font-size: 0.75rem;
-              color: #64748B;
+              color: #475569;
               background: #F1F5F9;
               padding: 0.15rem 0.45rem;
               border-radius: 4px;
@@ -1398,7 +1397,7 @@
     height: 60px;
     border-radius: 50%;
     background: #F1F5F9;
-    color: #94A3B8;
+    color: #475569;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1752,7 +1751,7 @@
 
         &.box-danger {
           background: #FEE2E2;
-          color: #DC2626;
+          color: #B91C1C;
         }
 
         span {
@@ -2074,7 +2073,7 @@
 
     &.btn-snippet-danger:hover {
       background: #FEE2E2;
-      color: #DC2626;
+      color: #B91C1C;
       border-color: #FECACA;
     }
   }
@@ -2106,7 +2105,7 @@
         gap: 0.5rem;
 
         .btn-lh {
-          background: rgba(255, 255, 255, 0.15);
+          background: #1E293B;
           border: none;
           color: #FFFFFF;
           width: 36px;

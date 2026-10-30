@@ -152,7 +152,7 @@ export class PackageCatalogComponent {
     if (n.includes('brand')) return 15;
     if (n.includes('video')) return 8;
     if (n.includes('content')) return 18;
-    const hash = String(pkg.id || pkg.name).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const hash = String(pkg.id || pkg.name).split('').reduce((acc, char) => acc + (char.codePointAt(0) || 0), 0);
     return (hash % 12) + 6;
   }
 
@@ -163,7 +163,7 @@ export class PackageCatalogComponent {
     if (n.includes('brand')) return 7;
     if (n.includes('video')) return 4;
     if (n.includes('content')) return 8;
-    const hash = String(pkg.id || pkg.name).split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const hash = String(pkg.id || pkg.name).split('').reduce((acc, char) => acc + (char.codePointAt(0) || 0), 0);
     return (hash % 6) + 2;
   }
 

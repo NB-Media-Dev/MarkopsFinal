@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, signal, OnChanges, SimpleChange
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Task } from '../../../../../core/models/task.model';
+import { appendBulletSnippet, handleBulletTextareaKeyDown } from '../../../../../core/utils/bullet-list.utils';
 
 @Component({
   selector: 'app-redesign-modal',
@@ -31,37 +32,11 @@ export class RedesignModalComponent implements OnChanges {
   }
 
   appendRedesignFeedback(snippet: string): void {
-    const current = this.redesignReason().trim();
-    const cleanSnippet = snippet.replace(/^[•\-\*]\s*/, '').trim();
-    const bulletText = `• ${cleanSnippet}`;
-    const newVal = current ? `${current}\n${bulletText}` : bulletText;
-    this.redesignReason.set(newVal);
+    this.redesignReason.set(appendBulletSnippet(this.redesignReason(), snippet));
   }
 
   onRedesignKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Enter') {
-      const textarea = event.target as HTMLTextAreaElement;
-      const { selectionStart, selectionEnd, value } = textarea;
-      const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
-      const currentLine = value.substring(lineStart, selectionStart);
-      if (currentLine.startsWith('• ') || currentLine.startsWith('- ')) {
-        event.preventDefault();
-        if (currentLine.trim() === '•' || currentLine.trim() === '-') {
-          const newValue = value.substring(0, lineStart) + value.substring(selectionEnd);
-          this.redesignReason.set(newValue);
-          setTimeout(() => {
-            textarea.selectionStart = textarea.selectionEnd = lineStart;
-          }, 0);
-          return;
-        }
-        const insert = '\n• ';
-        const newValue = value.substring(0, selectionStart) + insert + value.substring(selectionEnd);
-        this.redesignReason.set(newValue);
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = selectionStart + insert.length;
-        }, 0);
-      }
-    }
+    handleBulletTextareaKeyDown(event, (val) => this.redesignReason.set(val));
   }
 
   onSubmit(): void {

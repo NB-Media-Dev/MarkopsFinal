@@ -101,8 +101,12 @@ export class PerformanceComponent implements OnInit {
       });
 
       const evaluated = completed + revisionsRequired;
-      const approvalRatePct =
-        evaluated > 0 ? Math.round((completed / evaluated) * 100) : dTasks.length > 0 ? 88 : 95;
+      let approvalRatePct = 95;
+      if (evaluated > 0) {
+        approvalRatePct = Math.round((completed / evaluated) * 100);
+      } else if (dTasks.length > 0) {
+        approvalRatePct = 88;
+      }
 
       return {
         id: d.id,

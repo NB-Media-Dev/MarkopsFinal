@@ -1,9 +1,7 @@
-
-
-$ui-orange: #FF9F1C;
+$ui-orange: #C2410C;
 $ui-orange-bg: #FFF5E6;
-$ui-text-dark: #2B2D42;
-$ui-text-muted: #8D99AE;
+$ui-text-dark: #1E293B;
+$ui-text-muted: #475569;
 $ui-border-color: #E2E8F0;
 $ui-light-bg: #F8FAFC;
 
@@ -203,7 +201,7 @@ $ui-light-bg: #F8FAFC;
   }
   &.status-pill-planning {
     background-color: #FEF3C7;
-    color: #D97706;
+    color: #78350F;
   }
   &.status-pill-paused {
     background-color: #FEE2E2;
@@ -284,6 +282,6 @@ $ui-light-bg: #F8FAFC;
     border-radius: 4px;
     
     .material-symbols-outlined { font-size: 18px; }
-    &:hover { color: #EF4444; background-color: #FEF2F2; }
+    &:hover { color: #991B1B; background-color: #FEF2F2; }
   }
 }

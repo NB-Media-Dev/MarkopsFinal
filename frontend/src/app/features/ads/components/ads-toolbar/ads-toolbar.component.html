@@ -1,82 +1,11 @@
-<!-- <div class="toolbar-card">
-  <div class="search-box">
-    <span class="material-symbols-outlined search-icon">search</span>
-    <input
-      type="text"
-      [ngModel]="searchQuery"
-      (ngModelChange)="onSearch($event)"
-      placeholder="Search ad name, campaign, or platform..."
-    />
-    @if (searchQuery) {
-      <button class="clear-search-btn" (click)="onSearch('')" title="Clear Search">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    }
-  </div>
-
-  <div class="segmented-tabs">
-    <button
-      type="button"
-      class="tab-pill-btn"
-      [class.active]="filterPlatform === 'ALL'"
-      (click)="setFilter('ALL')"
-    >
-      All Platforms
-    </button>
-    <button
-      type="button"
-      class="tab-pill-btn"
-      [class.active]="filterPlatform === 'Meta'"
-      (click)="setFilter('Meta')"
-    >
-      <span class="tab-indicator-dot dot-meta"></span>
-      Meta
-    </button>
-    <button
-      type="button"
-      class="tab-pill-btn"
-      [class.active]="filterPlatform === 'Google Ads'"
-      (click)="setFilter('Google Ads')"
-    >
-      <span class="tab-indicator-dot dot-google"></span>
-      Google Ads
-    </button>
-    <button
-      type="button"
-      class="tab-pill-btn"
-      [class.active]="filterPlatform === 'Instagram'"
-      (click)="setFilter('Instagram')"
-    >
-      <span class="tab-indicator-dot dot-instagram"></span>
-      Instagram
-    </button>
-    <button
-      type="button"
-      class="tab-pill-btn"
-      [class.active]="filterPlatform === 'LinkedIn'"
-      (click)="setFilter('LinkedIn')"
-    >
-      <span class="tab-indicator-dot dot-linkedin"></span>
-      LinkedIn
-    </button>
-    <button
-      type="button"
-      class="tab-pill-btn"
-      [class.active]="filterPlatform === 'YouTube'"
-      (click)="setFilter('YouTube')"
-    >
-      <span class="tab-indicator-dot dot-youtube"></span>
-      YouTube
-    </button>
-  </div>
-</div> -->
-
 <div class="toolbar-card">
   
   <!-- LEFT: SEARCH CONTAINER (Orange border theme with custom focus states) -->
   <div class="search-box">
+    <label for="adsSearchInput" class="sr-only">Search ads</label>
     <span class="material-symbols-outlined search-icon">search</span>
     <input
+      id="adsSearchInput"
       type="text"
       [ngModel]="searchQuery"
       (ngModelChange)="onSearch($event)"

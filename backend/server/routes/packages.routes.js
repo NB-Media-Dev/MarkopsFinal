@@ -1,6 +1,6 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
+const fs = require('node:fs');
+const path = require('node:path');
 const { dbPool, dbPackagesStore } = require('../db');
 const { emitRealtimeEvent } = require('../events');
 
@@ -22,8 +22,8 @@ function saveBase64PackageImage(dataUrl, fileName = 'package_banner.png') {
     return dataUrl || null;
   }
   try {
-    const matches = dataUrl.match(/^data:([A-Za-z0-9-+\/.]+);base64,(.+)$/);
-    if (!matches || matches.length !== 3) {
+    const matches = dataUrl.match(/^data:([a-zA-Z0-9.+/-]+);base64,(.+)$/);
+    if (matches?.length !== 3) {
       return dataUrl;
     }
     const buffer = Buffer.from(matches[2], 'base64');
@@ -83,7 +83,7 @@ router.get('/packages', async (req, res) => {
     if (normalizedKey) {
       list = list.filter((p) => {
         const pNorm = normalizeProductId(p.productId);
-        return pNorm === normalizedKey || (p.productId && p.productId.toLowerCase().includes(normalizedKey.replace('pkg_', '')));
+        return pNorm === normalizedKey || Boolean(p.productId?.toLowerCase().includes(normalizedKey.replace('pkg_', '')));
       });
     }
     list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
@@ -135,6 +135,7 @@ router.get('/packages/summary', async (req, res) => {
     });
     return res.json(summary);
   } catch (err) {
+    console.error('[Packages summary Error]:', err?.message || err);
     return res.status(500).json({ error: 'Failed to fetch package summary.' });
   }
 });
@@ -172,6 +173,7 @@ router.get('/packages/:id', async (req, res) => {
     }
     return res.json(item);
   } catch (err) {
+    console.error('[Packages fetch by ID Error]:', err?.message || err);
     return res.status(500).json({ error: 'Failed to fetch package.' });
   }
 });
@@ -185,7 +187,7 @@ router.post('/packages', async (req, res) => {
 
   const { name, productId, product, imageUrl, image, price, description, status, fileName } = req.body;
 
-  if (!name || !name.trim()) {
+  if (!name?.trim()) {
     return res.status(400).json({ error: 'Package name is required.' });
   }
 
@@ -217,7 +219,7 @@ router.post('/packages', async (req, res) => {
            VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
           [targetProductId, newPackage.name, newPackage.imageUrl, newPackage.price, newPackage.description, newPackage.status, userId]
         );
-        if (insertRes && insertRes.insertId) {
+        if (insertRes?.insertId) {
           newPackage.id = insertRes.insertId;
         }
       } catch (dbErr) {
@@ -236,6 +238,83 @@ router.post('/packages', async (req, res) => {
 });
 
 
+function buildPackageDbUpdate(fields) {
+  const updates = [];
+  const params = [];
+  if (fields.name !== undefined) {
+    updates.push('name = ?');
+    params.push(fields.name.trim());
+  }
+  if (fields.targetProductId !== undefined) {
+    updates.push('product_id = ?');
+    params.push(fields.targetProductId);
+  }
+  if (fields.processedImageUrl !== undefined) {
+    updates.push('image_url = ?');
+    params.push(fields.processedImageUrl);
+  }
+  if (fields.numericPrice !== undefined) {
+    updates.push('price = ?');
+    params.push(fields.numericPrice);
+  }
+  if (fields.description !== undefined) {
+    updates.push('description = ?');
+    params.push(fields.description);
+  }
+  if (fields.status !== undefined) {
+    updates.push('status = ?');
+    params.push(fields.status);
+  }
+  return { updates, params };
+}
+
+async function updatePackageInDb(id, fields) {
+  if (!dbPool) return null;
+  try {
+    const { updates, params } = buildPackageDbUpdate(fields);
+    if (updates.length > 0) {
+      updates.push('updated_at = NOW()');
+      params.push(id);
+      await dbPool.query(`UPDATE packages SET ${updates.join(', ')} WHERE id = ?`, params);
+    }
+    const [rows] = await dbPool.query(`SELECT * FROM packages WHERE id = ?`, [id]);
+    if (Array.isArray(rows) && rows.length > 0) {
+      const r = rows[0];
+      return {
+        id: r.id,
+        productId: r.product_id,
+        name: r.name,
+        imageUrl: r.image_url,
+        price: r.price !== null ? Number(r.price) : null,
+        description: r.description,
+        status: r.status || 'ACTIVE',
+        createdBy: r.created_by,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      };
+    }
+  } catch (dbErr) {
+    console.warn('[MySQL package update fallback]:', dbErr?.message || dbErr);
+  }
+  return null;
+}
+
+function updatePackageInMemory(id, fields) {
+  const idx = dbPackagesStore.findIndex((p) => String(p.id) === String(id));
+  if (idx === -1) return null;
+  dbPackagesStore[idx] = {
+    ...dbPackagesStore[idx],
+    ...(fields.name !== undefined ? { name: fields.name.trim() } : {}),
+    ...(fields.targetProductId !== undefined ? { productId: fields.targetProductId } : {}),
+    ...(fields.processedImageUrl !== undefined ? { imageUrl: fields.processedImageUrl } : {}),
+    ...(fields.numericPrice !== undefined ? { price: fields.numericPrice } : {}),
+    ...(fields.description !== undefined ? { description: fields.description } : {}),
+    ...(fields.status !== undefined ? { status: fields.status } : {}),
+    updatedAt: new Date().toISOString(),
+  };
+  return dbPackagesStore[idx];
+}
+
 router.put('/packages/:id', async (req, res) => {
   const userRole = String(req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
   if (userRole && userRole !== 'ADMINISTRATOR' && userRole !== 'ADMIN') {
@@ -244,85 +323,22 @@ router.put('/packages/:id', async (req, res) => {
 
   const { id } = req.params;
   const { name, productId, imageUrl, image, price, description, status, fileName } = req.body;
-
   const rawImage = imageUrl || image;
-  const processedImageUrl = rawImage ? saveBase64PackageImage(rawImage, fileName || 'package_image.png') : undefined;
-  const targetProductId = productId ? normalizeProductId(productId) : undefined;
-  const numericPrice = price !== undefined && price !== null && price !== '' ? Number(price) : undefined;
+
+  const fields = {
+    name,
+    targetProductId: productId ? normalizeProductId(productId) : undefined,
+    processedImageUrl: rawImage ? saveBase64PackageImage(rawImage, fileName || 'package_image.png') : undefined,
+    numericPrice: price !== undefined && price !== null && price !== '' ? Number(price) : undefined,
+    description,
+    status,
+  };
 
   try {
-    let updatedObj = null;
-
-    if (dbPool) {
-      try {
-        const updates = [];
-        const params = [];
-
-        if (name !== undefined) {
-          updates.push('name = ?');
-          params.push(name.trim());
-        }
-        if (targetProductId !== undefined) {
-          updates.push('product_id = ?');
-          params.push(targetProductId);
-        }
-        if (processedImageUrl !== undefined) {
-          updates.push('image_url = ?');
-          params.push(processedImageUrl);
-        }
-        if (numericPrice !== undefined) {
-          updates.push('price = ?');
-          params.push(numericPrice);
-        }
-        if (description !== undefined) {
-          updates.push('description = ?');
-          params.push(description);
-        }
-        if (status !== undefined) {
-          updates.push('status = ?');
-          params.push(status);
-        }
-
-        if (updates.length > 0) {
-          updates.push('updated_at = NOW()');
-          params.push(id);
-          await dbPool.query(`UPDATE packages SET ${updates.join(', ')} WHERE id = ?`, params);
-        }
-
-        const [rows] = await dbPool.query(`SELECT * FROM packages WHERE id = ?`, [id]);
-        if (Array.isArray(rows) && rows.length > 0) {
-          const r = rows[0];
-          updatedObj = {
-            id: r.id,
-            productId: r.product_id,
-            name: r.name,
-            imageUrl: r.image_url,
-            price: r.price !== null ? Number(r.price) : null,
-            description: r.description,
-            status: r.status || 'ACTIVE',
-            createdBy: r.created_by,
-            createdAt: r.created_at,
-            updatedAt: r.updated_at,
-          };
-        }
-      } catch (dbErr) {
-        console.warn('[MySQL package update fallback]:', dbErr?.message || dbErr);
-      }
-    }
-
-    const idx = dbPackagesStore.findIndex((p) => String(p.id) === String(id));
-    if (idx !== -1) {
-      dbPackagesStore[idx] = {
-        ...dbPackagesStore[idx],
-        ...(name !== undefined ? { name: name.trim() } : {}),
-        ...(targetProductId !== undefined ? { productId: targetProductId } : {}),
-        ...(processedImageUrl !== undefined ? { imageUrl: processedImageUrl } : {}),
-        ...(numericPrice !== undefined ? { price: numericPrice } : {}),
-        ...(description !== undefined ? { description } : {}),
-        ...(status !== undefined ? { status } : {}),
-        updatedAt: new Date().toISOString(),
-      };
-      if (!updatedObj) updatedObj = dbPackagesStore[idx];
+    let updatedObj = await updatePackageInDb(id, fields);
+    const memUpdated = updatePackageInMemory(id, fields);
+    if (!updatedObj) {
+      updatedObj = memUpdated;
     }
 
     if (!updatedObj) {
@@ -336,7 +352,6 @@ router.put('/packages/:id', async (req, res) => {
     return res.status(500).json({ error: 'Failed to update package.' });
   }
 });
-
 
 router.delete('/packages/:id', async (req, res) => {
   const userRole = String(req.user?.role || req.headers['x-user-role'] || '').toUpperCase();
@@ -355,8 +370,7 @@ router.delete('/packages/:id', async (req, res) => {
       }
     }
 
-    const initialLen = dbPackagesStore.length;
-    const filtered = dbPackagesStore.filter((p) => String(p.id) !== String(id));
+        const filtered = dbPackagesStore.filter((p) => String(p.id) !== String(id));
     dbPackagesStore.length = 0;
     dbPackagesStore.push(...filtered);
 

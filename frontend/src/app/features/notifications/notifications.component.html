@@ -121,7 +121,7 @@
           <span class="material-symbols-outlined fs-14 text-muted">event</span>
           <input
             type="date"
-            class="mini-date-input"
+            id="notifCustomDate" aria-label="Filter by date" class="mini-date-input"
             [value]="customDate()"
             (change)="onCustomDateChange($event)"
           />
@@ -132,7 +132,7 @@
         <span class="material-symbols-outlined fs-16 search-icon">search</span>
         <input
           type="text"
-          class="search-input"
+          id="notifSearchInput" aria-label="Filter notifications" class="search-input"
           placeholder="Filter..."
           [value]="searchQuery()"
           (input)="onSearchChange($event)"
@@ -173,6 +173,9 @@
                 [class.unread]="!item.isRead"
                 [class]="getNotificationTypeClass(item)"
                 (click)="onNotificationClick(item)"
+                (keydown.enter)="onNotificationClick(item)"
+                (keydown.space)="onNotificationClick(item)"
+                aria-label="Notification details"
                 title="Click to open related page"
               >
 

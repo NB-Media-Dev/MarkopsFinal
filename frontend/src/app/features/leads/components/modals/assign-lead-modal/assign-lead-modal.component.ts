@@ -16,7 +16,7 @@ export class AssignLeadModalComponent {
   @Input() realUsersList: any[] = [];
 
   @Output() userSelected = new EventEmitter<string>();
-  @Output() cancel = new EventEmitter<void>();
+  @Output() cancelAssign = new EventEmitter<void>();
   @Output() confirm = new EventEmitter<void>();
 
   onUserChange(id: string) {
@@ -24,7 +24,7 @@ export class AssignLeadModalComponent {
   }
 
   onCancel() {
-    this.cancel.emit();
+    this.cancelAssign.emit();
   }
 
   onConfirm() {

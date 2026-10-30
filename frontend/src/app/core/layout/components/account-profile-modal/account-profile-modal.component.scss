@@ -84,7 +84,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #CA8A04;
+      color: #713F12;
       flex-shrink: 0;
 
       @media (max-width: 480px) {
@@ -241,7 +241,7 @@
       width: 100%;
       height: 100%;
       border-radius: 50%;
-      background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
+      background: linear-gradient(135deg, #B45309 0%, #92400E 100%);
       color: #FFFFFF;
       display: flex;
       align-items: center;
@@ -274,7 +274,7 @@
       width: 22px;
       height: 22px;
       border-radius: 50%;
-      background-color: #EAB308;
+      background-color: #854D0E;
       border: 2px solid #FFFFFF;
       color: #FFFFFF;
       display: flex;
@@ -290,7 +290,7 @@
       }
 
       &:hover {
-        background-color: #CA8A04;
+        background-color: #713F12;
         transform: scale(1.15);
       }
     }
@@ -320,7 +320,7 @@
     .summary-role-badge {
       display: inline-block;
       background-color: #FEF9C3;
-      color: #CA8A04;
+      color: #854D0E;
       font-size: 0.72rem;
       font-weight: 700;
       padding: 2px 8px;
@@ -500,7 +500,7 @@
       transition: all 0.15s ease;
 
       &:hover {
-        color: #E11D48;
+        color: #BE123C;
         background-color: #FFF1F2;
       }
     }
@@ -689,13 +689,13 @@
   &.error-alert {
     background-color: #FEF2F2;
     border: 1px solid #FECACA;
-    color: #DC2626;
+    color: #991B1B;
   }
 
   &.success-alert {
     background-color: #F0FDF4;
     border: 1px solid #BBF7D0;
-    color: #16A34A;
+    color: #166534;
   }
 }
 

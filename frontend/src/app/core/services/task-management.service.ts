@@ -44,9 +44,9 @@ export class TaskManagementService {
     if (this.isBrowser) {
       try {
         localStorage.removeItem('markops_tasks_db_store');
-      } catch {}
+      } catch (error_) { console.log('[Task Storage Notice] Skipped:', error_); }
       this.initRealtimeSocket();
-      this.initTaskData();
+      setTimeout(() => { void this.initTaskData(); }, 0);
     }
   }
 
@@ -73,54 +73,54 @@ export class TaskManagementService {
       });
 
       this.socket.on('task:assigned', (data?: any) => {
-        if (data && data.id) this.updateTaskInSignal(data);
+        if (data?.id) this.updateTaskInSignal(data);
         this.loadTasks();
         this.loadDesignerMetrics();
       });
       this.socket.on('task:created', (data?: any) => {
-        if (data && data.id) this.updateTaskInSignal(data);
+        if (data?.id) this.updateTaskInSignal(data);
         this.loadTasks();
         this.loadDesignerMetrics();
       });
       this.socket.on('task:updated', (data?: any) => {
-        if (data && data.id) this.updateTaskInSignal(data);
+        if (data?.id) this.updateTaskInSignal(data);
         this.loadTasks();
         this.loadDesignerMetrics();
       });
       this.socket.on('task:deleted', (data?: any) => {
-        if (data && data.taskId) {
+        if (data?.taskId) {
           this._tasks.update((list) => list.filter((t) => String(t.id) !== String(data.taskId)));
         }
         this.loadTasks();
         this.loadDesignerMetrics();
       });
       this.socket.on('task:status_changed', (data?: any) => {
-        if (data && data.id) this.updateTaskInSignal(data);
+        if (data?.id) this.updateTaskInSignal(data);
         this.loadTasks();
         this.loadDesignerMetrics();
       });
       this.socket.on('task:in_progress', (data?: any) => {
-        if (data && data.id) this.updateTaskInSignal(data);
+        if (data?.id) this.updateTaskInSignal(data);
         this.loadTasks();
         this.loadDesignerMetrics();
       });
       this.socket.on('task:submitted', (data?: any) => {
-        if (data && data.id) this.updateTaskInSignal(data);
+        if (data?.id) this.updateTaskInSignal(data);
         this.loadTasks();
         this.loadDesignerMetrics();
       });
       this.socket.on('task:approved', (data?: any) => {
-        if (data && data.id) this.updateTaskInSignal(data);
+        if (data?.id) this.updateTaskInSignal(data);
         this.loadTasks();
         this.loadDesignerMetrics();
       });
       this.socket.on('task:redesign_required', (data?: any) => {
-        if (data && data.id) this.updateTaskInSignal(data);
+        if (data?.id) this.updateTaskInSignal(data);
         this.loadTasks();
         this.loadDesignerMetrics();
       });
       this.socket.on('task:progress_updated', (data?: { taskId: string; progressPercent: number }) => {
-        if (data && data.taskId) {
+        if (data?.taskId) {
           const num = Number(data.progressPercent);
           this._tasks.update((list) =>
             list.map((t) => (String(t.id) === String(data.taskId) ? { ...t, progressPercent: num } : t))
@@ -145,7 +145,7 @@ export class TaskManagementService {
       if (stored === 'my' || stored === 'all') {
         return stored;
       }
-    } catch {}
+    } catch (error_) { console.log('[Task Storage Notice] Skipped:', error_); }
     return 'all';
   }
 
@@ -163,7 +163,7 @@ export class TaskManagementService {
   private deduplicateTasks(tasks: Task[]): Task[] {
     const map = new Map<string, Task>();
     for (const t of tasks) {
-      if (t && t.id) {
+      if (t?.id) {
         map.set(String(t.id), {
           ...t,
           progressPercent: computeTaskProgressPercent(t.status, t.progressPercent),
@@ -180,7 +180,7 @@ export class TaskManagementService {
       try {
         sessionStorage.setItem('markops_task_view', view);
         localStorage.setItem('markops_task_view', view);
-      } catch {}
+      } catch (error_) { console.log('[Task Storage Notice] Skipped:', error_); }
     }
     await this.fetchTasksEndpoint(`/api/tasks?view=${view}`);
   }
@@ -192,7 +192,7 @@ export class TaskManagementService {
       try {
         sessionStorage.setItem('markops_task_view', 'my');
         localStorage.setItem('markops_task_view', 'my');
-      } catch {}
+      } catch (error_) { console.log('[Task Storage Notice] Skipped:', error_); }
     }
     await this.fetchTasksEndpoint('/api/tasks?view=my');
   }
@@ -204,7 +204,7 @@ export class TaskManagementService {
       try {
         sessionStorage.setItem('markops_task_view', 'all');
         localStorage.setItem('markops_task_view', 'all');
-      } catch {}
+      } catch (error_) { console.log('[Task Storage Notice] Skipped:', error_); }
     }
     await this.fetchTasksEndpoint('/api/tasks?view=all');
   }
@@ -341,7 +341,7 @@ export class TaskManagementService {
       if (res.ok) {
         const data = await res.json();
         const updatedTask = data.task || data;
-        if (updatedTask && updatedTask.id) {
+        if (updatedTask?.id) {
           this.updateTaskInSignal(updatedTask);
           await this.loadDesignerMetrics();
           return true;
@@ -546,7 +546,7 @@ export class TaskManagementService {
   }
 
   private updateTaskInSignal(updatedTask: Task): void {
-    if (!updatedTask || !updatedTask.id) return;
+    if (!updatedTask?.id) return;
     const normalized: Task = {
       ...updatedTask,
       progressPercent: computeTaskProgressPercent(updatedTask.status, updatedTask.progressPercent),

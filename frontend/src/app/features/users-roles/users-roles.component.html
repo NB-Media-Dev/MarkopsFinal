@@ -82,8 +82,10 @@
 
   <div class="toolbar-card">
     <div class="search-box">
+      <label for="searchUsersInput" class="sr-only">Search users by name, email or department</label>
       <span class="material-symbols-outlined search-icon">search</span>
       <input
+        id="searchUsersInput"
         type="text"
         placeholder="Search users by name, email or department..."
         [value]="userSearchQuery()"
@@ -240,8 +242,18 @@
 </div>
 
 @if (isCreateUserModalOpen()) {
-  <div class="modal-backdrop" (click)="closeCreateUserModal()">
-    <div class="modal-card modal-md" (click)="$event.stopPropagation()">
+  <div
+    class="modal-backdrop"
+    (click)="$event.target === $event.currentTarget && closeCreateUserModal()"
+    (keydown.enter)="$event.target === $event.currentTarget && closeCreateUserModal()"
+    (keydown.space)="$event.target === $event.currentTarget && closeCreateUserModal()"
+    (keydown.escape)="closeCreateUserModal()"
+    aria-label="Close create user modal"
+  >
+    <div
+      class="modal-card modal-md"
+      aria-label="Create user dialog"
+    >
       <div class="modal-header">
         <div class="modal-title-wrap">
           <div class="modal-squircle-icon">
@@ -273,8 +285,9 @@
             </div>
           }
           <div class="form-group">
-            <label class="form-label">Full Name <span class="required">*</span></label>
+            <label class="form-label" for="createFullName">Full Name <span class="required">*</span></label>
             <input
+              id="createFullName"
               type="text"
               formControlName="fullName"
               placeholder="e.g. Sarah Jenkins"
@@ -286,22 +299,24 @@
             }
           </div>
           <div class="form-group">
-            <label class="form-label">Email Address <span class="required">*</span></label>
+            <label class="form-label" for="createEmail">Email Address <span class="required">*</span></label>
             <input
+              id="createEmail"
               type="email"
               formControlName="email"
               placeholder="e.g. sarah@markops.io"
               class="form-input"
-              autocomplete="new-password"
+              autocomplete="email"
             />
             @if (createFormSubmitted() && createUserForm.get('email')?.invalid) {
               <span class="field-error"> Valid email address is required. </span>
             }
           </div>
           <div class="form-group">
-            <label class="form-label">Password <span class="required">*</span></label>
+            <label class="form-label" for="createPassword">Password <span class="required">*</span></label>
             <div class="password-input-wrapper">
               <input
+                id="createPassword"
                 [type]="showCreatePassword() ? 'text' : 'password'"
                 formControlName="password"
                 placeholder="Minimum 6 characters"
@@ -313,6 +328,7 @@
                 class="eye-toggle-btn"
                 (click)="toggleCreatePasswordVisibility()"
                 title="Toggle visibility"
+                aria-label="Toggle password visibility"
               >
                 <span class="material-symbols-outlined fs-18">
                   {{ showCreatePassword() ? 'visibility_off' : 'visibility' }}
@@ -324,9 +340,9 @@
             }
           </div>
           <div class="form-group">
-            <label class="form-label">System Role <span class="required">*</span></label>
+            <label class="form-label" for="createRole">System Role <span class="required">*</span></label>
             <div class="custom-select-wrap">
-              <select formControlName="role" class="form-select">
+              <select id="createRole" formControlName="role" class="form-select">
                 @for (roleItem of systemRoles; track roleItem) {
                   <option [value]="roleItem.code">
                     {{ roleItem.label }}
@@ -337,17 +353,22 @@
             </div>
           </div>
           <div class="form-group-checkbox">
-            <label class="checkbox-label">
-              <input type="checkbox" formControlName="isActive" />
+            <label class="checkbox-label" for="createIsActive">
+              <input id="createIsActive" type="checkbox" formControlName="isActive" />
               <span>Enable active account access</span>
             </label>
           </div>
         </div>
         <div class="modal-footer">
 
-          <button type="submit" class="btn-action-primary">
-            <span class="material-symbols-outlined icon-glow">check</span>
-            <span>Create Account</span>
+          <button
+            type="button"
+            (click)="onSubmitCreateUser($event)"
+            class="btn-action-primary"
+            [disabled]="isSubmitting()"
+          >
+            <span class="material-symbols-outlined icon-glow">{{ isSubmitting() ? 'hourglass_top' : 'check' }}</span>
+            <span>{{ isSubmitting() ? 'Creating Account...' : 'Create Account' }}</span>
           </button>
         </div>
       </form>
@@ -356,8 +377,18 @@
 }
 
 @if (isEditUserModalOpen()) {
-  <div class="modal-backdrop" (click)="closeEditUserModal()">
-    <div class="modal-card modal-md" (click)="$event.stopPropagation()">
+  <div
+    class="modal-backdrop"
+    (click)="$event.target === $event.currentTarget && closeEditUserModal()"
+    (keydown.enter)="$event.target === $event.currentTarget && closeEditUserModal()"
+    (keydown.space)="$event.target === $event.currentTarget && closeEditUserModal()"
+    (keydown.escape)="closeEditUserModal()"
+    aria-label="Close edit user modal"
+  >
+    <div
+      class="modal-card modal-md"
+      aria-label="Edit user dialog"
+    >
       <div class="modal-header">
         <div class="modal-title-wrap">
           <div class="modal-squircle-icon">
@@ -383,8 +414,9 @@
         <div class="modal-body">
          
           <div class="form-group">
-            <label class="form-label">Full Name <span class="required">*</span></label>
+            <label class="form-label" for="editFullName">Full Name <span class="required">*</span></label>
             <input
+              id="editFullName"
               type="text"
               formControlName="fullName"
               placeholder="Full name"
@@ -395,8 +427,9 @@
             }
           </div>
           <div class="form-group">
-            <label class="form-label">Email Address <span class="required">*</span></label>
+            <label class="form-label" for="editEmail">Email Address <span class="required">*</span></label>
             <input
+              id="editEmail"
               type="email"
               formControlName="email"
               placeholder="Email address"
@@ -407,9 +440,10 @@
             }
           </div>
           <div class="form-group">
-            <label class="form-label">Reset Password</label>
+            <label class="form-label" for="editPassword">Reset Password</label>
             <div class="password-input-wrapper">
               <input
+                id="editPassword"
                 [type]="showEditPassword() ? 'text' : 'password'"
                 formControlName="password"
                 placeholder="Leave blank to keep current password"
@@ -420,6 +454,7 @@
                 class="eye-toggle-btn"
                 (click)="toggleEditPasswordVisibility()"
                 title="Toggle visibility"
+                aria-label="Toggle password visibility"
               >
                 <span class="material-symbols-outlined fs-18">
                   {{ showEditPassword() ? 'visibility_off' : 'visibility' }}
@@ -431,9 +466,9 @@
             }
           </div>
           <div class="form-group">
-            <label class="form-label">System Role <span class="required">*</span></label>
+            <label class="form-label" for="editRole">System Role <span class="required">*</span></label>
             <div class="custom-select-wrap">
-              <select formControlName="role" class="form-select">
+              <select id="editRole" formControlName="role" class="form-select">
                 @for (roleItem of systemRoles; track roleItem) {
                   <option [value]="roleItem.code">
                     {{ roleItem.label }}
@@ -444,8 +479,8 @@
             </div>
           </div>
           <div class="form-group-checkbox">
-            <label class="checkbox-label">
-              <input type="checkbox" formControlName="isActive" />
+            <label class="checkbox-label" for="editIsActive">
+              <input id="editIsActive" type="checkbox" formControlName="isActive" />
               <span>Enable active account access</span>
             </label>
           </div>

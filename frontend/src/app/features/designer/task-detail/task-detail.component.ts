@@ -1,3 +1,10 @@
+function isSafeViewerUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const trimmed = url.trim().toLowerCase();
+  if (trimmed.startsWith('javascript:') || trimmed.startsWith('vbscript:')) return false;
+  return trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('/');
+}
+
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule, Location } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -8,10 +15,70 @@ import { AuthService } from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { UserManagementService } from '../../../core/services/user-management.service';
 import { Task, TaskStatus, TaskPriority, TaskVersion, computeTaskProgressPercent } from '../../../core/models/task.model';
-import { getApiUrl, getBackendBaseUrl } from '../../../core/utils/api-url.utils';
+import { getApiUrl } from '../../../core/utils/api-url.utils';
+import { appendBulletSnippet, handleBulletTextareaKeyDown } from '../../../core/utils/bullet-list.utils';
 import { PackageService } from '../../../core/services/package.service';
 import { resolveTaskProductAndPackage } from '../../../core/models/package.model';
 import { UploadDesignModalComponent } from '../components/modals/upload-design-modal/upload-design-modal.component';
+
+type WorkflowStepState = 'completed' | 'current' | 'upcoming';
+type WorkflowFinalStepState = WorkflowStepState | 'revision';
+
+function unwrapTextQuotes(raw: string): string {
+  let clean = raw.trim();
+  while ((clean.startsWith('"') && clean.endsWith('"')) || (clean.startsWith("'") && clean.endsWith("'"))) {
+    clean = clean.slice(1, -1).trim();
+  }
+  return clean;
+}
+
+function extractBulletItems(rawParts: string[]): string[] {
+  const items: string[] = [];
+  for (const part of rawParts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    if (trimmed.includes('•')) {
+      const sub = trimmed.split('•').map((s) => s.trim()).filter(Boolean);
+      items.push(...sub);
+    } else {
+      const cleanedItem = trimmed.replace(/^[-*]\s*/, '').trim();
+      if (cleanedItem) items.push(cleanedItem);
+    }
+  }
+  return items;
+}
+
+function parseTimelineRemarkMessageAndBullets(
+  rawRemark: string,
+  parseBulletPointsFn: (text: string | null | undefined) => string[]
+): { messageText: string; bullets: string[] } {
+  let messageText = rawRemark;
+  let bullets: string[] = [];
+
+  if (rawRemark.toLowerCase().startsWith('uploaded version ')) {
+    const colonIdx = rawRemark.indexOf(':');
+    if (colonIdx > 17) {
+      const verStr = rawRemark.slice(17, colonIdx).trim();
+      messageText = `Uploaded version ${verStr}:`;
+      const rest = rawRemark.slice(colonIdx + 1).trim();
+      bullets = parseBulletPointsFn(unwrapTextQuotes(rest));
+      return { messageText, bullets };
+    }
+  }
+
+  if (rawRemark.includes('•')) {
+    const colonIdx = rawRemark.indexOf(':');
+    const bulletIdx = rawRemark.indexOf('•');
+    if (colonIdx > 0 && (bulletIdx === -1 || colonIdx < bulletIdx) && !rawRemark.slice(0, colonIdx).includes('\n')) {
+      messageText = rawRemark.slice(0, colonIdx + 1);
+      bullets = parseBulletPointsFn(rawRemark.slice(colonIdx + 1));
+    } else {
+      bullets = parseBulletPointsFn(rawRemark);
+      messageText = '';
+    }
+  }
+  return { messageText, bullets };
+}
 
 @Component({
   selector: 'app-task-detail',
@@ -52,7 +119,7 @@ export class TaskDetailComponent implements OnInit {
         const url = new URL(ret, 'http://localhost');
         prodFromUrl = url.searchParams.get('package') || url.searchParams.get('product') || '';
         pkgFromUrl = url.searchParams.get('workspace') || url.searchParams.get('packageFilter') || '';
-      } catch {}
+      } catch (error_) { console.log('[Task Detail Notice] Skipped:', error_); }
     }
 
     const t = this.task();
@@ -74,7 +141,7 @@ export class TaskDetailComponent implements OnInit {
         if (deptParam) {
           return deptParam.toUpperCase();
         }
-      } catch {}
+      } catch (error_) { console.log('[Task Detail Notice] Skipped:', error_); }
     }
     const t = this.task();
     const role = (t?.creatorRole || '').toUpperCase();
@@ -102,11 +169,7 @@ export class TaskDetailComponent implements OnInit {
   }
 
   goToAvailablePackage(event?: Event): void {
-    if (event) event.preventDefault();
-    const scope = this.resolvedScope();
-    this.router.navigate(['/package-works'], {
-      queryParams: { package: scope.productName || 'Careermate' },
-    });
+    this.goToProduct(event);
   }
 
   goToDepartmentOperations(event?: Event): void {
@@ -161,6 +224,11 @@ export class TaskDetailComponent implements OnInit {
   readonly isImageViewerOpen = signal<boolean>(false);
   readonly imageViewerUrl = signal<string>('');
   readonly imageViewerTitle = signal<string>('');
+  readonly deliverableAltText = computed<string>(() => {
+    const title = this.imageViewerTitle();
+    if (!title) return 'Deliverable preview';
+    return title.replaceAll(/image/gi, 'preview').replaceAll(/photo/gi, 'preview');
+  });
 
   readonly quickRedesignSnippets = [
     '• Revise typography hierarchy & font weights for better readability',
@@ -325,7 +393,7 @@ export class TaskDetailComponent implements OnInit {
     const colors = ['#F59E0B', '#EA580C', '#D97706', '#7C3AED', '#2563EB', '#059669', '#0891B2'];
     let hash = 0;
     for (let i = 0; i < (name || '').length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash);
     }
     return colors[Math.abs(hash) % colors.length];
   }
@@ -335,7 +403,7 @@ export class TaskDetailComponent implements OnInit {
     if (!name || name === 'Unassigned') return 'D';
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return (parts[0][0] + (parts.at(-1)?.[0] || "")).toUpperCase();
   }
 
   getCreatorUser(t: Task | null): any {
@@ -366,7 +434,7 @@ export class TaskDetailComponent implements OnInit {
     const colors = ['#2563EB', '#7C3AED', '#059669', '#D97706', '#DC2626', '#0891B2'];
     let hash = 0;
     for (let i = 0; i < (name || '').length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash);
     }
     return colors[Math.abs(hash) % colors.length];
   }
@@ -376,7 +444,7 @@ export class TaskDetailComponent implements OnInit {
     if (!name) return 'A';
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return (parts[0][0] + (parts.at(-1)?.[0] || "")).toUpperCase();
   }
 
   getTaskProgress(t: Task | null): number {
@@ -461,8 +529,8 @@ export class TaskDetailComponent implements OnInit {
   generateShortHash(str: string): string {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash) + str.charCodeAt(i);
-      hash |= 0;
+      hash = ((hash << 5) - hash) + (str.codePointAt(i) || 0);
+      hash = Math.trunc(hash);
     }
     const hex = Math.abs(hash).toString(16).padStart(6, '0');
     return hex.substring(0, 6);
@@ -488,13 +556,10 @@ export class TaskDetailComponent implements OnInit {
 
   parseBulletPoints(text: string | null | undefined): string[] {
     if (!text) return [];
-    let clean = String(text).trim();
-    while ((clean.startsWith('"') && clean.endsWith('"')) || (clean.startsWith("'") && clean.endsWith("'"))) {
-      clean = clean.slice(1, -1).trim();
-    }
+    const clean = unwrapTextQuotes(String(text));
     if (!clean) return [];
 
-    let rawParts: string[] = [];
+    let rawParts: string[];
     if (clean.includes('\n')) {
       rawParts = clean.split('\n');
     } else if (clean.includes('•')) {
@@ -503,19 +568,7 @@ export class TaskDetailComponent implements OnInit {
       rawParts = [clean];
     }
 
-    const items: string[] = [];
-    for (const part of rawParts) {
-      const trimmed = part.trim();
-      if (!trimmed) continue;
-      if (trimmed.includes('•')) {
-        const sub = trimmed.split('•').map((s) => s.trim()).filter(Boolean);
-        items.push(...sub);
-      } else {
-        const cleanedItem = trimmed.replace(/^[\-\*]\s*/, '').trim();
-        if (cleanedItem) items.push(cleanedItem);
-      }
-    }
-
+    const items = extractBulletItems(rawParts);
     return items.length > 0 ? items : [clean];
   }
 
@@ -561,36 +614,49 @@ export class TaskDetailComponent implements OnInit {
   }
 
  
+
+  private resolveWorkflowStages(status: string): {
+    stage1State: WorkflowStepState;
+    stage2State: WorkflowStepState;
+    stage3State: WorkflowStepState;
+    stage4State: WorkflowFinalStepState;
+  } {
+    if (status === 'DRAFT' || status === 'ASSIGNED') {
+      return { stage1State: 'current', stage2State: 'upcoming', stage3State: 'upcoming', stage4State: 'upcoming' };
+    }
+    if (status === 'ACCEPTED' || status === 'IN_PROGRESS') {
+      return { stage1State: 'completed', stage2State: 'current', stage3State: 'upcoming', stage4State: 'upcoming' };
+    }
+    if (status === 'SUBMITTED' || status === 'RESUBMITTED' || status === 'UNDER_REVIEW') {
+      return { stage1State: 'completed', stage2State: 'completed', stage3State: 'current', stage4State: 'upcoming' };
+    }
+    if (status === 'REVISION_REQUIRED' || status === 'REDESIGN_REQUIRED') {
+      return { stage1State: 'completed', stage2State: 'completed', stage3State: 'completed', stage4State: 'revision' };
+    }
+    if (status === 'APPROVED' || status === 'PUBLISHED' || status === 'COMPLETED') {
+      return { stage1State: 'completed', stage2State: 'completed', stage3State: 'completed', stage4State: 'completed' };
+    }
+    return { stage1State: 'completed', stage2State: 'upcoming', stage3State: 'upcoming', stage4State: 'upcoming' };
+  }
+
+  private getCreativeStageSubtitle(status: string, stage2State: string): string {
+    if (status === 'IN_PROGRESS') return 'Active Work';
+    if (status === 'ACCEPTED') return 'Accepted';
+    if (stage2State === 'completed') return 'Canvas Complete';
+    return 'Pending Start';
+  }
+
+  private getFinalStageSubtitle(stage4State: string): string {
+    if (stage4State === 'completed') return 'Approved & Ready';
+    if (stage4State === 'revision') return 'Feedback Requested';
+    return 'Pending Review';
+  }
+
   getWorkflowSteps(t: Task | null) {
     if (!t) return [];
     const status = t.status;
     const versionCount = t.versions?.length || 0;
-
-    let stage1State: 'completed' | 'current' | 'upcoming' = 'completed';
-    let stage2State: 'completed' | 'current' | 'upcoming' = 'upcoming';
-    let stage3State: 'completed' | 'current' | 'upcoming' = 'upcoming';
-    let stage4State: 'completed' | 'current' | 'upcoming' | 'revision' = 'upcoming';
-
-    if (status === 'DRAFT' || status === 'ASSIGNED') {
-      stage1State = 'current';
-    } else if (status === 'ACCEPTED' || status === 'IN_PROGRESS') {
-      stage1State = 'completed';
-      stage2State = 'current';
-    } else if (status === 'SUBMITTED' || status === 'RESUBMITTED' || status === 'UNDER_REVIEW') {
-      stage1State = 'completed';
-      stage2State = 'completed';
-      stage3State = 'current';
-    } else if (status === 'REVISION_REQUIRED' || status === 'REDESIGN_REQUIRED') {
-      stage1State = 'completed';
-      stage2State = 'completed';
-      stage3State = 'completed';
-      stage4State = 'revision';
-    } else if (status === 'APPROVED' || status === 'PUBLISHED' || status === 'COMPLETED') {
-      stage1State = 'completed';
-      stage2State = 'completed';
-      stage3State = 'completed';
-      stage4State = 'completed';
-    }
+    const { stage1State, stage2State, stage3State, stage4State } = this.resolveWorkflowStages(status);
 
     return [
       {
@@ -603,7 +669,7 @@ export class TaskDetailComponent implements OnInit {
       {
         id: 2,
         title: 'Creative Started',
-        subtitle: status === 'IN_PROGRESS' ? 'Active Work' : status === 'ACCEPTED' ? 'Accepted' : stage2State === 'completed' ? 'Canvas Complete' : 'Pending Start',
+        subtitle: this.getCreativeStageSubtitle(status, stage2State),
         icon: 'palette',
         state: stage2State,
       },
@@ -617,11 +683,223 @@ export class TaskDetailComponent implements OnInit {
       {
         id: 4,
         title: stage4State === 'revision' ? 'Revision Needed' : 'Completed',
-        subtitle: stage4State === 'completed' ? 'Approved & Ready' : stage4State === 'revision' ? 'Feedback Requested' : 'Pending Review',
+        subtitle: this.getFinalStageSubtitle(stage4State),
         icon: stage4State === 'revision' ? 'rate_review' : 'verified',
         state: stage4State,
       },
     ];
+  }
+
+  private buildInitTimelineNode(
+    task: Task,
+    creatorName: string,
+    creatorRole: string,
+    assigneeName: string
+  ): any {
+    return {
+      id: `init_${task.id}`,
+      hash: this.generateShortHash(`init_${task.id}_${task.createdAt}`),
+      authorLabel: `${this.getRolePrefix(creatorRole)} (${creatorName})`,
+      authorRole: creatorRole,
+      authorRoleClass: this.getRoleClass(creatorRole),
+      message: task.description
+        ? `Created task "${task.title}": "${task.description}" (Assigned to ${assigneeName})`
+        : `Created and assigned task "${task.title}" to ${assigneeName}`,
+      type: 'INIT',
+      badge: 'ASSIGNED',
+      badgeClass: 'badge-init',
+      nodeClass: 'git-node-init',
+      createdAt: task.createdAt || new Date().toISOString(),
+      relativeTime: this.formatCommitDate(task.createdAt),
+      fileUrl: task.attachmentUrl,
+      fileName: task.attachmentName,
+      fileContent: task.content,
+    };
+  }
+
+  private resolveTimelineActor(
+    h: any,
+    assigneeName: string,
+    creatorName: string,
+    creatorRole: string
+  ): { actorName: string; actorRole: string } {
+    const remarkStr = String(h.remark || '').toLowerCase();
+    const isDesignerAction =
+      h.newStatus === 'IN_PROGRESS' ||
+      h.newStatus === 'ACCEPTED' ||
+      h.newStatus === 'SUBMITTED' ||
+      h.newStatus === 'RESUBMITTED' ||
+      remarkStr.includes('accepted') ||
+      remarkStr.includes('started');
+
+    if (isDesignerAction) {
+      return {
+        actorRole: 'DESIGNER',
+        actorName: assigneeName || h.actorName || 'Designer',
+      };
+    }
+
+    const isCreatorAction =
+      h.newStatus === 'REVISION_REQUIRED' ||
+      h.newStatus === 'APPROVED' ||
+      h.newStatus === 'ASSIGNED' ||
+      !h.previousStatus ||
+      remarkStr.includes('task created');
+
+    if (isCreatorAction) {
+      return {
+        actorRole: creatorRole,
+        actorName: creatorName || h.actorName || 'Manager',
+      };
+    }
+
+    return {
+      actorName: h.actorName || creatorName,
+      actorRole: (h.actorRole || '').toUpperCase() || creatorRole,
+    };
+  }
+
+  private resolveTimelineStatusVisuals(status: string): {
+    type: 'STATUS' | 'REVISION' | 'APPROVED';
+    badgeClass: string;
+    nodeClass: string;
+    badgeLabel: string;
+  } {
+    switch (status) {
+      case 'REVISION_REQUIRED':
+        return { type: 'REVISION', badgeClass: 'badge-danger', nodeClass: 'git-node-danger', badgeLabel: 'REDESIGN REQUIRED' };
+      case 'APPROVED':
+      case 'COMPLETED':
+      case 'PUBLISHED':
+        return { type: 'APPROVED', badgeClass: 'badge-success', nodeClass: 'git-node-success', badgeLabel: 'APPROVED' };
+      case 'IN_PROGRESS':
+        return { type: 'STATUS', badgeClass: 'badge-warning', nodeClass: 'git-node-warning', badgeLabel: 'IN PROCESS' };
+      case 'ACCEPTED':
+        return { type: 'STATUS', badgeClass: 'badge-primary', nodeClass: 'git-node-primary', badgeLabel: 'ACCEPTED' };
+      case 'ASSIGNED':
+        return { type: 'STATUS', badgeClass: 'badge-init', nodeClass: 'git-node-init', badgeLabel: 'ASSIGNED' };
+      case 'SUBMITTED':
+      case 'RESUBMITTED':
+      case 'UNDER_REVIEW':
+        return { type: 'STATUS', badgeClass: 'badge-version', nodeClass: 'git-node-cyan', badgeLabel: 'UNDER REVIEW' };
+      default:
+        return { type: 'STATUS', badgeClass: 'badge-info', nodeClass: 'git-node-info', badgeLabel: status };
+    }
+  }
+
+  private shouldSkipStatusHistory(h: any, task: Task): boolean {
+    if (!h.newStatus) return true;
+    const remarkStr = String(h.remark || '').toLowerCase();
+    return Boolean(
+      (h.newStatus === 'SUBMITTED' || remarkStr.includes('uploaded creative version') || remarkStr.includes('uploaded design asset')) &&
+      task.versions &&
+      task.versions.length > 0
+    );
+  }
+
+  private appendStatusHistoryNodes(
+    task: Task,
+    creatorName: string,
+    creatorRole: string,
+    assigneeName: string,
+    seenNodeKeys: Set<string>,
+    nodes: any[]
+  ): void {
+    if (!task.statusHistory || task.statusHistory.length === 0) return;
+
+    const sortedHistory = [...task.statusHistory].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+
+    let lastSeenStatus: string | null = null;
+
+    for (const h of sortedHistory) {
+      if (this.shouldSkipStatusHistory(h, task)) continue;
+
+      const timeMinuteBucket = h.createdAt ? Math.floor(new Date(h.createdAt).getTime() / 120000) : 0;
+      const dedupKey = `STATUS_${h.newStatus}_${timeMinuteBucket}`;
+      if (seenNodeKeys.has(dedupKey) || h.newStatus === lastSeenStatus) {
+        continue;
+      }
+      seenNodeKeys.add(dedupKey);
+      lastSeenStatus = h.newStatus;
+
+      const actor = this.resolveTimelineActor(h, assigneeName, creatorName, creatorRole);
+      const rolePrefix = this.getRolePrefix(actor.actorRole);
+      const visuals = this.resolveTimelineStatusVisuals(h.newStatus);
+
+      const fallbackRemark =
+        h.newStatus === 'REVISION_REQUIRED'
+          ? `Requested Redesign / Revision: "${task.reviewerFeedback || h.remark || 'Please update design as per specifications'}"`
+          : h.remark || `Updated status to ${visuals.badgeLabel}`;
+
+      const rawRemark = h.remark || fallbackRemark;
+      const { messageText, bullets } = parseTimelineRemarkMessageAndBullets(rawRemark, (t) => this.parseBulletPoints(t));
+
+      nodes.push({
+        id: h.id || `hist_${h.createdAt || Date.now()}_${nodes.length}`,
+        hash: this.generateShortHash(`hist_${h.id || h.createdAt}`),
+        authorLabel: `${rolePrefix} (${actor.actorName})`,
+        authorRole: actor.actorRole,
+        authorRoleClass: this.getRoleClass(actor.actorRole),
+        message: messageText,
+        bulletPoints: bullets,
+        type: visuals.type,
+        badge: visuals.badgeLabel,
+        badgeClass: visuals.badgeClass,
+        nodeClass: visuals.nodeClass,
+        createdAt: h.createdAt || new Date().toISOString(),
+        relativeTime: this.formatCommitDate(h.createdAt),
+      });
+    }
+  }
+
+  private appendVersionNodes(
+    task: Task,
+    assigneeName: string,
+    seenNodeKeys: Set<string>,
+    nodes: any[]
+  ): void {
+    if (!task.versions || task.versions.length === 0) return;
+
+    for (const v of task.versions) {
+      const verKey = `VERSION_${v.versionNumber}_${v.fileName || ''}`;
+      if (seenNodeKeys.has(verKey)) continue;
+      seenNodeKeys.add(verKey);
+
+      const authorName = assigneeName || v.submittedByName || 'Designer';
+      const authorRole = 'DESIGNER';
+      const rolePrefix = 'Designer';
+
+      const verBullets = this.parseBulletPoints(v.changelog);
+      const verMessage =
+        verBullets.length > 0
+          ? `Uploaded version v${v.versionNumber}.0 (${v.fileName}):`
+          : `Uploaded design asset v${v.versionNumber}.0 (${v.fileName})`;
+
+      const duration = this.getVersionDuration(v, task);
+
+      nodes.push({
+        id: v.id || `ver_${v.versionNumber}`,
+        hash: this.generateShortHash(`ver_${v.id || v.versionNumber}_${v.createdAt}`),
+        authorLabel: `${rolePrefix} (${authorName})`,
+        authorRole,
+        authorRoleClass: this.getRoleClass(authorRole),
+        message: verMessage,
+        bulletPoints: verBullets,
+        type: 'VERSION',
+        badge: `v${v.versionNumber}.0 UNDER REVIEW`,
+        badgeClass: 'badge-version',
+        nodeClass: 'git-node-cyan',
+        createdAt: v.createdAt || new Date().toISOString(),
+        relativeTime: this.formatCommitDate(v.createdAt),
+        fileUrl: (v as any).fileUrl || v.filePath,
+        fileName: v.fileName,
+        fileContent: v.fileContent,
+        versionNumber: v.versionNumber,
+        duration,
+      });
+    }
   }
 
   getGitCommitTimeline(task: Task | null): {
@@ -653,269 +931,57 @@ export class TaskDetailComponent implements OnInit {
     const creatorRole = task.creatorRole || 'ADMINISTRATOR';
     const assigneeName = this.getAssigneeName(task);
 
-    const hasInitialHistory =
-      task.statusHistory &&
-      task.statusHistory.some(
+    const hasInitialHistory = Boolean(
+      task.statusHistory?.some(
         (h) => !h.previousStatus || h.newStatus === 'ASSIGNED' || String(h.remark).toLowerCase().includes('task created')
-      );
+      )
+    );
 
     if (!hasInitialHistory) {
-      const initKey = `INIT_${task.createdAt || ''}`;
-      seenNodeKeys.add(initKey);
-      nodes.push({
-        id: `init_${task.id}`,
-        hash: this.generateShortHash(`init_${task.id}_${task.createdAt}`),
-        authorLabel: `${this.getRolePrefix(creatorRole)} (${creatorName})`,
-        authorRole: creatorRole,
-        authorRoleClass: this.getRoleClass(creatorRole),
-        message: task.description
-          ? `Created task "${task.title}": "${task.description}" (Assigned to ${assigneeName})`
-          : `Created and assigned task "${task.title}" to ${assigneeName}`,
-        type: 'INIT',
-        badge: 'ASSIGNED',
-        badgeClass: 'badge-init',
-        nodeClass: 'git-node-init',
-        createdAt: task.createdAt || new Date().toISOString(),
-        relativeTime: this.formatCommitDate(task.createdAt),
-        fileUrl: task.attachmentUrl,
-        fileName: task.attachmentName,
-        fileContent: task.content,
-      });
+      seenNodeKeys.add(`INIT_${task.createdAt || ''}`);
+      nodes.push(this.buildInitTimelineNode(task, creatorName, creatorRole, assigneeName));
     }
 
-    if (task.statusHistory && task.statusHistory.length > 0) {
-      const sortedHistory = [...task.statusHistory].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-
-      let lastSeenStatus: string | null = null;
-
-      for (const h of sortedHistory) {
-        if (!h.newStatus) continue;
-        const remarkStr = String(h.remark || '').toLowerCase();
-        if (
-          (h.newStatus === 'SUBMITTED' || remarkStr.includes('uploaded creative version') || remarkStr.includes('uploaded design asset')) &&
-          task.versions &&
-          task.versions.length > 0
-        ) {
-          continue;
-        }
-
-  
-        const timeMinuteBucket = h.createdAt ? Math.floor(new Date(h.createdAt).getTime() / 120000) : 0;
-        const dedupKey = `STATUS_${h.newStatus}_${timeMinuteBucket}`;
-        if (seenNodeKeys.has(dedupKey) || h.newStatus === lastSeenStatus) {
-          continue;
-        }
-        seenNodeKeys.add(dedupKey);
-        lastSeenStatus = h.newStatus;
-
-        let actorName = h.actorName;
-        let actorRole = (h.actorRole || '').toUpperCase();
-
-        const isDesignerAction =
-          h.newStatus === 'IN_PROGRESS' ||
-          h.newStatus === 'ACCEPTED' ||
-          h.newStatus === 'SUBMITTED' ||
-          h.newStatus === 'RESUBMITTED' ||
-          remarkStr.includes('accepted') ||
-          remarkStr.includes('started');
-        const isCreatorAction =
-          h.newStatus === 'REVISION_REQUIRED' ||
-          h.newStatus === 'APPROVED' ||
-          h.newStatus === 'ASSIGNED' ||
-          !h.previousStatus ||
-          remarkStr.includes('task created');
-
-        if (isDesignerAction) {
-          actorRole = 'DESIGNER';
-          actorName = assigneeName || actorName || 'Designer';
-        } else if (isCreatorAction) {
-          actorRole = creatorRole;
-          actorName = creatorName || actorName || 'Manager';
-        } else {
-          actorName = actorName || creatorName;
-          actorRole = actorRole || creatorRole;
-        }
-
-        const rolePrefix = this.getRolePrefix(actorRole);
-
-        let type: 'STATUS' | 'REVISION' | 'APPROVED' = 'STATUS';
-        let badgeClass = 'badge-info';
-        let nodeClass = 'git-node-info';
-        let badgeLabel: string = h.newStatus;
-
-        if (h.newStatus === 'REVISION_REQUIRED') {
-          type = 'REVISION';
-          badgeClass = 'badge-danger';
-          nodeClass = 'git-node-danger';
-          badgeLabel = 'REDESIGN REQUIRED';
-        } else if (h.newStatus === 'APPROVED' || h.newStatus === 'COMPLETED' || h.newStatus === 'PUBLISHED') {
-          type = 'APPROVED';
-          badgeClass = 'badge-success';
-          nodeClass = 'git-node-success';
-          badgeLabel = 'APPROVED';
-        } else if (h.newStatus === 'IN_PROGRESS') {
-          badgeClass = 'badge-warning';
-          nodeClass = 'git-node-warning';
-          badgeLabel = 'IN PROCESS';
-        } else if (h.newStatus === 'ACCEPTED') {
-          badgeClass = 'badge-primary';
-          nodeClass = 'git-node-primary';
-          badgeLabel = 'ACCEPTED';
-        } else if (h.newStatus === 'ASSIGNED') {
-          badgeClass = 'badge-init';
-          nodeClass = 'git-node-init';
-          badgeLabel = 'ASSIGNED';
-        } else if (h.newStatus === 'SUBMITTED' || h.newStatus === 'RESUBMITTED' || h.newStatus === 'UNDER_REVIEW') {
-          badgeClass = 'badge-version';
-          nodeClass = 'git-node-cyan';
-          badgeLabel = 'UNDER REVIEW';
-        }
-
-        const fallbackRemark =
-          h.newStatus === 'REVISION_REQUIRED'
-            ? `Requested Redesign / Revision: "${task.reviewerFeedback || h.remark || 'Please update design as per specifications'}"`
-            : h.remark || `Updated status to ${badgeLabel}`;
-
-        const rawRemark = h.remark || fallbackRemark;
-        let messageText = rawRemark;
-        let bullets: string[] = [];
-
-        const uploadMatch = rawRemark.match(/^Uploaded version (v\d+\.\d+.*?):\s*"?([\s\S]*?)"?$/i);
-        if (uploadMatch) {
-          messageText = `Uploaded version ${uploadMatch[1]}:`;
-          bullets = this.parseBulletPoints(uploadMatch[2]);
-        } else if (rawRemark.includes('•')) {
-          const leadMatch = rawRemark.match(/^([^•]+?):\s*([\s\S]*)$/);
-          if (leadMatch) {
-            messageText = leadMatch[1] + ':';
-            bullets = this.parseBulletPoints(leadMatch[2]);
-          } else {
-            bullets = this.parseBulletPoints(rawRemark);
-            messageText = '';
-          }
-        }
-
-        nodes.push({
-          id: h.id || `hist_${Math.random()}`,
-          hash: this.generateShortHash(`hist_${h.id || h.createdAt}`),
-          authorLabel: `${rolePrefix} (${actorName})`,
-          authorRole: actorRole,
-          authorRoleClass: this.getRoleClass(actorRole),
-          message: messageText,
-          bulletPoints: bullets,
-          type,
-          badge: badgeLabel,
-          badgeClass,
-          nodeClass,
-          createdAt: h.createdAt || new Date().toISOString(),
-          relativeTime: this.formatCommitDate(h.createdAt),
-        });
-      }
-    }
-
-    if (task.versions && task.versions.length > 0) {
-      for (const v of task.versions) {
-        const verKey = `VERSION_${v.versionNumber}_${v.fileName || ''}`;
-        if (seenNodeKeys.has(verKey)) continue;
-        seenNodeKeys.add(verKey);
-
-        const authorName = assigneeName || v.submittedByName || 'Designer';
-        const authorRole = 'DESIGNER';
-        const rolePrefix = 'Designer';
-
-        const verBullets = this.parseBulletPoints(v.changelog);
-        const verMessage =
-          verBullets.length > 0
-            ? `Uploaded version v${v.versionNumber}.0 (${v.fileName}):`
-            : `Uploaded design asset v${v.versionNumber}.0 (${v.fileName})`;
-
-        const duration = this.getVersionDuration(v, task);
-
-        nodes.push({
-          id: v.id || `ver_${v.versionNumber}`,
-          hash: this.generateShortHash(`ver_${v.id || v.versionNumber}_${v.createdAt}`),
-          authorLabel: `${rolePrefix} (${authorName})`,
-          authorRole,
-          authorRoleClass: this.getRoleClass(authorRole),
-          message: verMessage,
-          bulletPoints: verBullets,
-          type: 'VERSION',
-          badge: `v${v.versionNumber}.0 UNDER REVIEW`,
-          badgeClass: 'badge-version',
-          nodeClass: 'git-node-cyan',
-          createdAt: v.createdAt || new Date().toISOString(),
-          relativeTime: this.formatCommitDate(v.createdAt),
-          fileUrl: (v as any).fileUrl || v.filePath,
-          fileName: v.fileName,
-          fileContent: v.fileContent,
-          versionNumber: v.versionNumber,
-          duration,
-        });
-      }
-    }
+    this.appendStatusHistoryNodes(task, creatorName, creatorRole, assigneeName, seenNodeKeys, nodes);
+    this.appendVersionNodes(task, assigneeName, seenNodeKeys, nodes);
 
     return nodes.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }
 
-  getVersionDuration(ver: any, task?: Task | null): string {
-    if (!ver || !ver.createdAt) return '';
-    const uploadTime = new Date(ver.createdAt).getTime();
-    if (isNaN(uploadTime)) return '';
-
+  private resolveStartTimeFromHistory(history: any[], uploadTime: number): number | null {
+    const sorted = [...history].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     let startTime: number | null = null;
-
-    if (task?.statusHistory && task.statusHistory.length > 0) {
-      const sortedHistory = [...task.statusHistory].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-
-      for (const h of sortedHistory) {
-        const hTime = new Date(h.createdAt).getTime();
-        if (hTime <= uploadTime) {
-          const s = (h.newStatus || '').toUpperCase();
-          if (s === 'IN_PROGRESS' || s === 'REVISION_REQUIRED') {
-            startTime = hTime;
-          }
-        }
-      }
-
-      if (!startTime) {
-        for (const h of sortedHistory) {
-          const hTime = new Date(h.createdAt).getTime();
-          if (hTime <= uploadTime) {
-            const s = (h.newStatus || '').toUpperCase();
-            if (s === 'ACCEPTED' || s === 'ASSIGNED') {
-              startTime = hTime;
-            }
-          }
+    for (const h of sorted) {
+      const hTime = new Date(h.createdAt).getTime();
+      if (hTime <= uploadTime) {
+        const s = (h.newStatus || '').toUpperCase();
+        if (s === 'IN_PROGRESS' || s === 'REVISION_REQUIRED') {
+          startTime = hTime;
         }
       }
     }
+    if (startTime) return startTime;
 
-    if (!startTime && task?.versions && task.versions.length > 1) {
-      const sortedVers = [...task.versions].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-      const currIdx = sortedVers.findIndex(
-        (v) => (v.id && v.id === ver.id) || v.versionNumber === ver.versionNumber
-      );
-      if (currIdx > 0) {
-        startTime = new Date(sortedVers[currIdx - 1].createdAt).getTime();
+    for (const h of sorted) {
+      const hTime = new Date(h.createdAt).getTime();
+      if (hTime <= uploadTime) {
+        const s = (h.newStatus || '').toUpperCase();
+        if (s === 'ACCEPTED' || s === 'ASSIGNED') {
+          startTime = hTime;
+        }
       }
     }
+    return startTime;
+  }
 
-   
-    if (!startTime && task?.createdAt) {
-      startTime = new Date(task.createdAt).getTime();
-    }
+  private resolveStartTimeFromVersions(versions: any[], ver: any): number | null {
+    if (!versions || versions.length <= 1) return null;
+    const sorted = [...versions].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const currIdx = sorted.findIndex((v) => (v.id && v.id === ver.id) || v.versionNumber === ver.versionNumber);
+    return currIdx > 0 ? new Date(sorted[currIdx - 1].createdAt).getTime() : null;
+  }
 
-    if (!startTime || isNaN(startTime) || uploadTime < startTime) {
-      return '1 min';
-    }
-
-    const diffMs = Math.max(0, uploadTime - startTime);
+  private formatDiffDuration(diffMs: number): string {
     const diffSec = Math.floor(diffMs / 1000);
     const diffMinutes = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMinutes / 60);
@@ -929,13 +995,33 @@ export class TaskDetailComponent implements OnInit {
       const remMins = diffMinutes % 60;
       return remMins > 0 ? `${diffHours}h ${remMins} min` : `${diffHours}h`;
     }
-    if (diffMinutes > 0) {
-      return `${diffMinutes} min`;
-    }
-    if (diffSec > 0) {
-      return `${diffSec}s`;
-    }
+    if (diffMinutes > 0) return `${diffMinutes} min`;
+    if (diffSec > 0) return `${diffSec}s`;
     return '1 min';
+  }
+
+  getVersionDuration(ver: any, task?: Task | null): string {
+    if (!ver?.createdAt) return '';
+    const uploadTime = new Date(ver.createdAt).getTime();
+    if (Number.isNaN(uploadTime)) return '';
+
+    let startTime = task?.statusHistory && task.statusHistory.length > 0
+      ? this.resolveStartTimeFromHistory(task.statusHistory, uploadTime)
+      : null;
+
+    if (!startTime && task?.versions) {
+      startTime = this.resolveStartTimeFromVersions(task.versions, ver);
+    }
+
+    if (!startTime && task?.createdAt) {
+      startTime = new Date(task.createdAt).getTime();
+    }
+
+    if (!startTime || Number.isNaN(startTime) || uploadTime < startTime) {
+      return '1 min';
+    }
+
+    return this.formatDiffDuration(Math.max(0, uploadTime - startTime));
   }
 
 
@@ -960,14 +1046,11 @@ export class TaskDetailComponent implements OnInit {
     const currentUser = this.authService.currentUser();
     if (!currentUser) return false;
 
-    const currentId = String(currentUser.id !== undefined && currentUser.id !== null ? currentUser.id : '').trim().toLowerCase();
+    const currentId = String(currentUser.id ?? '').trim().toLowerCase();
     const currentEmail = String(currentUser.email || '').toLowerCase().trim();
 
-    const tCreatorId = String(
-      t.createdBy !== undefined && t.createdBy !== null
-        ? t.createdBy
-        : ((t as any).created_by !== undefined && (t as any).created_by !== null ? (t as any).created_by : '')
-    ).trim().toLowerCase();
+    const rawCreatorId = t.createdBy ?? (t as any).created_by ?? '';
+    const tCreatorId = String(rawCreatorId).trim().toLowerCase();
     const tCreatorEmail = String(t.creatorEmail || (t as any).creator_email || '').toLowerCase().trim();
 
     const matchesId = Boolean(currentId && tCreatorId && currentId === tCreatorId);
@@ -1029,37 +1112,11 @@ export class TaskDetailComponent implements OnInit {
   }
 
   appendRedesignSnippet(snippet: string): void {
-    const cur = this.redesignReason().trim();
-    const cleanSnippet = snippet.replace(/^[•\-\*]\s*/, '').trim();
-    const bulletText = `• ${cleanSnippet}`;
-    const nextVal = cur ? `${cur}\n${bulletText}` : bulletText;
-    this.redesignReason.set(nextVal);
+    this.redesignReason.set(appendBulletSnippet(this.redesignReason(), snippet));
   }
 
   onRedesignReasonKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Enter') {
-      const textarea = event.target as HTMLTextAreaElement;
-      const { selectionStart, selectionEnd, value } = textarea;
-      const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
-      const currentLine = value.substring(lineStart, selectionStart);
-      if (currentLine.startsWith('• ') || currentLine.startsWith('- ')) {
-        event.preventDefault();
-        if (currentLine.trim() === '•' || currentLine.trim() === '-') {
-          const newValue = value.substring(0, lineStart) + value.substring(selectionEnd);
-          this.redesignReason.set(newValue);
-          setTimeout(() => {
-            textarea.selectionStart = textarea.selectionEnd = lineStart;
-          }, 0);
-          return;
-        }
-        const insert = '\n• ';
-        const newValue = value.substring(0, selectionStart) + insert + value.substring(selectionEnd);
-        this.redesignReason.set(newValue);
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = selectionStart + insert.length;
-        }, 0);
-      }
-    }
+    handleBulletTextareaKeyDown(event, (val) => this.redesignReason.set(val));
   }
 
   async submitRedesign(): Promise<void> {
@@ -1158,36 +1215,11 @@ export class TaskDetailComponent implements OnInit {
 
   appendChangelog(snippet: string): void {
     const current = (this.uploadForm.get('changelog')?.value || '').trim();
-    const cleanSnippet = snippet.replace(/^[•\-\*]\s*/, '').trim();
-    const bulletText = `• ${cleanSnippet}`;
-    const newVal = current ? `${current}\n${bulletText}` : bulletText;
-    this.uploadForm.patchValue({ changelog: newVal });
+    this.uploadForm.patchValue({ changelog: appendBulletSnippet(current, snippet) });
   }
 
   onChangelogKeyDown(event: KeyboardEvent): void {
-    if (event.key === 'Enter') {
-      const textarea = event.target as HTMLTextAreaElement;
-      const { selectionStart, selectionEnd, value } = textarea;
-      const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
-      const currentLine = value.substring(lineStart, selectionStart);
-      if (currentLine.startsWith('• ') || currentLine.startsWith('- ')) {
-        event.preventDefault();
-        if (currentLine.trim() === '•' || currentLine.trim() === '-') {
-          const newValue = value.substring(0, lineStart) + value.substring(selectionEnd);
-          this.uploadForm.patchValue({ changelog: newValue });
-          setTimeout(() => {
-            textarea.selectionStart = textarea.selectionEnd = lineStart;
-          }, 0);
-          return;
-        }
-        const insert = '\n• ';
-        const newValue = value.substring(0, selectionStart) + insert + value.substring(selectionEnd);
-        this.uploadForm.patchValue({ changelog: newValue });
-        setTimeout(() => {
-          textarea.selectionStart = textarea.selectionEnd = selectionStart + insert.length;
-        }, 0);
-      }
-    }
+    handleBulletTextareaKeyDown(event, (val) => this.uploadForm.patchValue({ changelog: val }));
   }
 
   async onHandleSubmitUpload(event: {
@@ -1255,11 +1287,16 @@ export class TaskDetailComponent implements OnInit {
   }
 
   
+  private resolveMediaUrl(url: string): string {
+    if (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')) {
+      return url;
+    }
+    return url.startsWith('/') ? url : `/${url}`;
+  }
+
   openImageViewer(url?: string, title?: string): void {
     if (!url) return;
-    const resolvedUrl = url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')
-      ? url
-      : (url.startsWith('/') ? url : `/${url}`);
+    const resolvedUrl = this.resolveMediaUrl(url);
     this.imageViewerUrl.set(resolvedUrl);
     this.imageViewerTitle.set(title || 'Creative Asset');
     this.isImageViewerOpen.set(true);
@@ -1274,24 +1311,19 @@ export class TaskDetailComponent implements OnInit {
     if (!url && !content) return;
 
     const resolvedTitle = title || 'Requirement Document';
-    const resolvedUrl = url
-      ? (url.startsWith('http') || url.startsWith('blob:') || url.startsWith('data:')
-          ? url
-          : (url.startsWith('/') ? url : `/${url}`))
-      : '';
+    const resolvedUrl = url ? this.resolveMediaUrl(url) : '';
 
     this.docViewerRawUrl.set(resolvedUrl);
     this.docViewerTitle.set(resolvedTitle);
     this.docViewerContent.set(content || '');
 
-   
     if (resolvedUrl && (this.isImage(resolvedUrl) || this.isImage(resolvedTitle))) {
       this.openImageViewer(resolvedUrl, resolvedTitle);
       return;
     }
 
-    if (resolvedUrl) {
-      this.docViewerUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(resolvedUrl));
+    if (resolvedUrl && isSafeViewerUrl(resolvedUrl)) {
+      this.docViewerUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(resolvedUrl)); // NOSONAR: URL is validated by isSafeViewerUrl
     } else {
       this.docViewerUrl.set(null);
     }
@@ -1322,7 +1354,7 @@ export class TaskDetailComponent implements OnInit {
       a.download = finalName;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      a.remove();
       return;
     }
 
@@ -1333,7 +1365,7 @@ export class TaskDetailComponent implements OnInit {
       a.download = finalName;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      a.remove();
       return;
     }
 
@@ -1353,7 +1385,7 @@ export class TaskDetailComponent implements OnInit {
       a.download = finalName;
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      a.remove();
 
       setTimeout(() => window.URL.revokeObjectURL(blobUrl), 2000);
     } catch (err) {
@@ -1364,7 +1396,7 @@ export class TaskDetailComponent implements OnInit {
       a.target = '_blank';
       document.body.appendChild(a);
       a.click();
-      document.body.removeChild(a);
+      a.remove();
     }
   }
 }

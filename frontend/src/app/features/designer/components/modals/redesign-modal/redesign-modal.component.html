@@ -1,6 +1,6 @@
 @if (isOpen) {
-  <div class="modal-backdrop redesign-modal-backdrop" (click)="onClose()">
-    <div class="modal-box redesign-modal-box" (click)="$event.stopPropagation()">
+  <div class="modal-backdrop redesign-modal-backdrop" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" aria-label="Close redesign modal">
+    <div class="modal-box redesign-modal-box" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" aria-label="Redesign dialog">
 
       <div class="modal-header redesign-modal-header">
         <div class="modal-title-group">
@@ -30,7 +30,7 @@
         </div>
 
         <div class="form-group mb-2">
-          <label class="form-label-bold mb-1">Quick Suggestions (Click to Add):</label>
+          <span class="form-label-bold mb-1">Quick Suggestions (Click to Add):</span>
           <div class="redesign-chips-wrap">
             <button
               type="button"

@@ -46,7 +46,7 @@
         color: #FFFFFF;
 
         &.icon-indigo {
-          background-color: #F59E0B;
+          background-color: #B45309;
           color: #FFFFFF;
         }
 
@@ -66,11 +66,11 @@
       .modal-sub-badge {
         font-size: 0.75rem;
         font-weight: 700;
-        background-color: #F59E0B;
+        background-color: #B45309;
         color: #FFFFFF;
         padding: 0.15rem 0.5rem;
         border-radius: 6px;
-        border: 1px solid #D97706;
+        border: 1px solid #92400E;
         margin-top: 0.2rem;
         display: inline-block;
       }
@@ -276,10 +276,10 @@
       font-size: 0.8125rem;
       font-weight: 700;
       color: #FFFFFF;
-      background-color: #F59E0B;
+      background-color: #B45309;
       border: none;
       cursor: pointer;
-      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+      box-shadow: 0 4px 12px rgba(180, 83, 9, 0.3);
       transition: all 0.18s ease;
 
       .material-symbols-outlined {

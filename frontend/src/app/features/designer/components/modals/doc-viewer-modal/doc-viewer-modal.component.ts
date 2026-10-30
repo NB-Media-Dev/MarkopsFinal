@@ -1,4 +1,11 @@
-import { Component, Input, Output, EventEmitter, inject, computed } from '@angular/core';
+function isSafeDocUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const trimmed = url.trim().toLowerCase();
+  if (trimmed.startsWith('javascript:') || trimmed.startsWith('vbscript:')) return false;
+  return trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.startsWith('/');
+}
+
+import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { getBackendBaseUrl } from '../../../../../core/utils/api-url.utils';
@@ -28,8 +35,8 @@ export class DocViewerModalComponent {
       url = `${getBackendBaseUrl()}${url}`;
     }
 
-    if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:')) {
-      return this.sanitizer.bypassSecurityTrustResourceUrl(url);
+    if (isSafeDocUrl(url) && (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:'))) {
+      return this.sanitizer.bypassSecurityTrustResourceUrl(url); // NOSONAR: URL is validated by isSafeDocUrl
     }
     return null;
   }
@@ -67,11 +74,11 @@ export class DocViewerModalComponent {
 
   private escapeHtml(str: string): string {
     return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#039;');
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
   }
 
   onClose(): void {

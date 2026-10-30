@@ -1,6 +1,6 @@
 @if (lead) {
-  <div class="modal-backdrop" (click)="onClose()">
-    <div class="modal-card lead-history-modal modal-lg" (click)="$event.stopPropagation()">
+  <div class="modal-backdrop" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" aria-label="Close modal">
+    <div class="modal-card lead-history-modal modal-lg" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" aria-label="Lead details dialog">
 
       <div class="modal-header">
         <div class="modal-title-wrap">

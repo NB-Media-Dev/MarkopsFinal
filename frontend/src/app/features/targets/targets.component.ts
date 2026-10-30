@@ -2,7 +2,7 @@ import { Component, OnInit, signal, computed, inject, Input } from '@angular/cor
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { TelecallerTargetService, TelecallerTarget, TargetProgressStatus } from '../../core/services/telecaller-target.service';
+import { TelecallerTargetService, TargetProgressStatus } from '../../core/services/telecaller-target.service';
 import { LeadTelecallingService } from '../../core/services/lead-telecalling.service';
 import { UserManagementService } from '../../core/services/user-management.service';
 import { AuthService } from '../../core/services/auth.service';
@@ -64,10 +64,10 @@ export class TargetsComponent implements OnInit {
       const todayCalls = allCalls.filter((c) => {
         const isCaller = c.telecallerId === tc.id || c.telecallerName === tc.fullName;
         const calledAt = c.calledAt ? new Date(c.calledAt) : null;
-        const isToday = calledAt &&
-          calledAt.getFullYear() === today.getFullYear() &&
-          calledAt.getMonth() === today.getMonth() &&
-          calledAt.getDate() === today.getDate();
+        const isToday =
+          calledAt?.getFullYear() === today.getFullYear() &&
+          calledAt?.getMonth() === today.getMonth() &&
+          calledAt?.getDate() === today.getDate();
         return isCaller && isToday;
       });
 
@@ -87,11 +87,8 @@ export class TargetsComponent implements OnInit {
       const interestedCompletedToday = uniqueInterestedToday.size;
 
       const callsAchievementPct = Math.min(100, Math.round((callsCompletedToday / target.dailyCallsTarget) * 100));
-      const interestedAchievementPct = target.dailyInterestedTarget === 0
-        ? 100
-        : Math.min(100, Math.round((interestedCompletedToday / target.dailyInterestedTarget) * 100));
 
-      let status: 'ACHIEVED' | 'ON_TRACK' | 'BEHIND_TARGET' | 'CRITICAL_DEFICIT' = 'BEHIND_TARGET';
+      let status: 'ACHIEVED' | 'ON_TRACK' | 'BEHIND_TARGET' | 'CRITICAL_DEFICIT';
 
       if (callsCompletedToday >= target.dailyCallsTarget) {
         status = 'ACHIEVED';
@@ -250,7 +247,7 @@ export class TargetsComponent implements OnInit {
     this.saveError.set(null);
     const item = this.editingItem();
     try {
-      if (item && item.telecallerId) {
+      if (item?.telecallerId) {
         await this.targetService.setTarget(
           item.telecallerId,
           dailyCallsTarget,

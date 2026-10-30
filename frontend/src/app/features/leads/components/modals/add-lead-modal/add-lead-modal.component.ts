@@ -41,8 +41,8 @@ export class AddLeadModalComponent {
   phoneTouched = false;
 
   isPhoneValid(phone: string): boolean {
-    if (!phone || !phone.trim()) return false;
-    const clean = phone.replace(/[\s\-\(\)\+]/g, '');
+    if (!phone?.trim()) return false;
+    const clean = phone.replace(/[\s()+-]/g, '');
     if (clean.length === 10 && /^[6-9]\d{9}$/.test(clean)) return true;
     if (clean.length === 12 && clean.startsWith('91') && /^[6-9]\d{9}$/.test(clean.substring(2))) return true;
     if (clean.length === 11 && clean.startsWith('0') && /^[6-9]\d{9}$/.test(clean.substring(1))) return true;
@@ -50,7 +50,7 @@ export class AddLeadModalComponent {
   }
 
   isEmailValid(email: string): boolean {
-    if (!email || !email.trim()) return false;
+    if (!email?.trim()) return false;
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return emailRegex.test(email.trim());
   }

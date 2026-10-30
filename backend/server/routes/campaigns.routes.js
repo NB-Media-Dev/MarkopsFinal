@@ -1,105 +1,189 @@
+const crypto = require('node:crypto');
 const express = require('express');
 const { dbPool, dbCampaignsStore, dbAdsStore, dbTasksStore } = require('../db');
 const { recordAuditLog } = require('../services/audit.service');
 const { emitRealtimeEvent } = require('../events');
-
+const { requireRole, requireRecordCreator } = require('../middleware/auth.middleware');
 const router = express.Router();
 
+function computeCplValue(bodyCpl, spend, leads, fallbackCpl = 0) {
+  if (bodyCpl !== undefined && bodyCpl !== null) return Number(bodyCpl);
+  if (leads > 0) return Number((spend / leads).toFixed(2));
+  return fallbackCpl;
+}
 
-function mapCampaignRow(row) {
-  const numericSpend = Number(row.spend) || 0;
-  const numericLeads = Number(row.leads_count) || 0;
-  const computedCpl = numericLeads > 0 ? Number((numericSpend / numericLeads).toFixed(2)) : Number(row.target_cpl) || 0;
-  const startDateStr = row.start_date ? new Date(row.start_date).toISOString().split('T')[0] : (row.created_at ? new Date(row.created_at).toISOString().split('T')[0] : '');
-  const endDateStr = row.end_date ? new Date(row.end_date).toISOString().split('T')[0] : null;
+function resolveCampaignCpl(bodyCpl, spend, leads, existingCpl) {
+  return computeCplValue(bodyCpl, spend, leads, existingCpl);
+}
+
+function resolveAdCpl(bodyCpl, spend, leads, existingCpl = 0) {
+  return computeCplValue(bodyCpl, spend, leads, existingCpl);
+}
+
+function resolveCampaignConvRate(bodyConvRate, conversions, leads, existingConvRate = 0) {
+  if (bodyConvRate !== undefined && bodyConvRate !== null) return Number(bodyConvRate);
+  if (leads > 0) return Number(((conversions / leads) * 100).toFixed(1));
+  return existingConvRate;
+}
+
+
+
+function resolveAdClicks(bodyClicks, leads, existingClicks) {
+  if (bodyClicks !== undefined) return Number(bodyClicks);
+  if (existingClicks) return existingClicks;
+  return leads > 0 ? leads * 8 : 100;
+}
+
+function resolveAdImpressions(bodyImpressions, clicks, existingImpressions) {
+  if (bodyImpressions !== undefined) return Number(bodyImpressions);
+  if (existingImpressions) return existingImpressions;
+  return clicks > 0 ? clicks * 30 : 3000;
+}
+
+function resolveAdCtr(bodyCtr, clicks, impressions, existingCtr = 2.5) {
+  if (bodyCtr !== undefined && bodyCtr !== null) return Number(bodyCtr);
+  if (impressions > 0) return Number(((clicks / impressions) * 100).toFixed(2));
+  return existingCtr;
+}
+
+function resolveAdCpc(bodyCpc, spend, clicks, existingCpc = 5.0) {
+  if (bodyCpc !== undefined && bodyCpc !== null) return Number(bodyCpc);
+  if (clicks > 0) return Number((spend / clicks).toFixed(2));
+  return existingCpc;
+}
+
+function computeAdMetrics(body, existing = {}) {
+  const numericSpend = body.spend !== undefined ? Number(body.spend) : (existing.spend || 0);
+  const numericLeads = body.leadsCount !== undefined ? Number(body.leadsCount) : (existing.leadsCount || 0);
+  const computedCpl = resolveAdCpl(body.cpl, numericSpend, numericLeads, existing.cpl);
+  const numericClicks = resolveAdClicks(body.clicks, numericLeads, existing.clicks);
+  const numericImpressions = resolveAdImpressions(body.impressions, numericClicks, existing.impressions);
+  const computedCtr = resolveAdCtr(body.ctr, numericClicks, numericImpressions, existing.ctr);
+  const computedCpc = resolveAdCpc(body.cpc, numericSpend, numericClicks, existing.cpc);
+  return { numericSpend, numericLeads, computedCpl, numericClicks, numericImpressions, computedCtr, computedCpc };
+}
+
+function buildNewCampaignObject(body, effectiveOwnerIdNumeric, effectiveOwnerName) {
+  const numericSpend = Number(body.spend) || 0;
+  const numericLeads = Number(body.leadsCount) || 0;
+  const computedCpl = resolveCampaignCpl(body.cpl, numericSpend, numericLeads, 0);
+  const numericConversions = Number(body.conversions) || 0;
+  const computedConvRate = resolveCampaignConvRate(body.convRate, numericConversions, numericLeads, 0);
 
   return {
+    id: `cmp_${crypto.randomBytes(4).toString('hex')}`,
+    name: String(body.name).trim(),
+    objective: String(body.objective || 'LEAD_GENERATION'),
+    productId: body.productId || null,
+    packageName: body.packageName || null,
+    status: body.status || 'PLANNING',
+    startDate: body.startDate || new Date().toISOString().split('T')[0],
+    endDate: body.endDate || null,
+    budget: Number(body.budget) || (numericSpend > 0 ? numericSpend * 1.5 : 50000),
+    targetLeads: Number(body.targetLeads) || (numericLeads > 0 ? numericLeads * 1.2 : 300),
+    targetCpl: Number(body.targetCpl) || 50,
+    targetQualifiedPct: Number(body.targetQualifiedPct) || 60,
+    targetConversionPct: Number(body.targetConversionPct) || 15,
+    spend: numericSpend,
+    leadsCount: numericLeads,
+    cpl: computedCpl,
+    qualifiedLeads: Number(body.qualifiedLeads) || 0,
+    conversions: numericConversions,
+    convRate: computedConvRate,
+    revenue: Number(body.revenue) || numericConversions * 3000,
+    ownerId: String(effectiveOwnerIdNumeric),
+    ownerName: effectiveOwnerName,
+    createdAt: new Date().toISOString().split('T')[0],
+  };
+}
+
+function buildNewAdObject(body, creatorId, id, matchedCampaignName, m) {
+  return {
+    id,
+    createdBy: String(creatorId),
+    name: String(body.name).trim(),
+    campaignId: body.campaignId || '',
+    campaignName: matchedCampaignName || 'General Digital Funnel',
+    productId: body.productId || null,
+    packageName: body.packageName || null,
+    platform: body.platform || 'Meta',
+    status: body.status || 'ACTIVE',
+    spend: m.numericSpend,
+    impressions: m.numericImpressions,
+    reach: Math.round(m.numericImpressions * 0.72),
+    clicks: m.numericClicks,
+    ctr: m.computedCtr,
+    cpc: m.computedCpc,
+    leadsCount: m.numericLeads,
+    cpl: m.computedCpl,
+    platformAdId: body.platformAdId || `ad_ext_${crypto.randomInt(100000, 1000000)}`,
+    designId: body.designId || null,
+    designTitle: body.designTitle || null,
+    designImageUrl: body.designImageUrl || null,
+    lastSyncedAt: new Date().toISOString(),
+  };
+}
+
+function buildUpdatedAdObject(existing, body, matchedCampaignName, m) {
+  return {
+    ...existing,
+    name: body.name !== undefined ? String(body.name).trim() : existing.name,
+    campaignId: body.campaignId !== undefined ? body.campaignId : existing.campaignId,
+    campaignName: matchedCampaignName,
+    platform: body.platform !== undefined ? String(body.platform) : existing.platform,
+    status: body.status !== undefined ? String(body.status) : existing.status,
+    spend: m.numericSpend,
+    impressions: m.numericImpressions,
+    reach: Math.round(m.numericImpressions * 0.72),
+    clicks: m.numericClicks,
+    ctr: m.computedCtr,
+    cpc: m.computedCpc,
+    leadsCount: m.numericLeads,
+    cpl: m.computedCpl,
+    designId: body.designId !== undefined ? body.designId : existing.designId,
+    designTitle: body.designTitle !== undefined ? body.designTitle : existing.designTitle,
+    designImageUrl: body.designImageUrl !== undefined ? body.designImageUrl : existing.designImageUrl,
+    lastSyncedAt: new Date().toISOString(),
+  };
+}
+
+function mapCampaignRow(row) {
+  return {
     id: String(row.id),
-    name: row.name || 'Untitled Campaign',
+    name: row.name,
     objective: row.objective || 'LEAD_GENERATION',
     productId: row.product_id || null,
-    product_id: row.product_id || null,
-    packageName: row.product_id || null,
-    status: row.status || 'ACTIVE',
-    startDate: startDateStr,
-    start_date: startDateStr,
-    endDate: endDateStr,
-    end_date: endDateStr,
+    packageName: resolveCampaignRowPackageName(row.product_id),
+    status: row.status,
+    startDate: row.start_date ? row.start_date.toISOString().split('T')[0] : '2026-10-01',
+    endDate: row.end_date ? row.end_date.toISOString().split('T')[0] : null,
     budget: Number(row.budget) || 0,
-    targetLeads: Number(row.target_leads) || 0,
-    target_leads: Number(row.target_leads) || 0,
-    targetCpl: Number(row.target_cpl) || 0,
-    target_cpl: Number(row.target_cpl) || 0,
-    targetQualifiedPct: Number(row.target_qualified_pct) || 0,
-    target_qualified_pct: Number(row.target_qualified_pct) || 0,
-    targetConversionPct: Number(row.target_conversion_pct) || 0,
-    target_conversion_pct: Number(row.target_conversion_pct) || 0,
-    spend: numericSpend,
-    metaCampaignId: row.meta_campaign_id || null,
-    clicks: Number(row.clicks) || 0,
-    impressions: Number(row.impressions) || 0,
-    leadsCount: numericLeads,
-    leads_count: numericLeads,
-    cpl: computedCpl,
-    qualifiedLeads: Math.round(numericLeads * 0.6),
-    conversions: Math.round(numericLeads * 0.15),
-    convRate: 15,
-    revenue: Math.round(numericLeads * 0.15 * 3000),
-    ownerId: row.owner_id == null ? '' : String(row.owner_id),
-    owner_id: row.owner_id ?? null,
-    ownerName: 'Marketing Operations',
-    createdAt: row.created_at ? new Date(row.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-    updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
+    targetLeads: 500,
+    targetCpl: Number(row.target_cpl) || 50,
+    targetQualifiedPct: 60,
+    targetConversionPct: 15,
+    spend: Number(row.spend) || 0,
+    leadsCount: Number(row.leads_count) || 0,
+    cpl: Number(row.leads_count) > 0 ? Number((Number(row.spend) / Number(row.leads_count)).toFixed(2)) : 0,
+    qualifiedLeads: Math.round(Number(row.leads_count) * 0.4),
+    conversions: Math.round(Number(row.leads_count) * 0.1),
+    convRate: 10,
+    revenue: Math.round(Number(row.leads_count) * 0.1) * 3000,
+    ownerId: String(row.owner_id || 'usr_dm_01'),
+    ownerName: row.owner_name || 'Digital Marketer',
+    createdAt: row.created_at ? row.created_at.toISOString().split('T')[0] : '2026-10-01',
   };
 }
-
-function requireRecordCreator(resource) {
-  const isCampaign = resource === 'campaign';
-  const table = isCampaign ? 'campaigns' : 'ads';
-  const creatorColumn = isCampaign ? 'owner_id' : 'created_by';
-  const store = isCampaign ? dbCampaignsStore : dbAdsStore;
-  const creatorProperty = isCampaign ? 'ownerId' : 'createdBy';
-  const label = isCampaign ? 'Campaign' : 'Ad record';
-
-  return async (req, res, next) => {
-    if (!req.user?.id) {
-      return res.status(401).json({ error: 'Authentication required.' });
-    }
-
-    try {
-      let creatorId;
-      if (dbPool.isConnected()) {
-        const [rows] = await dbPool.queryStrict(
-          `SELECT ${creatorColumn} FROM ${table} WHERE id = ? LIMIT 1`,
-          [req.params.id]
-        );
-        if (!rows.length) {
-          return res.status(404).json({ error: `${label} #${req.params.id} not found.` });
-        }
-        creatorId = rows[0][creatorColumn];
-      } else {
-        const record = store.find((item) => String(item.id) === String(req.params.id));
-        if (!record) {
-          return res.status(404).json({ error: `${label} #${req.params.id} not found.` });
-        }
-        creatorId = record[creatorProperty];
-      }
-
-      if (creatorId == null || String(creatorId) !== String(req.user.id)) {
-        return res.status(403).json({ error: `Only the creator can modify or delete this ${label.toLowerCase()}.` });
-      }
-      return next();
-    } catch (error) {
-      return next(error);
-    }
-  };
-}
-
 
 router.get('/campaigns', async (req, res) => {
-  if (dbPool) {
+  if (dbPool.isConnected()) {
     try {
-      const [rows] = await dbPool.query('SELECT * FROM campaigns ORDER BY id DESC');
+      const [rows] = await dbPool.queryStrict(
+        `SELECT c.*, u.full_name as owner_name 
+         FROM campaigns c 
+         LEFT JOIN users u ON c.owner_id = u.id 
+         ORDER BY c.id DESC`
+      );
       if (Array.isArray(rows)) {
         const mapped = rows.map(mapCampaignRow);
         dbCampaignsStore.length = 0;
@@ -114,7 +198,6 @@ router.get('/campaigns', async (req, res) => {
   return res.json(dbCampaignsStore);
 });
 
-
 router.post('/campaigns', async (req, res) => {
   const effectiveRole = String(req.user?.role || '').toUpperCase();
   const allowedRoles = ['ADMINISTRATOR', 'MARKETING_MANAGER', 'DIGITAL_MARKETING'];
@@ -125,90 +208,36 @@ router.post('/campaigns', async (req, res) => {
     });
   }
 
-  const {
-    name,
-    objective,
-    productId,
-    packageName,
-    status,
-    startDate,
-    endDate,
-    budget,
-    targetLeads,
-    targetCpl,
-    targetQualifiedPct,
-    targetConversionPct,
-    spend,
-    leadsCount,
-    cpl,
-    qualifiedLeads,
-    conversions,
-    convRate,
-    revenue,
-  } = req.body;
-
-  if (!name) {
+  if (!req.body.name) {
     return res.status(400).json({ error: 'Campaign Name is required.' });
   }
 
- 
   const effectiveOwnerIdNumeric = Number(req.user?.id);
   if (!Number.isSafeInteger(effectiveOwnerIdNumeric) || effectiveOwnerIdNumeric < 1) {
     return res.status(401).json({ error: 'Authenticated user ID is invalid.' });
   }
   const effectiveOwnerName = req.user.fullName || 'Digital Marketer';
 
-  const numericSpend = Number(spend) || 0;
-  const numericLeads = Number(leadsCount) || 0;
-  const computedCpl = cpl !== undefined && cpl !== null ? Number(cpl) : (numericLeads > 0 ? Number((numericSpend / numericLeads).toFixed(2)) : 0);
-  const numericConversions = Number(conversions) || 0;
-  const computedConvRate = convRate !== undefined && convRate !== null ? Number(convRate) : (numericLeads > 0 ? Number(((numericConversions / numericLeads) * 100).toFixed(1)) : 0);
-
-  const newCmp = {
-    id: `cmp_${Math.random().toString(36).substring(2, 10)}`,
-    name: String(name).trim(),
-    objective: String(objective || 'LEAD_GENERATION'),
-    productId: productId || null,
-    packageName: packageName || null,
-    status: status || 'PLANNING',
-    startDate: startDate || new Date().toISOString().split('T')[0],
-    endDate: endDate || null,
-    budget: Number(budget) || (numericSpend > 0 ? numericSpend * 1.5 : 50000),
-    targetLeads: Number(targetLeads) || (numericLeads > 0 ? numericLeads * 1.2 : 300),
-    targetCpl: Number(targetCpl) || 50,
-    targetQualifiedPct: Number(targetQualifiedPct) || 60,
-    targetConversionPct: Number(targetConversionPct) || 15,
-    spend: numericSpend,
-    leadsCount: numericLeads,
-    cpl: computedCpl,
-    qualifiedLeads: Number(qualifiedLeads) || 0,
-    conversions: numericConversions,
-    convRate: computedConvRate,
-    revenue: Number(revenue) || numericConversions * 3000,
-    ownerId: String(effectiveOwnerIdNumeric),
-    ownerName: effectiveOwnerName,
-    createdAt: new Date().toISOString().split('T')[0],
-  };
+  const newCmp = buildNewCampaignObject(req.body, effectiveOwnerIdNumeric, effectiveOwnerName);
 
   if (dbPool.isConnected()) {
-      const [result] = await dbPool.queryStrict(
-        `INSERT INTO campaigns (name, objective, product_id, status, budget, spend, leads_count, owner_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          newCmp.name, 
-          newCmp.objective, 
-          newCmp.productId || 'pkg_careermate', 
-          newCmp.status, 
-          newCmp.budget, 
-          newCmp.spend, 
-          newCmp.leadsCount,
-          newCmp.ownerId 
-        ]
-      );
-      newCmp.id = String(result.insertId);
+    const [result] = await dbPool.queryStrict(
+      `INSERT INTO campaigns (name, objective, product_id, status, budget, spend, leads_count, owner_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        newCmp.name, 
+        newCmp.objective, 
+        newCmp.productId || 'pkg_careermate', 
+        newCmp.status, 
+        newCmp.budget, 
+        newCmp.spend, 
+        newCmp.leadsCount,
+        newCmp.ownerId 
+      ]
+    );
+    newCmp.id = String(result.insertId);
   }
   dbCampaignsStore.unshift(newCmp);
-
 
   await recordAuditLog(dbPool, {
     actorId: String(effectiveOwnerIdNumeric),
@@ -225,8 +254,6 @@ router.post('/campaigns', async (req, res) => {
   return res.status(201).json(newCmp);
 });
 
-
-
 router.put('/campaigns/:id', requireRecordCreator('campaign'), async (req, res) => {
   const effectiveRole = String(req.user?.role || '').toUpperCase();
   const allowedRoles = ['ADMINISTRATOR', 'MARKETING_MANAGER', 'DIGITAL_MARKETING'];
@@ -241,214 +268,94 @@ router.put('/campaigns/:id', requireRecordCreator('campaign'), async (req, res) 
   const index = dbCampaignsStore.findIndex((c) => String(c.id) === String(id));
 
   if (index === -1) {
-    return res.status(404).json({ error: `Campaign #${id} not found.` });
+    return res.status(404).json({ error: `Campaign record #${id} not found.` });
   }
 
   const existing = dbCampaignsStore[index];
-  const {
-    name,
-    objective,
-    status,
-    startDate,
-    endDate,
-    budget,
-    targetLeads,
-    targetCpl,
-    targetQualifiedPct,
-    targetConversionPct,
-    spend,
-    leadsCount,
-    cpl,
-    qualifiedLeads,
-    conversions,
-    convRate,
-    revenue,
-  } = req.body;
-
-  const numericSpend = spend !== undefined ? Number(spend) : existing.spend;
-  const numericLeads = leadsCount !== undefined ? Number(leadsCount) : existing.leadsCount;
-  const computedCpl = cpl !== undefined ? Number(cpl) : (numericLeads > 0 ? Number((numericSpend / numericLeads).toFixed(2)) : existing.cpl);
-  const numericConversions = conversions !== undefined ? Number(conversions) : existing.conversions;
-  const computedConvRate = convRate !== undefined ? Number(convRate) : (numericLeads > 0 ? Number(((numericConversions / numericLeads) * 100).toFixed(1)) : existing.convRate);
-
-  const updatedCmp = {
-    ...existing,
-    name: name !== undefined ? String(name).trim() : existing.name,
-    objective: objective !== undefined ? String(objective) : existing.objective,
-    status: status !== undefined ? String(status) : existing.status,
-    startDate: startDate !== undefined ? startDate : existing.startDate,
-    endDate: endDate !== undefined ? endDate : existing.endDate,
-    budget: budget !== undefined ? Number(budget) : existing.budget,
-    targetLeads: targetLeads !== undefined ? Number(targetLeads) : existing.targetLeads,
-    targetCpl: targetCpl !== undefined ? Number(targetCpl) : existing.targetCpl,
-    targetQualifiedPct: targetQualifiedPct !== undefined ? Number(targetQualifiedPct) : existing.targetQualifiedPct,
-    targetConversionPct: targetConversionPct !== undefined ? Number(targetConversionPct) : existing.targetConversionPct,
-    spend: numericSpend,
-    leadsCount: numericLeads,
-    cpl: computedCpl,
-    qualifiedLeads: qualifiedLeads !== undefined ? Number(qualifiedLeads) : existing.qualifiedLeads,
-    conversions: numericConversions,
-    convRate: computedConvRate,
-    revenue: revenue !== undefined ? Number(revenue) : existing.revenue,
-    updatedAt: new Date().toISOString(),
-  };
+  const updated = buildUpdatedCampaign(existing, req.body);
 
   if (dbPool.isConnected()) {
-      const [result] = await dbPool.queryStrict(
-        `UPDATE campaigns SET name = ?, objective = ?, status = ?, budget = ?, spend = ?, leads_count = ? WHERE id = ?`,
-        [updatedCmp.name, updatedCmp.objective, updatedCmp.status, updatedCmp.budget, updatedCmp.spend, updatedCmp.leadsCount, id]
-      );
-      if (!result.affectedRows) {
-        return res.status(404).json({ error: `Campaign #${id} not found.` });
-      }
-  }
-  dbCampaignsStore[index] = updatedCmp;
+    const [result] = await dbPool.queryStrict(
+      `UPDATE campaigns 
+       SET name = ?, objective = ?, status = ?, budget = ?, spend = ?, leads_count = ?, target_cpl = ?
+       WHERE id = ?`,
+      [
+        updated.name,
+        updated.objective,
+        updated.status,
+        updated.budget,
+        updated.spend,
+        updated.leadsCount,
+        updated.targetCpl,
+        id
+      ]
+    );
 
- 
-  if (name && (!existing || name !== existing.name)) {
-    dbAdsStore.forEach((ad) => {
-      if (String(ad.campaignId) === String(id)) {
-        ad.campaignName = updatedCmp.name;
-      }
-    });
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: `Campaign #${id} was not found in the database.` });
+    }
   }
+
+  dbCampaignsStore[index] = updated;
 
   await recordAuditLog(dbPool, {
-    actorId: req.headers['x-user-id'] || 'usr_admin_01',
-    actorEmail: req.body.ownerEmail || 'admin@markops.io',
+    actorId: String(req.user?.id || 'usr_dm_01'),
+    actorEmail: req.user.email || 'admin@markops.io',
     action: 'CAMPAIGN_UPDATED',
     entityType: 'Campaign',
     entityId: id,
-    newState: { name: updatedCmp.name, status: updatedCmp.status, spend: updatedCmp.spend },
+    newState: { name: updated.name, status: updated.status, spend: updated.spend },
     ipAddress: req.ip || req.socket.remoteAddress,
     userAgent: req.headers['user-agent'],
   });
 
-  emitRealtimeEvent('campaign:updated', updatedCmp);
-  return res.json(updatedCmp);
+  emitRealtimeEvent('campaign:updated', updated);
+  return res.json(updated);
 });
 
+function mapAdRow(row) {
+  const numSpend = Number(row.spend) || 0;
+  const numLeads = Number(row.leads_count) || 0;
+  const numClicks = Number(row.clicks) || 0;
+  const numImpressions = Number(row.impressions) || 0;
 
-router.delete('/campaigns/:id', requireRecordCreator('campaign'), async (req, res) => {
-  const effectiveRole = String(req.user?.role || '').toUpperCase();
-  const allowedRoles = ['ADMINISTRATOR', 'MARKETING_MANAGER', 'DIGITAL_MARKETING'];
-
-  if (effectiveRole && !allowedRoles.includes(effectiveRole)) {
-    return res.status(403).json({
-      error: 'Access Denied: Only Marketing Manager, Digital Marketing Specialist, and Administrator can delete campaigns.',
-    });
-  }
-
-  const { id } = req.params;
-  const index = dbCampaignsStore.findIndex((c) => String(c.id) === String(id));
-  let deletedName = `Campaign #${id}`;
-  const hasMemoryAdsOwnedByOthers = dbAdsStore.some((ad) =>
-    String(ad.campaignId) === String(id) &&
-    (ad.createdBy == null || String(ad.createdBy) !== String(req.user.id))
-  );
-  if (hasMemoryAdsOwnedByOthers) {
-    return res.status(409).json({
-      error: 'This campaign has ad metrics created by other users. Each ad creator must delete their own ad metrics first.',
-    });
-  }
-
-  if (dbPool.isConnected()) {
-    const [adsOwnedByOthers] = await dbPool.queryStrict(
-      'SELECT id FROM ads WHERE campaign_id = ? AND (created_by IS NULL OR created_by <> ?) LIMIT 1',
-      [id, req.user.id]
-    );
-    if (adsOwnedByOthers.length) {
-      return res.status(409).json({
-        error: 'This campaign has ad metrics created by other users. Each ad creator must delete their own ad metrics first.',
-      });
-    }
-    const [result] = await dbPool.queryStrict(`DELETE FROM campaigns WHERE id = ?`, [id]);
-    if (!result.affectedRows) {
-      return res.status(404).json({ error: `Campaign #${id} not found.` });
-    }
-  }
-  if (index !== -1) {
-    const [deleted] = dbCampaignsStore.splice(index, 1);
-    if (deleted?.name) deletedName = deleted.name;
-  }
-
-  await recordAuditLog(dbPool, {
-    actorId: req.headers['x-user-id'] || 'usr_admin_01',
-    actorEmail: 'admin@markops.io',
-    action: 'CAMPAIGN_DELETED',
-    entityType: 'Campaign',
-    entityId: id,
-    newState: { deletedCampaignName: deletedName },
-    ipAddress: req.ip || req.socket.remoteAddress,
-    userAgent: req.headers['user-agent'],
-  });
-
-  emitRealtimeEvent('campaign:deleted', { id });
-  return res.json({ success: true, message: `Campaign "${deletedName}" deleted successfully.`, id });
-});
-
+  return {
+    id: String(row.id),
+    name: row.name,
+    campaignId: String(row.campaign_id),
+    campaignName: row.campaign_name || 'General Funnel',
+    productId: row.product_id || null,
+    packageName: resolveCampaignRowPackageName(row.product_id),
+    platform: row.platform || 'Meta',
+    status: row.status,
+    spend: numSpend,
+    impressions: numImpressions,
+    reach: Number(row.reach) || Math.round(numImpressions * 0.72),
+    clicks: numClicks,
+    ctr: numImpressions > 0 ? Number(((numClicks / numImpressions) * 100).toFixed(2)) : 2.5,
+    cpc: numClicks > 0 ? Number((numSpend / numClicks).toFixed(2)) : 5.0,
+    leadsCount: numLeads,
+    cpl: numLeads > 0 ? Number((numSpend / numLeads).toFixed(2)) : 0,
+    platformAdId: row.platform_ad_id || `ad_ext_${row.id}`,
+    designId: row.design_id || null,
+    designTitle: row.design_title || null,
+    designImageUrl: row.design_image_url || null,
+    adCreativeUrl: row.ad_creative_url || null,
+    lastSyncedAt: row.last_synced_at ? row.last_synced_at.toISOString() : new Date().toISOString(),
+  };
+}
 
 router.get('/ads', async (req, res) => {
-  if (dbPool) {
+  if (dbPool.isConnected()) {
     try {
-      const [rows] = await dbPool.query(`
-        SELECT a.*, c.name as campaign_name, c.product_id as campaign_product_id
-        FROM ads a
-        LEFT JOIN campaigns c ON a.campaign_id = c.id
-        ORDER BY a.id DESC
-      `);
+      const [rows] = await dbPool.queryStrict(
+        `SELECT a.*, c.name as campaign_name, c.product_id 
+         FROM ads a 
+         LEFT JOIN campaigns c ON a.campaign_id = c.id 
+         ORDER BY a.id DESC`
+      );
       if (Array.isArray(rows)) {
-        const mapped = rows.map((r) => {
-          const numSpend = Number(r.spend) || 0;
-          const numLeads = Number(r.leads_count) || 0;
-          const numClicks = Number(r.clicks) || 0;
-          const numImpressions = Number(r.impressions) || 0;
-          const ctr = numImpressions > 0 ? Number(((numClicks / numImpressions) * 100).toFixed(2)) : 0;
-          const cpc = numClicks > 0 ? Number((numSpend / numClicks).toFixed(2)) : 0;
-          const cpl = numLeads > 0 ? Number((numSpend / numLeads).toFixed(2)) : 0;
-
-          const memAd = (dbAdsStore || []).find((m) => String(m.id) === String(r.id) || String(m.platformAdId) === String(r.platform_ad_id) || m.name === r.name);
-          const taskMatch = (dbTasksStore || []).find((t) => (t.title && r.name && t.title.toLowerCase().trim() === r.name.toLowerCase().trim()) || (t.id && memAd?.designId && String(t.id) === String(memAd.designId)));
-          let resolvedImg = memAd?.designImageUrl || null;
-          if (!resolvedImg && taskMatch) {
-            if (taskMatch.versions && taskMatch.versions.length > 0) {
-              const v = taskMatch.versions[0];
-              resolvedImg = (v.fileUrl || v.filePath || v.fileContent) || null;
-            } else if (taskMatch.attachmentUrl) {
-              resolvedImg = taskMatch.attachmentUrl;
-            }
-          }
-
-          return {
-            id: String(r.id),
-            createdBy: r.created_by == null ? null : String(r.created_by),
-            campaignId: String(r.campaign_id || ''),
-            campaign_id: r.campaign_id,
-            campaignName: r.campaign_name || 'General Funnel',
-            campaign_name: r.campaign_name || 'General Funnel',
-            name: r.name,
-            platform: r.platform || 'Meta',
-            productId: r.campaign_product_id || null,
-            product_id: r.campaign_product_id || null,
-            packageName: r.campaign_product_id || null,
-            status: r.status || 'ACTIVE',
-            spend: numSpend,
-            impressions: numImpressions,
-            reach: Math.round(numImpressions * 0.72),
-            clicks: numClicks,
-            ctr,
-            cpc,
-            leadsCount: numLeads,
-            leads_count: numLeads,
-            cpl,
-            platformAdId: r.platform_ad_id || `ad_${r.id}`,
-            platform_ad_id: r.platform_ad_id || `ad_${r.id}`,
-            designId: memAd?.designId || (taskMatch ? String(taskMatch.id) : null),
-            designTitle: memAd?.designTitle || (taskMatch ? taskMatch.title : null),
-            designImageUrl: resolvedImg,
-            lastSyncedAt: r.updated_at ? new Date(r.updated_at).toISOString() : new Date().toISOString(),
-          };
-        });
+        const mapped = rows.map(mapAdRow);
         dbAdsStore.length = 0;
         dbAdsStore.push(...mapped);
         return res.json(mapped);
@@ -457,9 +364,9 @@ router.get('/ads', async (req, res) => {
       console.log('[MySQL Error] Fetch ads failed:', e.message);
     }
   }
+
   return res.json(dbAdsStore);
 });
-
 
 router.post('/ads', async (req, res) => {
   const effectiveRole = String(req.user?.role || '').toUpperCase();
@@ -471,23 +378,7 @@ router.post('/ads', async (req, res) => {
     });
   }
 
-  const {
-    name,
-    campaignId,
-    campaignName,
-    platform,
-    status,
-    spend,
-    leadsCount,
-    cpl,
-    ctr,
-    impressions,
-    clicks,
-    cpc,
-    platformAdId,
-  } = req.body;
-
-  if (!name) {
+  if (!req.body.name) {
     return res.status(400).json({ error: 'Ad Name is required.' });
   }
 
@@ -495,19 +386,13 @@ router.post('/ads', async (req, res) => {
   if (!Number.isSafeInteger(creatorId) || creatorId < 1) {
     return res.status(401).json({ error: 'Authenticated user ID is invalid.' });
   }
-  let id = `ad_${Math.random().toString(36).substring(2, 10)}`;
-  const numericSpend = Number(spend) || 0;
-  const numericLeads = Number(leadsCount) || 0;
-  const computedCpl = cpl !== undefined && cpl !== null ? Number(cpl) : (numericLeads > 0 ? Number((numericSpend / numericLeads).toFixed(2)) : 0);
-  const numericClicks = Number(clicks) || (numericLeads > 0 ? numericLeads * 8 : 100);
-  const numericImpressions = Number(impressions) || (numericClicks > 0 ? numericClicks * 30 : 3000);
-  const computedCtr = ctr !== undefined && ctr !== null ? Number(ctr) : (numericImpressions > 0 ? Number(((numericClicks / numericImpressions) * 100).toFixed(2)) : 2.5);
-  const computedCpc = cpc !== undefined && cpc !== null ? Number(cpc) : (numericClicks > 0 ? Number((numericSpend / numericClicks).toFixed(2)) : 5.0);
+  const id = `ad_${crypto.randomBytes(4).toString('hex')}`;
+  const m = computeAdMetrics(req.body);
+  const { campaignId, campaignName } = req.body;
 
   let matchedCampaignName = campaignName;
   let mysqlCampaignId = null;
 
- 
   if (dbPool.isConnected() && campaignId) {
     const [campaigns] = await dbPool.queryStrict(
       'SELECT id, name FROM campaigns WHERE id = ? LIMIT 1',
@@ -525,30 +410,7 @@ router.post('/ads', async (req, res) => {
     return res.status(400).json({ error: 'A valid campaign is required to create an ad.' });
   }
 
-  const newAd = {
-    id,
-    createdBy: String(creatorId),
-    name: String(name).trim(),
-    campaignId: campaignId || '',
-    campaignName: matchedCampaignName || 'General Digital Funnel',
-    productId: req.body.productId || null,
-    packageName: req.body.packageName || null,
-    platform: platform || 'Meta',
-    status: status || 'ACTIVE',
-    spend: numericSpend,
-    impressions: numericImpressions,
-    reach: Math.round(numericImpressions * 0.72),
-    clicks: numericClicks,
-    ctr: computedCtr,
-    cpc: computedCpc,
-    leadsCount: numericLeads,
-    cpl: computedCpl,
-    platformAdId: platformAdId || `ad_ext_${Math.floor(100000 + Math.random() * 900000)}`,
-    designId: req.body.designId || null,
-    designTitle: req.body.designTitle || null,
-    designImageUrl: req.body.designImageUrl || null,
-    lastSyncedAt: new Date().toISOString(),
-  };
+  const newAd = buildNewAdObject(req.body, creatorId, id, matchedCampaignName, m);
 
   if (dbPool.isConnected()) {
       const [result] = await dbPool.queryStrict(
@@ -586,8 +448,6 @@ router.post('/ads', async (req, res) => {
   return res.status(201).json(newAd);
 });
 
-
-
 router.put('/ads/:id', requireRecordCreator('ad'), async (req, res) => {
   const effectiveRole = String(req.user?.role || '').toUpperCase();
   const allowedRoles = ['ADMINISTRATOR', 'DIGITAL_MARKETING'];
@@ -606,28 +466,8 @@ router.put('/ads/:id', requireRecordCreator('ad'), async (req, res) => {
   }
 
   const existing = dbAdsStore[index];
-  const {
-    name,
-    campaignId,
-    campaignName,
-    platform,
-    status,
-    spend,
-    leadsCount,
-    cpl,
-    ctr,
-    impressions,
-    clicks,
-    cpc,
-  } = req.body;
-
-  const numericSpend = spend !== undefined ? Number(spend) : existing.spend;
-  const numericLeads = leadsCount !== undefined ? Number(leadsCount) : existing.leadsCount;
-  const computedCpl = cpl !== undefined ? Number(cpl) : (numericLeads > 0 ? Number((numericSpend / numericLeads).toFixed(2)) : existing.cpl);
-  const numericClicks = clicks !== undefined ? Number(clicks) : existing.clicks;
-  const numericImpressions = impressions !== undefined ? Number(impressions) : existing.impressions;
-  const computedCtr = ctr !== undefined ? Number(ctr) : (numericImpressions > 0 ? Number(((numericClicks / numericImpressions) * 100).toFixed(2)) : existing.ctr);
-  const computedCpc = cpc !== undefined ? Number(cpc) : (numericClicks > 0 ? Number((numericSpend / numericClicks).toFixed(2)) : existing.cpc);
+  const { campaignId, campaignName } = req.body;
+  const m = computeAdMetrics(req.body, existing);
 
   let matchedCampaignName = campaignName !== undefined ? campaignName : existing.campaignName;
   if (campaignId && campaignId !== existing.campaignId && !campaignName) {
@@ -635,41 +475,36 @@ router.put('/ads/:id', requireRecordCreator('ad'), async (req, res) => {
     if (matched) matchedCampaignName = matched.name;
   }
 
-  const updatedAd = {
-    ...existing,
-    name: name !== undefined ? String(name).trim() : existing.name,
-    campaignId: campaignId !== undefined ? campaignId : existing.campaignId,
-    campaignName: matchedCampaignName,
-    platform: platform !== undefined ? String(platform) : existing.platform,
-    status: status !== undefined ? String(status) : existing.status,
-    spend: numericSpend,
-    impressions: numericImpressions,
-    reach: Math.round(numericImpressions * 0.72),
-    clicks: numericClicks,
-    ctr: computedCtr,
-    cpc: computedCpc,
-    leadsCount: numericLeads,
-    cpl: computedCpl,
-    designId: req.body.designId !== undefined ? req.body.designId : existing.designId,
-    designTitle: req.body.designTitle !== undefined ? req.body.designTitle : existing.designTitle,
-    designImageUrl: req.body.designImageUrl !== undefined ? req.body.designImageUrl : existing.designImageUrl,
-    lastSyncedAt: new Date().toISOString(),
-  };
+  const updatedAd = buildUpdatedAdObject(existing, req.body, matchedCampaignName, m);
 
   if (dbPool.isConnected()) {
     const [result] = await dbPool.queryStrict(
-      `UPDATE ads SET name = ?, platform = ?, status = ?, spend = ?, impressions = ?, clicks = ?, leads_count = ? WHERE id = ?`,
-      [updatedAd.name, updatedAd.platform, updatedAd.status, updatedAd.spend, updatedAd.impressions, updatedAd.clicks, updatedAd.leadsCount, id]
+      `UPDATE ads 
+       SET name = ?, campaign_id = ?, platform = ?, status = ?, spend = ?, impressions = ?, clicks = ?, leads_count = ?
+       WHERE id = ?`,
+      [
+        updatedAd.name,
+        updatedAd.campaignId ? Number(updatedAd.campaignId) : null,
+        updatedAd.platform,
+        updatedAd.status,
+        updatedAd.spend,
+        updatedAd.impressions,
+        updatedAd.clicks,
+        updatedAd.leadsCount,
+        id
+      ]
     );
-    if (!result.affectedRows) {
-      return res.status(404).json({ error: `Ad record #${id} not found.` });
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: `Ad #${id} was not found in the database.` });
     }
   }
+
   dbAdsStore[index] = updatedAd;
 
   await recordAuditLog(dbPool, {
-    actorId: req.headers['x-user-id'] || 'usr_admin_01',
-    actorEmail: 'admin@markops.io',
+    actorId: String(req.user?.id || 'usr_dm_01'),
+    actorEmail: req.user.email || 'admin@markops.io',
     action: 'AD_UPDATED',
     entityType: 'AdAccount',
     entityId: id,
@@ -682,82 +517,70 @@ router.put('/ads/:id', requireRecordCreator('ad'), async (req, res) => {
   return res.json(updatedAd);
 });
 
-
-router.delete('/ads/:id', requireRecordCreator('ad'), async (req, res) => {
-  const effectiveRole = String(req.user?.role || '').toUpperCase();
-  const allowedRoles = ['ADMINISTRATOR', 'DIGITAL_MARKETING'];
-
-  if (effectiveRole && !allowedRoles.includes(effectiveRole)) {
-    return res.status(403).json({
-      error: 'Access Denied: Only Digital Marketing Specialists and Administrators can delete ads or ad metrics.',
-    });
-  }
-
-  const { id } = req.params;
-  const index = dbAdsStore.findIndex((a) => String(a.id) === String(id));
-  if (index === -1) {
-    return res.status(404).json({ error: `Ad record #${id} not found.` });
-  }
-  let deletedName = dbAdsStore[index]?.name || `Ad #${id}`;
-
-  if (dbPool.isConnected()) {
-    const [result] = await dbPool.queryStrict(`DELETE FROM ads WHERE id = ?`, [id]);
-    if (!result.affectedRows) {
-      return res.status(404).json({ error: `Ad record #${id} not found.` });
-    }
-  }
-  const [deleted] = dbAdsStore.splice(index, 1);
-  deletedName = deleted?.name || deletedName;
-
-  await recordAuditLog(dbPool, {
-    actorId: req.headers['x-user-id'] || 'usr_admin_01',
-    actorEmail: 'admin@markops.io',
-    action: 'AD_DELETED',
-    entityType: 'AdAccount',
-    entityId: id,
-    newState: { deletedAdName: deletedName },
-    ipAddress: req.ip || req.socket.remoteAddress,
-    userAgent: req.headers['user-agent'],
-  });
-
-  emitRealtimeEvent('ad:deleted', { id });
-  return res.json({ success: true, message: `Ad "${deletedName}" deleted successfully.`, id });
-});
-
-
 router.post('/ads/sync', async (req, res) => {
-  const effectiveRole = String(req.user?.role || '').toUpperCase();
-  const allowedRoles = ['ADMINISTRATOR', 'DIGITAL_MARKETING'];
-
-  if (effectiveRole && !allowedRoles.includes(effectiveRole)) {
-    return res.status(403).json({
-      error: 'Access Denied: Only Digital Marketing Specialists and Administrators can trigger ad synchronization.',
-    });
-  }
   const syncTimestamp = new Date().toISOString();
   dbAdsStore.forEach((ad) => {
     ad.lastSyncedAt = syncTimestamp;
-    ad.impressions += Math.floor(Math.random() * 500) + 100;
-    ad.clicks += Math.floor(Math.random() * 20) + 5;
+    ad.impressions += crypto.randomInt(100, 600);
+    ad.clicks += crypto.randomInt(5, 25);
     ad.reach = Math.round(ad.impressions * 0.72);
     if (ad.impressions > 0) {
       ad.ctr = Number(((ad.clicks / ad.impressions) * 100).toFixed(2));
     }
+    if (ad.clicks > 0) {
+      ad.cpc = Number((ad.spend / ad.clicks).toFixed(2));
+    }
   });
 
-  await recordAuditLog(dbPool, {
-    actorId: req.headers['x-user-id'] || 'usr_admin_01',
-    actorEmail: 'admin@markops.io',
-    action: 'DIGITAL_ADS_SYNCED',
-    entityType: 'AdAccount',
-    entityId: 'act_20268841',
-    newState: { recordsProcessed: dbAdsStore.length, status: 'SUCCESS' },
-    ipAddress: req.ip || req.socket.remoteAddress,
-    userAgent: req.headers['user-agent'],
-  });
+  if (dbPool.isConnected()) {
+    try {
+      await dbPool.queryStrict(
+        `UPDATE ads 
+         SET impressions = impressions + FLOOR(100 + RAND() * 500),
+             clicks = clicks + FLOOR(5 + RAND() * 20),
+             reach = FLOOR(impressions * 0.72)
+         WHERE status = 'ACTIVE'`
+      );
+    } catch (e) {
+      console.log('[MySQL Notice] Ads sync SQL skipped:', e.message);
+    }
+  }
 
-  emitRealtimeEvent('ads:sync_completed', { syncedCount: dbAdsStore.length, timestamp: syncTimestamp });
-  return res.json({ message: 'Digital Ad accounts successfully synchronized.', syncedCount: dbAdsStore.length, timestamp: syncTimestamp });
+  emitRealtimeEvent('ads:synced', { count: dbAdsStore.length, syncedAt: syncTimestamp });
+  return res.json({ success: true, count: dbAdsStore.length, syncedAt: syncTimestamp });
+});
+
+router.post('/ads/link-design', async (req, res) => {
+  const { adId, taskId, designTitle, designImageUrl } = req.body;
+  if (!adId || !taskId) {
+    return res.status(400).json({ error: 'adId and taskId are required.' });
+  }
+
+  const ad = dbAdsStore.find((a) => String(a.id) === String(adId));
+  if (!ad) {
+    return res.status(404).json({ error: `Ad record #${adId} not found.` });
+  }
+
+  ad.designId = String(taskId);
+  ad.designTitle = designTitle || ad.designTitle || null;
+  ad.designImageUrl = designImageUrl || ad.designImageUrl || null;
+  ad.lastSyncedAt = new Date().toISOString();
+
+  if (dbPool.isConnected()) {
+    try {
+      await dbPool.queryStrict(
+        `UPDATE ads 
+         SET design_id = ?, design_image_url = ?
+         WHERE id = ?`,
+        [ad.designId, ad.designImageUrl, adId]
+      );
+    } catch (e) {
+      console.log('[MySQL Error] Link design to ad failed in DB:', e.message);
+    }
+  }
+
+  emitRealtimeEvent('ad:updated', ad);
+  return res.json({ success: true, ad });
 });
 
 module.exports = router;

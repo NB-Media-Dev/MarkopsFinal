@@ -43,17 +43,17 @@
     &:hover:not(.active) {
       background: #FFF5E6;
       border-color: transparent;
-      color: #FF9F1C;
+      color: #C2410C;
       transform: none;
 
       .subtab-icon {
-        color: #FF9F1C;
+        color: #C2410C;
       }
     }
 
     &.active {
-      background: #FF9F1C;
-      border-color: #FF9F1C;
+      background: #C2410C;
+      border-color: #C2410C;
       color: #FFFFFF !important;
       box-shadow: none;
       font-weight: 700;
@@ -106,7 +106,7 @@
         height: 36px;
         border-radius: 8px;
         background: #FFF5E6;
-        color: #FF9F1C;
+        color: #C2410C;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -140,14 +140,14 @@
         background: #FFF5E6;
         padding: 0.3rem 0.75rem;
         border-radius: 999px;
-        color: #E28704;
+        color: #C2410C;
         border: 1px solid rgba(255, 159, 28, 0.25);
         display: inline-flex;
         align-items: center;
         gap: 0.35rem;
 
         strong {
-          color: #E28704;
+          color: #C2410C;
         }
       }
     }
@@ -166,10 +166,10 @@
 
     thead tr, th {
       background-color: #FFF5E6 !important;
-      color: #E28704 !important;
+      color: #C2410C !important;
       font-weight: 700 !important;
       font-size: 0.725rem !important;
-      letter-spacing: 0.05em !important;
+      letter-spacing: 0.12em;
       text-transform: uppercase !important;
       padding: 0.75rem 1.25rem !important;
       border-bottom: 1px solid rgba(255, 159, 28, 0.2) !important;
@@ -214,7 +214,7 @@
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
   background: #FFF5E6;
-  color: #E28704;
+  color: #C2410C;
   border: 1px solid rgba(255, 159, 28, 0.25);
   font-size: 0.75rem;
   font-weight: 700;
@@ -235,7 +235,7 @@
       height: 44px;
       border-radius: 12px;
       background: #FFF5E6;
-      color: #FF9F1C;
+      color: #C2410C;
       border: 1px solid rgba(255, 159, 28, 0.2);
       display: flex;
       align-items: center;
@@ -399,12 +399,12 @@
     font-weight: 600;
 
     .task-link-icon {
-      color: #FF9F1C;
+      color: #C2410C;
     }
 
     &:hover {
       text-decoration: underline;
-      color: #E28704;
+      color: #C2410C;
     }
   }
 
@@ -464,7 +464,7 @@
   border-radius: 8px;
   border: 1px solid rgba(255, 159, 28, 0.4);
   background: #FFFBF5;
-  color: #E28704;
+  color: #C2410C;
   font-size: 0.75rem;
   font-weight: 700;
   cursor: pointer;
@@ -479,8 +479,8 @@
   }
 
   &:hover {
-    background: #FF9F1C;
-    border-color: #FF9F1C;
+    background: #C2410C;
+    border-color: #C2410C;
     color: #FFFFFF;
     transform: translateY(-1px);
     box-shadow: 0 2px 6px rgba(255, 159, 28, 0.25);
@@ -496,7 +496,7 @@
   height: 28px;
   border-radius: 50%;
   background: #FFF5E6;
-  color: #E28704;
+  color: #C2410C;
   border: 1px solid rgba(255, 159, 28, 0.3);
   font-size: 0.72rem;
   font-weight: 800;
@@ -613,7 +613,7 @@
         font-size: 0.72rem;
         font-weight: 700;
         background: #F1F5F9;
-        color: #64748B;
+        color: #475569;
         padding: 0.1rem 0.4rem;
         border-radius: 999px;
         transition: all 0.18s ease;
@@ -631,7 +631,7 @@
         color: #FFFFFF;
 
         .chip-count {
-          background: rgba(255, 255, 255, 0.2);
+          background-color: #334155;
           color: #FFFFFF;
         }
       }
@@ -769,7 +769,7 @@
       border-radius: 999px;
       background: #FFF1F2;
       border: 1px solid #FFE4E6;
-      color: #E11D48;
+      color: #BE123C;
       font-size: 0.7rem;
       font-weight: 700;
       transition: all 0.18s ease;
@@ -1498,7 +1498,7 @@
           border-radius: 999px;
           background: #FFF1F2;
           border: 1px solid #FFE4E6;
-          color: #E11D48;
+          color: #BE123C;
           font-size: 0.7rem;
           font-weight: 700;
           transition: all 0.18s ease;
@@ -1740,10 +1740,10 @@
           &.pill-calls {
             background: #DCFCE7;
             border: 1px solid #BBF7D0;
-            color: #16A34A;
+            color: #15803D;
 
             .icon-calls {
-              color: #16A34A;
+              color: #15803D;
             }
           }
 
@@ -2047,7 +2047,7 @@
               color: #0F172A;
               line-height: 1.25;
               white-space: normal;
-              word-break: break-word;
+              overflow-wrap: break-word;
             }
             .lead-campaign-text {
               display: inline-block;
@@ -2584,7 +2584,7 @@
               &.badge-platform-youtube {
                 background: #FFF1F2;
                 border: 1px solid #FFE4E6;
-                color: #E11D48;
+                color: #BE123C;
               }
               &.badge-platform-default {
                 background: #F8FAFC;
@@ -2741,17 +2741,17 @@
 
   &.priority-high, &.priority-urgent {
     background: #FEE2E2;
-    color: #DC2626;
+    color: #B91C1C;
   }
 
   &.priority-medium {
     background: #FEF3C7;
-    color: #D97706;
+    color: #92400E;
   }
 
   &.priority-low {
     background: #E0F2FE;
-    color: #0284C7;
+    color: #0369A1;
   }
 }
 
@@ -2832,25 +2832,25 @@
 
         &.icon-orange {
           background: #FFEDD5;
-          color: #EA580C;
+          color: #C2410C;
           border: 1px solid #FED7AA;
         }
 
         &.icon-blue {
           background: #E0F2FE;
-          color: #0284C7;
+          color: #0369A1;
           border: 1px solid #BAE6FD;
         }
 
         &.icon-purple {
           background: #F3E8FF;
-          color: #7C3AED;
+          color: #6D28D9;
           border: 1px solid #E9D5FF;
         }
 
         &.icon-green {
           background: #DCFCE7;
-          color: #10B981;
+          color: #15803D;
           border: 1px solid #BBF7D0;
         }
       }

@@ -45,7 +45,7 @@
         height: 40px;
         border-radius: 10px;
         background: #FFF5E6;
-        color: #FF9F1C;
+        color: #B45309;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -53,7 +53,7 @@
 
         .material-symbols-outlined {
           font-size: 22px;
-          color: #FF9F1C;
+          color: #B45309;
         }
       }
 
@@ -118,7 +118,7 @@
         height: 36px;
         border-radius: 10px;
         background: #FFF5E6;
-        color: #E28704;
+        color: #B45309;
         font-size: 0.8rem;
         font-weight: 800;
         display: flex;
@@ -166,12 +166,12 @@
             }
 
             &.campaign-chip {
-              color: #0284C7;
+              color: #0369A1;
               background: #F0F9FF;
               border-color: #BAE6FD;
 
               .fs-13 {
-                color: #0284C7;
+                color: #0369A1;
               }
             }
           }
@@ -252,9 +252,9 @@
     background: #F8FAFC;
 
     .btn-action-primary {
-      background-color: #FF9F1C;
+      background-color: #C2410C;
       color: #FFFFFF;
-      border: 1px solid #FF9F1C;
+      border: 1px solid #C2410C;
       border-radius: 999px;
       padding: 0.55rem 1.35rem;
       font-size: 0.8125rem;

@@ -1,3 +1,50 @@
+const LEAD_PUNCT_CHARS = new Set(['<', '(', '[', '{', '"', "'", '>', ']', '}', ')', '.', ',', ';', ':']);
+function stringifyCellValue(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return `${value}`;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return '';
+    }
+  }
+  return '';
+}
+
+
+function resolveUploadErrorMessage(error: unknown): string {
+  if (error instanceof HttpErrorResponse) {
+    return error.error?.error || error.message;
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'Unable to upload leads.';
+}
+
+function extractLeadEmail(text: string): string {
+  if (!text?.includes('@')) return '';
+  const tokens = text.split(/\s+/);
+  for (const token of tokens) {
+    let clean = token.trim();
+    while (clean.length > 0 && LEAD_PUNCT_CHARS.has(clean[0])) {
+      clean = clean.slice(1);
+    }
+    while (clean.length > 0 && LEAD_PUNCT_CHARS.has(clean.at(-1) || '')) {
+      clean = clean.slice(0, -1);
+    }
+    const atIdx = clean.indexOf('@');
+    const lastDot = clean.lastIndexOf('.');
+    if (atIdx > 0 && lastDot > atIdx + 1 && lastDot < clean.length - 1) {
+      return clean;
+    }
+  }
+  return '';
+}
+
 import { Component, inject, OnInit, signal, computed, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -10,7 +57,7 @@ import { CampaignService } from '../../core/services/campaign.service';
 import * as XLSX from '@e965/xlsx';
 import { firstValueFrom } from 'rxjs';
 import { isLeadAssignedToUser } from '../telecalling/telecalling.component';
-import { FIXED_PACKAGES, isItemForPackage, resolveProductContext } from '../../core/models/package.model';
+import { isItemForPackage, resolveProductContext } from '../../core/models/package.model';
 import { PackageService } from '../../core/services/package.service';
 import { LeadsToolbarComponent } from './components/leads-toolbar/leads-toolbar.component';
 import { LeadsTableComponent } from './components/leads-table/leads-table.component';
@@ -217,8 +264,8 @@ export class LeadsComponent implements OnInit {
   });
 
   isPhoneValid(phone: string): boolean {
-    if (!phone || !phone.trim()) return false;
-    const clean = phone.replace(/[\s\-\(\)\+]/g, '');
+    if (!phone?.trim()) return false;
+    const clean = phone.replace(/[\s()+-]/g, '');
     if (clean.length === 10 && /^[6-9]\d{9}$/.test(clean)) return true;
     if (clean.length === 12 && clean.startsWith('91') && /^[6-9]\d{9}$/.test(clean.substring(2))) return true;
     if (clean.length === 11 && clean.startsWith('0') && /^[6-9]\d{9}$/.test(clean.substring(1))) return true;
@@ -226,7 +273,7 @@ export class LeadsComponent implements OnInit {
   }
 
   isEmailValid(email: string): boolean {
-    if (!email || !email.trim()) return false;
+    if (!email?.trim()) return false;
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     return emailRegex.test(email.trim());
   }
@@ -297,6 +344,74 @@ export class LeadsComponent implements OnInit {
     this.packageService.loadPackages().subscribe();
   }
 
+  private parseSingleLeadRow(row: Record<string, unknown>, index: number): Partial<LeadItem> {
+  const fields = new Map<string, string>(
+    Object.entries(row).map(([header, value]) => [
+      header.trim().toLowerCase().replace(/[\s_-]+/g, ''),
+      stringifyCellValue(value),
+    ])
+  );
+  const get = (...names: string[]): string => {
+    for (const name of names) {
+      const value = fields.get(name);
+      if (value) return value;
+    }
+    return '';
+  };
+  const fullName = get('leadname', 'fullname', 'name');
+  const splitName = fullName.split(/\s+/).filter(Boolean);
+  const firstName = get('firstname') || splitName.shift() || '';
+  const lastName = get('lastname') || splitName.join(' ');
+  const contactInfo = get('contactinfo', 'contact');
+  const contactEmail = extractLeadEmail(contactInfo);
+  const contactPhone = contactInfo
+    .replace(contactEmail, '')
+    .replace(/(?:phone|mobile|tel)\s*[:=-]?\s*/i, '')
+    .trim();
+  const phone = get('phone', 'phonenumber', 'mobile', 'mobilenumber', 'contactnumber') || contactPhone;
+  const email = get('email', 'emailaddress') || contactEmail;
+
+  if (!firstName || !phone) {
+    throw new Error(`Row ${index + 2}: name and phone number are required.`);
+  }
+
+  return {
+    firstName,
+    lastName,
+    email,
+    phone,
+    source: get('source', 'leadsource') || 'Excel Upload',
+    campaignName: get('campaign', 'campaignname') || undefined,
+  };
+}
+
+private parseWorkbookRowsToLeads(rows: Record<string, unknown>[]): Partial<LeadItem>[] {
+  const validRows = rows.filter((row) =>
+    Object.values(row).some((value) => stringifyCellValue(value) !== '')
+  );
+  return validRows.map((row, index) => this.parseSingleLeadRow(row, index));
+}
+
+private assignCampaignsToImportedLeads(
+  leads: Partial<LeadItem>[],
+  campaigns: any[],
+  defaultCampaignName: string,
+  defaultCampaignId: string
+): void {
+  for (const lead of leads) {
+    const rowCampaignName = lead.campaignName?.trim();
+    if (rowCampaignName) {
+      const matched = campaigns.find(
+        (available) => available.name.toLowerCase() === rowCampaignName.toLowerCase()
+      );
+      if (matched) lead.campaignId = matched.id;
+    } else {
+      lead.campaignName = defaultCampaignName;
+      lead.campaignId = defaultCampaignId;
+    }
+  }
+}
+
   async onLeadsFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -326,74 +441,26 @@ export class LeadsComponent implements OnInit {
         defval: '',
         raw: false,
       });
-      const leads: Partial<LeadItem>[] = (rows as Record<string, unknown>[])
-        .filter((row: Record<string, unknown>) => Object.values(row).some((value) => String(value ?? '').trim() !== ''))
-        .map((row: Record<string, unknown>, index: number) => {
-          const fields = new Map<string, string>(
-            Object.entries(row).map(([header, value]) => [
-              header.trim().toLowerCase().replace(/[\s_-]+/g, ''),
-              String(value ?? '').trim(),
-            ])
-          );
-          const get = (...names: string[]): string => {
-            for (const name of names) {
-              const value = fields.get(name);
-              if (value) return value;
-            }
-            return '';
-          };
-          const fullName = get('leadname', 'fullname', 'name');
-          const splitName = fullName.split(/\s+/).filter(Boolean);
-          const firstName = get('firstname') || splitName.shift() || '';
-          const lastName = get('lastname') || splitName.join(' ');
-          const contactInfo = get('contactinfo', 'contact');
-          const contactEmail = contactInfo.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || '';
-          const contactPhone = contactInfo
-            .replace(contactEmail, '')
-            .replace(/(?:phone|mobile|tel)\s*[:=-]?\s*/i, '')
-            .trim();
-          const phone = get('phone', 'phonenumber', 'mobile', 'mobilenumber', 'contactnumber') || contactPhone;
-          const email = get('email', 'emailaddress') || contactEmail;
 
-          if (!firstName || !phone) {
-            throw new Error(`Row ${index + 2}: name and phone number are required.`);
-          }
-
-          return {
-            firstName,
-            lastName,
-            email,
-            phone,
-            source: get('source', 'leadsource') || 'Excel Upload',
-            campaignName: get('campaign', 'campaignname') || undefined,
-          };
-        });
-
+      const leads = this.parseWorkbookRowsToLeads(rows);
       if (leads.length === 0) {
         throw new Error('The spreadsheet contains no lead rows. Include a name and phone number for each lead.');
       }
 
       const user = this.authService.currentUser();
       if (!user) throw new Error('Your user session could not be verified. Please sign in again.');
+
       const campaigns = this.availableCampaigns();
       const campaign = campaigns[0];
-      const campaignName = this.packageFilterSignal()?.trim() || campaign?.name || 'Excel Lead Upload';
-      for (const lead of leads) {
-        const rowCampaignName = lead.campaignName?.trim();
-        if (rowCampaignName) {
-          const matchedCampaign = campaigns.find(
-            (available) => available.name.toLowerCase() === rowCampaignName.toLowerCase()
-          );
-          if (matchedCampaign) lead.campaignId = matchedCampaign.id;
-        } else {
-          lead.campaignName = campaignName;
-          lead.campaignId = campaign?.id || 'cmp_default';
-        }
-      }
+      const defaultCampaignId = campaign?.id || 'cmp_default';
+      const defaultCampaignName = this.packageFilterSignal()?.trim() || campaign?.name || 'Excel Lead Upload';
+
+      this.assignCampaignsToImportedLeads(leads, campaigns, defaultCampaignName, defaultCampaignId);
+
       const response = await firstValueFrom(this.leadService.importLeadBatch({
         leads,
-        campaignId: campaign?.id || 'cmp_default',
-        campaignName,
+        campaignId: defaultCampaignId,
+        campaignName: defaultCampaignName,
         source: 'Excel Upload',
         creatorId: user.id,
         creatorEmail: user.email,
@@ -406,14 +473,12 @@ export class LeadsComponent implements OnInit {
         .filter((item) => item.count > 0)
         .map((item) => `${item.fullName}: ${item.count}`)
         .join(', ');
+      const distSuffix = distribution ? ` (${distribution})` : '';
       this.leadUploadStatus.set(
-        `Uploaded ${response.totalUploaded} leads and assigned them across ${response.telecallersCount} active telecallers${distribution ? ` (${distribution})` : ''}.`
+        `Uploaded ${response.totalUploaded} leads and assigned them across ${response.telecallersCount} active telecallers${distSuffix}.`
       );
     } catch (error) {
-      const message = error instanceof HttpErrorResponse
-        ? error.error?.error || error.message
-        : error instanceof Error ? error.message : 'Unable to upload leads.';
-      this.leadUploadError.set(message);
+      this.leadUploadError.set(resolveUploadErrorMessage(error));
     } finally {
       this.isUploadingLeads.set(false);
     }
@@ -501,7 +566,7 @@ export class LeadsComponent implements OnInit {
     const pkgName = pkg || resolved.productName;
     const prodName = resolved.productName;
 
-    const payload: Partial<LeadItem> & any = {
+    const payload: Partial<LeadItem> & Record<string, unknown> = {
       firstName: this.newFirstName.trim(),
       lastName: this.newLastName.trim(),
       email: this.newEmail.trim(),
@@ -605,7 +670,7 @@ export class LeadsComponent implements OnInit {
     const prod = this.productFilterSignal()?.trim();
     const dbPkgs = this.packageService.packages();
 
-    if (user && user.role === 'TELECALLER') {
+    if (user?.role === 'TELECALLER') {
       list = list.filter((l) => isLeadAssignedToUser(l, user));
     }
 
@@ -648,7 +713,7 @@ export class LeadsComponent implements OnInit {
         const campaign = String(l.campaignName || (l as any).campaign_name || '').toLowerCase();
         const source = String(l.source || '').toLowerCase();
         const assignee = String(l.assigneeName || (l as any).assignee_name || '').toLowerCase();
-        const status = String(l.status || '').toLowerCase().replace(/_/g, ' ');
+        const status = String(l.status || '').toLowerCase().replaceAll('_', ' ');
 
         return (
           name.includes(query) ||
@@ -770,8 +835,8 @@ export class LeadsComponent implements OnInit {
   }
 
   setPage(page: number | string): void {
-    const p = typeof page === 'number' ? page : parseInt(page, 10);
-    if (!isNaN(p) && p >= 1 && p <= this.totalPages()) {
+    const p = typeof page === 'number' ? page : Number.parseInt(page, 10);
+    if (!Number.isNaN(p) && p >= 1 && p <= this.totalPages()) {
       this.currentPage.set(p);
     }
   }
@@ -788,7 +853,7 @@ export class LeadsComponent implements OnInit {
     }
   }
 
-  setPageSize(size: number | any): void {
+  setPageSize(size: number | string): void {
     const s = Number(size) || 10;
     this.pageSize.set(s);
     this.currentPage.set(1);
@@ -866,16 +931,13 @@ export class LeadsComponent implements OnInit {
     if (!lead) return false;
     const user = this.authService.currentUser();
     if (!user) return false;
-    const userId = String(user.id !== undefined && user.id !== null ? user.id : '').trim().toLowerCase();
+    const userId = String(user.id ?? '').trim().toLowerCase();
     const userEmail = String(user.email || '').toLowerCase().trim();
     const userName = String(user.fullName || '').toLowerCase().trim();
 
     const rawLead = lead as any;
-    const leadCreatorId = String(
-      rawLead.creatorId !== undefined && rawLead.creatorId !== null
-        ? rawLead.creatorId
-        : (rawLead.creator_id !== undefined && rawLead.creator_id !== null ? rawLead.creator_id : '')
-    ).trim().toLowerCase();
+    const rawLeadCreatorId = rawLead.creatorId ?? rawLead.creator_id ?? '';
+    const leadCreatorId = String(rawLeadCreatorId).trim().toLowerCase();
     const leadCreatorEmail = String(rawLead.creatorEmail || rawLead.creator_email || '').toLowerCase().trim();
     const leadCreatorName = String(rawLead.creatorName || rawLead.creator_name || '').toLowerCase().trim();
 
@@ -976,7 +1038,12 @@ export class LeadsComponent implements OnInit {
     this.editLeadError.set(null);
 
     const tc = this.activeTelecallers().find((u) => String(u.id) === String(this.editAssignedTo));
-    const assigneeName = tc ? tc.fullName : (this.editAssignedTo ? 'Telecaller' : 'Unassigned');
+    let assigneeName = 'Unassigned';
+    if (tc) {
+      assigneeName = tc.fullName;
+    } else if (this.editAssignedTo) {
+      assigneeName = 'Telecaller';
+    }
 
     this.leadService.updateLead(lead.id, {
       firstName: this.editFirstName.trim(),

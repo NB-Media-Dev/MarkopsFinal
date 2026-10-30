@@ -47,7 +47,7 @@ export class AuthService {
 
   constructor() {
     if (this.isBrowser) {
-      this.initAuth();
+      setTimeout(() => { void this.initAuth(); }, 0);
     } else {
   
       this._currentUser.set(DEMO_ACCOUNTS['ADMINISTRATOR'].user);
@@ -72,12 +72,73 @@ export class AuthService {
     if (this._isInitialized()) {
       return this.isAuthenticated();
     }
-    if (this.initPromise) {
+    if (this.initPromise !== null) {
       return this.initPromise;
     }
     return this.initAuth();
   }
 
+
+    private loadStoredUser(token: string): User | null {
+    let cachedUser: User | null = null;
+    try {
+      const userJson = localStorage.getItem('markops_user');
+      if (userJson) {
+        cachedUser = JSON.parse(userJson);
+      }
+    } catch (error_) { console.log('[Auth Storage Notice] Skipped:', error_); }
+
+    cachedUser ??= this.parseUserFromJwt(token);
+    return cachedUser;
+  }
+
+  private buildLiveUser(dataUser: any, cachedUser: User | null): User {
+    return {
+      id: String(dataUser.id ?? cachedUser?.id ?? '1'),
+      email: dataUser.email ?? cachedUser?.email ?? 'admin@markops.io',
+      fullName: dataUser.fullName ?? cachedUser?.fullName ?? 'System Administrator',
+      role: dataUser.role ?? cachedUser?.role ?? 'ADMINISTRATOR',
+      department: dataUser.department ?? cachedUser?.department ?? 'Operations',
+      isActive: dataUser.isActive !== false,
+      avatarUrl: dataUser.avatarUrl ?? cachedUser?.avatarUrl,
+    };
+  }
+
+  private applyVerifiedUser(liveUser: User, token: string): void {
+    this._currentUser.set(liveUser);
+    this._accessToken.set(token);
+    localStorage.setItem('markops_token', token);
+    localStorage.setItem('markops_user', JSON.stringify(liveUser));
+    this.setCookie('markops_token', token, 7);
+    this._isInitialized.set(true);
+  }
+
+  private async verifyRemoteSession(token: string, cachedUser: User | null): Promise<boolean | null> {
+    try {
+      const res = await safeFetch('/api/auth/me', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.user) {
+          const liveUser = this.buildLiveUser(data.user, cachedUser);
+          this.applyVerifiedUser(liveUser, token);
+          return true;
+        }
+      } else if (res.status === 401 || res.status === 403) {
+        this.clearSession();
+        this._isInitialized.set(true);
+        return false;
+      }
+    } catch (apiErr) {
+      console.log('[Auth] Backend /me verification offline notice, relying on local session:', apiErr);
+    }
+    return null;
+  }
 
   private async initAuth(): Promise<boolean> {
     if (!this.isBrowser) {
@@ -85,14 +146,13 @@ export class AuthService {
       return true;
     }
 
-    if (this.initPromise) {
+    if (this.initPromise !== null) {
       return this.initPromise;
     }
 
     this.initPromise = (async () => {
       try {
         const token = getAuthToken();
-
         if (!token) {
           this._currentUser.set(null);
           this._accessToken.set(null);
@@ -101,63 +161,16 @@ export class AuthService {
         }
 
         this._accessToken.set(token);
-
-        let cachedUser: User | null = null;
-        try {
-          const userJson = localStorage.getItem('markops_user');
-          if (userJson) {
-            cachedUser = JSON.parse(userJson);
-          }
-        } catch {}
-
-        if (!cachedUser) {
-          cachedUser = this.parseUserFromJwt(token);
-        }
-
+        const cachedUser = this.loadStoredUser(token);
         if (cachedUser) {
           this._currentUser.set(cachedUser);
         }
 
-        try {
-          const res = await safeFetch('/api/auth/me', {
-            method: 'GET',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            },
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-            if (data.user) {
-              const liveUser: User = {
-                id: String(data.user.id || (cachedUser ? cachedUser.id : '1')),
-                email: data.user.email || (cachedUser ? cachedUser.email : 'admin@markops.io'),
-                fullName: data.user.fullName || (cachedUser ? cachedUser.fullName : 'System Administrator'),
-                role: data.user.role || (cachedUser ? cachedUser.role : 'ADMINISTRATOR'),
-                department: data.user.department || (cachedUser ? cachedUser.department : 'Operations'),
-                isActive: data.user.isActive !== false,
-                avatarUrl: data.user.avatarUrl || cachedUser?.avatarUrl,
-              };
-
-              this._currentUser.set(liveUser);
-              this._accessToken.set(token);
-              localStorage.setItem('markops_token', token);
-              localStorage.setItem('markops_user', JSON.stringify(liveUser));
-              this.setCookie('markops_token', token, 7);
-              this._isInitialized.set(true);
-              return true;
-            }
-          } else if (res.status === 401 || res.status === 403) {
-
-            this.clearSession();
-            this._isInitialized.set(true);
-            return false;
-          }
-        } catch (apiErr) {
-          console.log('[Auth] Backend /me verification offline notice, relying on local session:', apiErr);
+        const remoteResult = await this.verifyRemoteSession(token, cachedUser);
+        if (remoteResult !== null) {
+          return remoteResult;
         }
 
- 
         if (cachedUser) {
           this._currentUser.set(cachedUser);
           this._accessToken.set(token);
@@ -177,6 +190,8 @@ export class AuthService {
     return this.initPromise;
   }
 
+
+
   private setCookie(name: string, value: string, days = 7): void {
     if (!this.isBrowser) return;
     const expires = new Date(Date.now() + days * 864e5).toUTCString();
@@ -189,7 +204,7 @@ export class AuthService {
     const ca = document.cookie.split(';');
     for (let c of ca) {
       c = c.trim();
-      if (c.indexOf(nameEQ) === 0) {
+      if (c.startsWith(nameEQ)) {
         return decodeURIComponent(c.substring(nameEQ.length));
       }
     }
@@ -204,14 +219,14 @@ export class AuthService {
 
   private parseUserFromJwt(token: string): User | null {
     try {
-      if (!token || !token.includes('.')) {
+      if (!token?.includes('.')) {
         return DEMO_ACCOUNTS['ADMINISTRATOR'].user;
       }
       const parts = token.split('.');
       if (parts.length < 2) return null;
-      const payloadStr = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+      const payloadStr = atob(parts[1].replaceAll('-', '+').replaceAll('_', '/'));
       const payload = JSON.parse(payloadStr);
-      if (payload && payload.sub) {
+      if (payload?.sub) {
         return {
           id: String(payload.sub),
           email: payload.email || 'admin@markops.io',
@@ -221,7 +236,7 @@ export class AuthService {
           isActive: payload.isActive !== false,
         };
       }
-    } catch {}
+    } catch (error_) { console.log('[Auth Storage Notice] Skipped:', error_); }
     return null;
   }
 
@@ -296,7 +311,7 @@ export class AuthService {
         localStorage.removeItem('markops_user');
         sessionStorage.removeItem('markops_token');
         sessionStorage.removeItem('markops_user');
-      } catch {}
+      } catch (error_) { console.log('[Auth Storage Notice] Skipped:', error_); }
     }
     this._currentUser.set(null);
     this._accessToken.set(null);
@@ -397,8 +412,8 @@ export class AuthService {
     }
   }
 
-  private setSession(user: User, token: string): void {
-    const activeToken = token || 'mo_jwt_default';
+  private setSession(user: User, token = 'mo_jwt_default'): void {
+    const activeToken = token;
     const activeUser: User = { ...user, isActive: user.isActive !== false };
     this._currentUser.set(activeUser);
     this._accessToken.set(activeToken);
@@ -408,7 +423,7 @@ export class AuthService {
       try {
         localStorage.setItem('markops_token', activeToken);
         localStorage.setItem('markops_user', JSON.stringify(activeUser));
-      } catch {}
+      } catch (error_) { console.log('[Auth Storage Notice] Skipped:', error_); }
       this.setCookie('markops_token', activeToken, 7);
     }
   }

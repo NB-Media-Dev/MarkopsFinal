@@ -12,43 +12,49 @@ const { dispatchNotification, stripEmojis } = require('../services/notification.
 
 const router = express.Router();
 
-router.get('/reports/summary', async (req, res) => {
-  let totalRevenue = 0;
-  let totalLeads = 0;
-  let totalSpend = 0;
-  let qualifiedCount = 0;
+async function fetchDbSummaryMetrics() {
+  const metrics = { totalRevenue: 0, totalLeads: 0, totalSpend: 0, qualifiedCount: 0 };
+  if (!dbPool) return metrics;
 
-  if (dbPool) {
-    try {
-      const [leadsRows] = await dbPool.query('SELECT COUNT(*) as count, SUM(CASE WHEN status = "QUALIFIED" THEN 1 ELSE 0 END) as qualified FROM leads');
-      if (leadsRows && leadsRows[0]) {
-        totalLeads = Number(leadsRows[0].count) || 0;
-        qualifiedCount = Number(leadsRows[0].qualified) || 0;
-      }
-
-      const [adsRows] = await dbPool.query('SELECT SUM(spend) as spend FROM ads');
-      if (adsRows && adsRows[0] && adsRows[0].spend) {
-        totalSpend = Number(adsRows[0].spend) || 0;
-      } else {
-        const [cmpRows] = await dbPool.query('SELECT SUM(spend) as spend FROM campaigns');
-        if (cmpRows && cmpRows[0] && cmpRows[0].spend) {
-          totalSpend = Number(cmpRows[0].spend) || 0;
-        }
-      }
-
-      const [txRows] = await dbPool.query('SELECT SUM(amount) as revenue FROM transactions');
-      if (txRows && txRows[0] && txRows[0].revenue) {
-        totalRevenue = Number(txRows[0].revenue) || 0;
-      }
-    } catch (e) {
-      console.log('[MySQL Reports Notice]:', e.message);
+  try {
+    const [leadsRows] = await dbPool.query('SELECT COUNT(*) as count, SUM(CASE WHEN status = "QUALIFIED" THEN 1 ELSE 0 END) as qualified FROM leads');
+    if (leadsRows?.[0]) {
+      metrics.totalLeads = Number(leadsRows[0].count) || 0;
+      metrics.qualifiedCount = Number(leadsRows[0].qualified) || 0;
     }
-  }
 
+    const [adsRows] = await dbPool.query('SELECT SUM(spend) as spend FROM ads');
+    if (adsRows?.[0]?.spend) {
+      metrics.totalSpend = Number(adsRows[0].spend) || 0;
+    } else {
+      const [cmpRows] = await dbPool.query('SELECT SUM(spend) as spend FROM campaigns');
+      if (cmpRows?.[0]?.spend) {
+        metrics.totalSpend = Number(cmpRows[0].spend) || 0;
+      }
+    }
+
+    const [txRows] = await dbPool.query('SELECT SUM(amount) as revenue FROM transactions');
+    if (txRows?.[0]?.revenue) {
+      metrics.totalRevenue = Number(txRows[0].revenue) || 0;
+    }
+  } catch (e) {
+    console.log('[MySQL Reports Notice]:', e.message);
+  }
+  return metrics;
+}
+
+function applyStoreSummaryFallbacks(metrics) {
+  let { totalRevenue, totalLeads, totalSpend, qualifiedCount } = metrics;
   if (totalLeads === 0 && dbLeadsStore.length > 0) totalLeads = dbLeadsStore.length;
   if (totalSpend === 0 && dbAdsStore.length > 0) totalSpend = dbAdsStore.reduce((sum, a) => sum + Number(a.spend || 0), 0);
   if (totalRevenue === 0 && dbTransactionsStore.length > 0) totalRevenue = dbTransactionsStore.reduce((sum, t) => sum + Number(t.amount || 0), 0);
   if (qualifiedCount === 0 && dbLeadsStore.length > 0) qualifiedCount = dbLeadsStore.filter((l) => l.status === 'QUALIFIED').length;
+  return { totalRevenue, totalLeads, totalSpend, qualifiedCount };
+}
+
+router.get('/reports/summary', async (req, res) => {
+  const dbMetrics = await fetchDbSummaryMetrics();
+  const { totalRevenue, totalLeads, totalSpend, qualifiedCount } = applyStoreSummaryFallbacks(dbMetrics);
 
   const avgCpl = totalLeads > 0 ? (totalSpend / totalLeads).toFixed(2) : '0.00';
   const overallRoi = totalSpend > 0 ? (((totalRevenue - totalSpend) / totalSpend) * 100).toFixed(1) : '0.0';

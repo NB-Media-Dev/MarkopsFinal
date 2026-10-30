@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { CampaignService, CampaignItem } from '../../core/services/campaign.service';
 import { AuthService } from '../../core/services/auth.service';
-import { FIXED_PACKAGES, isItemForPackage, resolveProductContext } from '../../core/models/package.model';
+import { isItemForPackage, resolveProductContext } from '../../core/models/package.model';
 import { PackageService } from '../../core/services/package.service';
 import { CampaignKpisComponent } from './components/campaign-kpis/campaign-kpis.component';
 import { CampaignToolbarComponent } from './components/campaign-toolbar/campaign-toolbar.component';
@@ -270,7 +270,7 @@ export class CampaignsComponent implements OnInit {
       }
     }
 
-    if (!this.formModel.name || !this.formModel.name.trim()) {
+    if (!this.formModel.name?.trim()) {
       this.errorMessage.set('Campaign name is required.');
       return;
     }
@@ -404,7 +404,7 @@ export class CampaignsComponent implements OnInit {
     if (q) {
       list = list.filter((c) =>
         c.name.toLowerCase().includes(q) ||
-        (c.objective && c.objective.toLowerCase().includes(q))
+        Boolean(c.objective?.toLowerCase().includes(q))
       );
     }
 

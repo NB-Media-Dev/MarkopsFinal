@@ -38,6 +38,27 @@ export interface TargetProgressStatus {
   lastEvaluatedAt: string;
 }
 
+function isCallTodayForTelecaller(c: any, tc: any, today: Date): boolean {
+  const isCaller = c.telecallerId === tc.id || c.telecallerName === tc.fullName;
+  if (!isCaller) return false;
+  const calledAt = c.calledAt ? new Date(c.calledAt) : null;
+  return (
+    calledAt?.getFullYear() === today.getFullYear() &&
+    calledAt?.getMonth() === today.getMonth() &&
+    calledAt?.getDate() === today.getDate()
+  );
+}
+
+function countUniqueLeadsCalledToday(callsList: any[], tc: any, today: Date): number {
+  const uniqueLeadIds = new Set(
+    callsList
+      .filter((c) => isCallTodayForTelecaller(c, tc, today))
+      .map((c) => String(c.leadId || c.leadPhone || c.leadName || '').trim().toLowerCase())
+      .filter((k) => !!k)
+  );
+  return uniqueLeadIds.size;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -90,7 +111,7 @@ export class TelecallerTargetService {
       try {
         localStorage.removeItem('markops_telecaller_targets_store');
         localStorage.removeItem('markops_common_telecaller_target');
-      } catch {}
+      } catch (err) { console.log('[Storage Notice]:', err); }
     }
   }
 
@@ -102,7 +123,7 @@ export class TelecallerTargetService {
         throw new Error(`Unable to load telecaller targets (${res.status}): ${await res.text()}`);
       }
       const data = await res.json();
-      if (!data || !data.common || !Array.isArray(data.targets)) {
+      if (!data?.common || !Array.isArray(data.targets)) {
         throw new Error('The telecaller targets response was invalid.');
       }
       this._commonTarget.set(data.common);
@@ -230,80 +251,65 @@ export class TelecallerTargetService {
   }
 
 
+  private async notifyTargetDeficit(tc: any, callsCount: number, target: TelecallerTarget, achievementPct: number, recipients: string[]): Promise<void> {
+    const alertTitle = `Target Deficit Warning: ${tc.fullName}`;
+    const alertMessage = `${tc.fullName} called ${callsCount} / ${target.dailyCallsTarget} unique leads today (${achievementPct}% target achievement). Their daily call goal was missed.`;
+    for (const recipientId of recipients) {
+      try {
+        await this.sendNotification(recipientId, alertTitle, alertMessage, 'WARNING');
+      } catch (err) {
+        console.error('API notification delivery failed:', err);
+      }
+    }
+  }
+
+  private async notifyTargetAchieved(tc: any, callsCount: number, target: TelecallerTarget, achievementPct: number, recipients: string[]): Promise<void> {
+    try {
+      await this.sendNotification(
+        tc.id,
+        'Target Achieved! Congratulations!',
+        `Outstanding work, ${tc.fullName}! You have successfully achieved your daily target today (${callsCount} / ${target.dailyCallsTarget} calls, ${achievementPct}% achieved).`,
+        'SUCCESS'
+      );
+    } catch (err) {
+      console.error('Telecaller target notification delivery failed:', err);
+    }
+    for (const recipientId of recipients) {
+      try {
+        await this.sendNotification(
+          recipientId,
+          `Telecaller Target Achieved: ${tc.fullName}`,
+          `${tc.fullName} has reached their daily target today with ${callsCount} calls (${achievementPct}% achieved)!`,
+          'SUCCESS'
+        );
+      } catch (err) {
+        console.error('Target achievement notification delivery failed:', err);
+      }
+    }
+  }
+
   async evaluateTargetsAndBroadcastNotifications(
     callsList: any[],
     usersList: any[]
   ): Promise<{ evaluatedCount: number; alertedCount: number; deficitTelecallers: string[] }> {
     const today = new Date();
-    const telecallers = usersList.filter((u) => u.role === 'TELECALLER');
-    const telecallerList = telecallers.length > 0 ? telecallers : [];
-
+    const telecallerList = usersList.filter((u) => u.role === 'TELECALLER');
     const deficitTelecallers: string[] = [];
 
     const adminUser = usersList.find((u) => u.role === 'ADMINISTRATOR') || { id: 'usr_admin_01' };
     const mktgManager = usersList.find((u) => u.role === 'MARKETING_MANAGER') || { id: 'usr_mktg_01' };
+    const managerRecipients = Array.from(new Set([adminUser.id, mktgManager.id]));
 
     for (const tc of telecallerList) {
       const target = this.getTargetForTelecaller(String(tc.id));
-      const todayCalls = callsList.filter((c) => {
-        const isCaller = c.telecallerId === tc.id || c.telecallerName === tc.fullName;
-        const calledAt = c.calledAt ? new Date(c.calledAt) : null;
-        const isToday = calledAt &&
-          calledAt.getFullYear() === today.getFullYear() &&
-          calledAt.getMonth() === today.getMonth() &&
-          calledAt.getDate() === today.getDate();
-        return isCaller && isToday;
-      });
-
-   
-      const uniqueLeadIds = new Set(
-        todayCalls
-          .map((c) => String(c.leadId || c.leadPhone || c.leadName || '').trim().toLowerCase())
-          .filter((k) => !!k)
-      );
-
-      const callsCount = uniqueLeadIds.size;
+      const callsCount = countUniqueLeadsCalledToday(callsList, tc, today);
       const achievementPct = Math.round((callsCount / target.dailyCallsTarget) * 100);
 
       if (callsCount < target.dailyCallsTarget) {
         deficitTelecallers.push(tc.fullName);
-
-        const alertTitle = `Target Deficit Warning: ${tc.fullName}`;
-        const alertMessage = `${tc.fullName} called ${callsCount} / ${target.dailyCallsTarget} unique leads today (${achievementPct}% target achievement). Their daily call goal was missed.`;
-
-        const targetsToNotify = Array.from(new Set([adminUser.id, mktgManager.id]));
-
-        for (const recipientId of targetsToNotify) {
-          try {
-            await this.sendNotification(recipientId, alertTitle, alertMessage, 'WARNING');
-          } catch (err) {
-            console.error('API notification delivery failed:', err);
-          }
-        }
+        await this.notifyTargetDeficit(tc, callsCount, target, achievementPct, managerRecipients);
       } else {
-        try {
-          await this.sendNotification(
-            tc.id,
-            'Target Achieved! Congratulations!',
-            `Outstanding work, ${tc.fullName}! You have successfully achieved your daily target today (${callsCount} / ${target.dailyCallsTarget} calls, ${achievementPct}% achieved).`,
-            'SUCCESS'
-          );
-        } catch (err) {
-          console.error('Telecaller target notification delivery failed:', err);
-        }
-        const targetsToNotify = Array.from(new Set([adminUser.id, mktgManager.id]));
-        for (const recipientId of targetsToNotify) {
-          try {
-            await this.sendNotification(
-              recipientId,
-              `Telecaller Target Achieved: ${tc.fullName}`,
-              `${tc.fullName} has reached their daily target today with ${callsCount} calls (${achievementPct}% achieved)!`,
-              'SUCCESS'
-            );
-          } catch (err) {
-            console.error('Target achievement notification delivery failed:', err);
-          }
-        }
+        await this.notifyTargetAchieved(tc, callsCount, target, achievementPct, managerRecipients);
       }
     }
 

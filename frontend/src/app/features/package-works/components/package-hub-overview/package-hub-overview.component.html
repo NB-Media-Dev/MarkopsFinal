@@ -5,6 +5,9 @@
         <div
           class="dept-operation-card"
           (click)="onSelectDepartment(dept.id)"
+          (keydown.enter)="onSelectDepartment(dept.id)"
+          (keydown.space)="onSelectDepartment(dept.id)"
+          [attr.aria-label]="'Select ' + dept.label + ' department'"
           [attr.data-dept-id]="dept.id"
         >
           <div class="dept-icon-squircle">

@@ -82,6 +82,9 @@
                     class="notif-item clickable-notif"
                     [class.unread]="!item.isRead"
                     (click)="onNotificationClick(item)"
+                    (keydown.enter)="onNotificationClick(item)"
+                    (keydown.space)="onNotificationClick(item)"
+                    aria-label="Open notification"
                     title="Click to open related page"
                   >
                     <div class="notif-icon" [ngClass]="item.type.toLowerCase()">
@@ -128,8 +131,8 @@
         <div
           class="header-user-pill clickable-user-pill"
           (click)="openProfileModal()"
-          role="button"
-          tabindex="0"
+          (keydown.enter)="openProfileModal()"
+          (keydown.space)="openProfileModal()"
           title="Click to view and update account profile"
         >
           <div class="user-avatar-navy">
@@ -169,6 +172,9 @@
         class="global-realtime-toast"
         [ngClass]="'toast-' + toast.type.toLowerCase()"
         (click)="onToastClick(toast)"
+        (keydown.enter)="onToastClick(toast)"
+        (keydown.space)="onToastClick(toast)"
+        aria-label="Notification alert"
         title="Click notification to navigate to page"
       >
         <div class="toast-icon">
@@ -202,6 +208,6 @@
   </main>
 
   @if (isProfileModalOpen()) {
-    <app-account-profile-modal (close)="closeProfileModal()"></app-account-profile-modal>
+    <app-account-profile-modal (closeModal)="closeProfileModal()"></app-account-profile-modal>
   }
 </div>

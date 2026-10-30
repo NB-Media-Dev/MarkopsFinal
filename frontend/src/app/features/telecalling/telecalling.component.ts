@@ -2,11 +2,11 @@ import { Component, inject, OnInit, OnDestroy, signal, computed, Input } from '@
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
-import { LeadTelecallingService, LeadItem, CallActivityItem, isClientDuplicateCall } from '../../core/services/lead-telecalling.service';
+import { LeadTelecallingService, LeadItem, CallActivityItem, FollowUpItem, isClientDuplicateCall } from '../../core/services/lead-telecalling.service';
 import { UserManagementService } from '../../core/services/user-management.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CampaignService } from '../../core/services/campaign.service';
-import { FIXED_PACKAGES, isItemForPackage, resolveProductContext } from '../../core/models/package.model';
+import { isItemForPackage } from '../../core/models/package.model';
 import { PackageService } from '../../core/services/package.service';
 
 import { TelecallingKpisComponent } from './components/telecalling-kpis/telecalling-kpis.component';
@@ -14,6 +14,43 @@ import { TelecallingPipelineStripComponent } from './components/telecalling-pipe
 import { TelecallingQueueTableComponent } from './components/telecalling-queue-table/telecalling-queue-table.component';
 import { CallHistoryModalComponent } from './components/modals/call-history-modal/call-history-modal.component';
 import { CallLogModalComponent } from './components/modals/call-log-modal/call-log-modal.component';
+
+function isSameUserId(uId: string, lAssignedTo: string): boolean {
+  if (!uId || !lAssignedTo) return false;
+  if (lAssignedTo === uId || lAssignedTo.toLowerCase() === uId.toLowerCase()) return true;
+  const numUId = Number.parseInt(uId.replace(/\D/g, ''), 10);
+  const numLId = Number.parseInt(lAssignedTo.replace(/\D/g, ''), 10);
+  return !Number.isNaN(numUId) && !Number.isNaN(numLId) && numUId === numLId;
+}
+
+function isSameUserEmail(uEmail: string, lAssignedTo: string, lAssigneeEmail: string, lAssigneeName: string): boolean {
+  if (!uEmail) return false;
+  const target = uEmail.toLowerCase();
+  return (
+    lAssignedTo.toLowerCase() === target ||
+    lAssigneeEmail.toLowerCase() === target ||
+    lAssigneeName.toLowerCase() === target
+  );
+}
+
+function isSameUserName(uName: string, lAssigneeName: string, lAssignedTo: string): boolean {
+  if (!uName) return false;
+  const target = uName.toLowerCase();
+  const aName = lAssigneeName.toLowerCase();
+  const aTo = lAssignedTo.toLowerCase();
+  if (aName === target || aTo === target) return true;
+  if (aName && (aName.includes(target) || target.includes(aName))) return true;
+  return Boolean(aTo && (aTo.includes(target) || target.includes(aTo)));
+}
+
+function hasMatchingToken(uTokens: string[], lTokens: string[]): boolean {
+  for (const ut of uTokens) {
+    for (const lt of lTokens) {
+      if (ut === lt || ut.includes(lt) || lt.includes(ut)) return true;
+    }
+  }
+  return false;
+}
 
 export function isLeadAssignedToUser(l: any, user: any): boolean {
   if (!l || !user) return false;
@@ -25,36 +62,13 @@ export function isLeadAssignedToUser(l: any, user: any): boolean {
   const lAssigneeName = String(l.assigneeName || l.assignee_name || l.assigneeFullName || l.assignedToName || '').toLowerCase().trim();
   const lAssigneeEmail = String(l.assigneeEmail || l.assignee_email || '').toLowerCase().trim();
 
-
-  if (uId && lAssignedTo) {
-    if (lAssignedTo === uId || lAssignedTo.toLowerCase() === uId.toLowerCase()) return true;
-    const numUId = parseInt(uId.replace(/\D/g, ''), 10);
-    const numLId = parseInt(lAssignedTo.replace(/\D/g, ''), 10);
-    if (!isNaN(numUId) && !isNaN(numLId) && numUId === numLId) return true;
-  }
-
-
-  if (uEmail && (lAssignedTo.toLowerCase() === uEmail || lAssigneeEmail === uEmail || lAssigneeName === uEmail)) {
-    return true;
-  }
-
-
-  if (uName) {
-    if (lAssigneeName === uName || lAssignedTo.toLowerCase() === uName) return true;
-    if (lAssigneeName && (lAssigneeName.includes(uName) || uName.includes(lAssigneeName))) return true;
-    if (lAssignedTo && (lAssignedTo.toLowerCase().includes(uName) || uName.includes(lAssignedTo.toLowerCase()))) return true;
-  }
-
+  if (isSameUserId(uId, lAssignedTo)) return true;
+  if (isSameUserEmail(uEmail, lAssignedTo, lAssigneeEmail, lAssigneeName)) return true;
+  if (isSameUserName(uName, lAssigneeName, lAssignedTo)) return true;
 
   const uTokens = [uName, uEmail.split('@')[0], uId].filter((t) => t && t.length >= 3);
   const lTokens = [lAssigneeName, lAssignedTo.toLowerCase(), lAssigneeEmail.split('@')[0]].filter((t) => t && t.length >= 3);
-  for (const ut of uTokens) {
-    for (const lt of lTokens) {
-      if (ut === lt || ut.includes(lt) || lt.includes(ut)) return true;
-    }
-  }
-
-  return false;
+  return hasMatchingToken(uTokens, lTokens);
 }
 
 export function normalizeCampaignName(name?: string): string {
@@ -132,65 +146,66 @@ export function isCallMadeByUser(call: any, user: any): boolean {
   return false;
 }
 
+function parseDateParts(d: string): { year: number; month: number; day: number } | null {
+  let delim: string | null = null;
+  if (d.includes('-')) {
+    delim = '-';
+  } else if (d.includes('/')) {
+    delim = '/';
+  }
+  if (!delim) {
+    const parsed = new Date(d);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return { year: parsed.getFullYear(), month: parsed.getMonth(), day: parsed.getDate() };
+  }
+  const p = d.split(delim);
+  if (p.length < 3) return null;
+  if (p[0].length === 4) {
+    return {
+      year: Number.parseInt(p[0], 10),
+      month: Number.parseInt(p[1], 10) - 1,
+      day: Number.parseInt(p[2], 10),
+    };
+  }
+  return {
+    day: Number.parseInt(p[0], 10),
+    month: Number.parseInt(p[1], 10) - 1,
+    year: Number.parseInt(p[2], 10),
+  };
+}
+
+function parseTimeParts(t: string): { hours: number; minutes: number } {
+  if (!t) return { hours: 0, minutes: 0 };
+  const cleanTime = t.replace(/Z.*/i, '').trim();
+  if (!cleanTime.includes(':')) return { hours: 0, minutes: 0 };
+  const tp = cleanTime.split(':');
+  return {
+    hours: Number.parseInt(tp[0], 10) || 0,
+    minutes: Number.parseInt(tp[1], 10) || 0,
+  };
+}
+
 export function parseFollowUpDateTime(dateStr?: string, timeStr?: string): Date | null {
   if (!dateStr) return null;
   let d = String(dateStr).trim();
   let t = String(timeStr || '').trim();
 
-
   if (d.includes('T')) {
     const parts = d.split('T');
     d = parts[0];
-    if (!t && parts[1]) t = parts[1];
+    t = t || parts[1] || '';
   } else if (d.includes(' ')) {
     const parts = d.split(/\s+/);
     d = parts[0];
-    if (!t && parts[1]) t = parts[1];
+    t = t || parts[1] || '';
   }
 
-  let year = 0, month = 0, day = 0;
-  if (d.includes('-')) {
-    const p = d.split('-');
-    if (p[0].length === 4) {
-      year = parseInt(p[0], 10);
-      month = parseInt(p[1], 10) - 1;
-      day = parseInt(p[2], 10);
-    } else {
-      day = parseInt(p[0], 10);
-      month = parseInt(p[1], 10) - 1;
-      year = parseInt(p[2], 10);
-    }
-  } else if (d.includes('/')) {
-    const p = d.split('/');
-    if (p[0].length === 4) {
-      year = parseInt(p[0], 10);
-      month = parseInt(p[1], 10) - 1;
-      day = parseInt(p[2], 10);
-    } else {
-      day = parseInt(p[0], 10);
-      month = parseInt(p[1], 10) - 1;
-      year = parseInt(p[2], 10);
-    }
-  } else {
-    const parsed = new Date(d);
-    if (!isNaN(parsed.getTime())) return parsed;
-    return null;
-  }
+  const parts = parseDateParts(d);
+  if (!parts) return null;
 
-  let hours = 0;
-  let minutes = 0;
-  if (t) {
-    const cleanTime = t.replace(/Z.*/i, '').trim();
-    if (cleanTime.includes(':')) {
-      const tp = cleanTime.split(':');
-      hours = parseInt(tp[0], 10) || 0;
-      minutes = parseInt(tp[1], 10) || 0;
-    }
-  }
-
-  const dt = new Date(year, month, day, hours, minutes, 0, 0);
-  if (isNaN(dt.getTime())) return null;
-  return dt;
+  const { hours, minutes } = parseTimeParts(t);
+  const dt = new Date(parts.year, parts.month, parts.day, hours, minutes, 0, 0);
+  return Number.isNaN(dt.getTime()) ? null : dt;
 }
 
 @Component({
@@ -210,6 +225,16 @@ export function parseFollowUpDateTime(dateStr?: string, timeStr?: string): Date 
   styleUrl: './telecalling.component.scss',
 })
 export class TelecallingComponent implements OnInit, OnDestroy {
+  private calculateConversionRate(assignedLen: number, calledCount: number, interestedCount: number): number {
+    if (assignedLen > 0) {
+      return Math.round((interestedCount / assignedLen) * 100);
+    }
+    if (calledCount > 0) {
+      return Math.round((interestedCount / calledCount) * 100);
+    }
+    return 0;
+  }
+
   @Input() embedded = false;
   @Input() viewMode: 'ALL' | 'MEMBERS' | 'ASSIGNED' | 'OVERVIEW' = 'ALL';
 
@@ -260,7 +285,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
 
   readonly telecallerPerformanceList = computed(() => {
     const summary = this.leadService.summary();
-    if (summary && summary.telecallerMetrics && summary.telecallerMetrics.length > 0) {
+    if (summary?.telecallerMetrics && summary.telecallerMetrics.length > 0) {
       return summary.telecallerMetrics;
     }
 
@@ -325,7 +350,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
         notInterestedCount: uniqueNotInterestedLeads.size,
         totalDurationSeconds,
         avgDurationSeconds,
-        conversionRate: assigned.length > 0 ? Math.round((uniqueInterestedLeads.size / assigned.length) * 100) : (uniqueLeadsCalled.size > 0 ? Math.round((uniqueInterestedLeads.size / uniqueLeadsCalled.size) * 100) : 0),
+        conversionRate: this.calculateConversionRate(assigned.length, uniqueLeadsCalled.size, uniqueInterestedLeads.size),
       };
     });
   });
@@ -864,7 +889,57 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     return this.getLeadMetrics(lead).calls;
   });
 
-  getLeadMetrics(lead: LeadItem) {
+  private matchesCallPhone(lPhone: string, cPhone: string): boolean {
+    if (!lPhone || !cPhone) return false;
+    if (lPhone === cPhone) return true;
+    if (lPhone.length >= 10 && cPhone.length >= 10 && lPhone.slice(-10) === cPhone.slice(-10)) return true;
+    return lPhone.length >= 7 && (lPhone.endsWith(cPhone) || cPhone.endsWith(lPhone));
+  }
+
+  private matchesLeadCallItem(c: CallActivityItem, lId: string, lNum: string, lPhone: string, lName: string): boolean {
+    const cLeadId = String(c.leadId || '').trim().toLowerCase();
+    const cNum = cLeadId.replace(/\D/g, '');
+    if ((cLeadId && lId && cLeadId === lId) || (cNum && lNum && cNum === lNum)) return true;
+
+    const cPhone = String(c.leadPhone || c.phone || '').replace(/\D/g, '');
+    if (this.matchesCallPhone(lPhone, cPhone)) return true;
+
+    const cLeadName = String(c.leadName || '').trim().toLowerCase();
+    return Boolean(cLeadName && lName && lName.length >= 3 && (cLeadName === lName || cLeadName.includes(lName) || lName.includes(cLeadName)));
+  }
+
+  private matchesPendingFollowUp(f: FollowUpItem, lId: string, lPhone: string, lName: string): boolean {
+    const fLeadId = String(f.leadId || '').trim().toLowerCase();
+    const fPhone = String(f.leadPhone || '').replace(/\D/g, '');
+    const fLeadName = String(f.leadName || '').trim().toLowerCase();
+    const match = (fLeadId && lId && (fLeadId === lId || fLeadId.replace(/\D/g, '') === lId.replace(/\D/g, ''))) ||
+                  (lPhone && fPhone && lPhone.length >= 7 && (lPhone === fPhone || lPhone.endsWith(fPhone) || fPhone.endsWith(lPhone))) ||
+                  (!lPhone && !fPhone && fLeadName && lName && fLeadName === lName);
+    return Boolean(match && f.status === 'PENDING' && !!f.dueDate);
+  }
+
+  private parseFollowUpParts(rawDate: string, rawTime: string): { cleanDate: string; cleanTime: string } {
+    let cleanDate = rawDate;
+    let cleanTime = rawTime;
+    if (cleanDate.includes('T')) {
+      const parts = cleanDate.split('T');
+      cleanDate = parts[0];
+      if (!cleanTime && parts[1]) cleanTime = parts[1].slice(0, 5);
+    } else if (cleanDate.includes(' ')) {
+      const parts = cleanDate.split(/\s+/);
+      cleanDate = parts[0];
+      if (!cleanTime && parts[1]) cleanTime = parts[1].slice(0, 5);
+    }
+    return { cleanDate, cleanTime };
+  }
+
+  getLeadMetrics(lead: LeadItem): {
+    callsCount: number;
+    attended: number;
+    missed: number;
+    avgDuration: number;
+    calls: CallActivityItem[];
+  } {
     if (!lead) {
       return { callsCount: 0, attended: 0, missed: 0, avgDuration: 0, calls: [] };
     }
@@ -874,22 +949,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     const lPhone = String(lead.phone || '').replace(/\D/g, '');
     const lName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim().toLowerCase();
 
-    const rawCalls = allCalls.filter((c) => {
-      const cLeadId = String(c.leadId || '').trim().toLowerCase();
-      const cNum = cLeadId.replace(/\D/g, '');
-      const cPhone = String(c.leadPhone || c.phone || '').replace(/\D/g, '');
-      const cLeadName = String(c.leadName || '').trim().toLowerCase();
-
-      if (cLeadId && lId && cLeadId === lId) return true;
-      if (cNum && lNum && cNum === lNum) return true;
-      if (lPhone && cPhone) {
-        if (lPhone === cPhone) return true;
-        if (lPhone.length >= 10 && cPhone.length >= 10 && lPhone.slice(-10) === cPhone.slice(-10)) return true;
-        if (lPhone.length >= 7 && (lPhone.endsWith(cPhone) || cPhone.endsWith(lPhone))) return true;
-      }
-      if (cLeadName && lName && lName.length >= 3 && (cLeadName === lName || cLeadName.includes(lName) || lName.includes(cLeadName))) return true;
-      return false;
-    });
+    const rawCalls = allCalls.filter((c) => this.matchesLeadCallItem(c, lId, lNum, lPhone, lName));
 
     const leadCalls: CallActivityItem[] = [];
     for (const call of rawCalls) {
@@ -899,17 +959,17 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     }
     leadCalls.sort((a, b) => new Date(b.calledAt || 0).getTime() - new Date(a.calledAt || 0).getTime());
 
-    const attendedList = ['CONNECTED', 'INTERESTED', 'QUALIFIED', 'PAID', 'CONVERTED', 'NOT_INTERESTED', 'FOLLOW_UP', 'FOLLOW_UP_SCHEDULED', 'WRONG_NUMBER'];
-    const missedList = ['NO_ANSWER', 'BUSY', 'LINE_BUSY', 'MISSED', 'UNANSWERED'];
+    const attendedSet = new Set(['CONNECTED', 'INTERESTED', 'QUALIFIED', 'PAID', 'CONVERTED', 'NOT_INTERESTED', 'FOLLOW_UP', 'FOLLOW_UP_SCHEDULED', 'WRONG_NUMBER']);
+    const missedSet = new Set(['NO_ANSWER', 'BUSY', 'LINE_BUSY', 'MISSED', 'UNANSWERED']);
 
     const attended = leadCalls.filter((c) => {
       const out = String(c.outcome || '').toUpperCase().replace(/\s+/g, '_');
-      return attendedList.includes(out);
+      return attendedSet.has(out);
     }).length;
 
     const missed = leadCalls.filter((c) => {
       const out = String(c.outcome || '').toUpperCase().replace(/\s+/g, '_');
-      return missedList.includes(out);
+      return missedSet.has(out);
     }).length;
 
     const totalDuration = leadCalls.reduce((acc, c) => acc + (Number(c.durationSeconds) || 0), 0);
@@ -924,35 +984,36 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     };
   }
 
+  private resolveCreatorFromId(cId: string): string | null {
+    const matched = this.userService.users().find(
+      (u) => String(u.id).trim().toLowerCase() === cId || u.email?.trim().toLowerCase() === cId
+    );
+    return matched?.fullName || null;
+  }
+
+  private resolveCreatorFromEmail(email: string): string | null {
+    const matched = this.userService.users().find(
+      (u) => u.email?.trim().toLowerCase() === email
+    );
+    if (matched?.fullName) return matched.fullName;
+    const prefix = email.split('@')[0];
+    return prefix ? prefix.charAt(0).toUpperCase() + prefix.slice(1) : null;
+  }
+
   getLeadCreatorName(lead: LeadItem): string {
     if (!lead) return 'System Administrator';
-
-    if (lead.creatorName && lead.creatorName.trim()) {
-      return lead.creatorName.trim();
-    }
+    if (lead.creatorName?.trim()) return lead.creatorName.trim();
 
     const cId = String(lead.creatorId || lead.uploaderId || '').trim().toLowerCase();
     if (cId) {
-      const matchedUser = this.userService.users().find(
-        (u) => String(u.id).trim().toLowerCase() === cId || (u.email && u.email.trim().toLowerCase() === cId)
-      );
-      if (matchedUser && matchedUser.fullName) {
-        return matchedUser.fullName;
-      }
+      const name = this.resolveCreatorFromId(cId);
+      if (name) return name;
     }
 
-    const creatorEmail = (lead.creatorEmail || lead.uploaderEmail || '').trim().toLowerCase();
-    if (creatorEmail) {
-      const matchedUser = this.userService.users().find(
-        (u) => u.email && u.email.trim().toLowerCase() === creatorEmail
-      );
-      if (matchedUser && matchedUser.fullName) {
-        return matchedUser.fullName;
-      }
-      const emailPrefix = creatorEmail.split('@')[0];
-      if (emailPrefix) {
-        return emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
-      }
+    const email = (lead.creatorEmail || lead.uploaderEmail || '').trim().toLowerCase();
+    if (email) {
+      const name = this.resolveCreatorFromEmail(email);
+      if (name) return name;
     }
 
     return 'System Administrator';
@@ -960,37 +1021,33 @@ export class TelecallingComponent implements OnInit, OnDestroy {
 
   getLeadCurrentStatus(lead: LeadItem): string {
     if (!lead) return 'ASSIGNED';
+    const statusMap: Record<string, string> = {
+      BUSY: 'LINE_BUSY',
+      LINE_BUSY: 'LINE_BUSY',
+      NO_ANSWER: 'NO_ANSWER',
+      WRONG_NUMBER: 'WRONG_NUMBER',
+      FOLLOW_UP: 'FOLLOW_UP',
+      FOLLOW_UP_SCHEDULED: 'FOLLOW_UP',
+      INTERESTED: 'INTERESTED',
+      NOT_INTERESTED: 'NOT_INTERESTED',
+      QUALIFIED: 'PAID',
+      CONVERTED: 'PAID',
+      PAID: 'PAID',
+      CONNECTED: 'CONNECTED',
+    };
+
     const metrics = this.getLeadMetrics(lead);
     if (metrics.calls && metrics.calls.length > 0) {
       const latestCall = metrics.calls[0];
       const rawOut = String(latestCall.outcome || '').toUpperCase().replace(/\s+/g, '_');
-      if (rawOut === 'BUSY' || rawOut === 'LINE_BUSY') return 'LINE_BUSY';
-      if (rawOut === 'NO_ANSWER') return 'NO_ANSWER';
-      if (rawOut === 'WRONG_NUMBER') return 'WRONG_NUMBER';
-      if (rawOut === 'FOLLOW_UP' || rawOut === 'FOLLOW_UP_SCHEDULED') return 'FOLLOW_UP';
-      if (rawOut === 'INTERESTED') return 'INTERESTED';
-      if (rawOut === 'NOT_INTERESTED') return 'NOT_INTERESTED';
-      if (rawOut === 'QUALIFIED' || rawOut === 'CONVERTED' || rawOut === 'PAID') return 'PAID';
       if (rawOut === 'CONNECTED') {
-        if (latestCall.followUpDate || this.hasScheduledCallback(lead)) {
-          return 'FOLLOW_UP';
-        }
-        return 'CONNECTED';
+        return (latestCall.followUpDate || this.hasScheduledCallback(lead)) ? 'FOLLOW_UP' : 'CONNECTED';
       }
-      return rawOut;
+      return statusMap[rawOut] || rawOut;
     }
 
     const rawSt = String(lead.status || '').toUpperCase().replace(/\s+/g, '_');
-    if (rawSt === 'QUALIFIED' || rawSt === 'CONVERTED' || rawSt === 'PAID') return 'PAID';
-    if (rawSt === 'INTERESTED') return 'INTERESTED';
-    if (rawSt === 'NOT_INTERESTED') return 'NOT_INTERESTED';
-    if (rawSt === 'BUSY' || rawSt === 'LINE_BUSY') return 'LINE_BUSY';
-    if (rawSt === 'NO_ANSWER') return 'NO_ANSWER';
-    if (rawSt === 'WRONG_NUMBER') return 'WRONG_NUMBER';
-    if (rawSt === 'FOLLOW_UP' || rawSt === 'FOLLOW_UP_SCHEDULED') return 'FOLLOW_UP';
-    if (rawSt === 'CONNECTED') return 'CONNECTED';
-
-    return lead.status || 'ASSIGNED';
+    return statusMap[rawSt] || lead.status || 'ASSIGNED';
   }
 
   isFollowUpDue(lead: LeadItem): boolean {
@@ -1019,17 +1076,9 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     const lName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim().toLowerCase();
 
     const allFollowUps = this.leadService.followUps();
-    const pendingFollowUp = allFollowUps.find((f) => {
-      const fLeadId = String(f.leadId || '').trim().toLowerCase();
-      const fPhone = String(f.leadPhone || '').replace(/\D/g, '');
-      const fLeadName = String(f.leadName || '').trim().toLowerCase();
-      const match = (fLeadId && lId && (fLeadId === lId || fLeadId.replace(/\D/g, '') === lId.replace(/\D/g, ''))) ||
-                    (lPhone && fPhone && lPhone.length >= 7 && (lPhone === fPhone || lPhone.endsWith(fPhone) || fPhone.endsWith(lPhone))) ||
-                    (!lPhone && !fPhone && fLeadName && lName && fLeadName === lName);
-      return match && f.status === 'PENDING' && !!f.dueDate;
-    });
+    const pendingFollowUp = allFollowUps.find((f) => this.matchesPendingFollowUp(f, lId, lPhone, lName));
 
-    if (pendingFollowUp && pendingFollowUp.dueDate) {
+    if (pendingFollowUp?.dueDate) {
       const dt = parseFollowUpDateTime(pendingFollowUp.dueDate, pendingFollowUp.dueTime);
       if (dt && nowMs >= dt.getTime()) {
         return true;
@@ -1058,15 +1107,26 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     const lName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim().toLowerCase();
 
     const allFollowUps = this.leadService.followUps();
-    return allFollowUps.some((f) => {
-      const fLeadId = String(f.leadId || '').trim().toLowerCase();
-      const fPhone = String(f.leadPhone || '').replace(/\D/g, '');
-      const fLeadName = String(f.leadName || '').trim().toLowerCase();
-      const match = (fLeadId && lId && (fLeadId === lId || fLeadId.replace(/\D/g, '') === lId.replace(/\D/g, ''))) ||
-                    (lPhone && fPhone && lPhone.length >= 7 && (lPhone === fPhone || lPhone.endsWith(fPhone) || fPhone.endsWith(lPhone))) ||
-                    (!lPhone && !fPhone && fLeadName && lName && fLeadName === lName);
-      return match && f.status === 'PENDING' && !!f.dueDate;
-    });
+    return allFollowUps.some((f) => this.matchesPendingFollowUp(f, lId, lPhone, lName));
+  }
+
+  private resolveLeadFollowUpRawDateTime(lead: LeadItem, leadCalls: CallActivityItem[]): { fDate: string; fTime: string } {
+    if (leadCalls && leadCalls.length > 0 && leadCalls[0].followUpDate) {
+      return {
+        fDate: leadCalls[0].followUpDate,
+        fTime: leadCalls[0].followUpTime || '',
+      };
+    }
+    const lId = String(lead.id || '').trim().toLowerCase();
+    const lPhone = String(lead.phone || '').replace(/\D/g, '');
+    const lName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim().toLowerCase();
+
+    const allFollowUps = this.leadService.followUps();
+    const f = allFollowUps.find((item) => this.matchesPendingFollowUp(item, lId, lPhone, lName));
+    if (f?.dueDate) {
+      return { fDate: f.dueDate, fTime: f.dueTime || '' };
+    }
+    return { fDate: '', fTime: '' };
   }
 
   getFollowUpTimeLabel(lead: LeadItem): string | null {
@@ -1077,49 +1137,10 @@ export class TelecallingComponent implements OnInit, OnDestroy {
     }
 
     const metrics = this.getLeadMetrics(lead);
-    const leadCalls = metrics.calls;
-
-    let fDate = '';
-    let fTime = '';
-
-    if (leadCalls && leadCalls.length > 0 && leadCalls[0].followUpDate) {
-      fDate = leadCalls[0].followUpDate;
-      fTime = leadCalls[0].followUpTime || '';
-    } else {
-      const lId = String(lead.id || '').trim().toLowerCase();
-      const lPhone = String(lead.phone || '').replace(/\D/g, '');
-      const lName = `${lead.firstName || ''} ${lead.lastName || ''}`.trim().toLowerCase();
-
-      const allFollowUps = this.leadService.followUps();
-      const f = allFollowUps.find((item) => {
-        const fLeadId = String(item.leadId || '').trim().toLowerCase();
-        const fPhone = String(item.leadPhone || '').replace(/\D/g, '');
-        const fLeadName = String(item.leadName || '').trim().toLowerCase();
-        const match = (fLeadId && lId && (fLeadId === lId || fLeadId.replace(/\D/g, '') === lId.replace(/\D/g, ''))) ||
-                      (lPhone && fPhone && lPhone.length >= 7 && (lPhone === fPhone || lPhone.endsWith(fPhone) || fPhone.endsWith(lPhone))) ||
-                      (!lPhone && !fPhone && fLeadName && lName && fLeadName === lName);
-        return match && !!item.dueDate && item.status === 'PENDING';
-      });
-
-      if (f && f.dueDate) {
-        fDate = f.dueDate;
-        fTime = f.dueTime || '';
-      }
-    }
-
+    const { fDate, fTime } = this.resolveLeadFollowUpRawDateTime(lead, metrics.calls);
     if (!fDate) return null;
 
-    let cleanDate = fDate;
-    if (cleanDate.includes('T')) {
-      const parts = cleanDate.split('T');
-      cleanDate = parts[0];
-      if (!fTime && parts[1]) fTime = parts[1].slice(0, 5);
-    } else if (cleanDate.includes(' ')) {
-      const parts = cleanDate.split(/\s+/);
-      cleanDate = parts[0];
-      if (!fTime && parts[1]) fTime = parts[1].slice(0, 5);
-    }
-
+    const { cleanDate, cleanTime } = this.parseFollowUpParts(fDate, fTime);
     const todayStr = new Date().toISOString().split('T')[0];
     const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
 
@@ -1130,7 +1151,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
       dayLabel = 'Tomorrow';
     }
 
-    return fTime ? `${dayLabel} @ ${fTime}` : dayLabel;
+    return cleanTime ? `${dayLabel} @ ${cleanTime}` : dayLabel;
   }
 
   getLeadHistoryCalls(lead: LeadItem | null): CallActivityItem[] {
@@ -1157,9 +1178,10 @@ export class TelecallingComponent implements OnInit, OnDestroy {
       this.callOutcome !== 'NO_ANSWER' &&
       this.callOutcome !== 'WRONG_NUMBER';
     const effectiveDuration = shouldShowDur ? (Number(this.callDuration) || 0) : 0;
-    const finalFollowUp = (this.enableReminder && this.followUpDate)
-      ? (this.followUpTime ? `${this.followUpDate} ${this.followUpTime}` : this.followUpDate)
-      : '';
+    let finalFollowUp = '';
+    if (this.enableReminder && this.followUpDate) {
+      finalFollowUp = this.followUpTime ? `${this.followUpDate} ${this.followUpTime}` : this.followUpDate;
+    }
     const finalFollowUpTime = this.enableReminder ? this.followUpTime : '';
 
     this.leadService.leads.update((list) =>
@@ -1186,7 +1208,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (res) => {
           this.closeDrawer();
-          if (res && res.lead) {
+          if (res?.lead) {
             this.leadService.leads.update((list) =>
               list.map((l) => {
                 const matches =
@@ -1217,7 +1239,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
               })
             );
           }
-          if (res && res.call) {
+          if (res?.call) {
             this.leadService.calls.update((cList) => [res.call, ...cList.filter((c) => c.id !== res.call.id)]);
           }
           this.leadService.loadLeads().subscribe();
@@ -1258,7 +1280,7 @@ export class TelecallingComponent implements OnInit, OnDestroy {
       case 'CONNECTED':
         return 'Connected';
       default:
-        return s ? (s.charAt(0).toUpperCase() + s.slice(1).toLowerCase().replace(/_/g, ' ')) : 'Assigned';
+        return s ? (s.charAt(0).toUpperCase() + s.slice(1).toLowerCase().replaceAll('_', ' ')) : 'Assigned';
     }
   }
 

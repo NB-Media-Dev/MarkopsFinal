@@ -17,11 +17,11 @@
 
     @if (filteredLeads.length > 0) {
       <div class="table-header-page-size">
-        <label>Show:</label>
+        <label for="leadsPageSizeSelect">Show:</label>
         <select
           [ngModel]="pageSize"
           (ngModelChange)="setPageSize($event)"
-          class="page-size-header-select"
+          id="leadsPageSizeSelect" class="page-size-header-select"
         >
           @for (size of pageSizeOptions; track size) {
             <option [value]="size">{{ size }} rows</option>
@@ -102,7 +102,7 @@
                 </button>
 
                 @if (canReassign(lead) || canEditOrDelete(lead)) {
-                  <div class="action-dropdown-wrap" (click)="$event.stopPropagation()">
+                  <div class="action-dropdown-wrap" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
                     <button
                       type="button"
                       class="btn-more-dots"

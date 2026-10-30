@@ -55,16 +55,16 @@
       }
 
       &:hover {
-        color: #FF9F1C;
+        color: #C2410C;
         background-color: #FFF5E6;
 
         .tab-icon {
-          color: #FF9F1C;
+          color: #C2410C;
         }
       }
 
       &.active {
-        background-color: #FF9F1C;
+        background-color: #C2410C;
         color: #FFFFFF !important;
         font-weight: 700;
         box-shadow: none;
@@ -139,11 +139,11 @@
         justify-content: center;
         flex-shrink: 0;
         background: #FFF5E6;
-        color: #FF9F1C;
+        color: #B45309;
 
         .material-symbols-outlined {
           font-size: 20px;
-          color: #FF9F1C;
+          color: #B45309;
         }
       }
 
@@ -224,7 +224,7 @@
           height: 18px;
           border-radius: 50%;
           background: #E2E8F0;
-          color: #64748B;
+          color: #334155;
           font-size: 10px;
           font-weight: 800;
           cursor: pointer;
@@ -235,7 +235,7 @@
 
           &:hover {
             background: #FEE2E2;
-            color: #DC2626;
+            color: #B91C1C;
           }
         }
       }
@@ -283,10 +283,10 @@
     thead tr,
     thead th {
       background-color: #FFF5E6 !important;
-      color: #E28704 !important;
+      color: #C2410C !important;
       font-weight: 700 !important;
       font-size: 0.725rem !important;
-      letter-spacing: 0.05em !important;
+      letter-spacing: 0.12em;
       text-transform: uppercase !important;
       padding: 0.75rem 0.5rem !important;
       border-bottom: 1px solid rgba(255, 159, 28, 0.2) !important;
@@ -435,7 +435,7 @@
         .lead-source-chip {
           font-size: 0.625rem;
           font-weight: 600;
-          color: #64748B;
+          color: #475569;
           background: #F1F5F9;
           padding: 0.08rem 0.4rem;
           border-radius: 4px;
@@ -598,7 +598,7 @@
     .unassigned-pill {
       font-size: 0.6875rem;
       font-weight: 600;
-      color: #64748B;
+      color: #475569;
       background: #F1F5F9;
       padding: 0.2rem 0.5rem;
       border-radius: 999px;
@@ -624,7 +624,7 @@
 
       &.badge-has-calls {
         background: #FFF5E6;
-        color: #E28704;
+        color: #B45309;
         border: 1px solid rgba(255, 159, 28, 0.25);
       }
     }
@@ -704,7 +704,7 @@
 
       .btn-action-primary.btn-sm {
         background: #FF9F1C;
-        color: #FFFFFF;
+        color: #0F172A;
         border: none;
         padding: 0.32rem 0.6rem;
         border-radius: 7px;
@@ -745,14 +745,14 @@
         line-height: 1;
 
         .material-symbols-outlined {
-          color: #FF9F1C;
+          color: #C2410C;
           font-size: 13px;
         }
 
         &:hover {
           background: #FFF5E6;
           border-color: #FF9F1C;
-          color: #E28704;
+          color: #B45309;
           transform: translateY(-1px);
         }
       }
@@ -777,7 +777,7 @@
         height: 44px;
         border-radius: 50%;
         background: #F1F5F9;
-        color: #94A3B8;
+        color: #475569;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -810,7 +810,7 @@
         gap: 0.3rem;
         padding: 0.35rem 0.8rem;
         background: #FFF5E6;
-        color: #E28704;
+        color: #B45309;
         font-size: 0.75rem;
         font-weight: 700;
         border-radius: 6px;
@@ -819,7 +819,7 @@
         transition: all 0.15s ease;
 
         &:hover {
-          background: #FF9F1C;
+          background: #C2410C;
           color: #FFFFFF;
         }
       }
@@ -839,7 +839,7 @@
 
         &:hover {
           background: #FEE2E2;
-          color: #DC2626;
+          color: #B91C1C;
         }
       }
     }
@@ -854,7 +854,7 @@
 
   .active-filter-indicator {
     font-size: 0.75rem;
-    color: #E28704;
+    color: #B45309;
     background: #FFF5E6;
     border: 1px solid rgba(255, 159, 28, 0.3);
     padding: 0.15rem 0.55rem;
@@ -868,13 +868,13 @@
       cursor: pointer;
       font-size: 0.75rem;
       font-weight: 800;
-      color: #E28704;
+      color: #B45309;
       line-height: 1;
       padding: 0 0.2rem;
       border-radius: 4px;
 
       &:hover {
-        background: #FF9F1C;
+        background: #C2410C;
         color: #FFFFFF;
       }
     }
@@ -961,7 +961,7 @@
 
       &.active-page {
         background: #FF9F1C;
-        color: #FFFFFF;
+        color: #0F172A;
         border-color: #FF9F1C;
         box-shadow: 0 2px 6px rgba(255, 159, 28, 0.3);
       }
@@ -1119,7 +1119,7 @@
     height: 38px;
     min-width: 38px;
     border-radius: 50%;
-    background: #EF4444;
+    background-color: #DC2626;
     display: flex;
     align-items: center;
     justify-content: center;

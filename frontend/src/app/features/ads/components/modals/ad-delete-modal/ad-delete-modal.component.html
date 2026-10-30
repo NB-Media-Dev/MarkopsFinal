@@ -1,6 +1,6 @@
 @if (target) {
-  <div class="modal-backdrop" (click)="onCancel()">
-    <div class="modal-card modal-sm" (click)="$event.stopPropagation()">
+  <div class="modal-backdrop" (click)="onCancel()" (keydown.enter)="onCancel()" (keydown.space)="onCancel()" (keydown.escape)="onCancel()" aria-label="Close delete modal">
+    <div class="modal-card modal-sm" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" aria-label="Delete ad dialog">
       <div class="modal-header header-danger">
         <div class="modal-title-wrap">
           <div class="modal-squircle-icon icon-danger">

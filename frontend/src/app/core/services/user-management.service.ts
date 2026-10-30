@@ -4,6 +4,95 @@ import { ManagedUser, CreateUserRequest } from '../models/user-management.model'
 import { UserRole } from '../models/auth.model';
 import { safeFetch } from '../utils/api-url.utils';
 
+function buildCreateUserPayload(req: CreateUserRequest) {
+  return {
+    email: String(req.email || '').toLowerCase().trim(),
+    fullName: String(req.fullName || '').trim(),
+    role: req.role,
+    department: String(req.department || 'General Operations').trim() || 'General Operations',
+    isActive: req.isActive ?? true,
+    password: req.password,
+    avatarUrl: req.avatarUrl,
+    avatarDataUrl: req.avatarDataUrl,
+  };
+}
+
+function generateSafeId(prefix = 'usr'): string {
+  if (typeof crypto !== 'undefined') {
+    if (typeof crypto.randomUUID === 'function') {
+      try {
+        return `${prefix}_${crypto.randomUUID().replaceAll('-', '').substring(0, 9)}`;
+      } catch {
+        // fallback
+      }
+    }
+    if (typeof crypto.getRandomValues === 'function') {
+      try {
+        const arr = new Uint32Array(2);
+        crypto.getRandomValues(arr);
+        return `${prefix}_${Date.now().toString(36)}_${arr[0].toString(36)}${arr[1].toString(36).substring(0, 4)}`;
+      } catch {
+        // fallback
+      }
+    }
+  }
+  return `${prefix}_${Date.now().toString(36)}_${Date.now().toString(16)}`;
+}
+
+function createLocalFallbackUser(payload: ReturnType<typeof buildCreateUserPayload>): ManagedUser {
+  return {
+    id: generateSafeId('usr'),
+    email: payload.email,
+    fullName: payload.fullName,
+    role: payload.role,
+    department: payload.department,
+    isActive: payload.isActive,
+    avatarUrl: payload.avatarUrl,
+    lastLoginAt: 'Never',
+    createdAt: new Date().toISOString().split('T')[0],
+  };
+}
+
+function parseResponseData(text: string): any {
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return {};
+  }
+}
+
+async function postUserToBackend(payload: ReturnType<typeof buildCreateUserPayload>, fallbackUser: ManagedUser): Promise<ManagedUser> {
+  console.log('[UserManagement] Sending POST /api/users payload:', payload);
+  const res = await safeFetch('/api/users', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  console.log('[UserManagement] POST /api/users response status:', res.status);
+
+  const text = await res.text();
+  const data = parseResponseData(text);
+
+  if (!res.ok) {
+    const errMsg = data.error || (res.status === 404
+      ? 'Backend server API not found (404). Please ensure the backend server is running on port 4000.'
+      : `Failed to create user (Status ${res.status})`);
+    throw new Error(errMsg);
+  }
+
+  return {
+    id: String(data.id || fallbackUser.id),
+    email: data.email || fallbackUser.email,
+    fullName: data.fullName || fallbackUser.fullName,
+    role: data.role || fallbackUser.role,
+    department: data.department || fallbackUser.department,
+    isActive: data.isActive !== undefined ? Boolean(data.isActive) : fallbackUser.isActive,
+    avatarUrl: data.avatarUrl || fallbackUser.avatarUrl,
+    lastLoginAt: data.lastLoginAt || 'Never',
+    createdAt: data.createdAt || fallbackUser.createdAt,
+  };
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -33,8 +122,8 @@ export class UserManagementService {
     if (this.isBrowser) {
       try {
         localStorage.removeItem('markops_users_db_store');
-      } catch {}
-      this.loadUsersFromDatabase();
+      } catch (error_) { console.log('[User Storage Notice] Skipped:', error_); }
+      setTimeout(() => { void this.loadUsersFromDatabase(); }, 0);
     }
   }
 
@@ -44,7 +133,8 @@ export class UserManagementService {
       const res = await safeFetch('/api/users');
       if (res.ok) {
         const text = await res.text();
-        if (text && text.trim().startsWith('[') || text.trim().startsWith('{')) {
+        const trimmed = text?.trim() ?? '';
+        if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
           const data = JSON.parse(text);
           if (Array.isArray(data) && data.length > 0) {
             this._users.set(data);
@@ -59,63 +149,13 @@ export class UserManagementService {
 
 
   async createUser(req: CreateUserRequest): Promise<ManagedUser> {
-    const payload = {
-      email: String(req.email || '').toLowerCase().trim(),
-      fullName: String(req.fullName || '').trim(),
-      role: req.role,
-      department: String(req.department || 'General Operations').trim() || 'General Operations',
-      isActive: req.isActive !== undefined ? req.isActive : true,
-      password: req.password,
-      avatarUrl: req.avatarUrl,
-      avatarDataUrl: req.avatarDataUrl,
-    };
-
-    let createdUser: ManagedUser = {
-      id: `usr_${Math.random().toString(36).substring(2, 11)}`,
-      email: payload.email,
-      fullName: payload.fullName,
-      role: payload.role,
-      department: payload.department,
-      isActive: payload.isActive,
-      avatarUrl: payload.avatarUrl,
-      lastLoginAt: 'Never',
-      createdAt: new Date().toISOString().split('T')[0],
-    };
+    const payload = buildCreateUserPayload(req);
+    let createdUser = createLocalFallbackUser(payload);
 
     if (this.isBrowser) {
       try {
-        const res = await safeFetch('/api/users', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-
-        const text = await res.text();
-        let data: any = {};
-        try {
-          data = text ? JSON.parse(text) : {};
-        } catch {
-          data = {};
-        }
-
-        if (res.ok) {
-          createdUser = {
-            id: String(data.id || createdUser.id),
-            email: data.email || createdUser.email,
-            fullName: data.fullName || createdUser.fullName,
-            role: data.role || createdUser.role,
-            department: data.department || createdUser.department,
-            isActive: data.isActive !== undefined ? Boolean(data.isActive) : createdUser.isActive,
-            avatarUrl: data.avatarUrl || createdUser.avatarUrl,
-            lastLoginAt: data.lastLoginAt || 'Never',
-            createdAt: data.createdAt || createdUser.createdAt,
-          };
-        } else {
-          const errMsg = data.error || (res.status === 404
-            ? 'Backend server API not found (404). Please ensure the backend server is running on port 4000.'
-            : `Failed to create user (Status ${res.status})`);
-          throw new Error(errMsg);
-        }
+        createdUser = await postUserToBackend(payload, createdUser);
+        this._users.update((list) => [createdUser, ...list.filter((u) => u.id !== createdUser.id)]);
       } catch (err) {
         console.error('Failed to sync newly created user to backend database:', err);
         throw err;
@@ -161,8 +201,8 @@ export class UserManagementService {
             email: updatedData.email ? String(updatedData.email).toLowerCase().trim() : user.email,
             role: updatedData.role || user.role,
             department: updatedData.department ? String(updatedData.department).trim() : user.department,
-            isActive: updatedData.isActive !== undefined ? updatedData.isActive : user.isActive,
-            avatarUrl: updatedData.avatarUrl !== undefined ? updatedData.avatarUrl : user.avatarUrl,
+            isActive: updatedData.isActive ?? user.isActive,
+            avatarUrl: updatedData.avatarUrl ?? user.avatarUrl,
           };
           return updatedUser;
         }

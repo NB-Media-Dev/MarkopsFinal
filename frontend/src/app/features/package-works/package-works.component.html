@@ -130,7 +130,7 @@
     [activeImageUrl]="activeImageUrl()"
     [activeIframeUrl]="activeIframeUrl()"
     [activeIframeSrcdoc]="activeIframeSrcdoc()"
-    (close)="closeDocViewer()"
+    (closeModal)="closeDocViewer()"
     (download)="downloadAsset($event.event, $event.url, $event.fileName)"
   ></app-doc-viewer-modal>
 
@@ -138,7 +138,7 @@
     [isOpen]="isTaskAuditModalOpen()"
     [auditTask]="selectedAuditTask()"
     [activePackageMeta]="activePackageMeta()"
-    (close)="closeTaskAuditModal()"
+    (closeModal)="closeTaskAuditModal()"
     (previewDoc)="openDocViewer($event.event, $event.url, $event.name, $event.content)"
     (download)="downloadAsset($event.event, $event.url, $event.name)"
   ></app-task-audit-modal>

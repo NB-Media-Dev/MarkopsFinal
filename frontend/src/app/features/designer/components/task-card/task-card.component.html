@@ -2,9 +2,12 @@
   class="task-card"
   [class.selected]="isSelected"
   (click)="onView($event)"
+  (keydown.enter)="onView($event)"
+  (keydown.space)="onView($event)"
+  aria-label="View task details"
 >
 
-  <!-- Top Header: Designer Avatar & Role matching Image 1 + Priority & Status Badges -->
+  
   <div class="card-designer-header">
     <div class="designer-profile-left">
       <div class="designer-avatar-ring">
@@ -42,7 +45,7 @@
     </div>
   </div>
 
-  <!-- Category & Task Squircle Badge Row (from Image 2) -->
+  
   <div class="task-category-row">
     @if (getTaskTypeLabel()) {
       <span class="task-type-pill">
@@ -53,7 +56,7 @@
     <span class="status-badge" [ngClass]="getStatusBadgeClass(task.status)">{{ task.status }}</span>
   </div>
 
-  <!-- Task Title & Created by Creator Name -->
+  
   <div class="task-title-section">
     <h3 class="task-title" [title]="task.title">{{ task.title }}</h3>
     <div class="task-creator-line">
@@ -62,15 +65,7 @@
     </div>
   </div>
 
-  <!-- Revision Feedback Alert (if applicable) -->
-  <!-- @if ((task.status === 'REVISION_REQUIRED' || task.status === 'REDESIGN_REQUIRED') && task.reviewerFeedback) {
-    <div class="revision-feedback-alert">
-      <span class="material-symbols-outlined alert-icon">rate_review</span>
-      <span class="alert-body">"{{ task.reviewerFeedback }}"</span>
-    </div>
-  } -->
-
-  <!-- Over All Task Status & Progress Bar (matching Image 1) -->
+  
   <div class="task-progress-block">
     <div class="progress-title-row">
       <span class="progress-title-text">Task Status</span>
@@ -83,7 +78,7 @@
     </div>
   </div>
 
-  <!-- Footer Row: Due Date, Version, Preview & Action Buttons (matching Image 1) -->
+  
   <div class="task-card-footer">
     <div class="footer-meta-left">
       <span class="meta-due-date">
@@ -95,8 +90,8 @@
       }
     </div>
 
-    <div class="task-card-actions" (click)="$event.stopPropagation()">
-      <!-- Image 1 Style: Soft Green Pill for Preview / View Detail -->
+    <div class="task-card-actions" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()">
+      
       <button
         type="button"
         class="btn-card-action btn-card-download"
@@ -106,21 +101,6 @@
         <span class="material-symbols-outlined icon-xs">menu_book</span>
         <span>Preview</span>
       </button>
-
-      <!-- Image 1 Style: Solid Green Pill for Download if Attachment -->
-      <!-- @if (task.attachmentUrl) {
-        <a
-          [href]="task.attachmentUrl"
-          target="_blank"
-          download
-          class="btn-card-action btn-card-download"
-          (click)="$event.stopPropagation()"
-          title="Download Creative"
-        >
-          <span>Download</span>
-          <span class="material-symbols-outlined icon-xs">arrow_downward</span>
-        </a>
-      } -->
 
       @if (canStartWork()) {
         <button

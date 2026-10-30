@@ -1,6 +1,6 @@
 @if (isOpen) {
-  <div class="custom-modal-overlay" (click)="onClose()">
-    <div class="custom-modal-container create-package-modal" (click)="$event.stopPropagation()">
+  <div class="custom-modal-overlay" (click)="onClose()" (keydown.enter)="onClose()" (keydown.space)="onClose()" (keydown.escape)="onClose()" aria-label="Close modal">
+    <div class="custom-modal-container create-package-modal" (click)="$event.stopPropagation()" (keydown)="$event.stopPropagation()" aria-label="Edit package dialog">
 
       <div class="custom-modal-header">
         <div class="modal-title-with-badge">

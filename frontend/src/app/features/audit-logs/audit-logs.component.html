@@ -71,8 +71,10 @@
 
   <div class="toolbar-card">
     <div class="search-box">
+      <label for="auditLogsSearchInput" class="sr-only">Filter audit logs</label>
       <span class="material-symbols-outlined search-icon">search</span>
       <input
+        id="auditLogsSearchInput"
         type="text"
         placeholder="Filter logs by actor email, action event, entity type or ID..."
         [value]="searchQuery()"

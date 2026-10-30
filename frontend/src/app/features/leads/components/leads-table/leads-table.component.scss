@@ -30,7 +30,7 @@
         height: 34px;
         border-radius: 10px;
         background: #FFF5E6;
-        color: #FF9F1C;
+        color: #B45309;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -38,7 +38,7 @@
 
         .material-symbols-outlined {
           font-size: 1px;
-          color: #FF9F1C;
+          color: #B45309;
         }
       }
 
@@ -95,11 +95,11 @@
 
     thead tr, th {
       background-color: #FFF5E6 !important;
-      color: #E28704 !important;
+      color: #B45309 !important;
       font-weight: 700 !important;
       padding: 0.75rem 1rem !important;
       font-size: 0.725rem !important;
-      letter-spacing: 0.05em !important;
+      letter-spacing: 0.05em;
       text-transform: uppercase !important;
       border-bottom: 1px solid rgba(255, 159, 28, 0.2) !important;
       white-space: nowrap !important;
@@ -179,7 +179,7 @@
 
       .icon-chip {
         font-size: 13px;
-        color: #EA580C;
+        color: #C2410C;
       }
     }
 
@@ -222,7 +222,7 @@
         &:hover,
         &.active {
           background: #FFF5E6;
-          color: #FF9F1C;
+          color: #B45309;
           border-color: #FF9F1C;
           box-shadow: 0 2px 6px rgba(255, 159, 28, 0.2);
         }
@@ -346,7 +346,7 @@
 
       &:hover:not(:disabled) {
         background: #FFF5E6;
-        color: #E28704;
+        color: #B45309;
         border-color: rgba(255, 159, 28, 0.4);
       }
 
@@ -356,10 +356,10 @@
       }
 
       &.active-page {
-        background: #FF9F1C;
+        background: #C2410C;
         color: #FFFFFF;
-        border-color: #FF9F1C;
-        box-shadow: 0 2px 6px rgba(255, 159, 28, 0.35);
+        border-color: #C2410C;
+        box-shadow: 0 2px 6px rgba(194, 65, 12, 0.35);
       }
     }
 
@@ -388,7 +388,7 @@
 }
 
 .btn-action-primary {
-  background: linear-gradient(135deg, #F59E0B 0%, #EA580C 100%);
+  background: linear-gradient(135deg, #C2410C 0%, #9A3412 100%);
   color: #FFFFFF;
   border: none;
   border-radius: 999px;
@@ -441,7 +441,7 @@
 
 .btn-action-detail {
   background-color: #FFF5E6;
-  color: #E28704;
+  color: #B45309;
   border: 1px solid rgba(255, 159, 28, 0.45);
   border-radius: 999px;
   padding: 0.35rem 0.85rem;
@@ -454,9 +454,9 @@
   transition: all 0.18s ease;
 
   &:hover {
-    background-color: #FF9F1C;
+    background-color: #C2410C;
     color: #FFFFFF;
-    border-color: #FF9F1C;
+    border-color: #C2410C;
     box-shadow: 0 2px 8px rgba(255, 159, 28, 0.35);
     transform: translateY(-1px);
   }
@@ -464,7 +464,7 @@
 
 .btn-action-edit {
   background-color: #F0FDF4;
-  color: #16A34A;
+  color: #15803D;
   border: 1px solid #BBF7D0;
   border-radius: 999px;
   padding: 0.32rem 0.75rem;
@@ -477,14 +477,14 @@
   transition: all 0.15s ease;
 
   &:hover {
-    background-color: #16A34A;
+    background-color: #15803D;
     color: #FFFFFF;
   }
 }
 
 .btn-action-delete {
   background-color: #FFF1F2;
-  color: #E11D48;
+  color: #BE123C;
   border: 1px solid #FECDD3;
   border-radius: 999px;
   padding: 0.32rem 0.75rem;
@@ -519,7 +519,7 @@
       height: 46px;
       border-radius: 12px;
       background: #FFF7ED;
-      color: #EA580C;
+      color: #C2410C;
       display: flex;
       align-items: center;
       justify-content: center;

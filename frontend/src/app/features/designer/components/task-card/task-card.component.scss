@@ -127,17 +127,17 @@
         &.priority-high,
         &.priority-urgent {
           background: #FEF2F2;
-          color: #DC2626;
+          color: #B91C1C;
           border: 1px solid #FECACA;
         }
         &.priority-medium {
           background: #FFFBEB;
-          color: #D97706;
+          color: #B45309;
           border: 1px solid #FDE68A;
         }
         &.priority-low {
           background: #F0FDF4;
-          color: #16A34A;
+          color: #15803D;
           border: 1px solid #BBF7D0;
         }
       }
@@ -146,7 +146,7 @@
 
       .btn-icon-trash {
         border: none;
-        color: #EF4444;
+        color: #B91C1C;
         background: #FEE2E2;
         padding: 0.15rem;
         border-radius: 5px;
@@ -157,7 +157,7 @@
         transition: all 0.15s ease;
 
         &:hover {
-          color: #EF4444;
+          color: #B91C1C;
           background: #FEE2E2;
         }
 
@@ -236,7 +236,7 @@
       margin: 0;
       line-height: 1.25;
       letter-spacing: -0.01em;
-      word-break: break-word;
+      overflow-wrap: break-word;
     }
 
     .task-creator-line {
@@ -410,7 +410,7 @@
         font-size: 0.68rem;
         font-weight: 700;
         background: #F1F5F9;
-        color: #64748B;
+        color: #475569;
         padding: 0.1rem 0.4rem;
         border-radius: 5px;
         white-space: nowrap;
@@ -444,7 +444,7 @@
 
         &.btn-card-preview {
           background: #E8F5E9;
-          color: #059669;
+          color: #047857;
           padding: 0.32rem 0.7rem;
 
           &:hover {
@@ -456,7 +456,7 @@
 
         &.btn-card-download,
         &.btn-card-solid-action {
-          background: #059669;
+          background: #047857;
           color: #FFFFFF;
           padding: 0.32rem 0.8rem;
           box-shadow: 0 2px 8px rgba(5, 150, 105, 0.22);
@@ -470,7 +470,7 @@
 
         &.btn-card-review-action {
           background: #FEF2F2;
-          color: #DC2626;
+          color: #B91C1C;
           border: 1px solid #FECACA;
           padding: 0.32rem 0.7rem;
 

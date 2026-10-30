@@ -46,10 +46,7 @@
       .arrow-char {
         font-size: 1rem;
         font-weight: 800;
-        color: #4F46E5;
-        background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 50%, #EC4899 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #3730A3;
         line-height: 1;
         transition: transform 0.2s ease;
       }
@@ -153,19 +150,19 @@
 
     &.icon-amber {
       background: #FEF3C7;
-      color: #D97706;
+      color: #B45309;
       border: 1px solid #FDE68A;
     }
 
     &.icon-emerald {
       background: #D1FAE5;
-      color: #059669;
+      color: #047857;
       border: 1px solid #A7F3D0;
     }
 
     &.icon-indigo {
       background: #EDE9FE;
-      color: #6366F1;
+      color: #4338CA;
       border: 1px solid #DDD6FE;
     }
   }
@@ -297,7 +294,7 @@
         height: 36px;
         border-radius: 10px;
         background: #ECFDF5;
-        color: #059669;
+        color: #047857;
         border: 1px solid #A7F3D0;
         display: flex;
         align-items: center;
@@ -467,7 +464,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #94A3B8;
+    color: #475569;
 
     .material-symbols-outlined {
       font-size: 26px;

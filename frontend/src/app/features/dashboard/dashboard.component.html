@@ -8,9 +8,11 @@
     <section class="products-grid-section" aria-label="MarkOps Products">
       <div class="products-grid">
         @for (pkg of fixedPackages(); track pkg.id) {
-          <article
+          <div
             class="product-card"
             (click)="openPackage(pkg.shortName || pkg.name)"
+            (keydown.enter)="openPackage(pkg.shortName || pkg.name)"
+            (keydown.space)="openPackage(pkg.shortName || pkg.name)"
             [attr.aria-label]="'Explore ' + getCardTitle(pkg)"
           >
             <div class="product-emblem-badge">
@@ -20,7 +22,7 @@
             <div class="card-body-content">
               <h2 class="card-product-title">{{ getCardTitle(pkg) }}</h2>
             </div>
-          </article>
+          </div>
         }
       </div>
     </section>

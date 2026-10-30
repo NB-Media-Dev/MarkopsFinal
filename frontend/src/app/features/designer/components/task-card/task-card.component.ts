@@ -13,7 +13,7 @@ import { getApiUrl } from '../../../../core/utils/api-url.utils';
   styleUrl: './task-card.component.scss',
 })
 export class TaskCardComponent {
-  private userService = inject(UserManagementService);
+  private readonly userService = inject(UserManagementService);
 
   @Input({ required: true }) task!: Task;
   @Input() isSelected = false;
@@ -34,14 +34,11 @@ export class TaskCardComponent {
 
   isTaskCreator(): boolean {
     if (!this.task || !this.currentUser) return false;
-    const currentId = String(this.currentUser.id !== undefined && this.currentUser.id !== null ? this.currentUser.id : '').trim().toLowerCase();
+    const currentId = String(this.currentUser.id ?? '').trim().toLowerCase();
     const currentEmail = String(this.currentUser.email || '').toLowerCase().trim();
 
-    const tCreatorId = String(
-      this.task.createdBy !== undefined && this.task.createdBy !== null
-        ? this.task.createdBy
-        : ((this.task as any).created_by !== undefined && (this.task as any).created_by !== null ? (this.task as any).created_by : '')
-    ).trim().toLowerCase();
+    const rawCreatorId = this.task.createdBy ?? (this.task as any).created_by ?? '';
+    const tCreatorId = String(rawCreatorId).trim().toLowerCase();
     const tCreatorEmail = String(this.task.creatorEmail || (this.task as any).creator_email || '').toLowerCase().trim();
 
     return Boolean((currentId && tCreatorId && currentId === tCreatorId) || (currentEmail && tCreatorEmail && currentEmail === tCreatorEmail));
@@ -150,7 +147,7 @@ export class TaskCardComponent {
     const colors = ['#F59E0B', '#EA580C', '#D97706', '#7C3AED', '#2563EB', '#059669', '#0891B2'];
     let hash = 0;
     for (let i = 0; i < (name || '').length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash);
     }
     return colors[Math.abs(hash) % colors.length];
   }
@@ -160,7 +157,7 @@ export class TaskCardComponent {
     if (!name) return 'S';
     const parts = name.trim().split(/\s+/);
     if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return (parts[0][0] + (parts.at(-1)?.[0] || "")).toUpperCase();
   }
 
   getShortCreator(): string {

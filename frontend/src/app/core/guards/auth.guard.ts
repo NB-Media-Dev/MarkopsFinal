@@ -12,7 +12,7 @@ export const authGuard: CanActivateFn = async (route, state) => {
 
   if (authService.isAuthenticated()) {
     const user = authService.currentUser();
-    if (user && user.isActive === false) {
+    if (user?.isActive === false) {
       authService.logout();
       return router.createUrlTree(['/login'], { queryParams: { error: 'inactive' } });
     }

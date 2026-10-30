@@ -1,25 +1,30 @@
+import {
+  TelecallerCampaignReport,
+  toLocalDateString,
+  formatReportDate,
+  getTaskAssignedLocalDate,
+  taskMatchesDate,
+  taskMatchesDateRange,
+  getReportLeadKey,
+  getReportLeadOutcome,
+  isReportLeadCalled,
+  isReportLeadPaid,
+  aggregateGroupLeadStats,
+  buildReportRow,
+  getReportTaskStatusBadgeClass,
+  getReportLeadStatusBadgeClass,
+  getReportPlatformBadgeClass,
+  getReportAdStatusBadgeClass,
+  formatReportProductName,
+  formatReportPackageName,
+} from '../../utils/package-report.utils';
 import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RoleOperationTab, FixedPackageMeta, ProductPackage, FIXED_PACKAGES, resolveTaskProductAndPackage, isTaskForPackage } from '../../../../core/models/package.model';
+import { RoleOperationTab, FixedPackageMeta, ProductPackage, isTaskForPackage } from '../../../../core/models/package.model';
 import { UserPerformanceRecord } from '../../../../core/models/user-management.model';
 import { TelecallerTargetService } from '../../../../core/services/telecaller-target.service';
 
-export interface TelecallerCampaignReport {
-  sNo: number;
-  campaignName: string;
-  adName: string;
-  assignedDate: string;
-  assignedDateRaw: string;
-  totalCountLeads: number;
-  totalCalls: number;
-  averageCalls: number;
-  interested: number;
-  targets: number;
-  callerRatio: string;
-  paid: number;
-  leads: any[];
-}
 
 import { DesignerDashboardComponent } from '../../../designer/designer-dashboard.component';
 import { TelecallingComponent } from '../../../telecalling/telecalling.component';
@@ -223,26 +228,7 @@ export class PackageDepartmentViewComponent {
 
   
   private toLocalDateString(val: any): string {
-    if (!val) return '';
-    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val.trim())) {
-      return val.trim();
-    }
-    const d = new Date(val);
-    if (isNaN(d.getTime())) {
-      const parsed = Date.parse(val);
-      if (!isNaN(parsed)) {
-        const pd = new Date(parsed);
-        const y = pd.getFullYear();
-        const m = String(pd.getMonth() + 1).padStart(2, '0');
-        const day = String(pd.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
-      }
-      return '';
-    }
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+    return toLocalDateString(val);
   }
 
   setModalDateFilter(filter: 'ALL' | 'YESTERDAY' | 'TODAY' | 'WEEK' | 'MONTH' | 'CUSTOM') {
@@ -339,8 +325,36 @@ export class PackageDepartmentViewComponent {
     return this.filteredModalTasks.length;
   }
 
+  private getReportLeadKey(lead: any): string {
+    return getReportLeadKey(lead);
+  }
+
+  private getReportLeadOutcome(hasValidOutcome: boolean, rawOutcome: string, hasValidStatus: boolean, rawStatus: string): string {
+    return getReportLeadOutcome(hasValidOutcome, rawOutcome, hasValidStatus, rawStatus);
+  }
+
+  private isReportLeadCalled(lead: any, hasValidOutcome: boolean, hasValidStatus: boolean): boolean {
+    return isReportLeadCalled(lead, hasValidOutcome, hasValidStatus);
+  }
+
+  private isReportLeadPaid(lead: any, outcome: string): boolean {
+    return isReportLeadPaid(lead, outcome);
+  }
+
+  private aggregateGroupLeadStats(groupLeads: any[]): { totalCalls: number; interested: number; paid: number } {
+    return aggregateGroupLeadStats(groupLeads);
+  }
+
+  private formatReportDate(dateRaw: string): string {
+    return formatReportDate(dateRaw);
+  }
+
+  private buildReportRow(key: string, groupLeads: any[], sNo: number, baseDailyTarget: number): TelecallerCampaignReport {
+    return buildReportRow(key, groupLeads, sNo, baseDailyTarget);
+  }
+
   get telecallerCampaignReports(): TelecallerCampaignReport[] {
-    if (!this.selectedPerformanceUser || this.selectedPerformanceUser.role !== 'TELECALLER') {
+    if (this.selectedPerformanceUser?.role !== 'TELECALLER') {
       return [];
     }
 
@@ -350,64 +364,7 @@ export class PackageDepartmentViewComponent {
     const baseDailyTarget = targetInfo?.dailyCallsTarget || 50;
 
     if (tasks.length === 0 && (!this.selectedPerformanceUser.tasks || this.selectedPerformanceUser.tasks.length === 0)) {
-      const mockRows: TelecallerCampaignReport[] = [
-        {
-          sNo: 1,
-          campaignName: pkgDisplayName || 'current affairs oct',
-          adName: 'spiderman poster',
-          assignedDate: '13 Oct 2026',
-          assignedDateRaw: '2026-10-13',
-          totalCountLeads: 2,
-          totalCalls: 5,
-          averageCalls: 2.5,
-          interested: 1,
-          targets: 200,
-          callerRatio: '2.5%',
-          paid: 7,
-          leads: [],
-        },
-        {
-          sNo: 2,
-          campaignName: pkgDisplayName || 'current affairs oct',
-          adName: 'spiderman poster',
-          assignedDate: '12 Oct 2026',
-          assignedDateRaw: '2026-10-12',
-          totalCountLeads: 6,
-          totalCalls: 2,
-          averageCalls: 0.3,
-          interested: 0,
-          targets: 50,
-          callerRatio: '4%',
-          paid: 6,
-          leads: [],
-        },
-        {
-          sNo: 3,
-          campaignName: pkgDisplayName || 'current affairs oct',
-          adName: 'spiderman poster',
-          assignedDate: '11 Oct 2026',
-          assignedDateRaw: '2026-10-11',
-          totalCountLeads: 1,
-          totalCalls: 1,
-          averageCalls: 1.0,
-          interested: 0,
-          targets: 50,
-          callerRatio: '2%',
-          paid: 0,
-          leads: [],
-        },
-      ];
-
-      if (this.taskSearchQuery.trim()) {
-        const q = this.taskSearchQuery.toLowerCase().trim();
-        return mockRows.filter(
-          (r) =>
-            r.campaignName.toLowerCase().includes(q) ||
-            r.adName.toLowerCase().includes(q) ||
-            r.assignedDate.toLowerCase().includes(q)
-        );
-      }
-      return mockRows;
+      return [];
     }
 
     const groups = new Map<string, any[]>();
@@ -423,96 +380,14 @@ export class PackageDepartmentViewComponent {
       groups.get(groupKey)!.push(t);
     }
 
-    const reports: TelecallerCampaignReport[] = [];
-    let sNo = 1;
-
     const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
       const dateA = a.split('___')[2] || '';
       const dateB = b.split('___')[2] || '';
       return dateB.localeCompare(dateA);
     });
 
-    for (const key of sortedKeys) {
-      const [cName, aName, dateRaw] = key.split('___');
-      const groupLeads = groups.get(key) || [];
-      const totalLeads = groupLeads.length;
-
-      const calledLeadIds = new Set<string>();
-      const interestedLeadIds = new Set<string>();
-      const paidLeadIds = new Set<string>();
-
-      for (const lead of groupLeads) {
-        const leadId = String(lead.id || lead.leadId || '').trim().toLowerCase();
-        const leadPhone = String(lead.phone || lead.leadPhone || '').replace(/\D/g, '');
-        const leadKey = leadId ? `id_${leadId}` : (leadPhone ? `p_${leadPhone}` : `ref_${lead.title || lead.name || ''}`);
-
-        const uncalledStatuses = new Set(['NEW', 'UNASSIGNED', 'ASSIGNED', '—', '', 'NULL', 'UNDEFINED']);
-        const rawOutcome = String(lead.callOutcome || '').toUpperCase().trim();
-        const rawStatus = String(lead.status || '').toUpperCase().trim();
-
-        const hasValidOutcome = Boolean(rawOutcome && !uncalledStatuses.has(rawOutcome));
-        const hasValidStatus = Boolean(rawStatus && !uncalledStatuses.has(rawStatus));
-        const hasValidCalls = Array.isArray(lead.calls) && lead.calls.length > 0;
-        const hasValidAttempts = typeof lead.callAttempts === 'number' && lead.callAttempts > 0;
-        const hasValidCallDate = Boolean(lead.calledAt) || Boolean(lead.lastCalledAt);
-
-        const hasBeenCalled = hasValidCalls || hasValidAttempts || hasValidCallDate || hasValidOutcome || hasValidStatus;
-
-        if (hasBeenCalled && leadKey) {
-          calledLeadIds.add(leadKey);
-        }
-
-        const outcome = (hasValidOutcome ? rawOutcome : (hasValidStatus ? rawStatus : '')).toUpperCase();
-        if (['PAID', 'CONVERTED'].includes(outcome) || lead.isPaid || lead.paidAmount > 0) {
-          if (leadKey) {
-            paidLeadIds.add(leadKey);
-            interestedLeadIds.add(leadKey);
-          }
-        } else if (['INTERESTED', 'QUALIFIED', 'HOT'].includes(outcome)) {
-          if (leadKey) {
-            interestedLeadIds.add(leadKey);
-          }
-        }
-      }
-
-      const totalCalls = calledLeadIds.size;
-      const interested = interestedLeadIds.size;
-      const paid = paidLeadIds.size;
-
-      const avgCalls = totalLeads > 0 ? Number((totalCalls / totalLeads).toFixed(1)) : 0;
-      const rowTarget = baseDailyTarget > 0 ? baseDailyTarget : 50;
-      const ratioVal = rowTarget > 0 ? (totalCalls / rowTarget) * 100 : 0;
-      const formattedRatio = ratioVal % 1 === 0 ? `${ratioVal}%` : `${ratioVal.toFixed(1)}%`;
-
-      let displayDate = dateRaw;
-      if (dateRaw && dateRaw.includes('-')) {
-        const parts = dateRaw.split('-');
-        if (parts.length === 3) {
-          const dObj = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
-          if (!isNaN(dObj.getTime())) {
-            displayDate = dObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-          }
-        }
-      }
-
-      reports.push({
-        sNo: sNo++,
-        campaignName: cName,
-        adName: aName,
-        assignedDate: displayDate,
-        assignedDateRaw: dateRaw,
-        totalCountLeads: totalLeads,
-        totalCalls,
-        averageCalls: avgCalls,
-        interested,
-        targets: rowTarget,
-        callerRatio: formattedRatio,
-        paid,
-        leads: groupLeads,
-      });
-    }
-
-    return reports;
+    let sNo = 1;
+    return sortedKeys.map((key) => this.buildReportRow(key, groups.get(key) || [], sNo++, baseDailyTarget));
   }
 
   get paginatedCampaignReports(): TelecallerCampaignReport[] {
@@ -602,133 +477,62 @@ export class PackageDepartmentViewComponent {
   }
 
   getTaskAssignedLocalDate(task: any): string {
-    if (!task) return '';
-    if (Array.isArray(task.statusHistory) && task.statusHistory.length > 0) {
-      const assignEvent = task.statusHistory.find(
-        (h: any) =>
-          h.newStatus === 'ASSIGNED' ||
-          (h.remark && String(h.remark).toLowerCase().includes('assigned'))
-      );
-      if (assignEvent && (assignEvent.createdAt || assignEvent.created_at)) {
-        const assignStr = this.toLocalDateString(assignEvent.createdAt || assignEvent.created_at);
-        if (assignStr) return assignStr;
-      }
-    }
-    const raw = task.launchDate || task.assignedAt || task.assigned_at || task.assignedDate || task.createdAt || task.created_at;
-    return this.toLocalDateString(raw);
+    return getTaskAssignedLocalDate(task);
   }
 
   taskMatchesDate(task: any, targetDate: string): boolean {
-    if (!targetDate) return true;
-    const assigned = this.getTaskAssignedLocalDate(task);
-    return assigned === targetDate;
+    return taskMatchesDate(task, targetDate);
   }
 
   taskMatchesDateRange(task: any, startDate?: string, endDate?: string): boolean {
-    if (!startDate && !endDate) return true;
-
-    const dates: string[] = [];
-    const assigned = this.getTaskAssignedLocalDate(task);
-    if (assigned) dates.push(assigned);
-
-    if (task.launchDate) {
-      const lDate = this.toLocalDateString(task.launchDate);
-      if (lDate) dates.push(lDate);
-    }
-    if (task.calledAt) {
-      const cDate = this.toLocalDateString(task.calledAt);
-      if (cDate) dates.push(cDate);
-    }
-    if (task.createdAt) {
-      const crDate = this.toLocalDateString(task.createdAt);
-      if (crDate) dates.push(crDate);
-    }
-    if (task.submittedAt) {
-      const sDate = this.toLocalDateString(task.submittedAt);
-      if (sDate) dates.push(sDate);
-    }
-    if (task.updatedAt) {
-      const uDate = this.toLocalDateString(task.updatedAt);
-      if (uDate) dates.push(uDate);
-    }
-    if (task.dueDate) {
-      const dDate = this.toLocalDateString(task.dueDate);
-      if (dDate) dates.push(dDate);
-    }
-
-    if (dates.length === 0) return true;
-
-    return dates.some((d) => {
-      if (startDate && endDate) {
-        return d >= startDate && d <= endDate;
-      }
-      if (startDate) {
-        return d >= startDate;
-      }
-      if (endDate) {
-        return d <= endDate;
-      }
-      return true;
-    });
+    return taskMatchesDateRange(task, startDate || "", endDate || "");
   }
 
+  private findVersionHistoryStartTime(task: any, uploadTime: number): number | null {
+    if (!task?.statusHistory?.length) return null;
+    const sorted = [...task.statusHistory].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
 
-  getVersionDuration(ver: any, task?: any): string {
-    if (!ver || !ver.createdAt) return '';
-    const uploadTime = new Date(ver.createdAt).getTime();
-    if (isNaN(uploadTime)) return '';
-
-    let startTime: number | null = null;
-
-    if (task?.statusHistory && task.statusHistory.length > 0) {
-      const sortedHistory = [...task.statusHistory].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-
-      for (const h of sortedHistory) {
-        const hTime = new Date(h.createdAt).getTime();
-        if (hTime <= uploadTime) {
-          const s = (h.newStatus || '').toUpperCase();
-          if (s === 'IN_PROGRESS' || s === 'REVISION_REQUIRED') {
-            startTime = hTime;
-          }
-        }
-      }
-
-      if (!startTime) {
-        for (const h of sortedHistory) {
-          const hTime = new Date(h.createdAt).getTime();
-          if (hTime <= uploadTime) {
-            const s = (h.newStatus || '').toUpperCase();
-            if (s === 'ACCEPTED' || s === 'ASSIGNED') {
-              startTime = hTime;
-            }
-          }
+    let foundTime: number | null = null;
+    for (const h of sorted) {
+      const hTime = new Date(h.createdAt).getTime();
+      if (hTime <= uploadTime) {
+        const s = (h.newStatus || '').toUpperCase();
+        if (s === 'IN_PROGRESS' || s === 'REVISION_REQUIRED') {
+          foundTime = hTime;
         }
       }
     }
+    if (foundTime) return foundTime;
 
-    if (!startTime && task?.versions && task.versions.length > 1) {
-      const sortedVers = [...task.versions].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-      const currIdx = sortedVers.findIndex(
-        (v: any) => (v.id && v.id === ver.id) || v.versionNumber === ver.versionNumber
-      );
-      if (currIdx > 0) {
-        startTime = new Date(sortedVers[currIdx - 1].createdAt).getTime();
+    for (const h of sorted) {
+      const hTime = new Date(h.createdAt).getTime();
+      if (hTime <= uploadTime) {
+        const s = (h.newStatus || '').toUpperCase();
+        if (s === 'ACCEPTED' || s === 'ASSIGNED') {
+          foundTime = hTime;
+        }
       }
     }
+    return foundTime;
+  }
 
-    if (!startTime && task?.createdAt) {
-      startTime = new Date(task.createdAt).getTime();
+  private findPreviousVersionStartTime(ver: any, task: any): number | null {
+    if (!task?.versions || task.versions.length <= 1) return null;
+    const sorted = [...task.versions].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    const currIdx = sorted.findIndex(
+      (v: any) => (v.id && v.id === ver.id) || v.versionNumber === ver.versionNumber
+    );
+    if (currIdx > 0) {
+      return new Date(sorted[currIdx - 1].createdAt).getTime();
     }
+    return null;
+  }
 
-    if (!startTime || isNaN(startTime) || uploadTime < startTime) {
-      return '—';
-    }
-
-    const diffMs = Math.max(0, uploadTime - startTime);
+  private formatDurationMs(diffMs: number): string {
     const diffSec = Math.floor(diffMs / 1000);
     const diffMinutes = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMinutes / 60);
@@ -742,77 +546,71 @@ export class PackageDepartmentViewComponent {
       const remMins = diffMinutes % 60;
       return remMins > 0 ? `${diffHours}h ${remMins}m` : `${diffHours}h`;
     }
-    if (diffMinutes > 0) {
-      return `${diffMinutes} min`;
-    }
-    if (diffSec > 0) {
-      return `${diffSec}s`;
-    }
+    if (diffMinutes > 0) return `${diffMinutes} min`;
+    if (diffSec > 0) return `${diffSec}s`;
     return '—';
   }
 
-  
-  getTaskDuration(task: any): string {
-    if (!task) return '—';
+  getVersionDuration(ver: any, task?: any): string {
+    if (!ver?.createdAt) return '';
+    const uploadTime = new Date(ver.createdAt).getTime();
+    if (Number.isNaN(uploadTime)) return '';
 
-
-    if (task.workCycle?.durationText) {
-      return task.workCycle.durationText;
+    let startTime = this.findVersionHistoryStartTime(task, uploadTime);
+    if (!startTime) {
+      startTime = this.findPreviousVersionStartTime(ver, task);
+    }
+    if (!startTime && task?.createdAt) {
+      startTime = new Date(task.createdAt).getTime();
     }
 
-   
+    if (!startTime || Number.isNaN(startTime) || uploadTime < startTime) {
+      return '—';
+    }
+
+    return this.formatDurationMs(Math.max(0, uploadTime - startTime));
+  }
+
+  private resolveFinishedTaskDuration(task: any): string {
+    if (!task.createdAt || !task.updatedAt) return '—';
+    const start = new Date(task.createdAt).getTime();
+    const end = new Date(task.updatedAt).getTime();
+    if (Number.isNaN(start) || Number.isNaN(end) || end < start) return '—';
+    return this.formatDurationMs(end - start);
+  }
+
+  private resolveActiveTaskDuration(task: any): string {
+    if (!task.createdAt) return 'In Progress';
+    const start = new Date(task.createdAt).getTime();
+    const now = Date.now();
+    if (Number.isNaN(start) || now <= start) return 'In Progress';
+
+    const diffMs = now - start;
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays > 0) return `${diffDays}d active`;
+    if (diffHours > 0) return `${diffHours}h active`;
+    const diffMins = Math.floor(diffMs / 60000);
+    return diffMins > 0 ? `${diffMins}m active` : 'Active';
+  }
+
+  getTaskDuration(task: any): string {
+    if (!task) return '—';
+    if (task.workCycle?.durationText) return task.workCycle.durationText;
+
     if (Array.isArray(task.versions) && task.versions.length > 0) {
       const latestVer = task.versions[task.versions.length - 1];
       const dur = this.getVersionDuration(latestVer, task);
       if (dur && dur !== '—') return dur;
     }
 
-    if (
-      task.status === 'APPROVED' ||
-      task.status === 'COMPLETED' ||
-      task.status === 'PUBLISHED' ||
-      task.status === 'SUBMITTED' ||
-      task.status === 'UNDER_REVIEW'
-    ) {
-      if (task.createdAt && task.updatedAt) {
-        const start = new Date(task.createdAt).getTime();
-        const end = new Date(task.updatedAt).getTime();
-        if (!isNaN(start) && !isNaN(end) && end >= start) {
-          const diffMs = end - start;
-          const diffMinutes = Math.floor(diffMs / 60000);
-          const diffHours = Math.floor(diffMinutes / 60);
-          const diffDays = Math.floor(diffHours / 24);
-          if (diffDays > 0) {
-            const remHours = diffHours % 24;
-            return remHours > 0 ? `${diffDays}d ${remHours}h` : `${diffDays}d`;
-          }
-          if (diffHours > 0) {
-            const remMins = diffMinutes % 60;
-            return remMins > 0 ? `${diffHours}h ${remMins}m` : `${diffHours}h`;
-          }
-          if (diffMinutes > 0) return `${diffMinutes} min`;
-          const diffSec = Math.floor(diffMs / 1000);
-          return diffSec > 0 ? `${diffSec}s` : '—';
-        }
-      }
+    const finishedStatuses = ['APPROVED', 'COMPLETED', 'PUBLISHED', 'SUBMITTED', 'UNDER_REVIEW'];
+    if (finishedStatuses.includes(task.status)) {
+      return this.resolveFinishedTaskDuration(task);
     }
 
-    
     if (task.status === 'IN_PROGRESS' || task.status === 'ACCEPTED') {
-      if (task.createdAt) {
-        const start = new Date(task.createdAt).getTime();
-        const now = Date.now();
-        if (!isNaN(start) && now > start) {
-          const diffMs = now - start;
-          const diffHours = Math.floor(diffMs / 3600000);
-          const diffDays = Math.floor(diffHours / 24);
-          if (diffDays > 0) return `${diffDays}d active`;
-          if (diffHours > 0) return `${diffHours}h active`;
-          const diffMins = Math.floor(diffMs / 60000);
-          return diffMins > 0 ? `${diffMins}m active` : 'Active';
-        }
-      }
-      return 'In Progress';
+      return this.resolveActiveTaskDuration(task);
     }
 
     return '—';
@@ -834,18 +632,27 @@ export class PackageDepartmentViewComponent {
   getProgressStatusText(t: any): string {
     if (!t) return '—';
     const pVal = typeof t.progressPercent === 'number' ? t.progressPercent : null;
-    if (t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED') {
-      return '100% Completed';
-    } else if (t.status === 'SUBMITTED' || t.status === 'UNDER_REVIEW') {
-      return pVal !== null ? `${pVal}% (Under Review)` : 'Under Review';
-    } else if (t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED') {
-      return pVal !== null ? `${pVal}% (Changes Req)` : 'Revision Requested';
-    } else if (t.status === 'RESUBMITTED') {
-      return pVal !== null ? `${pVal}% (Resubmitted)` : 'Resubmitted';
-    } else if (t.status === 'IN_PROGRESS' || t.status === 'ACCEPTED') {
-      return pVal !== null && pVal > 0 ? `${pVal}% (In Progress)` : 'In Progress';
+    const status = t.status;
+
+    switch (status) {
+      case 'APPROVED':
+      case 'COMPLETED':
+      case 'PUBLISHED':
+        return '100% Completed';
+      case 'SUBMITTED':
+      case 'UNDER_REVIEW':
+        return pVal !== null ? `${pVal}% (Under Review)` : 'Under Review';
+      case 'REVISION_REQUIRED':
+      case 'REDESIGN_REQUIRED':
+        return pVal !== null ? `${pVal}% (Changes Req)` : 'Revision Requested';
+      case 'RESUBMITTED':
+        return pVal !== null ? `${pVal}% (Resubmitted)` : 'Resubmitted';
+      case 'IN_PROGRESS':
+      case 'ACCEPTED':
+        return pVal !== null && pVal > 0 ? `${pVal}% (In Progress)` : 'In Progress';
+      default:
+        return pVal !== null && pVal > 0 ? `${pVal}%` : (status || 'Assigned');
     }
-    return pVal !== null && pVal > 0 ? `${pVal}%` : (t.status || 'Assigned');
   }
 
   getTaskRevisionCount(t: any): number {
@@ -871,70 +678,50 @@ export class PackageDepartmentViewComponent {
     return tasks;
   }
 
+  private filterTasksByDateSelection(tasks: any[]): any[] {
+    if (this.filterStartDate || this.filterEndDate) {
+      return tasks.filter((t) => this.taskMatchesDateRange(t, this.filterStartDate, this.filterEndDate));
+    }
+    if (this.modalDateFilter === 'ALL') return tasks;
+
+    let targetDate = '';
+    if (this.modalDateFilter === 'TODAY') {
+      targetDate = this.toLocalDateString(new Date());
+    } else if (this.modalDateFilter === 'YESTERDAY') {
+      const y = new Date();
+      y.setDate(y.getDate() - 1);
+      targetDate = this.toLocalDateString(y);
+    } else if (this.modalDateFilter === 'CUSTOM') {
+      targetDate = this.customFilterDate;
+    }
+
+    return targetDate ? tasks.filter((t) => this.taskMatchesDate(t, targetDate)) : tasks;
+  }
+
+  private filterTasksByStatusSelection(tasks: any[]): any[] {
+    if (this.taskStatusSubFilter === 'ALL') return tasks;
+    const isTelecaller = this.selectedPerformanceUser?.role === 'TELECALLER';
+
+    if (this.taskStatusSubFilter === 'COMPLETED') {
+      return isTelecaller
+        ? tasks.filter((t) => t.calledAt || t.callAttempts > 0 || ['CONNECTED', 'QUALIFIED', 'CONVERTED', 'PAID', 'INTERESTED'].includes(t.status))
+        : tasks.filter((t) => t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED');
+    }
+    if (this.taskStatusSubFilter === 'IN_QUEUE') {
+      return isTelecaller
+        ? tasks.filter((t) => !t.calledAt && t.callAttempts === 0 && !['CONNECTED', 'QUALIFIED', 'CONVERTED', 'PAID', 'INTERESTED', 'LOST'].includes(t.status))
+        : tasks.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'ACCEPTED' || t.status === 'SUBMITTED' || t.status === 'UNDER_REVIEW' || t.status === 'RESUBMITTED');
+    }
+    if (this.taskStatusSubFilter === 'REVISIONS') {
+      return tasks.filter((t) => t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED');
+    }
+    return tasks;
+  }
+
   get filteredModalTasks(): any[] {
     if (!this.selectedPerformanceUser) return [];
-    let tasks = this.packageScopedTasks;
-
-   
-    if (this.filterStartDate || this.filterEndDate) {
-      tasks = tasks.filter((t) => this.taskMatchesDateRange(t, this.filterStartDate, this.filterEndDate));
-    } else if (this.modalDateFilter !== 'ALL') {
-      let targetDate = '';
-      if (this.modalDateFilter === 'TODAY') {
-        targetDate = this.toLocalDateString(new Date());
-      } else if (this.modalDateFilter === 'YESTERDAY') {
-        const y = new Date();
-        y.setDate(y.getDate() - 1);
-        targetDate = this.toLocalDateString(y);
-      } else if (this.modalDateFilter === 'CUSTOM') {
-        targetDate = this.customFilterDate;
-      }
-      if (targetDate) {
-        tasks = tasks.filter((t) => this.taskMatchesDate(t, targetDate));
-      }
-    }
-
-    
-    const isTelecaller = this.selectedPerformanceUser?.role === 'TELECALLER';
-    if (this.taskStatusSubFilter === 'COMPLETED') {
-      if (isTelecaller) {
-        tasks = tasks.filter((t) => t.calledAt || t.callAttempts > 0 || ['CONNECTED', 'QUALIFIED', 'CONVERTED', 'PAID', 'INTERESTED'].includes(t.status));
-      } else {
-        tasks = tasks.filter((t) => t.status === 'APPROVED' || t.status === 'COMPLETED' || t.status === 'PUBLISHED');
-      }
-    } else if (this.taskStatusSubFilter === 'IN_QUEUE') {
-      if (isTelecaller) {
-        tasks = tasks.filter((t) => !t.calledAt && t.callAttempts === 0 && !['CONNECTED', 'QUALIFIED', 'CONVERTED', 'PAID'].includes(t.status));
-      } else {
-        tasks = tasks.filter((t) => t.status !== 'APPROVED' && t.status !== 'COMPLETED' && t.status !== 'PUBLISHED');
-      }
-    } else if (this.taskStatusSubFilter === 'REVISIONS') {
-      if (isTelecaller) {
-        tasks = tasks.filter((t) => t.status === 'FOLLOW_UP' || t.status === 'LINE_BUSY' || t.status === 'NO_ANSWER' || t.status === 'BUSY');
-      } else {
-        tasks = tasks.filter((t) => t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED');
-      }
-    }
-
-  
-    if (this.taskSearchQuery.trim()) {
-      const q = this.taskSearchQuery.toLowerCase().trim();
-      tasks = tasks.filter((t) => {
-        const titleMatch = (t.title || '').toLowerCase().includes(q);
-        const leadNameMatch = (t.leadName || '').toLowerCase().includes(q);
-        const phoneMatch = (t.leadPhone || '').toLowerCase().includes(q);
-        const campMatch = (t.campaignName || '').toLowerCase().includes(q);
-        const adMatch = (t.adName || '').toLowerCase().includes(q);
-        const srcMatch = (t.source || t.campaignName || '').toLowerCase().includes(q);
-        const prodMatch = (t.productName || t.productId || '').toLowerCase().includes(q);
-        const pkgMatch = (t.packageName || t.packageId || '').toLowerCase().includes(q);
-        const statusMatch = (t.status || t.callOutcome || '').toLowerCase().includes(q);
-        const notesMatch = (t.remarks || '').toLowerCase().includes(q);
-        return titleMatch || leadNameMatch || phoneMatch || campMatch || adMatch || srcMatch || prodMatch || pkgMatch || statusMatch || notesMatch;
-      });
-    }
-
-    return tasks;
+    const dateFiltered = this.filterTasksByDateSelection(this.packageScopedTasks);
+    return this.filterTasksByStatusSelection(dateFiltered);
   }
 
   get modalTasksCompletedCount(): number {
@@ -980,100 +767,189 @@ export class PackageDepartmentViewComponent {
   }
 
   getTaskStatusBadgeClass(status: string): string {
-    switch (status) {
-      case 'APPROVED':
-      case 'COMPLETED':
-      case 'PUBLISHED':
-        return 'badge-green';
-      case 'IN_PROGRESS':
-        return 'badge-amber';
-      case 'SUBMITTED':
-      case 'UNDER_REVIEW':
-        return 'badge-purple';
-      case 'REVISION_REQUIRED':
-      case 'REDESIGN_REQUIRED':
-        return 'badge-danger';
-      default:
-        return 'badge-blue';
-    }
+    return getReportTaskStatusBadgeClass(status);
   }
 
   getLeadStatusBadgeClass(status?: string): string {
-    const s = (status || '').toUpperCase().trim();
-    switch (s) {
-      case 'QUALIFIED':
-      case 'CONVERTED':
-      case 'PAID':
-      case 'INTERESTED':
-      case 'CONNECTED':
-        return 'badge-green';
-      case 'FOLLOW_UP':
-      case 'IN_PROGRESS':
-        return 'badge-amber';
-      case 'BUSY':
-      case 'LINE_BUSY':
-      case 'NO_ANSWER':
-      case 'RETRY':
-        return 'badge-purple';
-      case 'NOT_INTERESTED':
-      case 'LOST':
-      case 'WRONG_NUMBER':
-        return 'badge-danger';
-      default:
-        return 'badge-blue';
-    }
+    return getReportLeadStatusBadgeClass(status);
   }
 
   getPlatformBadgeClass(platform?: string): string {
-    const p = (platform || '').toLowerCase();
-    if (p.includes('meta') || p.includes('facebook')) return 'badge-platform-meta';
-    if (p.includes('google')) return 'badge-platform-google';
-    if (p.includes('insta')) return 'badge-platform-instagram';
-    if (p.includes('link')) return 'badge-platform-linkedin';
-    if (p.includes('youtube')) return 'badge-platform-youtube';
-    return 'badge-platform-default';
+    return getReportPlatformBadgeClass(platform);
   }
 
   getAdStatusBadgeClass(status?: string): string {
-    const s = (status || '').toUpperCase();
-    if (s === 'ACTIVE') return 'badge-green';
-    if (s === 'PAUSED') return 'badge-amber';
-    if (s === 'COMPLETED') return 'badge-blue';
-    return 'badge-slate';
+    return getReportAdStatusBadgeClass(status);
   }
 
   formatProductName(rawName?: string, task?: any): string {
-    if (task) {
-      if (task.productName && !task.productName.toLowerCase().includes('careermate') && !task.productName.toLowerCase().includes('package')) {
-        return String(task.productName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
-      }
-      const resolved = resolveTaskProductAndPackage(task, this.productPackages);
-      if (resolved?.productName) {
-        return String(resolved.productName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
-      }
-    }
-    if (rawName && rawName.trim() && !rawName.toLowerCase().includes('careermate')) {
-      return String(rawName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
-    }
-    const raw = this.activePackageMeta?.name || this.activePackageName || 'Product';
-    return String(raw).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+    return formatReportProductName(rawName, task, this.productPackages, this.activePackageMeta?.name);
   }
 
   formatPackageName(rawName?: string, task?: any): string {
-    if (task) {
-      if (task.packageName && task.packageName.trim()) {
-        return String(task.packageName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+    return formatReportPackageName(rawName, task, this.productPackages, this.activePackageDisplayName());
+  }
+
+  private buildDesignerCsvLines(user: UserPerformanceRecord, tasks: any[], escapeCsv: (val: any) => string): string[] {
+    const lines: string[] = [];
+    const designerHeaders = [
+      'S.No', 'Designer Name', 'Product', 'Package', 'Task Title', 'Assigned By (Role)',
+      'Priority', 'Assigned Date', 'Due Date', 'Submission Date', 'Status',
+      'Work Progress Status', 'Time Duration', 'Revisions (Changes)',
+      'Admin Feedback / Notes', 'Design File ',
+    ];
+    lines.push(designerHeaders.map(escapeCsv).join(','));
+
+    tasks.forEach((t: any, index: number) => {
+      const fileAsset = t.attachmentName || t.attachmentUrl || (Array.isArray(t.versions) && t.versions.length > 0 ? (t.versions[t.versions.length - 1].fileName || t.versions[t.versions.length - 1].previewUrl) : '') || '—';
+      const row = [
+        index + 1,
+        user.name || 'Designer',
+        this.formatProductName(t.productName || t.productId, t),
+        this.formatPackageName(t.packageName || t.packageId, t),
+        t.title || 'Design Task',
+        t.creatorRole || 'Administrator',
+        t.priority || 'MEDIUM',
+        t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—',
+        t.dueDate || 'Ongoing',
+        this.getSubmissionDateText(t),
+        t.status || 'ASSIGNED',
+        this.getProgressStatusText(t),
+        this.getTaskDuration(t),
+        this.getTaskRevisionCount(t),
+        t.reviewerFeedback || t.feedback || t.remark || '—',
+        fileAsset,
+      ];
+      lines.push(row.map(escapeCsv).join(','));
+    });
+    return lines;
+  }
+
+  private buildTelecallerCsvLines(user: UserPerformanceRecord, tasks: any[], escapeCsv: (val: any) => string): string[] {
+    const lines: string[] = [];
+    const summaryHeaders = [
+      'S.No', 'Campaigns', 'Ad Name', 'Assigned Date', 'Total Count Leads',
+      'Total Calls', 'Average Calls', 'Interested', 'Targets', 'Caller Ratio', 'Paid',
+    ];
+    lines.push('--- CAMPAIGN SUMMARY BREAKDOWN ---', summaryHeaders.map(escapeCsv).join(','));
+    this.telecallerCampaignReports.forEach((r) => {
+      lines.push(
+        [r.sNo, r.campaignName, r.adName, r.assignedDate, r.totalCountLeads, r.totalCalls, r.averageCalls, r.interested, r.targets, r.callerRatio, r.paid]
+          .map(escapeCsv).join(',')
+      );
+    });
+    lines.push('', '--- DETAILED LEAD RECORDS ---');
+
+    const telecallerHeaders = [
+      'S.No', 'Telecaller Name', 'Product', 'Package', 'Lead Name', 'Campaign',
+      'Phone Number', 'Ad Name', 'Lead Source', 'Assigned Date', 'Call Date & Time',
+      'Call Duration', 'Call Status', 'Total Call Attempts', 'Follow-up Date', 'Telecaller Notes',
+    ];
+    lines.push(telecallerHeaders.map(escapeCsv).join(','));
+
+    tasks.forEach((t: any, index: number) => {
+      const phone = (t.leadPhone && t.leadPhone !== '—' && !t.leadPhone.includes('@')) ? t.leadPhone : '—';
+      const attempts = t.callAttemptsText || (t.callAttempts ? `${t.callAttempts} Calls` : '0 Attempts');
+      let remarks = '—';
+      if (t.remarks && t.remarks !== '—') {
+        remarks = t.remarks;
+      } else if (t.notes && t.notes !== '—') {
+        remarks = t.notes;
       }
-      const resolved = resolveTaskProductAndPackage(task, this.productPackages);
-      if (resolved?.packageName) {
-        return String(resolved.packageName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+
+      const row = [
+        index + 1,
+        user.name || 'Telecaller',
+        this.formatProductName(t.productName, t),
+        this.formatPackageName(t.packageName, t),
+        t.leadName || t.title || '—',
+        t.campaignName || '—',
+        phone,
+        t.adName || '—',
+        t.source || '—',
+        t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—',
+        t.calledAt ? new Date(t.calledAt).toLocaleString() : '—',
+        t.callDurationText && t.callDurationText !== '—' ? t.callDurationText : '—',
+        t.callOutcome || t.status || '—',
+        attempts,
+        t.followUpDate ? new Date(t.followUpDate).toLocaleDateString() : '—',
+        remarks,
+      ];
+      lines.push(row.map(escapeCsv).join(','));
+    });
+    return lines;
+  }
+
+  private buildDigitalMarketingCsvLines(user: UserPerformanceRecord, tasks: any[], escapeCsv: (val: any) => string): string[] {
+    const lines: string[] = [];
+    const dmHeaders = [
+      'S.No', 'Digital Marketer Name', 'Ad Name', 'Campaign Name', 'Product',
+      'Package', 'Platform', 'Date', 'Leads Generated', 'Status',
+    ];
+    lines.push(dmHeaders.map(escapeCsv).join(','));
+
+    tasks.forEach((t: any, index: number) => {
+      const rawDate = t.launchDate || t.createdAt;
+      const row = [
+        index + 1,
+        user.name || 'Digital Marketer',
+        t.adName || t.title || '—',
+        t.campaignName || '—',
+        this.formatProductName(t.productName, t),
+        this.formatPackageName(t.packageName, t),
+        t.platform || 'Meta Ads',
+        rawDate ? new Date(rawDate).toLocaleDateString() : '—',
+        t.leadsCount !== undefined ? t.leadsCount : 0,
+        t.status || 'ACTIVE',
+      ];
+      lines.push(row.map(escapeCsv).join(','));
+    });
+    return lines;
+  }
+
+  private buildGeneralStaffCsvLines(user: UserPerformanceRecord, tasks: any[], escapeCsv: (val: any) => string): string[] {
+    const lines: string[] = [];
+    const generalHeaders = [
+      'S.No', 'Staff Name', 'Role', 'Product', 'Package', 'Task Title',
+      'Assigned By (Role)', 'Status', 'Priority', 'Due Date', 'Time Duration',
+      'Asset / Deliverable', 'Notes',
+    ];
+    lines.push(generalHeaders.map(escapeCsv).join(','));
+
+    tasks.forEach((t: any, idx: number) => {
+      const row = [
+        idx + 1,
+        user.name,
+        user.roleLabel,
+        this.formatProductName(t.productName || t.productId, t),
+        this.formatPackageName(t.packageName || t.packageId, t),
+        t.title || 'Untitled Task',
+        t.creatorRole || 'Administrator',
+        t.status || 'PENDING',
+        t.priority || 'MEDIUM',
+        t.dueDate || 'Ongoing',
+        this.getTaskDuration(t),
+        t.attachmentName || t.attachmentUrl || 'None',
+        t.reviewerFeedback || '—',
+      ];
+      lines.push(row.map(escapeCsv).join(','));
+    });
+    return lines;
+  }
+
+  private resolveExportTasks(user: UserPerformanceRecord): any[] {
+    if (this.selectedPerformanceUser?.userId === user.userId) {
+      return this.filteredModalTasks;
+    }
+    return (user.tasks || []).filter((t: any) => {
+      if (this.filterStartDate || this.filterEndDate) {
+        if (!this.taskMatchesDateRange(t, this.filterStartDate, this.filterEndDate)) return false;
       }
-    }
-    if (rawName && rawName.trim()) {
-      return String(rawName).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
-    }
-    const raw = this.activePackageDisplayName() || this.activePackageMeta?.name || 'Package';
-    return String(raw).replace(/^pkg_/i, '').replace(/[-_]/g, ' ').trim().replace(/\b\w/g, (c: string) => c.toUpperCase());
+      if (this.currentFilterTarget && this.currentFilterTarget !== 'ALL') {
+        return isTaskForPackage(t, this.currentFilterTarget, this.productPackages, this.activePackageMeta?.id);
+      }
+      return true;
+    });
   }
 
   downloadUserReport(user: UserPerformanceRecord): void {
@@ -1081,290 +957,26 @@ export class PackageDepartmentViewComponent {
 
     const escapeCsv = (val: any): string => {
       if (val === null || val === undefined) return '""';
-      const str = String(val).replace(/"/g, '""');
+      const str = String(val).replaceAll('"', '""');
       return `"${str}"`;
     };
 
-    const lines: string[] = [];
+    const tasks = this.resolveExportTasks(user);
+    let lines: string[] = [];
 
-  
-    const tasks = (this.selectedPerformanceUser && this.selectedPerformanceUser.userId === user.userId)
-      ? this.filteredModalTasks
-      : (user.tasks || []).filter((t: any) => {
-          if (this.filterStartDate || this.filterEndDate) {
-            if (!this.taskMatchesDateRange(t, this.filterStartDate, this.filterEndDate)) return false;
-          }
-          if (this.currentFilterTarget && this.currentFilterTarget !== 'ALL') {
-            return isTaskForPackage(t, this.currentFilterTarget, this.productPackages, this.activePackageMeta?.id);
-          }
-          return true;
-        });
-
-    if (user.role === 'DESIGNER') {
- 
-      const designerHeaders = [
-        'S.No',
-        'Designer Name',
-        'Product',
-        'Package',
-        'Task Title',
-        'Assigned By (Role)',
-        'Priority',
-        'Assigned Date',
-        'Due Date',
-        'Submission Date',
-        'Status',
-        'Work Progress Status',
-        'Time Duration',
-        'Revisions (Changes)',
-        'Admin Feedback / Notes',
-        'Design File ',
-      ];
-      lines.push(designerHeaders.map(escapeCsv).join(','));
-
-      if (tasks.length > 0) {
-        tasks.forEach((t: any, index: number) => {
-          const sNo = index + 1;
-          const designerName = user.name || 'Designer';
-          const product = this.formatProductName(t.productName || t.productId, t);
-          const pkg = this.formatPackageName(t.packageName || t.packageId, t);
-          const taskTitle = t.title || 'Design Task';
-
-        
-          const assignedByRole = t.creatorRole || 'Administrator';
-
-       
-          const priority = t.priority || 'MEDIUM';
-
-      
-          const assignedDate = t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—';
-
-         
-          const dueDate = t.dueDate || 'Ongoing';
-
-        
-          const submissionDate = this.getSubmissionDateText(t);
-
-       
-          const status = t.status || 'ASSIGNED';
-
-        
-          const progressStatus = this.getProgressStatusText(t);
-
-    
-          const duration = this.getTaskDuration(t);
-
- 
-          const revCount = this.getTaskRevisionCount(t);
-
- 
-          const feedback = t.reviewerFeedback || t.feedback || t.remark || '—';
-
-     
-          const fileAsset = t.attachmentName || t.attachmentUrl || (Array.isArray(t.versions) && t.versions.length > 0 ? (t.versions[t.versions.length - 1].fileName || t.versions[t.versions.length - 1].previewUrl) : '') || '—';
-
-          const row = [
-            sNo,
-            designerName,
-            product,
-            pkg,
-            taskTitle,
-            assignedByRole,
-            priority,
-            assignedDate,
-            dueDate,
-            submissionDate,
-            status,
-            progressStatus,
-            duration,
-            revCount,
-            feedback,
-            fileAsset,
-          ];
-          lines.push(row.map(escapeCsv).join(','));
-        });
-      }
-    } else if (user.role === 'TELECALLER') {
-      const summaryHeaders = [
-        'S.No',
-        'Campaigns',
-        'Ad Name',
-        'Assigned Date',
-        'Total Count Leads',
-        'Total Calls',
-        'Average Calls',
-        'Interested',
-        'Targets',
-        'Caller Ratio',
-        'Paid',
-      ];
-      lines.push('--- CAMPAIGN SUMMARY BREAKDOWN ---');
-      lines.push(summaryHeaders.map(escapeCsv).join(','));
-      this.telecallerCampaignReports.forEach((r) => {
-        lines.push(
-          [
-            r.sNo,
-            r.campaignName,
-            r.adName,
-            r.assignedDate,
-            r.totalCountLeads,
-            r.totalCalls,
-            r.averageCalls,
-            r.interested,
-            r.targets,
-            r.callerRatio,
-            r.paid,
-          ]
-            .map(escapeCsv)
-            .join(',')
-        );
-      });
-      lines.push('');
-      lines.push('--- DETAILED LEAD RECORDS ---');
-
-      const telecallerHeaders = [
-        'S.No',
-        'Telecaller Name',
-        'Product',
-        'Package',
-        'Lead Name',
-        'Campaign',
-        'Phone Number',
-        'Ad Name',
-        'Lead Source',
-        'Assigned Date',
-        'Call Date & Time',
-        'Call Duration',
-        'Call Status',
-        'Total Call Attempts',
-        'Follow-up Date',
-        'Telecaller Notes',
-      ];
-      lines.push(telecallerHeaders.map(escapeCsv).join(','));
-
-      if (tasks.length > 0) {
-        tasks.forEach((t: any, index: number) => {
-          const sNo = index + 1;
-          const telecallerName = user.name || 'Telecaller';
-          const product = this.formatProductName(t.productName, t);
-          const pkg = this.formatPackageName(t.packageName, t);
-          const leadName = t.leadName || t.title || '—';
-          const campaign = t.campaignName || '—';
-          const phone = (t.leadPhone && t.leadPhone !== '—' && !t.leadPhone.includes('@')) ? t.leadPhone : '—';
-          const adName = t.adName || '—';
-          const source = t.source || '—';
-          const assignedDate = t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—';
-          const callDateTime = t.calledAt ? new Date(t.calledAt).toLocaleString() : '—';
-          const duration = t.callDurationText && t.callDurationText !== '—' ? t.callDurationText : '—';
-          const status = t.callOutcome || t.status || '—';
-          const attempts = t.callAttemptsText || (t.callAttempts ? `${t.callAttempts} Calls` : '0 Attempts');
-          const followUp = t.followUpDate ? new Date(t.followUpDate).toLocaleDateString() : '—';
-          const remarks = (t.remarks && t.remarks !== '—') ? t.remarks : ((t.notes && t.notes !== '—') ? t.notes : '—');
-
-          const row = [
-            sNo,
-            telecallerName,
-            product,
-            pkg,
-            leadName,
-            campaign,
-            phone,
-            adName,
-            source,
-            assignedDate,
-            callDateTime,
-            duration,
-            status,
-            attempts,
-            followUp,
-            remarks,
-          ];
-          lines.push(row.map(escapeCsv).join(','));
-        });
-      }
-    } else if (user.role === 'DIGITAL_MARKETING') {
-    
-      const dmHeaders = [
-        'S.No',
-        'Digital Marketer Name',
-        'Ad Name',
-        'Campaign Name',
-        'Product',
-        'Package',
-        'Platform',
-        'Date',
-        'Leads Generated',
-        'Status',
-      ];
-      lines.push(dmHeaders.map(escapeCsv).join(','));
-
-      if (tasks.length > 0) {
-        tasks.forEach((t: any, index: number) => {
-          const sNo = index + 1;
-          const dmName = user.name || 'Digital Marketer';
-          const adName = t.adName || t.title || '—';
-          const campaign = t.campaignName || '—';
-          const product = this.formatProductName(t.productName, t);
-          const pkg = this.formatPackageName(t.packageName, t);
-          const platform = t.platform || 'Meta Ads';
-          const date = t.launchDate ? new Date(t.launchDate).toLocaleDateString() : (t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '—');
-          const leads = t.leadsCount !== undefined ? t.leadsCount : 0;
-          const status = t.status || 'ACTIVE';
-
-          const row = [
-            sNo,
-            dmName,
-            adName,
-            campaign,
-            product,
-            pkg,
-            platform,
-            date,
-            leads,
-            status,
-          ];
-          lines.push(row.map(escapeCsv).join(','));
-        });
-      }
-    } else {
-     
-      const generalHeaders = [
-        'S.No',
-        'Staff Name',
-        'Role',
-        'Product',
-        'Package',
-        'Task Title',
-        'Assigned By (Role)',
-        'Status',
-        'Priority',
-        'Due Date',
-        'Time Duration',
-        'Asset / Deliverable',
-        'Notes',
-      ];
-      lines.push(generalHeaders.map(escapeCsv).join(','));
-
-      if (tasks.length > 0) {
-        tasks.forEach((t: any, idx: number) => {
-          const row = [
-            idx + 1,
-            user.name,
-            user.roleLabel,
-            this.formatProductName(t.productName || t.productId, t),
-            this.formatPackageName(t.packageName || t.packageId, t),
-            t.title || 'Untitled Task',
-            t.creatorRole || 'Administrator',
-            t.status || 'PENDING',
-            t.priority || 'MEDIUM',
-            t.dueDate || 'Ongoing',
-            this.getTaskDuration(t),
-            t.attachmentName || t.attachmentUrl || 'None',
-            t.reviewerFeedback || '—',
-          ];
-          lines.push(row.map(escapeCsv).join(','));
-        });
-      }
+    switch (user.role) {
+      case 'DESIGNER':
+        lines = this.buildDesignerCsvLines(user, tasks, escapeCsv);
+        break;
+      case 'TELECALLER':
+        lines = this.buildTelecallerCsvLines(user, tasks, escapeCsv);
+        break;
+      case 'DIGITAL_MARKETING':
+        lines = this.buildDigitalMarketingCsvLines(user, tasks, escapeCsv);
+        break;
+      default:
+        lines = this.buildGeneralStaffCsvLines(user, tasks, escapeCsv);
+        break;
     }
 
     const csvContent = lines.join('\r\n');
@@ -1385,7 +997,7 @@ export class PackageDepartmentViewComponent {
     link.download = `${cleanName}_Report_${dateSuffix}.csv`;
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
     window.URL.revokeObjectURL(url);
   }
 }

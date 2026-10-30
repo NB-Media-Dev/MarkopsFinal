@@ -1,244 +1,3 @@
-<!-- @if (
-  viewMode === 'ALL' ||
-  viewMode === 'MEMBERS' ||
-  viewMode === 'OVERVIEW' ||
-  viewMode === 'ASSIGNED'
-) {
-  <div class="pipeline-strip-container">
-
-    <div class="pipeline-top-filter-bar">
-
-      <div class="filter-cluster date-cluster">
-        <div class="cluster-label">
-          <span class="material-symbols-outlined icon-lead-filter">calendar_month</span>
-          <span>Date:</span>
-        </div>
-        <div class="date-filter-pills-group">
-          <button
-            type="button"
-            class="date-filter-btn"
-            [class.active]="dateFilter === 'ALL'"
-            (click)="setDateFilter('ALL')"
-          >
-            <span>All Data</span>
-          </button>
-          <button
-            type="button"
-            class="date-filter-btn"
-            [class.active]="dateFilter === 'TODAY'"
-            (click)="setDateFilter('TODAY')"
-          >
-            <span>Today</span>
-          </button>
-          <button
-            type="button"
-            class="date-filter-btn"
-            [class.active]="dateFilter === 'YESTERDAY'"
-            (click)="setDateFilter('YESTERDAY')"
-          >
-            <span>Yesterday</span>
-          </button>
-
-          <label
-            class="calendar-picker-pill"
-            [class.active]="dateFilter === 'CUSTOM'"
-            title="Select custom date from calendar"
-          >
-            <span class="material-symbols-outlined cal-icon">event</span>
-            @if (dateFilter !== 'CUSTOM' || !customDate) {
-              <span class="cal-text">Calendar</span>
-            }
-            @if (dateFilter === 'CUSTOM' && customDate) {
-              <span class="cal-text cal-active-date">{{ customDate }}</span>
-            }
-            <input
-              type="date"
-              class="hidden-native-date-input"
-              [max]="todayDate"
-              [ngModel]="customDate"
-              (ngModelChange)="setCustomDate($event)"
-            />
-          </label>
-        </div>
-      </div>
-
-      <div class="filter-cluster campaign-cluster">
-        <div class="cluster-label">
-          <span class="material-symbols-outlined icon-lead-filter text-amber">campaign</span>
-          <span>Campaign:</span>
-        </div>
-        <div class="campaign-select-wrap">
-          <select
-            class="campaign-styled-select"
-            [ngModel]="selectedCampaign"
-            (ngModelChange)="selectCampaign($event)"
-            title="Filter by campaign"
-          >
-            <option value="ALL">All Campaigns ({{ assignedLeadsCount }})</option>
-            @for (cmp of availableCampaigns; track cmp.name) {
-              <option [value]="cmp.name">{{ cmp.name }} ({{ cmp.count }})</option>
-            }
-          </select>
-          <span class="material-symbols-outlined select-chevron">expand_more</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="pipeline-cards-grid">
-      <button
-        type="button"
-        class="hub-kpi-card card-indigo"
-        [class.active]="pipelineStatusFilter === 'ALL'"
-        (click)="setPipelineFilter('ALL')"
-      >
-        <div class="kpi-squircle-icon icon-indigo">
-          <span class="material-symbols-outlined">dataset</span>
-        </div>
-        <div class="kpi-info-cluster">
-          <div class="kpi-top-row">
-            <span class="kpi-title">All Leads</span>
-        
-          </div>
-          <div class="kpi-value">{{ pipelineCounts.all }}</div>
-        </div>
-      </button>
-
-      <button
-        type="button"
-        class="hub-kpi-card card-amber"
-        [class.active]="pipelineStatusFilter === 'FOLLOW_UP'"
-        (click)="setPipelineFilter('FOLLOW_UP')"
-      >
-        <div class="kpi-squircle-icon icon-amber">
-          <span class="material-symbols-outlined">alarm</span>
-        </div>
-        <div class="kpi-info-cluster">
-          <div class="kpi-top-row">
-            <span class="kpi-title">Follow-ups</span>
-        
-          </div>
-          <div class="kpi-value">{{ pipelineCounts.followUp }}</div>
-        </div>
-      </button>
-
-      <button
-        type="button"
-        class="hub-kpi-card card-purple"
-        [class.active]="pipelineStatusFilter === 'INTERESTED'"
-        (click)="setPipelineFilter('INTERESTED')"
-      >
-        <div class="kpi-squircle-icon icon-purple">
-          <span class="material-symbols-outlined">thumb_up</span>
-        </div>
-        <div class="kpi-info-cluster">
-          <div class="kpi-top-row">
-            <span class="kpi-title">Interested</span>
-        
-          </div>
-          <div class="kpi-value">{{ pipelineCounts.interested }}</div>
-        </div>
-      </button>
-
-      <button
-        type="button"
-        class="hub-kpi-card card-emerald"
-        [class.active]="pipelineStatusFilter === 'QUALIFIED'"
-        (click)="setPipelineFilter('QUALIFIED')"
-      >
-        <div class="kpi-squircle-icon icon-emerald">
-          <span class="material-symbols-outlined">verified</span>
-        </div>
-        <div class="kpi-info-cluster">
-          <div class="kpi-top-row">
-            <span class="kpi-title">Paid / Qualified</span>
-         
-          </div>
-          <div class="kpi-value">{{ pipelineCounts.qualified }}</div>
-        </div>
-      </button>
-
-      <button
-        type="button"
-        class="hub-kpi-card card-rose"
-        [class.active]="pipelineStatusFilter === 'RETRY'"
-        (click)="setPipelineFilter('RETRY')"
-      >
-        <div class="kpi-squircle-icon icon-rose">
-          <span class="material-symbols-outlined">phone_missed</span>
-        </div>
-        <div class="kpi-info-cluster">
-          <div class="kpi-top-row">
-            <span class="kpi-title">Retry / Busy</span>
-        
-          </div>
-          <div class="kpi-value">{{ pipelineCounts.retry }}</div>
-        </div>
-      </button>
-    </div>
-
-    @if (selectedCampaign !== 'ALL' || dateFilter !== 'ALL') {
-      <div class="active-filter-tags-strip">
-        <div class="active-tags-list">
-          <span class="tags-prefix">Filtered By:</span>
-          @if (selectedCampaign !== 'ALL') {
-            <span class="filter-active-tag tag-campaign">
-              <span class="material-symbols-outlined fs-12">campaign</span>
-              <span
-                >Campaign: <strong>{{ selectedCampaign }}</strong></span
-              >
-              <button
-                type="button"
-                class="btn-tag-x"
-                (click)="selectCampaign('ALL')"
-                title="Clear campaign filter"
-              >
-                ✕
-              </button>
-            </span>
-          }
-          @if (dateFilter === 'CUSTOM') {
-            <span class="filter-active-tag tag-date">
-              <span class="material-symbols-outlined fs-12">event</span>
-              <span
-                >Date: <strong>{{ customDate }}</strong></span
-              >
-              <button
-                type="button"
-                class="btn-tag-x"
-                (click)="setDateFilter('ALL')"
-                title="Clear date filter"
-              >
-                ✕
-              </button>
-            </span>
-          }
-          @if (dateFilter === 'TODAY' || dateFilter === 'YESTERDAY') {
-            <span class="filter-active-tag tag-date">
-              <span class="material-symbols-outlined fs-12">calendar_today</span>
-              <span
-                >Date:
-                <strong>{{ dateFilter === 'TODAY' ? 'Today' : 'Yesterday' }}</strong></span
-              >
-              <button
-                type="button"
-                class="btn-tag-x"
-                (click)="setDateFilter('ALL')"
-                title="Clear date filter"
-              >
-                ✕
-              </button>
-            </span>
-          }
-        </div>
-        <button type="button" class="btn-reset-filters-link" (click)="onResetFilters()">
-          <span class="material-symbols-outlined fs-14">restart_alt</span>
-          <span>Reset Filters</span>
-        </button>
-      </div>
-    }
-  </div>
-} -->
-
 @if (
   viewMode === 'ALL' ||
   viewMode === 'MEMBERS' ||
@@ -284,6 +43,7 @@
 
           <label
             class="calendar-picker-pill"
+            for="telecallingCustomDateMobile"
             [class.active]="dateFilter === 'CUSTOM'"
             title="Select custom date from calendar"
           >
@@ -295,6 +55,7 @@
               <span class="cal-text cal-active-date">{{ customDate }}</span>
             }
             <input
+              id="telecallingCustomDateMobile"
               type="date"
               class="hidden-native-date-input"
               [max]="todayDate"
@@ -307,12 +68,13 @@
 
       <!-- Campaign Filter Cluster -->
       <div class="filter-cluster campaign-cluster">
-        <div class="cluster-label">
+        <label class="cluster-label" for="telecallingCampaignSelect">
           <span class="material-symbols-outlined icon-lead-filter text-amber">campaign</span>
           <span>Campaign:</span>
-        </div>
+        </label>
         <div class="campaign-select-wrap">
           <select
+            id="telecallingCampaignSelect"
             class="campaign-styled-select"
             [ngModel]="selectedCampaign"
             (ngModelChange)="selectCampaign($event)"

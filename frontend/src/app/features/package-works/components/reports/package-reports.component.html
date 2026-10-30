@@ -91,7 +91,7 @@
 
                 @if (isUserDropdownOpen) {
                   <div class="top-action-dropdown-menu user-dropdown-menu">
-               
+
                     <button
                       type="button"
                       class="dropdown-menu-item user-dropdown-item"
@@ -118,7 +118,7 @@
                       </div>
                     }
 
-                    
+
                     @for (m of teamRoleMembers; track m.userId) {
                       <button
                         type="button"
@@ -156,7 +156,7 @@
 
               <!-- FILTER BUTTON & DROPDOWN -->
               <div class="dropdown-wrap-filter position-relative">
-              
+
 
                 @if (isFilterDropdownOpen) {
                   <div class="top-action-dropdown-menu">
@@ -267,8 +267,9 @@
 
                       <div class="calendar-fields-row">
                         <div class="calendar-field">
-                          <label class="calendar-label">From</label>
+                          <label class="calendar-label" for="reportsFromDate">From</label>
                           <input
+                            id="reportsFromDate"
                             type="date"
                             class="calendar-native-input"
                             [max]="todayDateString"
@@ -278,8 +279,9 @@
                         </div>
 
                         <div class="calendar-field">
-                          <label class="calendar-label">To</label>
+                          <label class="calendar-label" for="reportsToDate">To</label>
                           <input
+                            id="reportsToDate"
                             type="date"
                             class="calendar-native-input"
                             [max]="todayDateString"
@@ -322,6 +324,9 @@
                   class="member-accordion-header"
                   [class.is-active-header]="isUserExpanded(u.userId)"
                   (click)="toggleUserAccordion(u.userId)"
+                  (keydown.enter)="toggleUserAccordion(u.userId)"
+                  (keydown.space)="toggleUserAccordion(u.userId)"
+                  aria-label="Toggle user performance details"
                 >
                   <div class="accordion-header-left">
                     <div class="avatar-ring-container">
@@ -625,8 +630,9 @@
               </button>
               <div class="date-range-inputs-cluster">
                 <div class="date-input-field-wrap" [class.field-active]="!!filterStartDate">
-                  <label class="date-input-label">START</label>
+                  <label class="date-input-label" for="reportsModalStartDate">START</label>
                   <input
+                    id="reportsModalStartDate"
                     type="date"
                     class="range-date-input"
                     [max]="todayDateString"
@@ -637,8 +643,9 @@
                 </div>
                 <span class="date-sep-dash">—</span>
                 <div class="date-input-field-wrap" [class.field-active]="!!filterEndDate">
-                  <label class="date-input-label">END</label>
+                  <label class="date-input-label" for="reportsModalEndDate">END</label>
                   <input
+                    id="reportsModalEndDate"
                     type="date"
                     class="range-date-input"
                     [max]="todayDateString"
@@ -714,6 +721,8 @@
               <span class="material-symbols-outlined search-icon">search</span>
               <input
                 type="text"
+                id="reportQueueSearchInput"
+                aria-label="Search report tasks"
                 class="queue-search-input"
                 [(ngModel)]="taskSearchQuery"
                 [placeholder]="selectedPerformanceUser.role === 'TELECALLER' ? 'Search by lead name, phone...' : (selectedPerformanceUser.role === 'DIGITAL_MARKETING' ? 'Search by ad name, campaign, platform...' : 'Search by task title, product...')"
@@ -811,7 +820,7 @@
                 </thead>
                 <tbody>
                   @for (row of paginatedCampaignReports; track row.sNo) {
-                    <tr class="campaign-summary-master-row" (click)="toggleExpandCampaignRow(row.sNo)">
+                    <tr class="campaign-summary-master-row" (click)="toggleExpandCampaignRow(row.sNo)" (keydown.enter)="toggleExpandCampaignRow(row.sNo)" (keydown.space)="toggleExpandCampaignRow(row.sNo)" aria-label="Toggle campaign row details">
                       <td class="font-bold text-slate-500">{{ row.sNo }}</td>
                       <td class="font-semibold text-slate-800">
                         <div class="d-flex align-items-center gap-1">

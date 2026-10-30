@@ -215,11 +215,11 @@ export class CreateTaskModalComponent implements OnChanges {
         file.name.endsWith('.doc') ||
         file.name.endsWith('.docx')
       ) {
-        const textReader = new FileReader();
-        textReader.onload = (e: ProgressEvent<FileReader>) => {
-          this.createdBriefContent.set((e.target?.result as string) || '');
-        };
-        textReader.readAsText(file);
+        file.text().then((text) => {
+          this.createdBriefContent.set(text || '');
+        }).catch(() => {
+          this.createdBriefContent.set('');
+        });
       } else {
         this.createdBriefContent.set(`Document File: ${file.name}\nFile Size: ${(file.size / 1024).toFixed(1)} KB\nFile Type: ${file.type || 'Binary'}`);
       }

@@ -12,11 +12,11 @@ import { CampaignItem } from '../../../../../core/services/campaign.service';
 export class CampaignDeleteModalComponent {
   @Input() target: CampaignItem | null = null;
 
-  @Output() cancel = new EventEmitter<void>();
+  @Output() cancelDelete = new EventEmitter<void>();
   @Output() confirm = new EventEmitter<void>();
 
   onCancel() {
-    this.cancel.emit();
+    this.cancelDelete.emit();
   }
 
   onConfirm() {

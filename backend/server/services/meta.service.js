@@ -32,18 +32,26 @@ function parseLeadFields(fieldData) {
   };
 }
 
+function extractEventFromChange(change, entryId) {
+  if (change?.field !== 'leadgen' || !change?.value?.leadgen_id) return null;
+  const val = change.value;
+  return {
+    leadId: String(val.leadgen_id),
+    formId: val.form_id ? String(val.form_id) : null,
+    pageId: val.page_id ? String(val.page_id) : String(entryId || ''),
+    adId: val.ad_id ? String(val.ad_id) : null,
+    campaignId: val.campaign_id ? String(val.campaign_id) : null,
+  };
+}
+
 function extractLeadEvents(payload) {
   const events = [];
-  for (const entry of Array.isArray(payload?.entry) ? payload.entry : []) {
-    for (const change of Array.isArray(entry?.changes) ? entry.changes : []) {
-      if (change?.field !== 'leadgen' || !change?.value?.leadgen_id) continue;
-      events.push({
-        leadId: String(change.value.leadgen_id),
-        formId: change.value.form_id ? String(change.value.form_id) : null,
-        pageId: change.value.page_id ? String(change.value.page_id) : String(entry.id || ''),
-        adId: change.value.ad_id ? String(change.value.ad_id) : null,
-        campaignId: change.value.campaign_id ? String(change.value.campaign_id) : null,
-      });
+  const entries = Array.isArray(payload?.entry) ? payload.entry : [];
+  for (const entry of entries) {
+    const changes = Array.isArray(entry?.changes) ? entry.changes : [];
+    for (const change of changes) {
+      const evt = extractEventFromChange(change, entry?.id);
+      if (evt) events.push(evt);
     }
   }
   return events;

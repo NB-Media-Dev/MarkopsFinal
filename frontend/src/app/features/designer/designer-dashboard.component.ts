@@ -9,7 +9,7 @@ import { NotificationService } from '../../core/services/notification.service';
 import { UserManagementService } from '../../core/services/user-management.service';
 import { PackageService } from '../../core/services/package.service';
 
-import { Task, TaskStatus, TaskPriority } from '../../core/models/task.model';
+import { Task } from '../../core/models/task.model';
 import { FIXED_PACKAGES, isTaskForPackage } from '../../core/models/package.model';
 
 import { DesignerKpisComponent } from './components/designer-kpis/designer-kpis.component';
@@ -21,6 +21,200 @@ import { RedesignModalComponent } from './components/modals/redesign-modal/redes
 import { CreateTaskModalComponent } from './components/modals/create-task-modal/create-task-modal.component';
 import { ReviewModalComponent } from './components/modals/review-modal/review-modal.component';
 import { DocViewerModalComponent } from './components/modals/doc-viewer-modal/doc-viewer-modal.component';
+
+function initializeDesignerSummaryMap(designers: Array<{ id: string; name: string; email?: string; department?: string; avatarUrl?: string }>, getAvatarColor: (name: string) => string): Map<string, DesignerSummary> {
+  const map = new Map<string, DesignerSummary>();
+  for (const d of designers) {
+    const dIdStr = String(d.id || '');
+    const dNameStr = String(d.name || '');
+    const dEmailStr = String(d.email || `${dNameStr.toLowerCase().replace(/\s+/g, '.')}@markops.io`);
+    map.set(dIdStr, {
+      id: dIdStr,
+      name: dNameStr,
+      email: dEmailStr,
+      department: d.department || 'Creative Design',
+      avatarColor: getAvatarColor(dNameStr),
+      avatarUrl: d.avatarUrl,
+      totalCount: 0,
+      completedCount: 0,
+      pendingCount: 0,
+      inProgressCount: 0,
+      submittedCount: 0,
+      revisionCount: 0,
+      completionRate: 0,
+    });
+  }
+  return map;
+}
+
+function isTaskMatchingDate(t: Task, dateFilter: string): boolean {
+  if (!dateFilter) return true;
+  const createdDate = t.createdAt ? t.createdAt.split('T')[0] : '';
+  const dueDate = t.dueDate ? t.dueDate.split('T')[0] : '';
+  const updatedDate = t.updatedAt ? t.updatedAt.split('T')[0] : '';
+  return createdDate === dateFilter || dueDate === dateFilter || updatedDate === dateFilter;
+}
+
+function isTaskMatchingDesignerRole(t: Task, currentRole: string | undefined, currentUserId: string, currentUserEmail: string): boolean {
+  if (currentRole !== 'DESIGNER') return true;
+  const assigned = t.assignedTo !== undefined ? String(t.assignedTo).toLowerCase().trim() : '';
+  return assigned === currentUserId || (Boolean(currentUserEmail) && assigned === currentUserEmail);
+}
+
+function isTaskEligibleForDesignerSummary(
+  t: Task,
+  currentRole: string | undefined,
+  currentUserId: string,
+  currentUserEmail: string,
+  pkgFilter: string | null | undefined,
+  dateFilter: string,
+  packages: any[]
+): boolean {
+  if (!isTaskMatchingDesignerRole(t, currentRole, currentUserId, currentUserEmail)) return false;
+  if (pkgFilter && !isTaskForPackage(t, pkgFilter, packages)) return false;
+  return isTaskMatchingDate(t, dateFilter);
+}
+
+function matchesDesigner(d: { id: string; name: string; email?: string }, tAssignedToStr: string, tAssigneeNameStr: string): boolean {
+  const dIdStr = String(d.id || '').toLowerCase().trim();
+  const dNameStr = String(d.name || '').toLowerCase().trim();
+  const dEmailStr = String(d.email || '').toLowerCase().trim();
+
+  if (tAssignedToStr && (tAssignedToStr === dIdStr || tAssignedToStr === dEmailStr)) return true;
+  if (tAssigneeNameStr && (tAssigneeNameStr === dNameStr || tAssigneeNameStr.includes(dNameStr) || dNameStr.includes(tAssigneeNameStr))) return true;
+  return false;
+}
+
+function createCustomDesignerEntry(name: string, designerMap: Map<string, DesignerSummary>, getAvatarColor: (name: string) => string): string {
+  const customId = `d_${name.toLowerCase().replace(/\s+/g, '_')}`;
+  if (!designerMap.has(customId)) {
+    designerMap.set(customId, {
+      id: customId,
+      name,
+      email: `${name.toLowerCase().replace(/\s+/g, '.')}@markops.io`,
+      department: 'Creative Design',
+      avatarColor: getAvatarColor(name),
+      totalCount: 0,
+      completedCount: 0,
+      pendingCount: 0,
+      inProgressCount: 0,
+      submittedCount: 0,
+      revisionCount: 0,
+      completionRate: 0,
+    });
+  }
+  return customId;
+}
+
+function resolveTaskMatchedDesignerId(
+  t: Task,
+  designers: Array<{ id: string; name: string; email?: string }>,
+  designerMap: Map<string, DesignerSummary>,
+  getAvatarColor: (name: string) => string
+): string | null {
+  const tAssignedToStr = String(t.assignedTo || '').toLowerCase().trim();
+  const tAssigneeNameStr = String(t.assigneeName || '').toLowerCase().trim();
+
+  const found = designers.find((d) => matchesDesigner(d, tAssignedToStr, tAssigneeNameStr));
+  if (found) return String(found.id);
+
+  const ignorableNames = new Set(['Assigned User', 'Designer', 'Assigned Designer', 'Unassigned']);
+  if (t.assigneeName && !ignorableNames.has(t.assigneeName)) {
+    return createCustomDesignerEntry(String(t.assigneeName), designerMap, getAvatarColor);
+  }
+  return null;
+}
+
+function recordTaskStatusForDesigner(entry: DesignerSummary, status?: string) {
+  entry.totalCount++;
+  const isCompleted = status === 'APPROVED' || status === 'PUBLISHED' || status === 'COMPLETED';
+  const isInProgress =
+    status === 'IN_PROGRESS' ||
+    status === 'ACCEPTED' ||
+    status === 'SUBMITTED' ||
+    status === 'RESUBMITTED' ||
+    status === 'UNDER_REVIEW' ||
+    status === 'REVISION_REQUIRED' ||
+    status === 'REDESIGN_REQUIRED';
+  const isReview = status === 'SUBMITTED' || status === 'RESUBMITTED' || status === 'UNDER_REVIEW';
+  const isRevision = status === 'REVISION_REQUIRED' || status === 'REDESIGN_REQUIRED';
+
+  if (isCompleted) {
+    entry.completedCount++;
+  } else if (isInProgress) {
+    entry.inProgressCount = (entry.inProgressCount || 0) + 1;
+  } else {
+    entry.pendingCount++;
+  }
+
+  if (isReview) entry.submittedCount = (entry.submittedCount || 0) + 1;
+  if (isRevision) entry.revisionCount = (entry.revisionCount || 0) + 1;
+}
+
+
+function isDbPackageMatchingProduct(p: any, activeProdId: string, activeProdName: string): boolean {
+  const pProd = (p.productId || '').toLowerCase().trim();
+  const prodNameLower = activeProdName.toLowerCase();
+  if (pProd === activeProdId) return true;
+  if (prodNameLower.includes('career') && (pProd.includes('career') || pProd === 'pkg_careermate')) return true;
+  if (prodNameLower.includes('class') && (pProd.includes('class') || pProd === 'pkg_classmate')) return true;
+  return Boolean(
+    (prodNameLower.includes('jesus') || prodNameLower.includes('messang')) &&
+    (pProd.includes('jesus') || pProd.includes('messang') || pProd === 'pkg_jesus_messanger')
+  );
+}
+
+function populatePackagesForActiveProduct(
+  map: Map<string, { name: string; icon: string }>,
+  activeProd: string,
+  filterPkg: string | undefined,
+  dbPkgs: any[]
+): void {
+  const fixedProd = FIXED_PACKAGES.find(
+    (p) => p.name.toLowerCase() === activeProd.toLowerCase() || p.id.toLowerCase() === activeProd.toLowerCase()
+  );
+  const activeProdId = (fixedProd?.id || activeProd).toLowerCase();
+  const activeProdName = fixedProd?.name || activeProd;
+
+  if (filterPkg && filterPkg.toLowerCase() !== fixedProd?.name.toLowerCase()) {
+    map.set(filterPkg.toLowerCase(), { name: filterPkg, icon: 'inventory_2' });
+  }
+
+  for (const p of dbPkgs) {
+    if (!p.name?.trim()) continue;
+    if (isDbPackageMatchingProduct(p, activeProdId, activeProdName) && !map.has(p.name.toLowerCase().trim())) {
+      map.set(p.name.toLowerCase().trim(), { name: p.name.trim(), icon: 'inventory_2' });
+    }
+  }
+
+  if (map.size === 0 && fixedProd) {
+    map.set(fixedProd.name.toLowerCase(), { name: fixedProd.name, icon: fixedProd.icon });
+  }
+}
+
+function populateDefaultPackages(
+  map: Map<string, { name: string; icon: string }>,
+  filterPkg: string | undefined,
+  dbPkgs: any[]
+): void {
+  if (filterPkg) {
+    map.set(filterPkg.toLowerCase(), { name: filterPkg, icon: 'inventory_2' });
+  }
+
+  for (const p of dbPkgs) {
+    if (p.name?.trim() && !map.has(p.name.toLowerCase().trim())) {
+      map.set(p.name.toLowerCase().trim(), { name: p.name.trim(), icon: 'inventory_2' });
+    }
+  }
+
+  if (map.size === 0) {
+    for (const pkg of FIXED_PACKAGES) {
+      if (!map.has(pkg.name.toLowerCase())) {
+        map.set(pkg.name.toLowerCase(), { name: pkg.name, icon: pkg.icon });
+      }
+    }
+  }
+}
 
 @Component({
   selector: 'app-designer-dashboard',
@@ -43,6 +237,7 @@ import { DocViewerModalComponent } from './components/modals/doc-viewer-modal/do
   templateUrl: './designer-dashboard.component.html',
   styleUrl: './designer-dashboard.component.scss',
 })
+
 export class DesignerDashboardComponent implements OnInit {
   readonly packageFilterSignal = signal<string | undefined>(undefined);
   @Input() set packageFilter(val: string | undefined) {
@@ -104,7 +299,7 @@ export class DesignerDashboardComponent implements OnInit {
 
       const dbPkgs = this.packageService.packages();
       const match = dbPkgs.find((p) => p.name.toLowerCase().trim() === pkgFilter.toLowerCase());
-      if (match && match.productId) {
+      if (match?.productId) {
         const fixedByProdId = FIXED_PACKAGES.find(
           (fp) => fp.id.toLowerCase() === match.productId.toLowerCase() ||
                   fp.name.toLowerCase().includes(match.productId.toLowerCase().replace('pkg_', ''))
@@ -123,64 +318,9 @@ export class DesignerDashboardComponent implements OnInit {
     const dbPkgs = this.packageService.packages();
 
     if (activeProd) {
-      const fixedProd = FIXED_PACKAGES.find(
-        (p) => p.name.toLowerCase() === activeProd.toLowerCase() || p.id.toLowerCase() === activeProd.toLowerCase()
-      );
-      const activeProdId = (fixedProd?.id || activeProd).toLowerCase();
-      const activeProdName = fixedProd?.name || activeProd;
-
-      if (filterPkg && (!fixedProd || filterPkg.toLowerCase() !== fixedProd.name.toLowerCase())) {
-        map.set(filterPkg.toLowerCase(), {
-          name: filterPkg,
-          icon: 'inventory_2',
-        });
-      }
-
-      for (const p of dbPkgs) {
-        if (!p.name || !p.name.trim()) continue;
-        const pProd = (p.productId || '').toLowerCase().trim();
-        const matchesProduct =
-          pProd === activeProdId ||
-          (activeProdName.toLowerCase().includes('career') && (pProd.includes('career') || pProd === 'pkg_careermate')) ||
-          (activeProdName.toLowerCase().includes('class') && (pProd.includes('class') || pProd === 'pkg_classmate')) ||
-          ((activeProdName.toLowerCase().includes('jesus') || activeProdName.toLowerCase().includes('messang')) &&
-            (pProd.includes('jesus') || pProd.includes('messang') || pProd === 'pkg_jesus_messanger'));
-
-        if (matchesProduct && !map.has(p.name.toLowerCase().trim())) {
-          map.set(p.name.toLowerCase().trim(), {
-            name: p.name.trim(),
-            icon: 'inventory_2',
-          });
-        }
-      }
-
-      if (map.size === 0 && fixedProd) {
-        map.set(fixedProd.name.toLowerCase(), {
-          name: fixedProd.name,
-          icon: fixedProd.icon,
-        });
-      }
+      populatePackagesForActiveProduct(map, activeProd, filterPkg, dbPkgs);
     } else {
-      if (filterPkg) {
-        map.set(filterPkg.toLowerCase(), {
-          name: filterPkg,
-          icon: 'inventory_2',
-        });
-      }
-
-      for (const p of dbPkgs) {
-        if (p.name && p.name.trim() && !map.has(p.name.toLowerCase().trim())) {
-          map.set(p.name.toLowerCase().trim(), { name: p.name.trim(), icon: 'inventory_2' });
-        }
-      }
-
-      if (map.size === 0) {
-        for (const pkg of FIXED_PACKAGES) {
-          if (!map.has(pkg.name.toLowerCase())) {
-            map.set(pkg.name.toLowerCase(), { name: pkg.name, icon: pkg.icon });
-          }
-        }
-      }
+      populateDefaultPackages(map, filterPkg, dbPkgs);
     }
 
     return Array.from(map.values());
@@ -233,14 +373,11 @@ export class DesignerDashboardComponent implements OnInit {
     const currentUser = this.authService.currentUser();
     if (!currentUser) return false;
 
-    const currentId = String(currentUser.id !== undefined && currentUser.id !== null ? currentUser.id : '').trim().toLowerCase();
+    const currentId = String(currentUser.id ?? '').trim().toLowerCase();
     const currentEmail = String(currentUser.email || '').toLowerCase().trim();
 
-    const tCreatorId = String(
-      task.createdBy !== undefined && task.createdBy !== null
-        ? task.createdBy
-        : ((task as any).created_by !== undefined && (task as any).created_by !== null ? (task as any).created_by : '')
-    ).trim().toLowerCase();
+    const rawCreatorId = task.createdBy ?? (task as any).created_by ?? '';
+    const tCreatorId = String(rawCreatorId).trim().toLowerCase();
     const tCreatorEmail = String(task.creatorEmail || (task as any).creator_email || '').toLowerCase().trim();
 
     return Boolean((currentId && tCreatorId && currentId === tCreatorId) || (currentEmail && tCreatorEmail && currentEmail === tCreatorEmail));
@@ -250,7 +387,7 @@ export class DesignerDashboardComponent implements OnInit {
     const colors = ['#2563eb', '#7c3aed', '#059669', '#d97706', '#dc2626', '#0891b2', '#4f46e5', '#db2777'];
     let hash = 0;
     for (let i = 0; i < (name || '').length; i++) {
-      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      hash = (name.codePointAt(i) || 0) + ((hash << 5) - hash);
     }
     return colors[Math.abs(hash) % colors.length];
   }
@@ -271,142 +408,30 @@ export class DesignerDashboardComponent implements OnInit {
     const designers = this.realDesignersList();
     const allTasks = this.taskService.tasks();
     const pkgFilter = this.packageFilterSignal();
-
-    const designerMap = new Map<string, DesignerSummary>();
-
-    for (const d of designers) {
-      const dIdStr = String(d.id || '');
-      const dNameStr = String(d.name || '');
-      const dEmailStr = String(d.email || `${dNameStr.toLowerCase().replace(/\s+/g, '.')}@markops.io`);
-      designerMap.set(dIdStr, {
-        id: dIdStr,
-        name: dNameStr,
-        email: dEmailStr,
-        department: d.department || 'Creative Design',
-        avatarColor: this.getAvatarColor(dNameStr),
-        avatarUrl: d.avatarUrl,
-        totalCount: 0,
-        completedCount: 0,
-        pendingCount: 0,
-        inProgressCount: 0,
-        submittedCount: 0,
-        revisionCount: 0,
-        completionRate: 0,
-      });
-    }
+    const designerMap = initializeDesignerSummaryMap(designers, (name) => this.getAvatarColor(name));
 
     const currentUser = this.authService.currentUser();
     const currentRole = currentUser?.role;
     const currentUserId = String(currentUser?.id || '').toLowerCase().trim();
     const currentUserEmail = String(currentUser?.email || '').toLowerCase().trim();
-
     const dateFilter = this.selectedDateFilter();
-    const tasksToCount = allTasks.filter((t) => {
-      if (currentRole === 'DESIGNER') {
-        const isAssignedToMe =
-          (t.assignedTo !== undefined && String(t.assignedTo).toLowerCase().trim() === currentUserId) ||
-          (currentUserEmail && t.assignedTo !== undefined && String(t.assignedTo).toLowerCase().trim() === currentUserEmail);
-        if (!isAssignedToMe) return false;
-      }
+    const pkgs = this.packageService.packages();
 
-      if (pkgFilter && !isTaskForPackage(t, pkgFilter, this.packageService.packages())) {
-        return false;
-      }
-      if (dateFilter) {
-        const createdDate = t.createdAt ? t.createdAt.split('T')[0] : '';
-        const dueDate = t.dueDate ? t.dueDate.split('T')[0] : '';
-        const updatedDate = t.updatedAt ? t.updatedAt.split('T')[0] : '';
-        if (createdDate !== dateFilter && dueDate !== dateFilter && updatedDate !== dateFilter) {
-          return false;
-        }
-      }
-      return true;
-    });
+    const tasksToCount = allTasks.filter((t) =>
+      isTaskEligibleForDesignerSummary(t, currentRole, currentUserId, currentUserEmail, pkgFilter, dateFilter, pkgs)
+    );
 
     for (const t of tasksToCount) {
-      let matchedId: string | null = null;
-      const tAssignedToStr = String(t.assignedTo || '').toLowerCase().trim();
-      const tAssigneeNameStr = String(t.assigneeName || '').toLowerCase().trim();
-
-      for (const d of designers) {
-        const dIdStr = String(d.id || '').toLowerCase().trim();
-        const dNameStr = String(d.name || '').toLowerCase().trim();
-        const dEmailStr = String(d.email || '').toLowerCase().trim();
-
-        if (
-          (tAssignedToStr && (tAssignedToStr === dIdStr || tAssignedToStr === dEmailStr)) ||
-          (tAssigneeNameStr && (tAssigneeNameStr === dNameStr || tAssigneeNameStr.includes(dNameStr) || dNameStr.includes(tAssigneeNameStr)))
-        ) {
-          matchedId = String(d.id);
-          break;
-        }
-      }
-
-      if (!matchedId) {
-        if (
-          t.assigneeName &&
-          t.assigneeName !== 'Assigned User' &&
-          t.assigneeName !== 'Designer' &&
-          t.assigneeName !== 'Assigned Designer' &&
-          t.assigneeName !== 'Unassigned'
-        ) {
-          const customId = `d_${String(t.assigneeName).toLowerCase().replace(/\s+/g, '_')}`;
-          if (!designerMap.has(customId)) {
-            designerMap.set(customId, {
-              id: customId,
-              name: String(t.assigneeName),
-              email: `${String(t.assigneeName).toLowerCase().replace(/\s+/g, '.')}@markops.io`,
-              department: 'Creative Design',
-              avatarColor: this.getAvatarColor(String(t.assigneeName)),
-              totalCount: 0,
-              completedCount: 0,
-              pendingCount: 0,
-              inProgressCount: 0,
-              submittedCount: 0,
-              revisionCount: 0,
-              completionRate: 0,
-            });
-          }
-          matchedId = customId;
-        }
-      }
-
+      const matchedId = resolveTaskMatchedDesignerId(t, designers, designerMap, (name) => this.getAvatarColor(name));
       if (matchedId && designerMap.has(matchedId)) {
-        const entry = designerMap.get(matchedId)!;
-        entry.totalCount++;
-
-        const isCompleted = t.status === 'APPROVED' || t.status === 'PUBLISHED' || t.status === 'COMPLETED';
-        const isInProgress =
-          t.status === 'IN_PROGRESS' ||
-          t.status === 'ACCEPTED' ||
-          t.status === 'SUBMITTED' ||
-          t.status === 'RESUBMITTED' ||
-          t.status === 'UNDER_REVIEW' ||
-          t.status === 'REVISION_REQUIRED' ||
-          t.status === 'REDESIGN_REQUIRED';
-        const isReview = t.status === 'SUBMITTED' || t.status === 'RESUBMITTED' || t.status === 'UNDER_REVIEW';
-        const isRevision = t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED';
-
-        if (isCompleted) {
-          entry.completedCount++;
-        } else if (isInProgress) {
-          entry.inProgressCount = (entry.inProgressCount || 0) + 1;
-        } else {
-          entry.pendingCount++;
-        }
-
-        if (isReview) entry.submittedCount = (entry.submittedCount || 0) + 1;
-        if (isRevision) entry.revisionCount = (entry.revisionCount || 0) + 1;
+        recordTaskStatusForDesigner(designerMap.get(matchedId)!, t.status);
       }
     }
 
-    return Array.from(designerMap.values()).map((d) => {
-      const rate = d.totalCount > 0 ? Math.round((d.completedCount / d.totalCount) * 100) : 0;
-      return {
-        ...d,
-        completionRate: rate,
-      };
-    });
+    return Array.from(designerMap.values()).map((d) => ({
+      ...d,
+      completionRate: d.totalCount > 0 ? Math.round((d.completedCount / d.totalCount) * 100) : 0,
+    }));
   });
 
   readonly filteredDesigners = computed(() => {
@@ -500,6 +525,76 @@ export class DesignerDashboardComponent implements OnInit {
   readonly activeDocUrl = signal<string>('');
   readonly activeDocContent = signal<string>('');
 
+  private matchesTaskRoleAssignment(t: Task, currentRole: string | undefined, currentUserId: string, currentUserEmail: string, currentUserName: string, selDesigner: any): boolean {
+    const tAssignedToStr = String(t.assignedTo || '').toLowerCase().trim();
+    const tAssigneeNameStr = String(t.assigneeName || '').toLowerCase().trim();
+
+    if (currentRole === 'DESIGNER') {
+      return Boolean(
+        (tAssignedToStr && (tAssignedToStr === currentUserId || (currentUserEmail && tAssignedToStr === currentUserEmail))) ||
+        (tAssigneeNameStr && currentUserName && (tAssigneeNameStr === currentUserName || tAssigneeNameStr.includes(currentUserName)))
+      );
+    }
+
+    if (this.activeTaskView() === 'my' && !this.isTaskCreator(t)) {
+      return false;
+    }
+
+    if (selDesigner) {
+      const dIdStr = String(selDesigner.id || '').toLowerCase().trim();
+      const dNameStr = String(selDesigner.name || '').toLowerCase().trim();
+      const dEmailStr = String(selDesigner.email || '').toLowerCase().trim();
+
+      const matches =
+        (tAssignedToStr && (tAssignedToStr === dIdStr || (dEmailStr && tAssignedToStr === dEmailStr))) ||
+        (tAssigneeNameStr && (tAssigneeNameStr === dNameStr || tAssigneeNameStr.includes(dNameStr) || dNameStr.includes(tAssigneeNameStr)));
+
+      if (!matches) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private matchesTaskDateFilter(t: Task, dateFilter: string | null): boolean {
+    return isTaskMatchingDate(t, dateFilter || '');
+  }
+
+  private matchesTaskStatusFilter(t: Task, filter: string): boolean {
+    if (filter === 'IN_PROGRESS') {
+      return t.status === 'IN_PROGRESS' || t.status === 'ACCEPTED';
+    }
+    if (filter === 'REVISION_REQUIRED') {
+      return t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED';
+    }
+    if (filter === 'SUBMITTED') {
+      return t.status === 'SUBMITTED' || t.status === 'RESUBMITTED' || t.status === 'UNDER_REVIEW';
+    }
+    if (filter === 'COMPLETED') {
+      return t.status === 'APPROVED' || t.status === 'PUBLISHED' || t.status === 'COMPLETED';
+    }
+    if (filter === 'BDM_FLOW') {
+      return t.creatorRole === 'BDM' || Boolean(t.createdBy && String(t.createdBy).toLowerCase().includes('bdm'));
+    }
+    if (filter === 'COMMENTS') {
+      return Boolean(t.reviewerFeedback || (t.comments && t.comments.length > 0));
+    }
+    if (filter === 'FILES') {
+      return Boolean((t.versions && t.versions.length > 0) || t.attachmentUrl);
+    }
+    return true;
+  }
+
+  private matchesTaskSearchQuery(t: Task, query: string): boolean {
+    if (!query) return true;
+    return Boolean(
+      String(t.title || '').toLowerCase().includes(query) ||
+      String(t.campaignName || '').toLowerCase().includes(query) ||
+      String(t.description || '').toLowerCase().includes(query) ||
+      String(t.content || '').toLowerCase().includes(query)
+    );
+  }
+
   readonly filteredTasks = computed(() => {
     const list = this.taskService.tasks();
     const query = String(this.searchQuery() || '').toLowerCase().trim();
@@ -513,94 +608,30 @@ export class DesignerDashboardComponent implements OnInit {
     const seenIds = new Set<string>();
 
     return list.filter((t) => {
-      if (!t || !t.id) return false;
+      if (!t?.id) return false;
       const tid = String(t.id);
       if (seenIds.has(tid)) return false;
       seenIds.add(tid);
 
-      const tAssignedToStr = String(t.assignedTo || '').toLowerCase().trim();
-      const tAssigneeNameStr = String(t.assigneeName || '').toLowerCase().trim();
-
-      if (currentRole === 'DESIGNER') {
-        const isAssignedToMe =
-          (tAssignedToStr && (tAssignedToStr === currentUserId || (currentUserEmail && tAssignedToStr === currentUserEmail))) ||
-          (tAssigneeNameStr && currentUserName && (tAssigneeNameStr === currentUserName || tAssigneeNameStr.includes(currentUserName)));
-
-        if (!isAssignedToMe) {
-          return false;
-        }
-      } else {
-        if (this.activeTaskView() === 'my') {
-          const isCreatedByMe = this.isTaskCreator(t);
-          if (!isCreatedByMe) {
-            return false;
-          }
-        }
-
-        if (selDesigner) {
-          const dIdStr = String(selDesigner.id || '').toLowerCase().trim();
-          const dNameStr = String(selDesigner.name || '').toLowerCase().trim();
-          const dEmailStr = String(selDesigner.email || '').toLowerCase().trim();
-
-          const matches =
-            (tAssignedToStr && (tAssignedToStr === dIdStr || (dEmailStr && tAssignedToStr === dEmailStr))) ||
-            (tAssigneeNameStr && (tAssigneeNameStr === dNameStr || tAssigneeNameStr.includes(dNameStr) || dNameStr.includes(tAssigneeNameStr)));
-
-          if (!matches) {
-            return false;
-          }
-        }
+      if (!this.matchesTaskRoleAssignment(t, currentRole, currentUserId, currentUserEmail, currentUserName, selDesigner)) {
+        return false;
       }
 
       const pkgFilter = this.packageFilterSignal();
-      if (pkgFilter) {
-        if (!isTaskForPackage(t, pkgFilter, this.packageService.packages())) {
-          return false;
-        }
+      if (pkgFilter && !isTaskForPackage(t, pkgFilter, this.packageService.packages())) {
+        return false;
       }
 
-      const dateFilter = this.selectedDateFilter();
-      if (dateFilter) {
-        const createdDate = t.createdAt ? t.createdAt.split('T')[0] : '';
-        const dueDate = t.dueDate ? t.dueDate.split('T')[0] : '';
-        const updatedDate = t.updatedAt ? t.updatedAt.split('T')[0] : '';
-        if (createdDate !== dateFilter && dueDate !== dateFilter && updatedDate !== dateFilter) {
-          return false;
-        }
+      if (!this.matchesTaskDateFilter(t, this.selectedDateFilter())) {
+        return false;
       }
 
       const priority = this.priorityFilter();
-      if (priority && priority !== 'ALL') {
-        if (String(t.priority || '').toUpperCase() !== priority.toUpperCase()) {
-          return false;
-        }
+      if (priority && priority !== 'ALL' && String(t.priority || '').toUpperCase() !== priority.toUpperCase()) {
+        return false;
       }
 
-      const matchesSearch =
-        !query ||
-        String(t.title || '').toLowerCase().includes(query) ||
-        String(t.campaignName || '').toLowerCase().includes(query) ||
-        String(t.description || '').toLowerCase().includes(query) ||
-        String(t.content || '').toLowerCase().includes(query);
-
-      let matchesStatus = true;
-      if (filter === 'IN_PROGRESS') {
-        matchesStatus = t.status === 'IN_PROGRESS' || t.status === 'ACCEPTED';
-      } else if (filter === 'REVISION_REQUIRED') {
-        matchesStatus = t.status === 'REVISION_REQUIRED' || t.status === 'REDESIGN_REQUIRED';
-      } else if (filter === 'SUBMITTED') {
-        matchesStatus = t.status === 'SUBMITTED' || t.status === 'RESUBMITTED' || t.status === 'UNDER_REVIEW';
-      } else if (filter === 'COMPLETED') {
-        matchesStatus = t.status === 'APPROVED' || t.status === 'PUBLISHED' || t.status === 'COMPLETED';
-      } else if (filter === 'BDM_FLOW') {
-        matchesStatus = t.creatorRole === 'BDM' || Boolean(t.createdBy && String(t.createdBy).toLowerCase().includes('bdm'));
-      } else if (filter === 'COMMENTS') {
-        matchesStatus = Boolean(t.reviewerFeedback || (t.comments && t.comments.length > 0));
-      } else if (filter === 'FILES') {
-        matchesStatus = Boolean((t.versions && t.versions.length > 0) || t.attachmentUrl);
-      }
-
-      return matchesSearch && matchesStatus;
+      return this.matchesTaskSearchQuery(t, query) && this.matchesTaskStatusFilter(t, filter);
     });
   });
 
@@ -674,16 +705,18 @@ export class DesignerDashboardComponent implements OnInit {
     if (docUrl.startsWith('data:application/pdf') || docUrl.startsWith('data:image/')) {
       try {
         const parts = docUrl.split(',');
-        const mime = parts[0].match(/:(.*?);/)?.[1] || 'application/pdf';
+        const colonIdx = parts[0].indexOf(':');
+        const semiIdx = parts[0].indexOf(';');
+        const mime = (colonIdx !== -1 && semiIdx > colonIdx) ? parts[0].substring(colonIdx + 1, semiIdx) : 'application/pdf';
         const bstr = atob(parts[1]);
         let n = bstr.length;
         const u8arr = new Uint8Array(n);
         while (n--) {
-          u8arr[n] = bstr.charCodeAt(n);
+          u8arr[n] = bstr.codePointAt(n) || 0;
         }
         const blob = new Blob([u8arr], { type: mime });
         docUrl = URL.createObjectURL(blob);
-      } catch (e) {}
+      } catch (error_) { console.log('[Designer Dashboard Notice] Skipped:', error_); }
     }
 
     this.activeDocName.set(docName);
@@ -747,22 +780,22 @@ export class DesignerDashboardComponent implements OnInit {
     }
   }
 
-  getActiveRedesignTask(): Task | null {
+  getActiveModalTask(): Task | null {
     const id = this.activeModalTaskId();
     if (!id) return this.taskService.selectedTask();
     return this.taskService.tasks().find((t) => t.id === id) || this.taskService.selectedTask();
+  }
+
+  getActiveRedesignTask(): Task | null {
+    return this.getActiveModalTask();
   }
 
   getActiveUploadTask(): Task | null {
-    const id = this.activeModalTaskId();
-    if (!id) return this.taskService.selectedTask();
-    return this.taskService.tasks().find((t) => t.id === id) || this.taskService.selectedTask();
+    return this.getActiveModalTask();
   }
 
   getActiveReviewTask(): Task | null {
-    const id = this.activeModalTaskId();
-    if (!id) return this.taskService.selectedTask();
-    return this.taskService.tasks().find((t) => t.id === id) || this.taskService.selectedTask();
+    return this.getActiveModalTask();
   }
 
   openUploadModal(task: Task): void {

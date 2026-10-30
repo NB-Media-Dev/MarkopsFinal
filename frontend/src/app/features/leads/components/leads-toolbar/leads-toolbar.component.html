@@ -8,7 +8,7 @@
         [ngModel]="searchQuery"
         (ngModelChange)="onSearch($event)"
         placeholder="Search by name, phone, email, campaign, assignee..."
-        class="filter-search-input"
+        id="leadsToolbarSearch" aria-label="Search leads" class="filter-search-input"
       />
       @if (searchQuery) {
         <button
@@ -25,11 +25,12 @@
     <div class="filters-row-wrap">
 
       <div class="filter-group">
-        <label class="filter-label">
+        <label class="filter-label" for="leadsStatusSelect">
           <span class="material-symbols-outlined filter-icon">flag</span>
           <span>Status:</span>
         </label>
         <select
+          id="leadsStatusSelect"
           [ngModel]="filterStatus"
           (ngModelChange)="onStatus($event)"
           class="filter-select"
@@ -48,11 +49,12 @@
 
       @if (!isTelecaller) {
         <div class="filter-group">
-          <label class="filter-label">
+          <label class="filter-label" for="leadsTelecallerSelect">
             <span class="material-symbols-outlined filter-icon">headset_mic</span>
             <span>Telecaller:</span>
           </label>
           <select
+            id="leadsTelecallerSelect"
             [ngModel]="filterTelecaller"
             (ngModelChange)="onTelecaller($event)"
             class="filter-select"
@@ -68,11 +70,12 @@
 
       @if (availableCampaigns.length > 0) {
         <div class="filter-group">
-          <label class="filter-label">
+          <label class="filter-label" for="leadsCampaignSelect">
             <span class="material-symbols-outlined filter-icon">campaign</span>
             <span>Campaign:</span>
           </label>
           <select
+            id="leadsCampaignSelect"
             [ngModel]="filterCampaign"
             (ngModelChange)="onCampaign($event)"
             class="filter-select"
